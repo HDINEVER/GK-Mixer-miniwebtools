@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { ColorData, PaintBrand, Language } from '../types';
 import { generatePaintRecipe } from '../services/geminiService';
-import { findNearestPaints, hexToRgb } from '../utils/colorUtils';
+import { findNearestPaints, hexToRgb, rgbToCmyk } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
-import { solveMixingRecipe, SolvedIngredient } from '../utils/mixingSolver';
 
 declare var anime: any;
 
@@ -78,49 +77,99 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
       }
   };
 
-  // Calculate Mixing Layers using Mixbox Solver
+  // Calculate Mixing Layers
   const mixLayers = useMemo(() => {
       if (!color) return [];
 
-      // Run Solver
-      const ingredients: SolvedIngredient[] = solveMixingRecipe(
-          color.hex,
-          selectedBasePaint ? selectedBasePaint.hex : null,
-          mixMode
-      );
+      const layers: Layer[] = [];
+      
+      if (selectedBasePaint) {
+        // --- BASE PAINT MODE ---
+        // Calculate difference between Target and Base
+        const targetCmyk = color.cmyk;
+        const baseRgb = hexToRgb(selectedBasePaint.hex);
+        const baseCmyk = rgbToCmyk(baseRgb.r, baseRgb.g, baseRgb.b);
 
-      const layers: Layer[] = ingredients.map(ing => {
-          const vol = ing.ratio * bottleVolume;
-          const height = ing.ratio * 100;
-          
-          // Determine text color based on brightness of paint
-          const rgb = hexToRgb(ing.pigment.hex);
-          const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
-          const textColor = brightness > 128 ? '#000' : '#fff';
+        const diffC = Math.max(0, targetCmyk.c - baseCmyk.c);
+        const diffM = Math.max(0, targetCmyk.m - baseCmyk.m);
+        const diffY = Math.max(0, targetCmyk.y - baseCmyk.y);
+        const diffK = Math.max(0, targetCmyk.k - baseCmyk.k);
+        
+        let basePart = 100; // Arbitrary weight for the base paint
+        
+        const totalParts = basePart + diffC + diffM + diffY + diffK;
+        
+        const getVol = (part: number) => (part / totalParts) * bottleVolume;
+        const getH = (part: number) => (part / totalParts) * 100;
 
-          let label = ing.pigment.name;
-          if (ing.pigment.isBase && selectedBasePaint) {
-              label = selectedBasePaint.code;
-          } else {
-              // Shorten names for bottle display
-              if(label === 'Cyan') label = 'C';
-              if(label === 'Magenta') label = 'M';
-              if(label === 'Yellow') label = 'Y';
-              if(label === 'Black') label = 'K';
-              if(label === 'White') label = 'W';
-          }
+        // Base Layer
+        layers.push({
+            color: selectedBasePaint.hex,
+            heightPercent: getH(basePart),
+            volume: getVol(basePart),
+            label: selectedBasePaint.code,
+            textColor: selectedBasePaint.name.toLowerCase().includes('white') ? '#000' : '#fff',
+            isBase: true
+        });
 
-          return {
-            color: ing.pigment.hex,
-            heightPercent: height,
-            volume: vol,
-            label: label,
-            textColor: textColor,
-            isBase: ing.pigment.isBase
-          };
-      });
+        // Additive Layers
+        if (mixMode === 'CMYK') {
+            if (diffK > 0) layers.push({ color: '#1a1a1a', heightPercent: getH(diffK), volume: getVol(diffK), label: 'K', textColor: '#fff' });
+            if (diffC > 0) layers.push({ color: '#00ffff', heightPercent: getH(diffC), volume: getVol(diffC), label: 'C', textColor: '#000' });
+            if (diffM > 0) layers.push({ color: '#ff00ff', heightPercent: getH(diffM), volume: getVol(diffM), label: 'M', textColor: '#fff' });
+            if (diffY > 0) layers.push({ color: '#ffff00', heightPercent: getH(diffY), volume: getVol(diffY), label: 'Y', textColor: '#000' });
+        } else {
+            if (diffK > 0) layers.push({ color: '#000000', heightPercent: getH(diffK), volume: getVol(diffK), label: 'Bk', textColor: '#fff' });
+            if (diffC > 0) layers.push({ color: '#0047AB', heightPercent: getH(diffC), volume: getVol(diffC), label: 'Blu', textColor: '#fff' });
+            if (diffM > 0) layers.push({ color: '#DC143C', heightPercent: getH(diffM), volume: getVol(diffM), label: 'Red', textColor: '#fff' });
+            if (diffY > 0) layers.push({ color: '#FFD700', heightPercent: getH(diffY), volume: getVol(diffY), label: 'Yel', textColor: '#000' });
+        }
 
-      return layers.reverse(); // Bottom up
+      } else {
+        // --- PURE CMYK MODE (No Base) ---
+        // We simulate a mix using White Base + C/M/Y/K pigments
+        const c = color.cmyk.c;
+        const m = color.cmyk.m;
+        const y = color.cmyk.y;
+        const k = color.cmyk.k;
+        
+        // Estimate White needed based on brightness/lack of pigment
+        // Lighter colors need more white.
+        const whiteWeight = (color.rgb.r + color.rgb.g + color.rgb.b) / (255 * 3) * 100;
+        
+        const totalParts = whiteWeight + c + m + y + k;
+        
+        const getVol = (part: number) => (part / totalParts) * bottleVolume;
+        const getH = (part: number) => (part / totalParts) * 100;
+
+        // White Base (Implicit)
+        if (whiteWeight > 1) {
+            layers.push({
+                color: '#FFFFFF',
+                heightPercent: getH(whiteWeight),
+                volume: getVol(whiteWeight),
+                label: 'White',
+                textColor: '#000',
+                isBase: true
+            });
+        }
+
+        // CMYK Pigments
+        if (mixMode === 'CMYK') {
+             if (k > 0) layers.push({ color: '#1a1a1a', heightPercent: getH(k), volume: getVol(k), label: 'K', textColor: '#fff' });
+             if (c > 0) layers.push({ color: '#00ffff', heightPercent: getH(c), volume: getVol(c), label: 'C', textColor: '#000' });
+             if (m > 0) layers.push({ color: '#ff00ff', heightPercent: getH(m), volume: getVol(m), label: 'M', textColor: '#fff' });
+             if (y > 0) layers.push({ color: '#ffff00', heightPercent: getH(y), volume: getVol(y), label: 'Y', textColor: '#000' });
+        } else {
+            // "Paint" mode for scratch building is essentially same but using paint names
+             if (k > 0) layers.push({ color: '#000000', heightPercent: getH(k), volume: getVol(k), label: 'Black', textColor: '#fff' });
+             if (c > 0) layers.push({ color: '#0047AB', heightPercent: getH(c), volume: getVol(c), label: 'Blue', textColor: '#fff' });
+             if (m > 0) layers.push({ color: '#DC143C', heightPercent: getH(m), volume: getVol(m), label: 'Red', textColor: '#fff' });
+             if (y > 0) layers.push({ color: '#FFD700', heightPercent: getH(y), volume: getVol(y), label: 'Yel', textColor: '#000' });
+        }
+      }
+
+      return layers.reverse(); // Stack visual: Bottom first in array if flex-col-reverse
   }, [color, selectedBasePaint, bottleVolume, mixMode]);
 
   useEffect(() => {
@@ -171,7 +220,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
         <div className="flex-1 grid grid-cols-1 gap-2">
             {[
                 { l: 'C', v: color.cmyk.c, c: 'bg-cyan-400', t: 'text-cyan-600 dark:text-cyan-400' },
-                { l: 'M', v: color.cmyk.m, c: 'bg-magenta-500', t: 'text-pink-600 dark:text-pink-400' }, 
+                { l: 'M', v: color.cmyk.m, c: 'bg-magenta-500', t: 'text-pink-600 dark:text-pink-400' }, // Tailwind doesn't have magenta by default, using pink-500 or custom hex in style
                 { l: 'Y', v: color.cmyk.y, c: 'bg-yellow-400', t: 'text-yellow-600 dark:text-yellow-400' },
                 { l: 'K', v: color.cmyk.k, c: 'bg-slate-800', t: 'text-slate-600 dark:text-slate-400' },
             ].map((item, i) => (
@@ -205,7 +254,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
                 </h3>
              </div>
 
-             {/* Volume Buttons */}
+             {/* Volume Buttons (Moved outside header for space) */}
              <div className="w-full mb-6">
                 <div className="flex justify-between bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                     {[10, 20, 30, 40, 50, 60].map(v => (
@@ -222,12 +271,6 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
 
              <div className="flex flex-col sm:flex-row gap-6 items-end w-full justify-center bg-slate-50 dark:bg-slate-800/30 p-6 rounded-xl border border-slate-100 dark:border-slate-700 relative overflow-hidden min-h-[320px]">
                 
-                {/* Mixbox Powered Badge */}
-                <div className="absolute top-2 left-2 flex items-center gap-1 opacity-50">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-[9px] text-slate-400 font-mono">MIXBOX™ SIM</span>
-                </div>
-
                 {/* Bottle Graphic */}
                 <div className="relative mx-auto sm:mx-0">
                     {/* Bottle Neck */}

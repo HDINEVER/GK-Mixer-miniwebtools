@@ -18,8 +18,8 @@ export const translations = {
     analyzing: 'Analyzing pigment data...',
     howItWorks: 'HOW IT WORKS',
     howItWorksList: [
-      'Decomposes RGB using Mixbox™ latent space simulation.',
-      'Implements Kubelka-Munk theory for physical pigment mixing.',
+      'Decomposes RGB values into standard printing CMYK ratios.',
+      'Uses Euclidean distance to find the closest off-the-shelf hobby paints.',
       'Utilizes Gemini 2.5 Flash to "hallucinate" an accurate mixing recipe.'
     ],
     mixingBottle: 'MIXING BOTTLE SIMULATOR',
@@ -54,8 +54,8 @@ export const translations = {
     analyzing: '正在生成本地化配方...',
     howItWorks: '工作原理',
     howItWorksList: [
-      '使用 Mixbox™ 潜空间算法进行真实的物理颜料模拟。',
-      '基于 Kubelka-Munk 理论计算 CMYK/油漆混合比例。',
+      '将 RGB 值分解为标准的印刷 CMYK 比例。',
+      '计算底漆与目标色的差值，生成补色方案。',
       '利用 Gemini 2.5 Flash 生成详细的施工建议。'
     ],
     mixingBottle: '调漆瓶模拟器',
@@ -90,8 +90,8 @@ export const translations = {
     analyzing: 'レシピを生成中...',
     howItWorks: '仕組み',
     howItWorksList: [
-      'Mixbox™ 潜在空間アルゴリズムを使用して物理的な顔料混合をシミュレートします。',
-      'Kubelka-Munk 理論に基づき、正確な混合比率を計算します。',
+      'RGB値を標準的な印刷CMYK比率に分解します。',
+      'ベース塗料とターゲット色の差分を計算し、補正案を提示します。',
       'Gemini 2.5 Flashを利用して、詳細な塗装アドバイスを生成します。'
     ],
     mixingBottle: '調色ボトルシミュレーター',

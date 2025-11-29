@@ -3,7 +3,8 @@
 > A futuristic, programmer-style color mixing tool for model kit painters.
 > 专为 GK 模玩爱好者设计的赛博风格调漆模拟器。
 
-![App Screenshot](./image_5847e0.jpg)
+![App Screenshot](./docs/screenshots/屏幕截图%202025-11-29%20234749.png)
+
 
 ## 🎨 Project Overview
 

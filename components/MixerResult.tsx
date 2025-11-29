@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { ColorData, PaintBrand, Language } from '../types';
 import { generatePaintRecipe } from '../services/geminiService';
-import { findNearestPaints, hexToRgb, rgbToCmyk } from '../utils/colorUtils';
+import { findNearestPaints, hexToRgb, rgbToCmyk, mixboxBlend } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
 
 declare var anime: any;
@@ -213,6 +213,16 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
                 <div className="text-xs font-mono text-slate-400 mt-1">
                     RGB: {color.rgb.r}, {color.rgb.g}, {color.rgb.b}
                 </div>
+                {selectedBasePaint && (
+                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 text-[10px]">
+                        <div className="text-slate-500 dark:text-slate-400 mb-1">Mixbox Preview:</div>
+                        <div 
+                            className="w-12 h-8 rounded border border-slate-300 dark:border-slate-600 shadow-sm"
+                            style={{ backgroundColor: mixboxBlend(selectedBasePaint.hex, color.hex, 0.5) }}
+                            title="50% base + 50% target (Physical blend)"
+                        />
+                    </div>
+                )}
             </div>
         </div>
 

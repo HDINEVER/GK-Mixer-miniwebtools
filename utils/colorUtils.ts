@@ -1,4 +1,5 @@
 import { RGB, CMYK, ColorData, PaintBrand } from '../types';
+import * as mixbox from './mixbox';
 
 // Helper to create unique IDs
 export const generateId = (): string => Math.random().toString(36).substr(2, 9);
@@ -137,4 +138,34 @@ export const extractProminentColors = (imgElement: HTMLImageElement, count: numb
 
     resolve(colors);
   });
+};
+
+/**
+ * Mixbox Color Blending (Physical-Level Algorithm)
+ * Uses Secret Weapons Mixbox algorithm for more realistic color mixing
+ * 
+ * Example: Blue (#0000FF) + Yellow (#FFFF00) at 50% = Green (not Gray)
+ * This is physically accurate paint mixing, not optical mixing
+ */
+export const mixboxBlend = (color1Hex: string, color2Hex: string, t: number = 0.5): string => {
+  const result = mixbox.lerp(color1Hex, color2Hex, t);
+  if (result && result.length >= 3) {
+    return rgbToHex(result[0], result[1], result[2]);
+  }
+  // Fallback to old algorithm if mixbox fails
+  return opticalBlend(color1Hex, color2Hex, t);
+};
+
+/**
+ * Optical-Level Blending (Fallback)
+ * Simple RGB average - produces gray when mixing blue + yellow
+ * Used for backward compatibility
+ */
+export const opticalBlend = (color1Hex: string, color2Hex: string, t: number = 0.5): string => {
+  const c1 = hexToRgb(color1Hex);
+  const c2 = hexToRgb(color2Hex);
+  const r = Math.round(c1.r * (1 - t) + c2.r * t);
+  const g = Math.round(c1.g * (1 - t) + c2.g * t);
+  const b = Math.round(c1.b * (1 - t) + c2.b * t);
+  return rgbToHex(r, g, b);
 };

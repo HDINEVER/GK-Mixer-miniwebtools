@@ -1,20 +1,75 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# GK Paint Mixing Simulator (GK_混色模拟器.exe)
 
-# Run and deploy your AI Studio app
+> A futuristic, programmer-style color mixing tool for model kit painters.
+> 专为 GK 模玩爱好者设计的赛博风格调漆模拟器。
 
-This contains everything you need to run your app locally.
+![App Screenshot](./image_5847e0.jpg)
 
-View your app in AI Studio: https://ai.studio/apps/drive/19sYr5ne21cqa83GDgAi3FfYljUeCETrU
+## 🎨 Project Overview
 
-## Run Locally
+**GK Mixer** allows modelers to extract colors from reference images and simulate paint mixing using real-world physics. It bridges the gap between digital RGB colors and physical pigment mixing (FDM/Resin/Paints).
 
-**Prerequisites:**  Node.js
+Designed with a clean, low-saturation "Macaron" aesthetic for high readability.
+
+## ✨ Key Features
+
+### 1. Visual Input & Analysis (源图像输入)
+* **Smart Extraction**: Drag & drop images to auto-detect the palette.
+* **Precision Tools**: Zoom/Pan loupe with manual eyedropper.
+* **Color Decomposition**: Breaks down colors into standard RGB & CMYK percentages.
+
+### 2. Paint Mixing Console (混色控制台)
+* **Physical Simulation**: Uses **Kubelka-Munk theory** (via Mixbox) for realistic pigment mixing (Blue + Yellow = Green), distinct from standard digital blending.
+* **Brand Matching**: Auto-matches colors to **Mr. Hobby, Gaia, and Jumpwind** databases.
+* **Dual Modes**:
+    * **CMYK Correction**: Standard subtractive mixing.
+    * **Universal Blend**: Base Paint + Additive X (CMYK or other brands).
+
+### 3. Virtual Paint Bottle (调漆瓶模拟器)
+* **Visual Feedback**: Real-time liquid simulation showing the mixed color inside a calibrated bottle.
+* **Volume Presets**: One-click scaling for 10ml, 20ml, ... 60ml batches.
+* **Dynamic Recipe**: Instantly calculates exactly how many mL of target paint to add to the base.
+* **Fluid Animations**: Powered by `anime.js` for smooth liquid transitions.
+
+### 4. AI Assistant (Gemini 2.5)
+* Generates human-readable mixing recipes.
+* Auto-translates paint names and instructions to the selected language.
+
+### 5. UX/UI
+* **Theming**: Seamless Dark/Light mode toggle.
+* **i18n**: Full support for English, Chinese (中文), and Japanese (日文).
+
+## 🛠 Tech Stack
+
+* **Frontend**: React, TypeScript, Vite
+* **Styling**: Tailwind CSS
+* **Animation**: Anime.js
+* **Algorithm**: Mixbox (Physics-based color mixing)
+* **AI**: Google Gemini API
+
+## ⚡ Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+⚖️ Credits & Licenses
+Core Mixing Algorithm: Mixbox
+This project uses Mixbox for accurate pigment mixing simulation.
+
+Copyright: (c) 2022 Secret Weapons
+
+License: Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+
+Author: Sarka Sochorova and Ondrej Jamriska
+
+Source: https://github.com/scrtwpns/mixbox
+
+Note: This project is for educational and non-commercial use. If you intend to use this commercially, please contact Mixbox authors for a license.
+
+Developed with ❤️ by HDINEBER
 
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+

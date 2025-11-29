@@ -67,7 +67,7 @@ export const translations = {
     reset: '重置',
     mixModeCMYK: 'CMYK 修正模式',
     mixModePaints: '通用色调配模式',
-    basePaint: '底漆: ',
+    basePaint: '底漆：',
     correction: '修正',
     fillTo: '倒入至',
     add: '添加',
@@ -90,9 +90,9 @@ export const translations = {
     analyzing: 'レシピを生成中...',
     howItWorks: '仕組み',
     howItWorksList: [
-      'RGB値を標準的な印刷CMYK比率に分解します。',
+      'RGB 値を標準的な印刷 CMYK 比率に分解します。',
       'ベース塗料とターゲット色の差分を計算し、補正案を提示します。',
-      'Gemini 2.5 Flashを利用して、詳細な塗装アドバイスを生成します。'
+      'Gemini 2.5 Flash を利用して、詳細な塗装アドバイスを生成します。'
     ],
     mixingBottle: '調色ボトルシミュレーター',
     totalVolume: '目標容量',
@@ -103,10 +103,10 @@ export const translations = {
     reset: 'リセット',
     mixModeCMYK: 'CMYK 補正',
     mixModePaints: '塗料調合',
-    basePaint: 'ベース: ',
+    basePaint: 'ベース：',
     correction: '補正',
     fillTo: 'ここまで注ぐ',
     add: '追加',
-    tapToDeselect: '(選択中の項目をタップで解除し、純粋なCMYKモードへ)'
+    tapToDeselect: '(選択中の項目をタップで解除し、純粋な CMYK モードへ)'
   }
 };

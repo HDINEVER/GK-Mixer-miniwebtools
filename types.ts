@@ -21,7 +21,7 @@ export interface ColorData {
 
 export interface PaintBrand {
   id: string;
-  brand: 'Mr.Hobby' | 'Gaia' | 'Jumpwind';
+  brand: 'Mr.Hobby' | 'Gaia' | 'Jumpwind' | 'Gunze';
   code: string;
   name: string;
   hex: string;

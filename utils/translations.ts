@@ -18,9 +18,9 @@ export const translations = {
     analyzing: 'Analyzing pigment data...',
     howItWorks: 'HOW IT WORKS',
     howItWorksList: [
-      'Decomposes RGB values into standard printing CMYK ratios.',
-      'Uses Euclidean distance to find the closest off-the-shelf hobby paints.',
-      'Utilizes Gemini 2.5 Flash to "hallucinate" an accurate mixing recipe.'
+      'Uses Kubelka-Munk theory (via Mixbox) for realistic pigment mixing (Blue + Yellow = Green).',
+      'Matches colors to Mr. Hobby, Gaia, and Jumpwind databases using Euclidean distance.',
+      'Generates human-readable recipes with Gemini 2.5 Flash AI assistant.'
     ],
     mixingBottle: 'MIXING BOTTLE SIMULATOR',
     totalVolume: 'TARGET VOL',
@@ -35,7 +35,11 @@ export const translations = {
     correction: 'Correction',
     fillTo: 'Fill to',
     add: 'Add',
-    tapToDeselect: '(Tap active item to deselect and use Pure CMYK mode)'
+    tapToDeselect: '(Tap active item to deselect and use Pure CMYK mode)',
+    tabMixer: 'Mixer',
+    tabVisualizer: 'Visualizer',
+    visualizerTitle: 'PALETTE VISUALIZER',
+    visualizerDesc: 'Choose a visualization mode to showcase your extracted color palette'
   },
   zh: {
     title: 'GK_混色模拟器.exe',
@@ -54,9 +58,9 @@ export const translations = {
     analyzing: '正在生成本地化配方...',
     howItWorks: '工作原理',
     howItWorksList: [
-      '将 RGB 值分解为标准的印刷 CMYK 比例。',
-      '计算底漆与目标色的差值，生成补色方案。',
-      '利用 Gemini 2.5 Flash 生成详细的施工建议。'
+      '使用 Kubelka-Munk 理论（通过 Mixbox）实现真实颜料混合（蓝+黄=绿）。',
+      '通过欧氏距离匹配 Mr. Hobby、Gaia、Jumpwind 品牌涂料数据库。',
+      '利用 Gemini 2.5 Flash AI 助手生成人类可读的调色配方。'
     ],
     mixingBottle: '调漆瓶模拟器',
     totalVolume: '目标容量',
@@ -71,7 +75,11 @@ export const translations = {
     correction: '修正',
     fillTo: '倒入至',
     add: '添加',
-    tapToDeselect: '(点击已选底漆可取消，进入纯 CMYK 模式)'
+    tapToDeselect: '(点击已选底漆可取消，进入纯 CMYK 模式)',
+    tabMixer: '混色台',
+    tabVisualizer: '调色板展示',
+    visualizerTitle: '调色板可视化',
+    visualizerDesc: '选择一种可视化模式来展示您提取的颜色调色板'
   },
   ja: {
     title: 'GK_調色シミュレーター.exe',
@@ -90,9 +98,9 @@ export const translations = {
     analyzing: 'レシピを生成中...',
     howItWorks: '仕組み',
     howItWorksList: [
-      'RGB 値を標準的な印刷 CMYK 比率に分解します。',
-      'ベース塗料とターゲット色の差分を計算し、補正案を提示します。',
-      'Gemini 2.5 Flash を利用して、詳細な塗装アドバイスを生成します。'
+      'Kubelka-Munk 理論（Mixbox 経由）で現実的な顔料混合を実現（青+黄=緑）。',
+      'ユークリッド距離で Mr. Hobby、Gaia、Jumpwind データベースと色をマッチング。',
+      'Gemini 2.5 Flash AI アシスタントで人間が読めるレシピを生成。'
     ],
     mixingBottle: '調色ボトルシミュレーター',
     totalVolume: '目標容量',
@@ -107,6 +115,10 @@ export const translations = {
     correction: '補正',
     fillTo: 'ここまで注ぐ',
     add: '追加',
-    tapToDeselect: '(選択中の項目をタップで解除し、純粋な CMYK モードへ)'
+    tapToDeselect: '(選択中の項目をタップで解除し、純粋な CMYK モードへ)',
+    tabMixer: 'ミキサー',
+    tabVisualizer: 'ビジュアライザー',
+    visualizerTitle: 'パレットビジュアライザー',
+    visualizerDesc: '抽出されたカラーパレットを展示するビジュアライゼーションモードを選択します'
   }
 };

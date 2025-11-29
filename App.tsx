@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import DropZone from './components/DropZone';
 import ColorPalette from './components/ColorPalette';
 import MixerResult from './components/MixerResult';
+import PaletteVisualizer from './components/PaletteVisualizer';
 import { ColorData, AppMode, RGB, Language, Theme } from './types';
 import { extractProminentColors, generateId, rgbToCmyk, rgbToHex } from './utils/colorUtils';
 import { translations } from './utils/translations';
@@ -13,6 +14,7 @@ const App: React.FC = () => {
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [colors, setColors] = useState<ColorData[]>([]);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
+  const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer'>('mixer');
   
   // Ref for manual picker canvas
   const imageRef = useRef<HTMLImageElement>(null);
@@ -268,26 +270,51 @@ const App: React.FC = () => {
 
         {/* Right Column: Mixer & Output */}
         <div className="lg:col-span-7">
-           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full transition-colors duration-300">
+           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full transition-colors duration-300 flex flex-col">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xs font-bold text-slate-400 tracking-widest">{t.mixingConsole}</h2>
-                    <div className="flex gap-2">
-                        <div className="px-2 py-1 bg-macaron-blue/20 text-macaron-blue text-[10px] rounded font-mono font-bold">CMYK</div>
-                        <div className="px-2 py-1 bg-macaron-pink/20 text-macaron-pink text-[10px] rounded font-mono font-bold">MR.HOBBY</div>
-                        <div className="px-2 py-1 bg-macaron-purple/20 text-macaron-purple text-[10px] rounded font-mono font-bold">GAIA</div>
+                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                        <button 
+                            onClick={() => setRightPanelTab('mixer')}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'mixer' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            {t.tabMixer}
+                        </button>
+                        <button 
+                            onClick={() => setRightPanelTab('visualizer')}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'visualizer' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            {t.tabVisualizer}
+                        </button>
                     </div>
+                    
+                    {rightPanelTab === 'mixer' && (
+                        <div className="flex gap-2">
+                            <div className="px-2 py-1 bg-macaron-blue/20 text-macaron-blue text-[10px] rounded font-mono font-bold">CMYK</div>
+                            <div className="px-2 py-1 bg-macaron-pink/20 text-macaron-pink text-[10px] rounded font-mono font-bold">MR.HOBBY</div>
+                            <div className="px-2 py-1 bg-macaron-purple/20 text-macaron-purple text-[10px] rounded font-mono font-bold">GAIA</div>
+                        </div>
+                    )}
                 </div>
 
-                <MixerResult color={selectedColor} lang={lang} />
-
-                <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <h3 className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{t.howItWorks}</h3>
-                    <ul className="list-disc list-inside text-xs text-slate-400 dark:text-slate-500 font-mono space-y-1">
-                        {t.howItWorksList.map((item, i) => (
-                            <li key={i}>{item}</li>
-                        ))}
-                    </ul>
-                </div>
+                {rightPanelTab === 'mixer' ? (
+                    <>
+                        <MixerResult color={selectedColor} lang={lang} />
+                        <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700">
+                            <h3 className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{t.howItWorks}</h3>
+                            <ul className="list-disc list-inside text-xs text-slate-400 dark:text-slate-500 font-mono space-y-1">
+                                {t.howItWorksList.map((item, i) => (
+                                    <li key={i}>{item}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    </>
+                ) : (
+                    <PaletteVisualizer 
+                        sourceImage={sourceImage}
+                        colors={colors}
+                        lang={lang}
+                    />
+                )}
            </div>
         </div>
 

@@ -310,7 +310,7 @@ export const GUNZE_PAINTS: PaintBrand[] = [
   { id: 'gz-N-33', brand: 'Gunze', code: 'N-33', name: '红褐色 / Red Brown', hex: '#80461B' },
   { id: 'gz-N-34', brand: 'Gunze', code: 'N-34', name: '奶黄色 / Cream Yellow', hex: '#FFFDD0' },
   { id: 'gz-N-35', brand: 'Gunze', code: 'N-35', name: '钴蓝色 / Cobalt Blue', hex: '#0047AB' },
-  { id: 'gz-N-36', brand: 'Gunze', code: 'N-36', name: '暗绿色 (中岛) / Dark Green Nakajima', hex: '#124428' },
+  { id: 'gz-N-36', brand: 'Gunze', code: 'N-36', name: '暗绿 Nakajima / Dark Green Nakajima', hex: '#124428' },
   { id: 'gz-N-37', brand: 'Gunze', code: 'N-37', name: '木棕色 / Wood Brown', hex: '#8B5A2B' },
   { id: 'gz-N-38', brand: 'Gunze', code: 'N-38', name: '铁红色 / Iron Red', hex: '#782F2F' },
   { id: 'gz-N-39', brand: 'Gunze', code: 'N-39', name: '紫色 / Purple', hex: '#800080' },

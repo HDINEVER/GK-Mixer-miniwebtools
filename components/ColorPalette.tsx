@@ -10,10 +10,12 @@ interface ColorPaletteProps {
   onColorSelect: (color: ColorData) => void;
   selectedColorId?: string;
   onAddManual: () => void;
+  onDeleteColor: (colorId: string) => void;
 }
 
-const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, selectedColorId, onAddManual }) => {
+const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, selectedColorId, onAddManual, onDeleteColor }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const selectionIndicatorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -26,6 +28,20 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
       });
     }
   }, [colors.length]); // Re-animate if list changes significantly
+
+  // Animate selection indicator when selected color changes
+  useEffect(() => {
+    if (selectionIndicatorRef.current) {
+      anime({
+        targets: selectionIndicatorRef.current,
+        scale: [0.3, 1],
+        opacity: [0, 1],
+        rotate: [-180, 0],
+        duration: 500,
+        easing: 'easeOutElastic(1, .6)'
+      });
+    }
+  }, [selectedColorId]);
 
   return (
     <div className="w-full">
@@ -53,25 +69,45 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
               className="w-full h-16 rounded-md mb-2 shadow-inner" 
               style={{ backgroundColor: c.hex }}
             />
-            <div className="flex justify-between items-end">
+            <div className="flex justify-between items-end relative">
                 <div>
                     <p className="font-mono text-xs text-slate-600 font-bold">{c.hex}</p>
                     <p className="font-mono text-[10px] text-slate-400">
                         C{c.cmyk.c} M{c.cmyk.m} Y{c.cmyk.y} K{c.cmyk.k}
                     </p>
                 </div>
-                {c.source === 'auto' ? (
-                    <span className="text-[10px] bg-slate-100 text-slate-400 px-1 rounded">AUTO</span>
-                ) : (
-                    <span className="text-[10px] bg-macaron-yellow text-slate-600 px-1 rounded">USR</span>
-                )}
+                <div className="flex items-center gap-2">
+                    {c.source === 'auto' ? (
+                        <span className="text-[10px] bg-slate-100 text-slate-400 px-1 rounded">AUTO</span>
+                    ) : (
+                        <span className="text-[10px] bg-macaron-yellow text-slate-600 px-1 rounded">USR</span>
+                    )}
+                    
+                    {/* Selection Indicator - Inside Info Area */}
+                    {selectedColorId === c.id && (
+                        <div 
+                          ref={selectionIndicatorRef}
+                          className="w-4 h-4 rounded-full bg-gradient-to-br from-macaron-pink to-macaron-blue border border-white dark:border-slate-600 shadow-md flex items-center justify-center flex-shrink-0"
+                        >
+                            <div className="w-2 h-2 bg-white rounded-full" />
+                        </div>
+                    )}
+                </div>
             </div>
             
-            {selectedColorId === c.id && (
-                <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full border border-slate-800 flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 bg-slate-800 rounded-full" />
-                </div>
-            )}
+            {/* Delete Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteColor(c.id);
+              }}
+              className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-500 hover:border-red-500 dark:hover:text-red-400 dark:hover:border-red-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              title="Delete color"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         ))}
       </div>

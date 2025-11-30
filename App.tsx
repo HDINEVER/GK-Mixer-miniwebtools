@@ -58,6 +58,15 @@ const App: React.FC = () => {
     setIsPicking(!isPicking);
   };
 
+  const handleDeleteColor = (colorId: string) => {
+    setColors(prev => prev.filter(c => c.id !== colorId));
+    // If deleted color was selected, select the first remaining color or null
+    if (selectedColorId === colorId) {
+      const remaining = colors.filter(c => c.id !== colorId);
+      setSelectedColorId(remaining.length > 0 ? remaining[0].id : null);
+    }
+  };
+
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isPicking || !canvasRef.current) return;
     
@@ -121,6 +130,27 @@ const App: React.FC = () => {
   };
 
   const handleMouseUp = () => setIsDragging(false);
+
+  // Touch Handlers for Mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isPicking && scale > 1 && e.touches.length === 1) {
+      setIsDragging(true);
+      const touch = e.touches[0];
+      setStartPos({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isDragging && e.touches.length === 1) {
+      const touch = e.touches[0];
+      setOffset({
+        x: touch.clientX - startPos.x,
+        y: touch.clientY - startPos.y
+      });
+    }
+  };
+
+  const handleTouchEnd = () => setIsDragging(false);
 
   React.useEffect(() => {
     if (sourceImage && canvasRef.current && imageRef.current) {
@@ -201,12 +231,15 @@ const App: React.FC = () => {
                     {/* Viewport */}
                     <div 
                         ref={containerRef}
-                        className="relative h-80 w-full overflow-hidden rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-move"
+                        className="relative h-80 w-full overflow-hidden rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-move touch-none"
                         onWheel={handleWheel}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseLeave={handleMouseUp}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
                     >
                             {/* Hidden source image for reference */}
                         <img ref={imageRef} src={sourceImage} className="hidden" alt="source ref" onLoad={() => {
@@ -262,6 +295,7 @@ const App: React.FC = () => {
                         onColorSelect={(c) => setSelectedColorId(c.id)}
                         selectedColorId={selectedColorId || undefined}
                         onAddManual={handleManualAdd}
+                        onDeleteColor={handleDeleteColor}
                         />
                 </div>
             )}

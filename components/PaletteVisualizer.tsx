@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ColorData, Language } from '../types';
 import { translations } from '../utils/translations';
+import html2canvas from 'html2canvas';
 
 interface PaletteVisualizerProps {
   sourceImage: string | null;
@@ -10,13 +11,46 @@ interface PaletteVisualizerProps {
 
 type VisualizerMode = 'STRIPES' | 'CLAY' | 'COMIC' | 'TICKET';
 
+const STONE_PATHS = [
+  "M30,20 L70,10 L90,40 L80,80 L40,90 L10,60 Z", // Space
+  "M20,30 L60,10 L90,50 L70,90 L30,80 L10,40 Z", // Mind
+  "M40,10 L80,30 L90,70 L60,90 L20,80 L10,40 Z", // Reality
+  "M30,20 L70,10 L90,50 L70,90 L30,80 L10,30 Z", // Power
+  "M20,20 L60,10 L90,40 L80,80 L40,90 L10,50 Z", // Time
+  "M30,10 L70,20 L90,50 L70,80 L30,90 L10,40 Z"  // Soul
+];
+
+const adjustColor = (color: string, amount: number) => {
+    return '#' + color.replace(/^#/, '').replace(/../g, color => ('0' + Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
+}
+
 const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colors, lang }) => {
   const [mode, setMode] = useState<VisualizerMode>('TICKET');
   const t = translations[lang];
+  const visualizerRef = useRef<HTMLDivElement>(null);
 
-  // Helper to get color safely
-  const c = (i: number) => colors[i]?.hex || '#CCCCCC';
-  const cObj = (i: number) => colors[i] || { hex: '#CCCCCC', id: '0' };
+  const handleExportImage = async () => {
+    if (!visualizerRef.current) return;
+
+    try {
+      const canvas = await html2canvas(visualizerRef.current, {
+        backgroundColor: null,
+        scale: 2,
+        allowTaint: true,
+        useCORS: true,
+      });
+
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = `palette-${mode.toLowerCase()}-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-macaron-blue/30 dark:border-slate-700 shadow-sm p-4 md:p-6 h-full flex flex-col transition-colors duration-300">
@@ -26,163 +60,168 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
             {t.visualizerTitle}
         </h3>
         
-        <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
-            {['TICKET', 'STRIPES', 'CLAY', 'COMIC'].map((m) => (
-                <button
-                    key={m}
-                    onClick={() => setMode(m as VisualizerMode)}
-                    className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${mode === m ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    {m}
-                </button>
-            ))}
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={handleExportImage}
+            className="px-3 py-1 text-[10px] font-bold rounded bg-macaron-green/20 text-macaron-green hover:bg-macaron-green hover:text-white transition-all border border-macaron-green/50 flex items-center gap-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33A3 3 0 0116.5 19.5H6.75Z" />
+            </svg>
+            EXPORT
+          </button>
+          
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
+              <button
+                  onClick={() => setMode('TICKET')}
+                  className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${mode === 'TICKET' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                  STONES
+              </button>
+              <button
+                  onClick={() => setMode('COMIC')}
+                  className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${mode === 'COMIC' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                  COMIC
+              </button>
+              <button
+                  onClick={() => setMode('CLAY')}
+                  className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${mode === 'CLAY' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                  CLAY
+              </button>
+              <button
+                  onClick={() => setMode('STRIPES')}
+                  className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${mode === 'STRIPES' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                  STRIPES
+              </button>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 relative overflow-hidden p-8 min-h-[300px]">
+      <div className="flex-1 flex flex-col items-center justify-center rounded-xl border border-slate-100 dark:border-slate-700 relative overflow-hidden p-8 min-h-[300px]" ref={visualizerRef}>
         
-        {/* CSS Injection for the selected mode */}
-        <style>{getStyleForMode(mode)}</style>
+        {/* Background Layer with Source Image & Reduced Blur */}
+        {sourceImage ? (
+            <div className="absolute inset-0 z-0">
+                <div 
+                    className="absolute inset-0 bg-cover bg-center transform scale-105"
+                    style={{ backgroundImage: `url(${sourceImage})` }}
+                />
+                <div className="absolute inset-0 backdrop-blur-md bg-white/20 dark:bg-slate-950/40 transition-colors duration-300" />
+            </div>
+        ) : (
+             <div className="absolute inset-0 bg-slate-50 dark:bg-slate-800/50 z-0" />
+        )}
+        <div className="relative z-10 w-full flex justify-center items-center">
+            {/* CSS Injection for the selected mode */}
+            <style>{getStyleForMode(mode)}</style>
 
-        {mode === 'STRIPES' && (
-             <div className="viz-wrapper">
-                <div className="container">
-                    <div className="palette">
-                        {colors.slice(0, 5).map((col) => (
-                            <div key={col.id} className="color" style={{ backgroundColor: col.hex }}>
-                                <span>{col.hex.replace('#', '')}</span>
-                            </div>
-                        ))}
-                        {/* Fill remaining if < 5 */}
-                        {[...Array(Math.max(0, 5 - colors.length))].map((_, i) => (
-                             <div key={i} className="color" style={{ backgroundColor: '#eee' }}><span>---</span></div>
-                        ))}
-                    </div>
-                    <div id="stats">
-                        <span>{colors.length} colors detected</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width={18} height={18} viewBox="0 0 18 18">
-                            <path d="M4 7.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5S5.5 9.83 5.5 9 4.83 7.5 4 7.5zm10 0c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm-5 0c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5S9.83 7.5 9 7.5z" />
-                        </svg>
+            {mode === 'STRIPES' && (
+                <div className="viz-wrapper">
+                    <div className="container">
+                        <div className="palette">
+                            {colors.slice(0, 5).map((col) => (
+                                <div key={col.id} className="color" style={{ backgroundColor: col.hex }}>
+                                    <span>{col.hex.replace('#', '')}</span>
+                                </div>
+                            ))}
+                            {/* Fill remaining if < 5 */}
+                            {[...Array(Math.max(0, 5 - colors.length))].map((_, i) => (
+                                <div key={i} className="color" style={{ backgroundColor: '#eee' }}><span>---</span></div>
+                            ))}
+                        </div>
+                        <div id="stats">
+                            <span>{colors.length} colors detected</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width={18} height={18} viewBox="0 0 18 18">
+                                <path d="M4 7.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5S5.5 9.83 5.5 9 4.83 7.5 4 7.5zm10 0c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm-5 0c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5S9.83 7.5 9 7.5z" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
-            </div>
-        )}
+            )}
 
-        {mode === 'CLAY' && (
-            <div className="viz-wrapper">
-                 <div className="card">
-                    <div className="clay-slab">
-                        <div className="container-items">
-                            {colors.map(col => (
-                                <button 
-                                    key={col.id}
-                                    className="item-color" 
-                                    style={{ ['--color' as any]: col.hex }} 
-                                    aria-label={col.hex}
-                                    data-color={col.hex}
-                                    onClick={() => navigator.clipboard.writeText(col.hex)}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                 </div>
-            </div>
-        )}
-
-        {mode === 'COMIC' && (
-            <div className="viz-wrapper">
-                 <div className="body">
-                    <div className="comic-panel">
-                        <div className="container-items">
-                            {colors.map(col => (
-                                <button 
-                                    key={col.id}
-                                    className="item-color" 
-                                    style={{ ['--color' as any]: col.hex }} 
-                                    aria-label={col.hex} // Using aria-label as content for before pseudo
-                                    data-label={col.hex}
-                                    onClick={() => navigator.clipboard.writeText(col.hex)}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                 </div>
-            </div>
-        )}
-
-        {mode === 'TICKET' && (
-            <div className="viz-wrapper">
-                <div className="container-cards-ticket">
-                    <div className="card-ticket">
-                         <svg className="ticket-svg" xmlns="http://www.w3.org/2000/svg" width={64} height={150} viewBox="0 0 64 150" fill="currentColor">
-                            {/* Simplified serrated edge path logic or keeping original */}
-                            <path d="M44 138V136.967H20V138H44Z" />
-                            {/* ... keeping simplified for brevity, or we can use a simpler serrated edge SVG if the original is too long, 
-                                but let's try to simulate the effect with a border image or just the left part */}
-                            <rect x="20" y="0" width="24" height="150" fill="currentColor" />
-                            <circle cx="20" cy="0" r="4" fill="white"/>
-                            {Array.from({length: 15}).map((_, i) => (
-                                <circle key={i} cx="20" cy={10 + i * 10} r="3" fill="white" />
-                            ))}
-                        </svg>
-                        
-                        <div className="separator">
-                            <span className="span-lines" />
-                        </div>
-                        
-                        <div className="content-ticket">
-                            <div className="content-data">
-                                <div className="destination">
-                                    <div className="dest start">
-                                        <p className="country">PRIMARY</p>
-                                        <p className="acronym" style={{color: c(0)}}>{c(0)}</p>
-                                        <p className="hour">HEX</p>
-                                    </div>
-                                    <svg style={{flexShrink: 0}} xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24">
-                                        <path fill="none" stroke="#aeaeae" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="m18 8l4 4l-4 4M2 12h20" />
-                                    </svg>
-                                    <div className="dest end">
-                                        <p className="country">ACCENT</p>
-                                        <p className="acronym" style={{color: c(1)}}>{c(1)}</p>
-                                        <p className="hour">HEX</p>
-                                    </div>
-                                </div>
-                                <div style={{borderBottom: '2px solid #e8e8e8'}} />
-                                <div className="data-flex-col">
-                                    <div className="data-flex">
-                                        <div className="data">
-                                            <p className="title">PALETTE ID</p>
-                                            <p className="subtitle">{cObj(0).id.toUpperCase().slice(0,6)}</p>
-                                        </div>
-                                        <div className="data passenger">
-                                            <p className="title">COUNT</p>
-                                            <p className="subtitle">{colors.length} COLORS</p>
-                                        </div>
-                                    </div>
-                                    <div className="data-flex">
-                                        {colors.slice(2, 5).map((col, i) => (
-                                            <div className="data" key={col.id}>
-                                                <p className="title">COL {i+3}</p>
-                                                <p className="subtitle" style={{color: col.hex}}>{col.hex}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="container-icons">
-                                <div className="icon plane">
-                                   {/* Replaced Plane with Color Swatch Icon */}
-                                   <div style={{width: 26, height: 26, borderRadius: 4, backgroundColor: c(0), border: '2px solid white'}}></div>
-                                </div>
-                                <div className="icon uiverse">
-                                   <div style={{width: 20, height: 20, borderRadius: '50%', backgroundColor: c(1), border: '1px solid white'}}></div>
-                                </div>
+            {mode === 'CLAY' && (
+                <div className="viz-wrapper">
+                    <div className="card">
+                        <div className="clay-slab">
+                            <div className="container-items">
+                                {colors.map(col => (
+                                    <button 
+                                        key={col.id}
+                                        className="item-color" 
+                                        style={{ ['--color' as any]: col.hex }} 
+                                        aria-label={col.hex}
+                                        data-color={col.hex}
+                                        onClick={() => navigator.clipboard.writeText(col.hex)}
+                                    />
+                                ))}
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        )}
+            )}
+
+            {mode === 'COMIC' && (
+                <div className="viz-wrapper">
+                    <div className="body">
+                        <div className="comic-panel">
+                            <div className="container-items">
+                                {colors.map(col => (
+                                    <button 
+                                        key={col.id}
+                                        className="item-color" 
+                                        style={{ ['--color' as any]: col.hex }} 
+                                        aria-color={col.hex}
+                                        onClick={() => navigator.clipboard.writeText(col.hex)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {mode === 'TICKET' && (
+                <div className="viz-wrapper">
+                    <div className="card">
+                        <div className="stones-container">
+                            {colors.slice(0, 6).map((col, i) => {
+                                const path = STONE_PATHS[i % STONE_PATHS.length];
+                                // Very rough brightness adjustment for gradient simulation
+                                // In a real app, use a proper color library
+                                return (
+                                    <div key={col.id} className="stone-wrapper">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="stone">
+                                            <defs>
+                                                <radialGradient r="50%" cy="50%" cx="50%" id={`glow-${col.id}`}>
+                                                    <stop style={{stopColor: '#ffffff'}} offset="0%" />
+                                                    <stop style={{stopColor: col.hex}} offset="40%" />
+                                                    <stop style={{stopColor: col.hex}} offset="100%" />
+                                                </radialGradient>
+                                            </defs>
+                                            <path 
+                                                fill={`url(#glow-${col.id})`} 
+                                                d={path} 
+                                                className="glow" 
+                                                stroke={col.hex} 
+                                                strokeWidth="2"
+                                            />
+                                        </svg>
+                                        <div style={{color: col.hex}} className="stone-name">{col.hex}</div>
+                                    </div>
+                                );
+                            })}
+                            {/* Fill if empty to show structure */}
+                            {colors.length === 0 && (
+                                <div className="text-white font-mono text-sm opacity-50">No Colors</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
 
       </div>
       
@@ -266,68 +305,96 @@ const getStyleForMode = (mode: VisualizerMode) => {
         case 'COMIC': return `
              .viz-wrapper {
                 display: flex; justify-content: center; align-items: center;
-                font-family: "Impact", sans-serif;
+                font-family: "Bangers", cursive;
              }
-             .body { padding: 10px; background-color: #f0e8d8; border-radius: 12px; }
+             .body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                width: 100%;
+                height: 100%;
+                font-family: "Bangers", cursive;
+             }
              .comic-panel {
-                background: #ffffff; border: 3px solid #000; padding: 1rem;
-                border-radius: 8px; box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+                background: #ffffff;
+                border: 4px solid #000;
+                padding: 1.2rem;
+                border-radius: 8px;
+                box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
              }
-             .container-items { display: flex; flex-wrap: wrap; max-width: 250px; justify-content: center; gap: 4px; }
+             .container-items {
+                display: flex;
+                transform-style: preserve-3d;
+                transform: perspective(1000px);
+             }
              .item-color {
-                position: relative; width: 36px; height: 44px; border: none; outline: none; margin: 2px;
-                background-color: transparent; transition: 300ms ease-out; cursor: pointer;
+                position: relative;
+                flex-shrink: 0;
+                width: 40px;
+                height: 48px;
+                border: none;
+                outline: none;
+                margin: -4px;
+                background-color: transparent;
+                transition: 300ms ease-out;
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
              }
              .item-color::after {
-                position: absolute; content: ""; inset: 0; width: 36px; height: 36px;
-                background-color: var(--color); border-radius: 4px; border: 2px solid #000;
-                box-shadow: 3px 3px 0 0 #000; pointer-events: none; transition: 300ms;
+                position: absolute; content: ""; inset: 0; width: 40px; height: 40px;
+                background-color: var(--color); border-radius: 6px; border: 3px solid #000;
+                box-shadow: 4px 4px 0 0 #000; pointer-events: none; transition: 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
              }
              .item-color::before {
-                position: absolute; content: attr(aria-label);
-                left: 50%; bottom: 50px; font-size: 12px; padding: 4px;
-                background-color: #fef3c7; color: #000; border: 2px solid #000; border-radius: 4px;
-                pointer-events: none; opacity: 0; transform: translateX(-50%) scale(0.5);
-                transition: all 200ms; z-index: 20; white-space: nowrap;
+                position: absolute; content: attr(aria-color);
+                left: 50%; bottom: 60px; font-size: 16px; letter-spacing: 1px; line-height: 1;
+                padding: 6px 10px; background-color: #fef3c7; color: #000; border: 3px solid #000; border-radius: 6px;
+                pointer-events: none; opacity: 0; visibility: hidden; transform-origin: bottom center;
+                transition: all 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 300ms ease-out, visibility 300ms ease-out;
+                transform: translateX(-50%) scale(0.5) translateY(10px); white-space: nowrap; z-index: 1000;
              }
-             .item-color:hover { transform: scale(1.2) translateY(-5px); z-index: 10; }
-             .item-color:hover::before { opacity: 1; transform: translateX(-50%) scale(1); }
+             .item-color:hover { transform: scale(1.5) translateY(-5px); z-index: 99999; }
+             .item-color:hover::before { opacity: 1; visibility: visible; transform: translateX(-50%) scale(1) translateY(0); }
+             .item-color:active::after { transform: translate(2px, 2px); box-shadow: 2px 2px 0 0 #000; }
+             .item-color:focus::before { content: "COPIED!"; opacity: 1; visibility: visible; background-color: #a7f3d0; transform: translateX(-50%) scale(1) translateY(0); }
+             
+             /* Stacking Effects */
+             .item-color:hover + * { transform: scale(1.3) translateY(-3px); z-index: 9999; }
+             .item-color:hover + * + * { transform: scale(1.15); z-index: 999; }
+             .item-color:has(+ *:hover) { transform: scale(1.3) translateY(-3px); z-index: 9999; }
+             .item-color:has(+ * + *:hover) { transform: scale(1.15); z-index: 999; }
         `;
         case 'TICKET': return `
              .viz-wrapper { display: flex; justify-content: center; perspective: 1000px; font-family: sans-serif; }
-             .card-ticket {
-                position: relative; height: 150px; width: 320px; display: flex;
-                color: #2d2d2d; background-color: #ffffff; border-radius: 1rem;
-                transition: all 0.3s; overflow: hidden;
-                box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+             .card {
+                width: 100%; height: 100%; margin: 0; padding: 0; display: flex;
+                justify-content: center; align-items: center; font-family: "Arial", sans-serif; overflow: hidden;
              }
-             .card-ticket:hover { transform: translateY(-5px); }
-             .ticket-svg { position: absolute; left: -10px; top: 0; height: 100%; color: #f8fafc; z-index: 0; }
-             .separator {
-                position: absolute; top: 0; left: 50px; width: 16px; height: 100%;
-                display: flex; align-items: center; justify-content: center; z-index: 10;
+             .stones-container {
+                position: relative; width: 100%; display: flex; justify-content: space-around;
+                align-items: center; padding: 2rem; flex-wrap: wrap; gap: 10px;
              }
-             .span-lines {
-                height: 100%; border-left: 2px dashed #e8e8e8;
+             .stone-wrapper { position: relative; width: 100px; height: 100px; animation: float 4s ease-in-out infinite; }
+             .stone { position: absolute; width: 100%; height: 100%; cursor: pointer; transition: transform 0.3s ease; }
+             .stone:hover { transform: scale(1.2); }
+             .stone-name {
+                position: absolute; width: 100%; text-align: center; bottom: -30px; left: 0;
+                margin-top: 10px; color: #fff; font-size: 12px; font-weight: bold;
+                text-transform: uppercase; letter-spacing: 1px; opacity: 0;
+                transition: opacity 0.3s ease; text-shadow: 0 0 5px currentColor;
              }
-             .content-ticket { position: relative; justify-content: space-between; width: 100%; display: flex; padding-left: 60px; z-index: 1; }
-             .content-data {
-                display: flex; flex-direction: column; justify-content: space-between; width: 100%;
-                padding: 10px; gap: 4px;
+             .stone:hover + .stone-name { opacity: 1; }
+             
+             @keyframes float {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
              }
-             .data-flex { display: flex; justify-content: space-between; gap: 4px; width: 100%; }
-             .data-flex-col { display: flex; flex-direction: column; gap: 8px; }
-             .data { font-size: 10px; line-height: 12px; }
-             .data .title { color: #aeaeae; margin-bottom: 2px; }
-             .data .subtitle { font-weight: 700; color: #212121; font-family: monospace; }
-             .destination { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; }
-             .dest .country { font-size: 9px; color: #aeaeae; }
-             .dest .acronym { font-weight: 800; font-size: 16px; color: #2d2d2d; }
-             .dest .hour { font-size: 9px; }
-             .container-icons {
-                width: 60px; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-                background: linear-gradient(135deg, #f0f0f0 0%, #ffffff 100%); border-left: 1px solid #f0f0f0;
-             }
+             
+             .stone-wrapper:nth-child(2) { animation-delay: -0.5s; }
+             .stone-wrapper:nth-child(3) { animation-delay: -1s; }
+             .stone-wrapper:nth-child(4) { animation-delay: -1.5s; }
+             .stone-wrapper:nth-child(5) { animation-delay: -2s; }
+             .stone-wrapper:nth-child(6) { animation-delay: -2.5s; }
         `;
     }
     return '';

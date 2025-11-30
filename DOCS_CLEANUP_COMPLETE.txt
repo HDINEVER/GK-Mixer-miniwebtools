@@ -16,7 +16,7 @@
 
   docs/deployment/
   ├── 00-GUIDE.md          📖 完整部署指南
-  ├── 01-QUICKSTART.md     ⚡ 快速开始 (5步)
+  ├── 01-QUICKSTART.md     ⚡ 快速开始 (5 步)
   ├── 02-TROUBLESHOOT.md   🔧 故障排除
   └── 03-SETUP.md          ✓ 初始化配置
 
@@ -49,9 +49,9 @@
 
 🚀 立即开始：
 
-  1. 打开: CLOUDFLARE_DOCS.md
-  2. 点击: docs/deployment/01-QUICKSTART.md
-  3. 按照: 5 步快速部署指南
+  1. 打开：CLOUDFLARE_DOCS.md
+  2. 点击：docs/deployment/01-QUICKSTART.md
+  3. 按照：5 步快速部署指南
 
 ═══════════════════════════════════════════════════════════
 

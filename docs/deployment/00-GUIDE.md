@@ -16,7 +16,7 @@
 3. 点击 **创建项目** → **连接到 Git**
 4. 选择你的 Git 仓库
 5. 配置构建设置：
-   - **框架预设**：选择 `React` 或 `None`
+   - **框架预设**：选择 `None`
    - **构建命令**：`npm run build`
    - **构建输出目录**：`dist`
    - **环境变量**：添加 `API_KEY`（Gemini API key）
@@ -39,20 +39,18 @@ API_KEY=your_gemini_api_key_here
 /functions
 ├── _routes.json          # 路由配置
 └── api/
-    └── health.js         # 健康检查 API (GET /api/health)
+    ├── health.js         # 健康检查 API (GET /api/health)
+    └── colors.js         # 颜色处理 API (POST /api/colors)
 ```
 
 #### API 端点
 
 - **健康检查**：`GET /api/health`
   - 响应：`{ status: 'ok', message: 'GK-Mixer API is running' }`
+- **颜色处理**：`POST /api/colors`
+  - 请求体：`{ colors: ["#FF0000", "#00FF00"] }`
 
 ### 本地开发
-
-#### 安装 Wrangler CLI
-```bash
-npm install -g wrangler
-```
 
 #### 本地运行
 ```bash
@@ -62,7 +60,7 @@ npm run dev
 
 #### 本地测试 Functions
 ```bash
-wrangler pages dev dist
+npm run cf:dev
 # 访问 http://localhost:8788
 ```
 
@@ -74,11 +72,12 @@ GK-Mixer-miniwebtools/
 ├── functions/            # Cloudflare Pages Functions
 │   ├── _routes.json
 │   └── api/
-│       └── health.js
+│       ├── health.js
+│       └── colors.js
 ├── src/
 │   ├── App.tsx
 │   └── components/
-├── wrangler.toml        # Cloudflare Workers 配置
+├── wrangler.toml        # Cloudflare 配置
 ├── vite.config.ts       # Vite 构建配置
 ├── package.json
 └── README.md
@@ -110,8 +109,8 @@ A: 路由自动生成。`/functions/api/health.js` → `https://your-site.pages.
 
 #### Q: 如何添加更多 Functions？
 A: 在 `/functions` 目录中创建新的 `.js` 文件。例如：
-- `/functions/api/colors.js` → `/api/colors`
 - `/functions/api/export.js` → `/api/export`
+- `/functions/api/analyze.js` → `/api/analyze`
 
 #### Q: 是否支持 Node.js 模块？
 A: Cloudflare Pages Functions 运行在 Workers 环境上，某些 Node.js 模块可能不兼容。建议使用浏览器兼容或专为 Workers 优化的库。

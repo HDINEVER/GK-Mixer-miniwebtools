@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "cf:dev": "wrangler pages dev dist",
-    "cf:deploy": "npm run build && wrangler pages deploy dist"
+    "cf:dev": "wrangler pages dev dist"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",

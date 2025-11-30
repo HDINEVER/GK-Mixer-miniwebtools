@@ -66,7 +66,7 @@ npm run preview
 
 ## 🚀 Cloudflare Pages 部署
 
-详见 [CLOUDFLARE_DEPLOYMENT.md](./CLOUDFLARE_DEPLOYMENT.md)
+详见 [CLOUDFLARE_DOCS.md](./CLOUDFLARE_DOCS.md)
 
 ### 快速部署
 
@@ -82,36 +82,7 @@ npm run preview
 3. **部署完成**
    - 访问 `https://your-project.pages.dev`
 
-### 本地测试部署
-
-```bash
-# 本地测试 Cloudflare Pages Functions
-npm run cf:dev
-
-# 构建并部署到 Cloudflare
-npm run cf:deploy
-```
-
-## 📦 项目结构
-
-```
-GK-Mixer-miniwebtools/
-├── functions/              # Cloudflare Pages Functions
-│   ├── api/
-│   │   ├── health.js      # 健康检查 API
-│   │   └── colors.js      # 颜色处理 API
-│   └── _routes.json       # 路由配置
-├── src/
-│   ├── App.tsx
-│   ├── index.tsx
-│   └── components/
-├── components/            # React 组件
-├── utils/                 # 工具函数
-├── services/              # 服务（Gemini API）
-├── vite.config.ts        # Vite 配置
-├── wrangler.toml         # Cloudflare Workers 配置
-└── CLOUDFLARE_DEPLOYMENT.md
-```
+📖 更多部署信息查看 [docs/deployment/](./docs/deployment/)
 ⚖️ Credits & Licenses
 Core Mixing Algorithm: Mixbox
 This project uses Mixbox for accurate pigment mixing simulation.

@@ -11,9 +11,10 @@ interface ColorPaletteProps {
   selectedColorId?: string;
   onAddManual: () => void;
   onDeleteColor: (colorId: string) => void;
+  hasImage?: boolean; // New prop to check if image is loaded
 }
 
-const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, selectedColorId, onAddManual, onDeleteColor }) => {
+const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, selectedColorId, onAddManual, onDeleteColor, hasImage = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const selectionIndicatorRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +50,13 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
         <h3 className="text-sm font-bold text-macaron-blue tracking-wider">DETECTED PALETTE</h3>
         <button 
             onClick={onAddManual}
-            className="text-xs px-3 py-1 border border-macaron-green text-macaron-green hover:bg-macaron-green hover:text-white transition-colors rounded-full"
+            disabled={!hasImage}
+            className={`text-xs px-3 py-1 border rounded-full transition-colors ${
+              hasImage 
+                ? 'border-macaron-green text-macaron-green hover:bg-macaron-green hover:text-white cursor-pointer'
+                : 'border-slate-300 text-slate-300 cursor-not-allowed opacity-50'
+            }`}
+            title={hasImage ? 'Click to pick color from image' : 'Please upload an image first'}
         >
             + MANUAL PICK
         </button>

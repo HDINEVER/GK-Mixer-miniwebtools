@@ -3,6 +3,7 @@ import DropZone from './components/DropZone';
 import ColorPalette from './components/ColorPalette';
 import MixerResult from './components/MixerResult';
 import PaletteVisualizer from './components/PaletteVisualizer';
+import RadialPaletteMixer from './components/RadialPaletteMixer';
 import { ColorData, AppMode, RGB, Language, Theme } from './types';
 import { extractProminentColors, generateId, rgbToCmyk, rgbToHex } from './utils/colorUtils';
 import { translations } from './utils/translations';
@@ -14,7 +15,7 @@ const App: React.FC = () => {
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [colors, setColors] = useState<ColorData[]>([]);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
-  const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer'>('mixer');
+  const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer' | 'radial'>('mixer');
   
   // Ref for manual picker canvas
   const imageRef = useRef<HTMLImageElement>(null);
@@ -73,7 +74,11 @@ const App: React.FC = () => {
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
 
-    const ctx = canvasRef.current.getContext('2d');
+    // Use sRGB colorspace for consistent color extraction with Photoshop
+    const ctx = canvasRef.current.getContext('2d', { 
+      colorSpace: 'srgb',
+      willReadFrequently: true 
+    });
     if (ctx) {
         const scaleX = canvasRef.current.width / canvasRef.current.offsetWidth;
         const scaleY = canvasRef.current.height / canvasRef.current.offsetHeight;
@@ -155,7 +160,12 @@ const App: React.FC = () => {
   React.useEffect(() => {
     if (sourceImage && canvasRef.current && imageRef.current) {
         const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
+        // Use sRGB colorspace for accurate color display and extraction
+        // This ensures consistent color values with Photoshop's sRGB mode
+        const ctx = canvas.getContext('2d', { 
+          colorSpace: 'srgb',
+          willReadFrequently: true 
+        });
         const img = imageRef.current;
         
         if (ctx && img) {
@@ -219,8 +229,13 @@ const App: React.FC = () => {
                             <button onClick={handleReset} className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue">{t.reset}</button>
                         </div>
                         <button 
-                            onClick={() => setSourceImage(null)}
+                            onClick={() => {
+                              setSourceImage(null);
+                              setIsPicking(false); // Stop picking mode
+                              // Keep colors data - don't clear setColors([])
+                            }}
                             className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 rounded"
+                            title={lang === 'zh' ? '关闭图片(保留颜色)' : lang === 'ja' ? '画像を閉じる(色を保持)' : 'Close image (keep colors)'}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -288,15 +303,32 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {sourceImage && (
+            {/* Always show color palette if colors exist */}
+            {colors.length > 0 && (
                 <div className="mt-6">
-                        <ColorPalette 
+                    <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                            {t.extractedColors || (lang === 'zh' ? '已提取颜色' : lang === 'ja' ? '抽出された色' : 'Extracted Colors')}
+                        </span>
+                        <button
+                            onClick={() => {
+                                setColors([]);
+                                setSelectedColorId(null);
+                            }}
+                            className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                            title={lang === 'zh' ? '清空所有颜色' : lang === 'ja' ? 'すべての色をクリア' : 'Clear all colors'}
+                        >
+                            🗑️ {lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}
+                        </button>
+                    </div>
+                    <ColorPalette 
                         colors={colors} 
                         onColorSelect={(c) => setSelectedColorId(c.id)}
                         selectedColorId={selectedColorId || undefined}
                         onAddManual={handleManualAdd}
                         onDeleteColor={handleDeleteColor}
-                        />
+                        hasImage={!!sourceImage}
+                    />
                 </div>
             )}
           </div>
@@ -312,6 +344,12 @@ const App: React.FC = () => {
                             className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'mixer' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
                         >
                             {t.tabMixer}
+                        </button>
+                        <button 
+                            onClick={() => setRightPanelTab('radial')}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'radial' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            {lang === 'zh' ? '径向混合' : lang === 'ja' ? 'ラジアル' : 'RADIAL'}
                         </button>
                         <button 
                             onClick={() => setRightPanelTab('visualizer')}
@@ -342,6 +380,12 @@ const App: React.FC = () => {
                             </ul>
                         </div>
                     </>
+                ) : rightPanelTab === 'radial' ? (
+                    <RadialPaletteMixer
+                        targetColor={selectedColor}
+                        availableColors={colors}
+                        lang={lang}
+                    />
                 ) : (
                     <PaletteVisualizer 
                         sourceImage={sourceImage}

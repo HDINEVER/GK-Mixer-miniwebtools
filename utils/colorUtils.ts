@@ -397,7 +397,12 @@ export const findNearestPaints = (targetHex: string, count: number = 3): PaintBr
 export const extractProminentColors = (imgElement: HTMLImageElement, count: number = 5): Promise<ColorData[]> => {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    // Use sRGB colorspace and willReadFrequently for accurate color extraction
+    // This ensures consistent color values with Photoshop's sRGB mode
+    const ctx = canvas.getContext('2d', { 
+      colorSpace: 'srgb',
+      willReadFrequently: true 
+    });
     if (!ctx) return resolve([]);
 
     // Scale down for performance
@@ -477,4 +482,66 @@ export const opticalBlend = (color1Hex: string, color2Hex: string, t: number = 0
   const g = Math.round(c1.g * (1 - t) + c2.g * t);
   const b = Math.round(c1.b * (1 - t) + c2.b * t);
   return rgbToHex(r, g, b);
+};
+
+/**
+ * CMY (Cyan, Magenta, Yellow) Primary Paint Colors
+ * This represents the true subtractive color mixing primaries (no K/black)
+ */
+export const CMY_PRIMARIES = {
+  CYAN: '#00FFFF',
+  MAGENTA: '#FF00FF', 
+  YELLOW: '#FFFF00'
+};
+
+/**
+ * Multi-Color Mixbox Blending (Physical Paint Mixing)
+ * Takes an array of colors with weights and uses Mixbox latent space
+ * to mix them like real paint (subtractive mixing)
+ * 
+ * @param colorWeights Array of {hex, weight} objects
+ * @returns Mixed color hex string
+ */
+export const mixboxMultiBlend = (colorWeights: { hex: string; weight: number }[]): string => {
+  // Filter out zero weights
+  const filtered = colorWeights.filter(cw => cw.weight > 0.0001);
+  
+  if (filtered.length === 0) {
+    return '#CCCCCC'; // Gray fallback
+  }
+  
+  if (filtered.length === 1) {
+    return filtered[0].hex;
+  }
+  
+  // Normalize weights
+  const totalWeight = filtered.reduce((sum, cw) => sum + cw.weight, 0);
+  
+  // Convert all colors to latent space
+  const latents = filtered.map(cw => {
+    const rgb = hexToRgb(cw.hex);
+    return {
+      latent: mixbox.rgbToLatent(rgb.r, rgb.g, rgb.b),
+      weight: cw.weight / totalWeight
+    };
+  });
+  
+  // Mix in latent space (weighted average)
+  const mixedLatent = [0, 0, 0, 0, 0, 0, 0];
+  for (const { latent, weight } of latents) {
+    if (latent) {
+      for (let i = 0; i < 7; i++) {
+        mixedLatent[i] += latent[i] * weight;
+      }
+    }
+  }
+  
+  // Convert back to RGB
+  const result = mixbox.latentToRgb(mixedLatent);
+  if (result && result.length >= 3) {
+    return rgbToHex(result[0], result[1], result[2]);
+  }
+  
+  // Fallback
+  return filtered[0].hex;
 };

@@ -34,9 +34,9 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
   const bottleRef = useRef<HTMLDivElement>(null);
   const cmykRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Update CMYK Bars Animation
+  // Update CMY Bars Animation (removed K)
   useEffect(() => {
-    if (color && cmykRefs.current.length === 4) {
+    if (color && cmykRefs.current.length === 3) {
         anime({
             targets: cmykRefs.current,
             width: (el: HTMLElement) => el.dataset.width,
@@ -112,14 +112,14 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
             isBase: true
         });
 
-        // Additive Layers
+        // Additive Layers (only CMY, no K!)
         if (mixMode === 'CMYK') {
-            if (diffK > 0) layers.push({ color: '#1a1a1a', heightPercent: getH(diffK), volume: getVol(diffK), label: 'K', textColor: '#fff' });
+            // Removed K channel - only CMY primaries for physical mixing
             if (diffC > 0) layers.push({ color: '#00ffff', heightPercent: getH(diffC), volume: getVol(diffC), label: 'C', textColor: '#000' });
             if (diffM > 0) layers.push({ color: '#ff00ff', heightPercent: getH(diffM), volume: getVol(diffM), label: 'M', textColor: '#fff' });
             if (diffY > 0) layers.push({ color: '#ffff00', heightPercent: getH(diffY), volume: getVol(diffY), label: 'Y', textColor: '#000' });
         } else {
-            if (diffK > 0) layers.push({ color: '#000000', heightPercent: getH(diffK), volume: getVol(diffK), label: 'Bk', textColor: '#fff' });
+            // Paint mode - use realistic paint colors (no black!)
             if (diffC > 0) layers.push({ color: '#0047AB', heightPercent: getH(diffC), volume: getVol(diffC), label: 'Blu', textColor: '#fff' });
             if (diffM > 0) layers.push({ color: '#DC143C', heightPercent: getH(diffM), volume: getVol(diffM), label: 'Red', textColor: '#fff' });
             if (diffY > 0) layers.push({ color: '#FFD700', heightPercent: getH(diffY), volume: getVol(diffY), label: 'Yel', textColor: '#000' });
@@ -154,15 +154,14 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
             });
         }
 
-        // CMYK Pigments
+        // CMYK Pigments (only CMY, no K!)
         if (mixMode === 'CMYK') {
-             if (k > 0) layers.push({ color: '#1a1a1a', heightPercent: getH(k), volume: getVol(k), label: 'K', textColor: '#fff' });
+             // Removed K channel - only CMY primaries
              if (c > 0) layers.push({ color: '#00ffff', heightPercent: getH(c), volume: getVol(c), label: 'C', textColor: '#000' });
              if (m > 0) layers.push({ color: '#ff00ff', heightPercent: getH(m), volume: getVol(m), label: 'M', textColor: '#fff' });
              if (y > 0) layers.push({ color: '#ffff00', heightPercent: getH(y), volume: getVol(y), label: 'Y', textColor: '#000' });
         } else {
-            // "Paint" mode for scratch building is essentially same but using paint names
-             if (k > 0) layers.push({ color: '#000000', heightPercent: getH(k), volume: getVol(k), label: 'Black', textColor: '#fff' });
+            // "Paint" mode - use realistic paint colors (no black!)
              if (c > 0) layers.push({ color: '#0047AB', heightPercent: getH(c), volume: getVol(c), label: 'Blue', textColor: '#fff' });
              if (m > 0) layers.push({ color: '#DC143C', heightPercent: getH(m), volume: getVol(m), label: 'Red', textColor: '#fff' });
              if (y > 0) layers.push({ color: '#FFD700', heightPercent: getH(y), volume: getVol(y), label: 'Yel', textColor: '#000' });
@@ -226,13 +225,12 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
             </div>
         </div>
 
-        {/* CMYK Bars */}
+        {/* CMY Bars (removed K for physical paint mixing) */}
         <div className="flex-1 grid grid-cols-1 gap-2">
             {[
                 { l: 'C', v: color.cmyk.c, c: 'bg-cyan-400', t: 'text-cyan-600 dark:text-cyan-400' },
-                { l: 'M', v: color.cmyk.m, c: 'bg-magenta-500', t: 'text-pink-600 dark:text-pink-400' }, // Tailwind doesn't have magenta by default, using pink-500 or custom hex in style
-                { l: 'Y', v: color.cmyk.y, c: 'bg-yellow-400', t: 'text-yellow-600 dark:text-yellow-400' },
-                { l: 'K', v: color.cmyk.k, c: 'bg-slate-800', t: 'text-slate-600 dark:text-slate-400' },
+                { l: 'M', v: color.cmyk.m, c: 'bg-magenta-500', t: 'text-pink-600 dark:text-pink-400' },
+                { l: 'Y', v: color.cmyk.y, c: 'bg-yellow-400', t: 'text-yellow-600 dark:text-yellow-400' }
             ].map((item, i) => (
                 <div key={item.l} className="flex items-center gap-3">
                     <span className={`font-mono font-bold w-4 ${item.t}`}>{item.l}</span>
@@ -243,7 +241,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
                             className={`h-full rounded-full opacity-80 ${item.c}`}
                             style={{ 
                                 width: '0%', 
-                                backgroundColor: item.l === 'M' ? '#FF00FF' : undefined // Force magenta
+                                backgroundColor: item.l === 'M' ? '#FF00FF' : undefined
                             }} 
                         />
                     </div>

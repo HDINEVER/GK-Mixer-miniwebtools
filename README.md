@@ -22,21 +22,33 @@ Designed with a clean, low-saturation "Macaron" aesthetic for high readability.
 ### 2. Paint Mixing Console (混色控制台)
 * **Physical Simulation**: Uses **Kubelka-Munk theory** (via Mixbox) for realistic pigment mixing (Blue + Yellow = Green), distinct from standard digital blending.
 * **Brand Matching**: Auto-matches colors to **Mr. Hobby, Gaia, and Jumpwind** databases.
+* **CMY Mode**: Uses only Cyan, Magenta, Yellow primaries (no K/black) for authentic subtractive color mixing.
 * **Dual Modes**:
     * **CMYK Correction**: Standard subtractive mixing.
-    * **Universal Blend**: Base Paint + Additive X (CMYK or other brands).
+    * **Universal Blend**: Base Paint + Additive X (CMY or other brands).
 
-### 3. Virtual Paint Bottle (调漆瓶模拟器)
+### 3. Radial Palette Mixer (径向调色盘) 🆕
+* **Interactive Canvas**: Drag-and-drop sliders arranged radially around a central mixing circle.
+* **Real-time Blending**: Uses Mixbox latent space for physical paint mixing simulation.
+* **Volume Calculator**: Automatically calculates ml needed for each color based on target volume.
+* **Visual Feedback**: 
+  - Slider position (outer=0%, inner=100%)
+  - Mosaic pattern when no colors mixed
+  - Target color comparison ring
+  - Animated transitions with anime.js
+* **Smooth Dragging**: Elastic animations and glow effects during interaction.
+
+### 4. Virtual Paint Bottle (调漆瓶模拟器)
 * **Visual Feedback**: Real-time liquid simulation showing the mixed color inside a calibrated bottle.
 * **Volume Presets**: One-click scaling for 10ml, 20ml, ... 60ml batches.
 * **Dynamic Recipe**: Instantly calculates exactly how many mL of target paint to add to the base.
 * **Fluid Animations**: Powered by `anime.js` for smooth liquid transitions.
 
-### 4. AI Assistant (Gemini 2.5)
+### 5. AI Assistant (Gemini 2.5)
 * Generates human-readable mixing recipes.
 * Auto-translates paint names and instructions to the selected language.
 
-### 5. UX/UI
+### 6. UX/UI
 * **Theming**: Seamless Dark/Light mode toggle.
 * **i18n**: Full support for English, Chinese (中文), and Japanese (日文).
 

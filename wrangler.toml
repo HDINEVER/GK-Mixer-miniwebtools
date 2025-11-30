@@ -1,10 +1,10 @@
-name = "gk-mixer"
+name = "gkcolor-mixer"
 type = "javascript"
 compatibility_date = "2024-12-01"
 
 # Build configuration for Pages
 [env.production]
-name = "gk-mixer-prod"
+name = "gkcolor-mixer-prod"
 routes = [{ pattern = "example.com/*", zone_name = "example.com" }]
 
 # Functions directory

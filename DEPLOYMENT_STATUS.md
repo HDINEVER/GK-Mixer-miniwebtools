@@ -1,56 +1,56 @@
-# Cloudflare Pages 部署配置完成 ✅
+#!/usr/bin/env node
 
-## 📋 已完成的配置项
+/**
+ * GK-Mixer Cloudflare Pages 初始化脚本
+ * 用法：node scripts/init-cloudflare.js
+ */
 
-### 1. 核心配置文件
-- ✅ `wrangler.toml` - Cloudflare Workers 配置
-- ✅ `.env.example` - 环境变量模板
-- ✅ `.gitignore` - 更新排除规则
+const fs = require('fs');
+const path = require('path');
 
-### 2. Cloudflare Pages Functions
-```
-functions/
-├── _routes.json              ✅ 路由配置
-└── api/
-    ├── health.js             ✅ 健康检查 API
-    └── colors.js             ✅ 颜色处理 API 示例
-```
+const requiredFiles = [
+  'wrangler.toml',
+  'functions/_routes.json',
+  'functions/api/health.js',
+  'functions/api/colors.js',
+  '.env.example'
+];
 
-### 3. 自动化部署
-- ✅ `.github/workflows/deploy.yml` - GitHub Actions 工作流
-- ✅ `scripts/init-cloudflare.js` - 初始化脚本
+const requiredDirs = [
+  'functions',
+  'functions/api'
+];
 
-### 4. 文档
-- ✅ `CLOUDFLARE_DEPLOYMENT.md` - 完整部署指南
-- ✅ `CLOUDFLARE_QUICK_START.md` - 快速参考
-- ✅ `README.md` - 更新项目文档
+console.log('🚀 初始化 Cloudflare Pages 配置...\n');
 
-### 5. 依赖
-- ✅ `wrangler@^3.80.0` - 已添加到 devDependencies
+// 检查必要的目录
+requiredDirs.forEach(dir => {
+  const dirPath = path.join(__dirname, '..', dir);
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+    console.log(`✅ 已创建目录：${dir}`);
+  } else {
+    console.log(`✓ 目录已存在：${dir}`);
+  }
+});
 
-## 🚀 部署检查清单
+console.log('\n✅ 初始化完成！\n');
 
-### 本地准备
-- [ ] 复制 `.env.example` → `.env.local`
-- [ ] 编辑 `.env.local` 添加 `API_KEY` (Gemini API Key)
-- [ ] 运行 `npm install` 确认依赖安装完成
+console.log('📋 后续步骤：\n');
+console.log('1. 配置 .env.local 文件：');
+console.log('   cp .env.example .env.local');
+console.log('   # 编辑 .env.local，添加你的 Gemini API Key\n');
 
-### Cloudflare 账户
-- [ ] 拥有 Cloudflare 账户
-- [ ] 已登录 Dashboard：https://dash.cloudflare.com
-- [ ] 获取 Cloudflare API Token（用于 GitHub Actions）
+console.log('2. 登录 Cloudflare：');
+console.log('   npx wrangler login\n');
 
-### GitHub 仓库
-- [ ] 代码已推送到 GitHub
-- [ ] 设置 Secrets（如使用自动部署）：
-  - `CLOUDFLARE_ACCOUNT_ID`
-  - `CLOUDFLARE_API_TOKEN`
-  - `GEMINI_API_KEY`
+console.log('3. 本地测试：');
+console.log('   npm run dev\n');
 
-## 📖 推荐阅读顺序
+console.log('4. 部署到 Cloudflare Pages：');
+console.log('   npm run cf:deploy\n');
 
-1. **快速开始** → `CLOUDFLARE_QUICK_START.md`
-   - 5 分钟快速设置
+console.log('📖 更多信息请查看：CLOUDFLARE_DEPLOYMENT.md\n');
    - 首次部署步骤
 
 2. **完整指南** → `CLOUDFLARE_DEPLOYMENT.md`

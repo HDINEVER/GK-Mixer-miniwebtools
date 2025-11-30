@@ -56,6 +56,62 @@ npm install
 
 # Start development server
 npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build locally
+npm run preview
+```
+
+## 🚀 Cloudflare Pages 部署
+
+详见 [CLOUDFLARE_DEPLOYMENT.md](./CLOUDFLARE_DEPLOYMENT.md)
+
+### 快速部署
+
+1. **连接 Git 仓库**
+   - 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
+   - Pages → 创建项目 → 连接到 Git
+
+2. **配置构建设置**
+   - 构建命令：`npm run build`
+   - 构建输出目录：`dist`
+   - 环境变量：`API_KEY=your_gemini_api_key`
+
+3. **部署完成**
+   - 访问 `https://your-project.pages.dev`
+
+### 本地测试部署
+
+```bash
+# 本地测试 Cloudflare Pages Functions
+npm run cf:dev
+
+# 构建并部署到 Cloudflare
+npm run cf:deploy
+```
+
+## 📦 项目结构
+
+```
+GK-Mixer-miniwebtools/
+├── functions/              # Cloudflare Pages Functions
+│   ├── api/
+│   │   ├── health.js      # 健康检查 API
+│   │   └── colors.js      # 颜色处理 API
+│   └── _routes.json       # 路由配置
+├── src/
+│   ├── App.tsx
+│   ├── index.tsx
+│   └── components/
+├── components/            # React 组件
+├── utils/                 # 工具函数
+├── services/              # 服务（Gemini API）
+├── vite.config.ts        # Vite 配置
+├── wrangler.toml         # Cloudflare Workers 配置
+└── CLOUDFLARE_DEPLOYMENT.md
+```
 ⚖️ Credits & Licenses
 Core Mixing Algorithm: Mixbox
 This project uses Mixbox for accurate pigment mixing simulation.

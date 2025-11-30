@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cf:dev": "wrangler pages dev dist",
+    "cf:deploy": "npm run build && wrangler pages deploy dist"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
@@ -21,6 +23,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.1",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "wrangler": "^3.80.0"
   }
 }

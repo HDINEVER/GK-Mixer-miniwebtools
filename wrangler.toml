@@ -1,0 +1,36 @@
+name = "gk-mixer"
+type = "javascript"
+# account_id = "your_account_id"  # 部署时由 Wrangler 自动填充
+# workers_dev = true
+
+compatibility_date = "2024-12-01"
+compatibility_flags = ["streams_enable_constructors"]
+
+# Build configuration
+[build]
+command = "npm run build"
+cwd = "./"
+upload.format = "service-worker"
+
+# Site (Static files)
+[site]
+bucket = "./dist"
+
+# Functions configuration
+[functions]
+main = "./functions"
+
+# Env 配置 (可选：用于不同环境)
+[env.production]
+name = "gk-mixer-prod"
+vars = { ENVIRONMENT = "production" }
+
+[env.staging]
+name = "gk-mixer-staging"
+vars = { ENVIRONMENT = "staging" }
+
+# Triggers configuration (可选)
+[triggers]
+# 定时任务示例（如果需要）
+# crons = ["0 0 * * *"]  # 每天午夜运行
+

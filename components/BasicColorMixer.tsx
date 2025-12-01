@@ -344,9 +344,10 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     const WIDTH = BASE_WIDTH;
     const HEIGHT = BASE_HEIGHT;
     const ACTIVE_KNOB_RADIUS = 32;
-    // 使用显示尺寸计算,不考虑DPI
-    const x = (clientX - rect.left) * (WIDTH / rect.width);
-    const y = (clientY - rect.top) * (HEIGHT / rect.height);
+    // 使用逻辑坐标系统 - 基于BASE_WIDTH/HEIGHT而非显示尺寸
+    // 关键修复: 使用canvasSize.width/height作为转换基准
+    const x = (clientX - rect.left) * (WIDTH / canvasSize.width);
+    const y = (clientY - rect.top) * (HEIGHT / canvasSize.height);
 
     // 检测点击了哪个旋钮
     for (let i = 0; i < BASE_COLORS.length; i++) {
@@ -391,9 +392,9 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     const CENTER_Y = HEIGHT / 2;
     const OUTER_RADIUS = 215;
     const INNER_RADIUS = 70;
-    // 使用显示尺寸计算
-    const x = (clientX - rect.left) * (WIDTH / rect.width);
-    const y = (clientY - rect.top) * (HEIGHT / rect.height);
+    // 使用逻辑坐标系统 - 修复移动设备模式下的坐标转换
+    const x = (clientX - rect.left) * (WIDTH / canvasSize.width);
+    const y = (clientY - rect.top) * (HEIGHT / canvasSize.height);
 
     const i = draggedIndexRef.current;
     const outerPos = centersOutside.current[i];
@@ -509,10 +510,10 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       canvas.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [mixRatios]);
+  }, [mixRatios, canvasSize]);
 
   // 启动绘制循环
   useEffect(() => {
@@ -522,7 +523,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [mixRatios, finalColor]);
+  }, [mixRatios, finalColor, canvasSize]);
 
   // 重置功能
   const handleReset = () => {

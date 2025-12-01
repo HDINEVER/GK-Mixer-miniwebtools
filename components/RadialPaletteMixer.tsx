@@ -39,12 +39,12 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   const t = translations[lang];
   
   // Canvas dimensions (matching RadialMixer exactly)
-  const WIDTH = 650;
-  const HEIGHT = 650;
+  const WIDTH = 450;
+  const HEIGHT = 450;
   const CENTER_X = WIDTH / 2;
   const CENTER_Y = HEIGHT / 2;
-  const OUTER_RADIUS = 300;
-  const INNER_RADIUS = 100;
+  const OUTER_RADIUS = 200;
+  const INNER_RADIUS = 65;
   const BASE_KNOB_RADIUS = 20;  // Base radius
   const ACTIVE_KNOB_RADIUS = 30; // Active radius (when dragging)
   const CENTER_RADIUS = INNER_RADIUS - 5; // Center circle size
@@ -107,19 +107,39 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.clip();
     
-    // Background white
-    ctx.fillStyle = '#ffffff';
+    // 渐变背景
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, r);
+    gradient.addColorStop(0, '#f8fafc');
+    gradient.addColorStop(1, '#e2e8f0');
+    ctx.fillStyle = gradient;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
     
-    // Checkerboard pattern
-    const size = 15;
-    ctx.fillStyle = '#e2e8f0'; // slate-200
+    // 精致的棋盘格图案
+    const size = 8; // 更小的格子
+    const cornerRadius = 1.5;
+    const colors = ['#cbd5e1', '#94a3b8'];
+    
     for (let i = x - r; i < x + r; i += size) {
       for (let j = y - r; j < y + r; j += size) {
-        const gridX = Math.floor(i / size);
-        const gridY = Math.floor(j / size);
-        if ((gridX + gridY) % 2 === 0) {
-          ctx.fillRect(i, j, size, size);
+        const dx = i + size/2 - x;
+        const dy = j + size/2 - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist < r - size/2) {
+          const gridX = Math.floor(i / size);
+          const gridY = Math.floor(j / size);
+          
+          if ((gridX + gridY) % 2 === 0) {
+            // 根据距离中心的远近调整透明度
+            const alpha = 0.3 + (1 - dist / r) * 0.4;
+            const colorIndex = Math.floor(dist / (r / 2)) % colors.length;
+            ctx.fillStyle = colors[colorIndex] + Math.round(alpha * 255).toString(16).padStart(2, '0');
+            
+            // 绘制圆角矩形
+            ctx.beginPath();
+            ctx.roundRect(i, j, size - 1, size - 1, cornerRadius);
+            ctx.fill();
+          }
         }
       }
     }
@@ -132,6 +152,23 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    
+    // 支持高DPI屏幕
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = WIDTH;
+    const displayHeight = HEIGHT;
+    
+    // 设置Canvas实际像素尺寸
+    if (canvas.width !== displayWidth * dpr || canvas.height !== displayHeight * dpr) {
+      canvas.width = displayWidth * dpr;
+      canvas.height = displayHeight * dpr;
+      canvas.style.width = displayWidth + 'px';
+      canvas.style.height = displayHeight + 'px';
+    }
+    
+    // 每次绘制前都重置变换并应用缩放
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
     
     // Clear canvas
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -155,7 +192,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
       ctx.stroke();
     });
     
-    // 2. Draw Knobs & Data Labels
+    // 2. Draw Knobs
     sliders.forEach((slider, i) => {
       const t = slider.position;
       const angle = slider.angle;
@@ -184,45 +221,6 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 3;
       ctx.stroke();
-      
-      // Draw Info Label if Active
-      if (t > 0 || draggingIndex === i) {
-        const pct = Math.round(t * 100);
-        const totalW = sliders.reduce((sum, s) => sum + s.weight, 0);
-        const ml = totalW > 0 ? ((slider.weight / totalW) * targetVolume).toFixed(1) : '0.0';
-        
-        ctx.save();
-        ctx.font = 'bold 12px "JetBrains Mono", monospace';
-        ctx.fillStyle = '#475569';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // Position text - always outward to avoid overlapping with center
-        // When slider is close to center (t > 0.6), increase distance
-        const textDist = t > 0.6 ? 60 : 50;
-        // Always place label on the outer side
-        const tx = kx + sinA * textDist;
-        const ty = ky + cosA * textDist;
-        
-        // Background label
-        const metrics = ctx.measureText(`${ml}ml`);
-        const w = Math.max(metrics.width, 40) + 10;
-        const h = 30;
-        
-        ctx.beginPath();
-        ctx.roundRect(tx - w/2, ty - h/2, w, h, 6);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.fill();
-        
-        ctx.fillStyle = '#0f172a';
-        ctx.fillText(`${ml}ml`, tx, ty - 5);
-        
-        ctx.font = '10px "JetBrains Mono", monospace';
-        ctx.fillStyle = '#64748b';
-        ctx.fillText(`${pct}%`, tx, ty + 7);
-        
-        ctx.restore();
-      }
     });
     
     // 3. Draw Center Circle Shadow
@@ -260,6 +258,70 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
       ctx.lineWidth = 3;
       ctx.stroke();
     }
+    
+    // 6. Draw Data Labels (最后绘制，确保在最上层)
+    sliders.forEach((slider, i) => {
+      const t = slider.position;
+      
+      // Draw Info Label if Active
+      if (t > 0 || draggingIndex === i) {
+        const angle = slider.angle;
+        const sinA = Math.sin(angle);
+        const cosA = Math.cos(angle);
+        
+        const outerX = CENTER_X + sinA * OUTER_RADIUS;
+        const outerY = CENTER_Y + cosA * OUTER_RADIUS;
+        
+        const kx = outerX - sinA * t * (OUTER_RADIUS - INNER_RADIUS);
+        const ky = outerY - cosA * t * (OUTER_RADIUS - INNER_RADIUS);
+        
+        const pct = Math.round(t * 100);
+        const totalW = sliders.reduce((sum, s) => sum + s.weight, 0);
+        const ml = totalW > 0 ? ((slider.weight / totalW) * targetVolume).toFixed(1) : '0.0';
+        
+        ctx.save();
+        ctx.font = 'bold 12px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#475569';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Position text - always outward to avoid overlapping with center
+        const textDist = t > 0.6 ? 60 : 50;
+        const tx = kx + sinA * textDist;
+        const ty = ky + cosA * textDist;
+        
+        // Background label
+        const metrics = ctx.measureText(`${ml}ml`);
+        const w = Math.max(metrics.width, 40) + 10;
+        const h = 30;
+        
+        // 绘制阴影
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 2;
+        
+        ctx.beginPath();
+        ctx.roundRect(tx - w/2, ty - h/2, w, h, 6);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.98)';
+        ctx.fill();
+        
+        // 清除阴影设置以免影响文字
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText(`${ml}ml`, tx, ty - 5);
+        
+        ctx.font = '10px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(`${pct}%`, tx, ty + 7);
+        
+        ctx.restore();
+      }
+    });
   };
   
   // Animation Loop (like RadialMixer)
@@ -553,12 +615,12 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   const volumes = calculateVolumes();
   
   return (
-    <div className="w-full h-full flex flex-col items-center justify-start p-6 space-y-4 overflow-y-auto">
+    <div className="w-full h-full flex flex-col items-center justify-start p-3 space-y-2 overflow-y-auto">
       <div className="text-center">
-        <h2 className="text-xl font-bold text-macaron-blue dark:text-macaron-pink mb-2">
+        <h2 className="text-lg font-bold text-macaron-blue dark:text-macaron-pink mb-1">
           {lang === 'zh' ? '径向调色盘' : lang === 'ja' ? 'ラジアルミキサー' : 'Radial Mixer'}
         </h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
+        <p className="text-xs text-slate-600 dark:text-slate-400">
           {lang === 'zh' 
             ? '从外向内拖动滑块增加混合比例 · 使用 Mixbox 物理混色引擎' 
             : lang === 'ja'
@@ -567,7 +629,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
           }
         </p>
         {targetColor && (
-          <p className="text-xs text-macaron-pink dark:text-macaron-blue mt-1">
+          <p className="text-xs text-macaron-pink dark:text-macaron-blue mt-0.5">
             {lang === 'zh' ? '🎯 目标: ' : lang === 'ja' ? '🎯 ターゲット: ' : '🎯 Target: '}
             <span className="font-mono font-bold">{targetColor.hex}</span>
           </p>
@@ -576,8 +638,6 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
       
       <canvas
         ref={canvasRef}
-        width={WIDTH}
-        height={HEIGHT}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -594,23 +654,23 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
           e.preventDefault();
           handleMouseUp();
         }}
-        className="border-2 border-slate-200 dark:border-slate-700 rounded-lg shadow-lg cursor-crosshair transition-shadow hover:shadow-xl touch-none"
+        className="rounded-lg cursor-crosshair touch-none"
         style={{ maxWidth: '100%', height: 'auto' }}
       />
       
       {/* Readout Panel (like RadialMixer) */}
-      <div className="mt-4 flex flex-wrap gap-6 p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center gap-3">
+      <div className="mt-2 flex flex-wrap gap-3 p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center gap-2">
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">
+            <span className="text-[9px] font-bold text-slate-400 uppercase">
               {lang === 'zh' ? '混合结果' : lang === 'ja' ? 'ミックス結果' : 'Mixed Result'}
             </span>
-            <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">
+            <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
               {mixedColor === '' ? (lang === 'zh' ? '透明' : lang === 'ja' ? '透明' : 'TRANSPARENT') : mixedColor}
             </span>
           </div>
           <div 
-            className="w-12 h-12 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner" 
+            className="w-9 h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner" 
             style={{
               backgroundColor: mixedColor || 'transparent',
               backgroundImage: mixedColor === '' ? 'repeating-conic-gradient(#E0E0E0 0% 25%, #FFFFFF 0% 50%)' : 'none',
@@ -621,16 +681,16 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         
         <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div 
-            className="w-12 h-12 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner" 
+            className="w-9 h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner" 
             style={{backgroundColor: targetColor?.hex || 'transparent'}}
           />
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">
+            <span className="text-[9px] font-bold text-slate-400 uppercase">
               {lang === 'zh' ? '目标颜色' : lang === 'ja' ? 'ターゲット' : 'Target Color'}
             </span>
-            <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">
+            <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
               {targetColor?.hex || (lang === 'zh' ? '无' : lang === 'ja' ? 'なし' : 'NONE')}
             </span>
           </div>
@@ -638,9 +698,9 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         
         <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">
+            <span className="text-[9px] font-bold text-slate-400 uppercase">
               {lang === 'zh' ? '目标总量' : lang === 'ja' ? '目標量' : 'Target Vol'}
             </span>
             <input
@@ -649,12 +709,12 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               max="100"
               value={targetVolume}
               onChange={(e) => setTargetVolume(Math.max(1, parseInt(e.target.value) || 20))}
-              className="w-20 px-2 py-1 text-center font-mono text-sm font-bold border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
+              className="w-16 px-1.5 py-0.5 text-center font-mono text-xs font-bold border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
             />
           </div>
           <button
             onClick={handleReset}
-            className="px-4 py-2 bg-macaron-blue hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors shadow-sm"
+            className="px-2.5 py-1 bg-macaron-blue hover:bg-blue-600 text-white rounded-md text-xs font-medium transition-colors shadow-sm"
           >
             {lang === 'zh' ? '🔄 重置' : lang === 'ja' ? '🔄 リセット' : '🔄 Reset'}
           </button>
@@ -662,20 +722,20 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
       </div>
       
       {/* Control Panel */}
-      <div className="w-full max-w-xl bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 mt-4">
+      <div className="w-full max-w-xl bg-slate-50 dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 mt-2">
         
         {/* Volume Recipe Display */}
         {volumes.length > 0 && (
-          <div className="border-t border-slate-200 dark:border-slate-600 pt-3 mt-3">
-            <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">
+          <div className="border-t border-slate-200 dark:border-slate-600 pt-2 mt-2">
+            <h4 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1.5">
               {lang === 'zh' ? '📊 混合配方' : lang === 'ja' ? '📊 レシピ' : '📊 RECIPE'}
             </h4>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+            <div className="space-y-1 max-h-32 overflow-y-auto">
               {volumes.map((vol, i) => (
-                <div key={i} className="flex items-center justify-between text-xs bg-white dark:bg-slate-700 p-2 rounded border border-slate-200 dark:border-slate-600">
-                  <div className="flex items-center space-x-2">
+                <div key={i} className="flex items-center justify-between text-[10px] bg-white dark:bg-slate-700 p-1.5 rounded border border-slate-200 dark:border-slate-600">
+                  <div className="flex items-center space-x-1.5">
                     <div 
-                      className="w-6 h-6 rounded border border-slate-300 dark:border-slate-500"
+                      className="w-5 h-5 rounded border border-slate-300 dark:border-slate-500"
                       style={{ backgroundColor: vol.hex }}
                     />
                     <span className="font-mono text-slate-700 dark:text-slate-300">{vol.hex}</span>
@@ -691,7 +751,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                 </div>
               ))}
             </div>
-            <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-600 flex justify-between text-xs font-bold">
+            <div className="mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-600 flex justify-between text-[10px] font-bold">
               <span className="text-slate-600 dark:text-slate-400">
                 {lang === 'zh' ? '总计' : lang === 'ja' ? '合計' : 'TOTAL'}
               </span>
@@ -703,7 +763,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         )}
       </div>
       
-      <div className="text-xs text-slate-500 dark:text-slate-400 text-center max-w-md">
+      <div className="text-[10px] text-slate-500 dark:text-slate-400 text-center max-w-md leading-tight">
         {lang === 'zh' 
           ? '💡 提示: 外围=0%, 中心=100%。拖动时实时计算混合比例和所需体积。' 
           : lang === 'ja'

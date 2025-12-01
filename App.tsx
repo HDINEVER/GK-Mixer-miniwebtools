@@ -4,6 +4,7 @@ import ColorPalette from './components/ColorPalette';
 import MixerResult from './components/MixerResult';
 import PaletteVisualizer from './components/PaletteVisualizer';
 import RadialPaletteMixer from './components/RadialPaletteMixer';
+import BasicColorMixer from './components/BasicColorMixer';
 import { ColorData, AppMode, RGB, Language, Theme } from './types';
 import { extractProminentColors, generateId, rgbToCmyk, rgbToHex } from './utils/colorUtils';
 import { translations } from './utils/translations';
@@ -15,7 +16,7 @@ const App: React.FC = () => {
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [colors, setColors] = useState<ColorData[]>([]);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
-  const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer' | 'radial'>('mixer');
+  const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer' | 'radial' | 'basic'>('mixer');
   
   // Ref for manual picker canvas
   const imageRef = useRef<HTMLImageElement>(null);
@@ -351,7 +352,13 @@ const App: React.FC = () => {
                             onClick={() => setRightPanelTab('radial')}
                             className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'radial' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
                         >
-                            {lang === 'zh' ? '径向混合' : lang === 'ja' ? 'ラジアル' : 'RADIAL'}
+                            {lang === 'zh' ? '自选颜色混合' : lang === 'ja' ? 'カスタム混合' : 'CUSTOM MIX'}
+                        </button>
+                        <button 
+                            onClick={() => setRightPanelTab('basic')}
+                            className={`px-2 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'basic' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            {lang === 'zh' ? '基础色' : lang === 'ja' ? 'ベース' : 'BASIC'}
                         </button>
                         <button 
                             onClick={() => setRightPanelTab('visualizer')}
@@ -388,6 +395,8 @@ const App: React.FC = () => {
                         availableColors={colors}
                         lang={lang}
                     />
+                ) : rightPanelTab === 'basic' ? (
+                    <BasicColorMixer lang={lang} />
                 ) : (
                     <PaletteVisualizer 
                         sourceImage={sourceImage}

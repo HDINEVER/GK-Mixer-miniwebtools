@@ -1,307 +1,665 @@
-# RadialPaletteMixer 优化报告
+import React, { useRef, useEffect, useState } from 'react';
+import { Language } from '../types';
+import { lerp, rgbToLatent, latentToRgb } from '../utils/mixbox';
 
-## 优化目标
-根据 RadialMixer 的优秀设计,完全重构 RadialPaletteMixer 的视觉外观和交互逻辑。
+// 声明 anime
+declare var anime: any;
 
----
-
-## 核心优化点
-
-### 1. 简化轨道绘制 ✅
-**RadialMixer 原理:**
-```typescript
-// 单层灰色轨道,简洁清晰
-ctx.strokeStyle = '#e2e8f0'; // slate-200
-ctx.lineWidth = 4;
-ctx.lineCap = 'round';
-```
-
-**实施效果:**
-- 移除了复杂的双层轨道系统(灰色基底 + 彩色渐变)
-- 移除了发光效果(shadowBlur)
-- 仅保留简单的灰色连接线,视觉更清爽
-
----
-
-### 2. Anime.js 弹性动画 ✅
-**RadialMixer 动画系统:**
-
-#### 点击时(easeOutElastic)
-```typescript
-anime({
-  targets: { radius: knobSizes.current[i] },
-  radius: ACTIVE_KNOB_RADIUS, // 20 → 30
-  duration: 400,
-  easing: 'easeOutElastic(1, .6)', // 弹性弹跳
-  update: (anim: any) => {
-    knobSizes.current[i] = anim.animatables[0].target.radius;
-  }
-});
-```
-
-#### 释放时(easeOutQuad)
-```typescript
-anime({
-  targets: { radius: knobSizes.current[draggedIndex] },
-  radius: BASE_KNOB_RADIUS, // 30 → 20
-  duration: 300,
-  easing: 'easeOutQuad', // 平滑恢复
-  update: (anim: any) => {
-    knobSizes.current[draggedIndex] = anim.animatables[0].target.radius;
-  }
-});
-```
-
-**实施效果:**
-- 使用 `knobSizes.current[]` 数组存储每个旋钮的当前半径
-- 点击时半径从 20 → 30,带弹性效果
-- 释放时半径从 30 → 20,平滑恢复
-- 动画完全独立于 React state,性能更优
-
----
-
-### 3. 动态旋钮尺寸 ✅
-**常量定义:**
-```typescript
-const BASE_KNOB_RADIUS = 20;  // 基础半径(0%时)
-const ACTIVE_KNOB_RADIUS = 30; // 激活半径(拖动时)
-const CENTER_RADIUS = INNER_RADIUS - 5; // 中心圆=95
-```
-
-**尺寸逻辑:**
-- 静止状态: `BASE_KNOB_RADIUS = 20px`
-- 拖动状态: `ACTIVE_KNOB_RADIUS = 30px` (放大50%)
-- 动画驱动: anime.js 控制 `knobSizes.current[]`
-
----
-
-### 4. 优化信息标签 ✅
-**RadialMixer 标签样式:**
-```typescript
-// 圆角矩形背景(6px圆角)
-ctx.roundRect(tx - w/2, ty - h/2, w, h, 6);
-ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-ctx.fill();
-
-// 主文本(毫升数)
-ctx.font = 'bold 12px "JetBrains Mono", monospace';
-ctx.fillText(`${ml}ml`, tx, ty - 5);
-
-// 副文本(百分比)
-ctx.font = '10px "JetBrains Mono", monospace';
-ctx.fillStyle = '#64748b';
-ctx.fillText(`${pct}%`, tx, ty + 7);
-```
-
-**智能定位逻辑:**
-```typescript
-// 外圈:向外偏移 / 内圈:向内偏移(避免重叠)
-const textDist = 45;
-const tx = kx + sinA * (t > 0.8 ? -textDist : textDist);
-const ty = ky + cosA * (t > 0.8 ? -textDist : textDist);
-```
-
-**实施效果:**
-- 白色半透明背景(90%不透明度)
-- 使用 JetBrains Mono 等宽字体
-- 数值上下排列,层次清晰
-- 根据位置自动调整方向
-
----
-
-### 5. 中心圆渲染 ✅
-**阴影效果:**
-```typescript
-// 向下偏移5px制造深度感
-ctx.arc(CENTER_X, CENTER_Y + 5, CENTER_RADIUS, 0, Math.PI * 2);
-ctx.fillStyle = 'rgba(0,0,0,0.1)';
-ctx.fill();
-```
-
-**空状态(Mosaic):**
-```typescript
-// 15x15 棋盘格纹理
-for (let i = x - r; i < x + r; i += 15) {
-  for (let j = y - r; j < y + r; j += 15) {
-    if ((gridX + gridY) % 2 === 0) {
-      ctx.fillRect(i, j, 15, 15);
-    }
-  }
+interface BasicColorMixerProps {
+  lang: Language;
 }
-```
 
-**混合状态:**
-```typescript
-ctx.fillStyle = mixedColor;
-ctx.fill();
-ctx.strokeStyle = '#fff';
-ctx.lineWidth = 4; // 粗白边
-ctx.stroke();
-```
+// 5 Gaia base colors
+const BASE_COLORS = [
+  { id: 'gaia-001', brand: 'Gaia', code: '001', name: '光泽白', hex: '#FFFFFF' },
+  { id: 'gaia-002', brand: 'Gaia', code: '002', name: '光泽黑', hex: '#000000' },
+  { id: 'gaia-003', brand: 'Gaia', code: '003', name: '光泽红', hex: '#E60012' },
+  { id: 'gaia-004', brand: 'Gaia', code: '004', name: '光泽蓝', hex: '#004098' },
+  { id: 'gaia-005', brand: 'Gaia', code: '005', name: '光泽黄', hex: '#FFD900' },
+];
 
-**目标色对比:**
-```typescript
-// 35%半径的内圈显示目标色
-ctx.arc(CENTER_X, CENTER_Y, CENTER_RADIUS * 0.35, 0, Math.PI * 2);
-ctx.fillStyle = targetColor.hex;
-```
+// Canvas 基础常量
+const BASE_WIDTH = 500;
+const BASE_HEIGHT = 500;
 
----
-
-### 6. RequestAnimationFrame 循环 ✅
-**RadialMixer 渲染机制:**
-```typescript
-const draw = () => {
-  // 绘制所有元素...
+// 计算响应式尺寸 - 基于容器宽度的流式缩放
+const getCanvasSize = (containerWidth?: number) => {
+  const fallbackWidth = typeof window !== 'undefined' ? window.innerWidth : BASE_WIDTH;
+  const rawWidth = containerWidth ?? fallbackWidth;
+  const paddedWidth = Math.max(0, rawWidth - 32); // 留出内边距
+  const availableWidth = Math.min(Math.max(paddedWidth, 240), BASE_WIDTH); // 保持最小宽度，但不超过基础宽度
+  const scale = availableWidth / BASE_WIDTH;
+  return {
+    width: BASE_WIDTH * scale,
+    height: BASE_HEIGHT * scale,
+    scale: scale
+  };
 };
 
-useEffect(() => {
-  const loop = () => {
-    draw();
-    requestRef.current = requestAnimationFrame(loop);
+const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationFrameRef = useRef<number>();
+  const [mixRatios, setMixRatios] = useState<number[]>([0, 0, 0, 0, 0]);
+  const [finalColor, setFinalColor] = useState<string>('');
+  const [totalVolume, setTotalVolume] = useState<number>(20);
+  const [canvasSize, setCanvasSize] = useState(getCanvasSize());
+  
+  // 拖动状态
+  const draggedIndexRef = useRef<number>(-1);
+  const lastMoveTimeRef = useRef<number>(0); // 触控节流
+  const knobSizesRef = useRef<number[]>([22, 22, 22, 22, 22]);
+  
+  // 位置缓存
+  const centersOutside = useRef<Array<{x: number, y: number}>>([]);
+  const centersInside = useRef<Array<{x: number, y: number}>>([]);
+  const slidersPos = useRef<Array<{x: number, y: number}>>([]);
+
+  // 响应式调整画布尺寸
+  useEffect(() => {
+    const updateSize = () => {
+      const width = containerRef.current?.offsetWidth;
+      const newSize = getCanvasSize(width);
+      setCanvasSize(newSize);
+      initializePositions(newSize.scale);
+    };
+
+    updateSize();
+    const resizeObserver = new ResizeObserver(() => updateSize());
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    const handleWindowResize = () => updateSize();
+    window.addEventListener('resize', handleWindowResize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', handleWindowResize);
+    };
+  }, []);
+
+  // 初始化位置
+  const initializePositions = (scale: number) => {
+    const WIDTH = BASE_WIDTH;
+    const HEIGHT = BASE_HEIGHT;
+    const CENTER_X = WIDTH / 2;
+    const CENTER_Y = HEIGHT / 2;
+    const OUTER_RADIUS = 215;
+    const INNER_RADIUS = 70;
+    const BASE_KNOB_RADIUS = 22;
+    
+    const numColors = BASE_COLORS.length;
+    const step = (Math.PI * 2) / numColors;
+
+    centersOutside.current = [];
+    centersInside.current = [];
+    slidersPos.current = [];
+    knobSizesRef.current = [BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS];
+
+    for (let i = 0; i < numColors; i++) {
+      const angle = i * step;
+      const x0 = CENTER_X + Math.sin(angle) * INNER_RADIUS;
+      const y0 = CENTER_Y - Math.cos(angle) * INNER_RADIUS;
+      const x1 = CENTER_X + Math.sin(angle) * OUTER_RADIUS;
+      const y1 = CENTER_Y - Math.cos(angle) * OUTER_RADIUS;
+
+      centersInside.current.push({ x: x0, y: y0 });
+      centersOutside.current.push({ x: x1, y: y1 });
+      slidersPos.current.push({ x: x1, y: y1 });
+    }
   };
-  requestRef.current = requestAnimationFrame(loop);
-  return () => cancelAnimationFrame(requestRef.current!);
-}, [sliders, mixedColor, targetColor, draggingIndex, knobSizes]);
-```
 
-**优势:**
-- 60 FPS 流畅渲染
-- 动画过渡平滑无卡顿
-- 自动同步 anime.js 动画
-- 依赖变化自动重启循环
+  // 绘制循环
+  const draw = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
----
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-### 7. 碰撞检测优化 ✅
-**直接计算方式(移除 sliderRefs):**
-```typescript
-// 实时计算旋钮位置
-const t = slider.position;
-const angle = slider.angle;
-const sinA = Math.sin(angle);
-const cosA = Math.cos(angle);
+    // 使用逻辑坐标系统 (总是 BASE_WIDTH),与实际显示尺寸分离
+    const WIDTH = BASE_WIDTH;
+    const HEIGHT = BASE_HEIGHT;
+    const CENTER_X = WIDTH / 2;
+    const CENTER_Y = HEIGHT / 2;
+    const OUTER_RADIUS = 215;
+    const INNER_RADIUS = 70;
+    const BASE_KNOB_RADIUS = 22;
+    const ACTIVE_KNOB_RADIUS = 32;
 
-const outerX = CENTER_X + sinA * OUTER_RADIUS;
-const outerY = CENTER_Y + cosA * OUTER_RADIUS;
+    // 支持高 DPI 屏幕
+    const dpr = window.devicePixelRatio || 1;
+    // 使用响应式缩放后的实际显示尺寸
+    const displayWidth = canvasSize.width;
+    const displayHeight = canvasSize.height;
+    
+    // 设置 Canvas 实际像素尺寸 (高 DPI)
+    if (canvas.width !== displayWidth * dpr || canvas.height !== displayHeight * dpr) {
+      canvas.width = displayWidth * dpr;
+      canvas.height = displayHeight * dpr;
+      // CSS 显示尺寸与 canvas 内部尺寸匹配
+      canvas.style.width = displayWidth + 'px';
+      canvas.style.height = displayHeight + 'px';
+    }
 
-const kx = outerX - sinA * t * (OUTER_RADIUS - INNER_RADIUS);
-const ky = outerY - cosA * t * (OUTER_RADIUS - INNER_RADIUS);
+    // 每次绘制前都重置变换并应用缩放
+    // 需要同时应用 DPI 缩放和响应式缩放，以便在逻辑坐标系 (500×500) 上绘制
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr * canvasSize.scale, dpr * canvasSize.scale);
 
-const dist = Math.sqrt(Math.pow(mouseX - kx, 2) + Math.pow(mouseY - ky, 2));
+    // 清空
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-// 40px 宽容碰撞检测
-if (dist < 40) {
-  setDraggingIndex(i);
-  // ...
-}
-```
+    // 1. 绘制轨道（连线）
+    for (let i = 0; i < BASE_COLORS.length; i++) {
+      const innerPos = centersInside.current[i];
+      const outerPos = centersOutside.current[i];
 
-**改进点:**
-- 移除了 `sliderRefs` 缓存系统
-- 每次直接计算坐标(性能影响可忽略)
-- 代码更简洁,逻辑更清晰
-- 与 RadialMixer 完全一致
+      ctx.beginPath();
+      ctx.moveTo(innerPos.x, innerPos.y);
+      ctx.lineTo(outerPos.x, outerPos.y);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
 
----
+    // 2. 绘制旋钮
+    for (let i = 0; i < BASE_COLORS.length; i++) {
+      const pos = slidersPos.current[i];
+      const currentRadius = knobSizesRef.current[i];
+      const hex = BASE_COLORS[i].hex;
 
-## 技术细节对比
+      // 阴影
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y + 4, currentRadius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.fill();
 
-| 特性 | 旧版 RadialPaletteMixer | 新版(优化后) | RadialMixer |
-|------|------------------------|-------------|-------------|
-| 轨道样式 | 双层+渐变+发光 | 单层灰线 | 单层灰线 ✅ |
-| 旋钮动画 | slider.scale state | knobSizes ref | knobSizes ref ✅ |
-| 碰撞检测 | sliderRefs 缓存 | 实时计算 | 实时计算 ✅ |
-| 渲染循环 | useEffect 触发 | requestAnimationFrame | requestAnimationFrame ✅ |
-| 标签定位 | 固定外侧 | 智能内外切换 | 智能切换 ✅ |
-| 中心阴影 | 无 | +5px 偏移 | +5px 偏移 ✅ |
-| Mosaic | 20x20格子 | 15x15格子 | 15x15格子 ✅ |
+      // 旋钮本体
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, currentRadius, 0, Math.PI * 2);
+      ctx.fillStyle = hex;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
 
----
+    // 3. 绘制中心混合区域
+    // 阴影
+    ctx.beginPath();
+    ctx.arc(CENTER_X, CENTER_Y + 5, INNER_RADIUS - 5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fill();
 
-## 代码变更清单
+    // 中心圆
+    ctx.beginPath();
+    ctx.arc(CENTER_X, CENTER_Y, INNER_RADIUS - 5, 0, Math.PI * 2);
+    
+    if (!finalColor) {
+      // 空状态 - 显示浅灰色背景
+      ctx.fillStyle = '#f1f5f9';
+      ctx.fill();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    } else {
+      // 有混合结果
+      ctx.fillStyle = finalColor;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
 
-### ✅ 已完成的修改
+    // 4. 绘制数据标签（最后绘制，确保在最上层）
+    for (let i = 0; i < BASE_COLORS.length; i++) {
+      // 如果有配比，显示数据标签
+      if (mixRatios[i] > 0.001 || draggedIndexRef.current === i) {
+        const pos = slidersPos.current[i];
+        const currentRadius = knobSizesRef.current[i];
+        const hex = BASE_COLORS[i].hex;
+        const totalRatio = mixRatios.reduce((a, b) => a + b, 0);
+        const percentage = totalRatio > 0 ? (mixRatios[i] / totalRatio * 100).toFixed(1) : '0.0';
+        const ml = (parseFloat(percentage) * totalVolume / 100).toFixed(1);
 
-1. **components/RadialPaletteMixer.tsx** (主文件)
-   - Line 35-37: 添加 `knobSizes.current[]` 和 `requestRef`
-   - Line 48-50: 添加 `BASE_KNOB_RADIUS`, `ACTIVE_KNOB_RADIUS`
-   - Line 69: 初始化 `knobSizes.current`
-   - Line 130-240: 重写 `draw()` 函数,简化轨道绘制
-   - Line 265-271: 添加 requestAnimationFrame 循环
-   - Line 313-347: 重写 `handleMouseDown`,使用 anime.js
-   - Line 355-380: 重写 hover 检测逻辑
-   - Line 450-465: 重写 `handleMouseUp`,使用 anime.js
-   - Line 274-283: 删除重复的 `shadeColor` 函数
+        // 标签位置（旋钮外侧）
+        const angle = Math.atan2(pos.y - CENTER_Y, pos.x - CENTER_X);
+        const labelDist = currentRadius + 35;
+        const tx = pos.x + Math.cos(angle) * labelDist;
+        const ty = pos.y + Math.sin(angle) * labelDist;
 
-### ⚠️ 遗留问题
+        // 绘制标签背景
+        ctx.font = 'bold 12px "JetBrains Mono", monospace';
+        const text1 = `${ml}ml`;
+        const text2 = `${percentage}%`;
+        const w1 = ctx.measureText(text1).width;
+        const w2 = ctx.measureText(text2).width;
+        const maxW = Math.max(w1, w2);
+        const padding = 8;
+        const boxW = maxW + padding * 2;
+        const boxH = 36;
 
-1. **Line 581**: TypeScript linter 误报(冒号警告) - 可忽略
-2. **旋钮尺寸动态缩放**: 当前仅在拖动时变化,未来可根据 weight 实时调整
+        // 绘制阴影
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 2;
+        
+        ctx.beginPath();
+        ctx.roundRect(tx - boxW/2, ty - boxH/2, boxW, boxH, 6);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.98)';
+        ctx.fill();
+        
+        // 清除阴影设置以免影响边框
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        
+        ctx.strokeStyle = hex;
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
----
+        // 绘制文字
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText(text1, tx, ty - 7);
+        
+        ctx.font = '10px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(text2, tx, ty + 7);
+      }
+    }
 
-## 测试验证
+    animationFrameRef.current = requestAnimationFrame(draw);
+  };
 
-### 视觉测试
-- ✅ 轨道显示为简洁灰线
-- ✅ 旋钮点击时弹性放大
-- ✅ 旋钮释放时平滑缩小
-- ✅ 标签在内圈时自动向内偏移
-- ✅ 中心圆显示阴影效果
-- ✅ 空状态显示棋盘格纹理
-- ✅ 目标色显示为内圈(35%半径)
+  // 绘制马赛克（空状态）
+  const drawMosaic = (ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number) => {
+    const colors = [
+      { base: '#f1f5f9', alpha: 0.95 },
+      { base: '#e2e8f0', alpha: 0.85 },
+      { base: '#cbd5e1', alpha: 0.75 },
+      { base: '#94a3b8', alpha: 0.65 }
+    ];
+    const gridSize = 8; // 更小的格子
+    const steps = Math.ceil(radius * 2 / gridSize);
+    const cornerRadius = 2;
 
-### 交互测试
-- ✅ 碰撞检测准确(40px 宽容度)
-- ✅ 拖动流畅无卡顿(60 FPS)
-- ✅ 动画过渡自然(elastic + quad easing)
-- ✅ 触摸设备支持(onTouchStart/Move/End)
+    ctx.save();
+    // 设置裁剪区域
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
 
-### 性能测试
-- ✅ requestAnimationFrame 循环稳定
-- ✅ anime.js 动画不阻塞主线程
-- ✅ 19个旋钮同时渲染无性能问题
+    for (let i = -steps; i <= steps; i++) {
+      for (let j = -steps; j <= steps; j++) {
+        const x = cx + i * gridSize - radius;
+        const y = cy + j * gridSize - radius;
+        const dx = x + gridSize/2 - cx;
+        const dy = y + gridSize/2 - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist < radius - gridSize/2) {
+          const colorIndex = (i + j + 100) % colors.length;
+          const color = colors[colorIndex];
+          
+          // 根据距离调整透明度
+          const alpha = color.alpha * (1 - dist / radius * 0.3);
+          ctx.fillStyle = color.base + Math.round(alpha * 255).toString(16).padStart(2, '0');
+          
+          // 绘制圆角矩形
+          ctx.beginPath();
+          ctx.roundRect(x, y, gridSize - 1, gridSize - 1, cornerRadius);
+          ctx.fill();
+        }
+      }
+    }
+    ctx.restore();
+  };
 
----
+  // 计算投影点t值
+  const getT = (ax: number, ay: number, bx: number, by: number, qx: number, qy: number): number => {
+    const ux = bx - ax;
+    const uy = by - ay;
+    const vx = qx - ax;
+    const vy = qy - ay;
 
-## 未来优化方向
+    const uMag = Math.sqrt(ux * ux + uy * uy);
+    const d = (ux * vx + uy * vy) / uMag;
+    const t = d / uMag;
 
-### 1. 动态尺寸增强
-```typescript
-// 根据 weight 实时调整旋钮大小
-const dynamicRadius = BASE_KNOB_RADIUS * (1 + slider.weight * 0.5);
-```
+    return Math.max(0, Math.min(1, t));
+  };
 
-### 2. 活跃轨道渐变(可选)
-```typescript
-// 从内圈到旋钮位置显示彩色渐变(仅活跃旋钮)
-if (slider.weight > 0.01) {
-  const gradient = ctx.createLinearGradient(innerX, innerY, kx, ky);
-  gradient.addColorStop(0, slider.color + '40');
-  gradient.addColorStop(1, slider.color);
-  ctx.strokeStyle = gradient;
-  ctx.stroke();
-}
-```
+  // 鼠标/触摸事件处理
+  const handleStart = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-### 3. 重置动画优化
-```typescript
-// 从中心向外的 stagger 动画(已部分实现)
-anime.stagger(80, { from: 'center' })
-```
+    const rect = canvas.getBoundingClientRect();
+    const WIDTH = BASE_WIDTH;
+    const HEIGHT = BASE_HEIGHT;
+    const ACTIVE_KNOB_RADIUS = 32;
+    // 使用逻辑坐标系统 - 基于 BASE_WIDTH/HEIGHT 而非显示尺寸
+    // 关键修复：使用 canvasSize.width/height 作为转换基准
+    const x = (clientX - rect.left) * (WIDTH / canvasSize.width);
+    const y = (clientY - rect.top) * (HEIGHT / canvasSize.height);
 
----
+    // 检测点击了哪个旋钮
+    for (let i = 0; i < BASE_COLORS.length; i++) {
+      const pos = slidersPos.current[i];
+      const radius = knobSizesRef.current[i];
+      const dx = x - pos.x;
+      const dy = y - pos.y;
+      
+      if (Math.sqrt(dx * dx + dy * dy) < radius) {
+        draggedIndexRef.current = i;
+        
+        // 放大动画
+        anime({
+          targets: { radius: knobSizesRef.current[i] },
+          radius: ACTIVE_KNOB_RADIUS,
+          duration: 400,
+          easing: 'easeOutElastic(1, .6)',
+          update: (anim: any) => {
+            knobSizesRef.current[i] = anim.animatables[0].target.radius;
+          }
+        });
+        break;
+      }
+    }
+  };
 
-## 相关文档
+  const handleMove = (clientX: number, clientY: number) => {
+    if (draggedIndexRef.current === -1) return;
 
-- **RadialMixer 参考实现**: `components/RadialMixer.tsx`
-- **Mixbox 物理混色**: `utils/mixbox.ts`
-- **Anime.js 文档**: https://animejs.com/documentation/
-- **Canvas 2D API**: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API
+    // 移动端触控节流优化 - 限制更新频率
+    const now = Date.now();
+    if (now - lastMoveTimeRef.current < 16) return; // ~60fps
+    lastMoveTimeRef.current = now;
 
----
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-**优化日期**: 2025-11-30  
-**优化范围**: 视觉外观 + 交互逻辑 + 动画系统  
-**参考标准**: RadialMixer 专业级实现
+    const rect = canvas.getBoundingClientRect();
+    const WIDTH = BASE_WIDTH;
+    const HEIGHT = BASE_HEIGHT;
+    const CENTER_X = WIDTH / 2;
+    const CENTER_Y = HEIGHT / 2;
+    const OUTER_RADIUS = 215;
+    const INNER_RADIUS = 70;
+    // 使用逻辑坐标系统 - 修复移动设备模式下的坐标转换
+    const x = (clientX - rect.left) * (WIDTH / canvasSize.width);
+    const y = (clientY - rect.top) * (HEIGHT / canvasSize.height);
+
+    const i = draggedIndexRef.current;
+    const outerPos = centersOutside.current[i];
+    const innerPos = centersInside.current[i];
+
+    const t = getT(outerPos.x, outerPos.y, innerPos.x, innerPos.y, x, y);
+    
+    // 更新滑块位置
+    const angle = Math.atan2(outerPos.y - CENTER_Y, outerPos.x - CENTER_X);
+    const distance = OUTER_RADIUS - t * (OUTER_RADIUS - INNER_RADIUS);
+    slidersPos.current[i] = {
+      x: CENTER_X + Math.cos(angle) * distance,
+      y: CENTER_Y + Math.sin(angle) * distance
+    };
+
+    // 更新配比
+    const newRatios = [...mixRatios];
+    newRatios[i] = t;
+    setMixRatios(newRatios);
+
+    // 计算混合颜色
+    const totalWeight = newRatios.reduce((a, b) => a + b, 0);
+    if (totalWeight > 0.001) {
+      // 使用 mixbox 算法混合颜色
+      let latentMix = [0, 0, 0, 0, 0, 0, 0];
+      
+      for (let j = 0; j < BASE_COLORS.length; j++) {
+        if (newRatios[j] > 0.001) {
+          const latent = rgbToLatent(BASE_COLORS[j].hex);
+          if (latent) {
+            const weight = newRatios[j] / totalWeight;
+            for (let k = 0; k < latent.length; k++) {
+              latentMix[k] += latent[k] * weight;
+            }
+          }
+        }
+      }
+      
+      const mixedRgb = latentToRgb(latentMix);
+      if (mixedRgb) {
+        const r = mixedRgb[0].toString(16).padStart(2, '0');
+        const g = mixedRgb[1].toString(16).padStart(2, '0');
+        const b = mixedRgb[2].toString(16).padStart(2, '0');
+        setFinalColor(`#${r}${g}${b}`);
+      }
+    } else {
+      setFinalColor('');
+    }
+  };
+
+  const handleEnd = () => {
+    if (draggedIndexRef.current === -1) return;
+
+    const i = draggedIndexRef.current;
+    const BASE_KNOB_RADIUS = 22;
+    
+    // 恢复大小动画
+    anime({
+      targets: { radius: knobSizesRef.current[i] },
+      radius: BASE_KNOB_RADIUS,
+      duration: 300,
+      easing: 'easeOutQuad',
+      update: (anim: any) => {
+        knobSizesRef.current[i] = anim.animatables[0].target.radius;
+      }
+    });
+
+    draggedIndexRef.current = -1;
+  };
+
+  // 事件绑定
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      e.preventDefault();
+      handleStart(e.clientX, e.clientY);
+    };
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+    const handleMouseUp = () => handleEnd();
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        // 设备模拟模式需要 preventDefault 才能正确触发
+        e.preventDefault();
+        handleStart(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      // 只在拖动时阻止滚动
+      if (draggedIndexRef.current !== -1) {
+        e.preventDefault();
+      }
+      if (e.touches.length > 0) {
+        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+    const handleTouchEnd = () => {
+      handleEnd();
+    };
+
+    canvas.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      canvas.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [mixRatios, canvasSize]);
+
+  // 启动绘制循环
+  useEffect(() => {
+    draw();
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [mixRatios, finalColor, canvasSize]);
+
+  // 重置功能
+  const handleReset = () => {
+    setMixRatios([0, 0, 0, 0, 0]);
+    setFinalColor('');
+    
+    // 重置滑块位置
+    for (let i = 0; i < BASE_COLORS.length; i++) {
+      slidersPos.current[i] = { ...centersOutside.current[i] };
+    }
+  };
+
+  const translations = {
+    zh: {
+      title: '基础色自由混',
+      subtitle: '拖动色块调整配比',
+      volume: '总量',
+      reset: '重置',
+      result: '混合结果',
+      noMix: '拖动色块开始混色',
+      formula: '配方'
+    },
+    en: {
+      title: 'Basic Color Free Mixer',
+      subtitle: 'Drag knobs to adjust ratios',
+      volume: 'Total Volume',
+      reset: 'Reset',
+      result: 'Mixed Result',
+      noMix: 'Drag knobs to start mixing',
+      formula: 'Formula'
+    },
+    ja: {
+      title: 'ベース色フリーミックス',
+      subtitle: 'ノブをドラッグして調整',
+      volume: '総量',
+      reset: 'リセット',
+      result: 'ミックス結果',
+      noMix: 'ノブをドラッグして開始',
+      formula: '配合'
+    }
+  };
+
+  const t = translations[lang];
+
+  return (
+    <div ref={containerRef} className="grid gap-2 h-full">
+      {/* Header */}
+      <div>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{t.title}</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.subtitle}</p>
+      </div>
+
+      {/* 控制栏 */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.volume}:</label>
+          <input
+            type="number"
+            value={totalVolume}
+            onChange={(e) => setTotalVolume(Math.max(1, parseInt(e.target.value) || 20))}
+            className="w-16 px-1.5 py-0.5 text-xs border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+            min="1"
+            max="100"
+          />
+          <span className="text-xs text-slate-600 dark:text-slate-400">ml</span>
+        </div>
+        
+        <button
+          onClick={handleReset}
+          className="px-2.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+        >
+          {t.reset}
+        </button>
+      </div>
+
+      {/* Canvas - Fixed height to prevent shifting */}
+      <div className="flex items-center justify-center">
+        <canvas
+          ref={canvasRef}
+          style={{ 
+            touchAction: 'none',
+            display: 'block',
+            margin: '0 auto'
+          }}
+        />
+      </div>
+
+      {/* 配方显示 - 始终显示 */}
+      <div>
+        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">{t.formula}</h3>
+          <div className="space-y-1 min-h-[60px]">
+            {finalColor ? (
+              BASE_COLORS.map((color, i) => {
+                const totalRatio = mixRatios.reduce((a, b) => a + b, 0);
+                const percentage = totalRatio > 0 ? (mixRatios[i] / totalRatio * 100) : 0;
+                const ml = (percentage * totalVolume / 100).toFixed(1);
+                
+                if (percentage < 0.1) return null;
+                
+                return (
+                  <div key={color.id} className="flex items-center gap-1.5 text-xs">
+                    <div
+                      className="w-3.5 h-3.5 rounded border-2 border-white dark:border-slate-600"
+                      style={{ backgroundColor: color.hex }}
+                    />
+                    <span className="font-mono text-slate-600 dark:text-slate-400">
+                      {color.brand} {color.code}
+                    </span>
+                    <span className="flex-1 text-slate-500 dark:text-slate-500">{color.name}</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{ml}ml</span>
+                    <span className="text-slate-500 dark:text-slate-500">({percentage.toFixed(1)}%)</span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="flex items-center justify-center h-[60px]">
+                <p className="text-xs text-slate-400 dark:text-slate-500">{t.noMix}</p>
+              </div>
+            )}
+          </div>
+          
+          {finalColor && (
+            <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{t.result}:</span>
+              <div
+                className="w-6 h-6 rounded border-2 border-white dark:border-slate-600 shadow-md"
+                style={{ backgroundColor: finalColor }}
+              />
+              <span className="font-mono text-xs text-slate-600 dark:text-slate-400">{finalColor.toUpperCase()}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BasicColorMixer;

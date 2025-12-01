@@ -46,12 +46,12 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
 
   return (
     <div className="w-full">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-bold text-macaron-blue tracking-wider">DETECTED PALETTE</h3>
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-xs sm:text-sm font-bold text-macaron-blue tracking-wider">DETECTED PALETTE</h3>
         <button 
             onClick={onAddManual}
             disabled={!hasImage}
-            className={`text-xs px-3 py-1 border rounded-full transition-colors ${
+            className={`text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
               hasImage 
                 ? 'border-macaron-green text-macaron-green hover:bg-macaron-green hover:text-white cursor-pointer'
                 : 'border-slate-300 text-slate-300 cursor-not-allowed opacity-50'
@@ -62,32 +62,41 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
         </button>
       </div>
       
-      <div ref={containerRef} className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {colors.length === 0 ? (
+        <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-xs sm:text-sm">
+          {hasImage ? (
+            <p>👆 Click &quot;MANUAL PICK&quot; to select colors from the image</p>
+          ) : (
+            <p>No colors detected. Upload an image to get started.</p>
+          )}
+        </div>
+      ) : (
+        <div ref={containerRef} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
         {colors.map((c) => (
           <div 
             key={c.id}
             onClick={() => onColorSelect(c)}
             className={`
-              relative p-3 rounded-lg border-2 cursor-pointer transition-all duration-300 group
+              relative p-2 sm:p-3 rounded-lg border-2 cursor-pointer transition-all duration-300 group
               ${selectedColorId === c.id ? 'border-slate-800 shadow-md transform -translate-y-1' : 'border-slate-100 hover:border-macaron-pink'}
             `}
           >
             <div 
-              className="w-full h-16 rounded-md mb-2 shadow-inner" 
+              className="w-full h-12 sm:h-16 rounded-md mb-2 shadow-inner" 
               style={{ backgroundColor: c.hex }}
             />
             <div className="flex justify-between items-end relative">
-                <div>
-                    <p className="font-mono text-xs text-slate-600 font-bold">{c.hex}</p>
-                    <p className="font-mono text-[10px] text-slate-400">
+                <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[10px] sm:text-xs text-slate-600 font-bold truncate">{c.hex}</p>
+                    <p className="font-mono text-[9px] sm:text-[10px] text-slate-400">
                         C{c.cmyk.c} M{c.cmyk.m} Y{c.cmyk.y} K{c.cmyk.k}
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     {c.source === 'auto' ? (
-                        <span className="text-[10px] bg-slate-100 text-slate-400 px-1 rounded">AUTO</span>
+                        <span className="text-[9px] sm:text-[10px] bg-slate-100 text-slate-400 px-1 rounded">AUTO</span>
                     ) : (
-                        <span className="text-[10px] bg-macaron-yellow text-slate-600 px-1 rounded">USR</span>
+                        <span className="text-[9px] sm:text-[10px] bg-macaron-yellow text-slate-600 px-1 rounded">USR</span>
                     )}
                     
                     {/* Selection Indicator - Inside Info Area */}
@@ -117,7 +126,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
             </button>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

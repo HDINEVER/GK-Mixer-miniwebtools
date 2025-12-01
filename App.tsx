@@ -235,7 +235,7 @@ const App: React.FC = () => {
                               // Keep colors data - don't clear setColors([])
                             }}
                             className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 rounded"
-                            title={lang === 'zh' ? '关闭图片(保留颜色)' : lang === 'ja' ? '画像を閉じる(色を保持)' : 'Close image (keep colors)'}
+                            title={lang === 'zh' ? '关闭图片 (保留颜色)' : lang === 'ja' ? '画像を閉じる (色を保持)' : 'Close image (keep colors)'}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -303,24 +303,26 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* Always show color palette if colors exist */}
-            {colors.length > 0 && (
-                <div className="mt-6">
-                    <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                            {t.extractedColors || (lang === 'zh' ? '已提取颜色' : lang === 'ja' ? '抽出された色' : 'Extracted Colors')}
-                        </span>
-                        <button
-                            onClick={() => {
-                                setColors([]);
-                                setSelectedColorId(null);
-                            }}
-                            className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                            title={lang === 'zh' ? '清空所有颜色' : lang === 'ja' ? 'すべての色をクリア' : 'Clear all colors'}
-                        >
-                            🗑️ {lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}
-                        </button>
-                    </div>
+            {/* Show color palette if colors exist OR if image is loaded (to allow manual picking) */}
+            {(colors.length > 0 || sourceImage) && (
+                <div className="mt-4 sm:mt-6">
+                    {colors.length > 0 && (
+                        <div className="flex justify-between items-center mb-2 sm:mb-3">
+                            <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
+                                {t.extractedColors || (lang === 'zh' ? '已提取颜色' : lang === 'ja' ? '抽出された色' : 'Extracted Colors')}
+                            </span>
+                            <button
+                                onClick={() => {
+                                    setColors([]);
+                                    setSelectedColorId(null);
+                                }}
+                                className="text-[10px] sm:text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                title={lang === 'zh' ? '清空所有颜色' : lang === 'ja' ? 'すべての色をクリア' : 'Clear all colors'}
+                            >
+                                🗑️ {lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}
+                            </button>
+                        </div>
+                    )}
                     <ColorPalette 
                         colors={colors} 
                         onColorSelect={(c) => setSelectedColorId(c.id)}
@@ -360,7 +362,7 @@ const App: React.FC = () => {
                     </div>
                     
                     {rightPanelTab === 'mixer' && (
-                        <div className="flex gap-2">
+                        <div className="hidden md:flex gap-2">
                             <div className="px-2 py-1 bg-macaron-blue/20 text-macaron-blue text-[10px] rounded font-mono font-bold">CMYK</div>
                             <div className="px-2 py-1 bg-macaron-pink/20 text-macaron-pink text-[10px] rounded font-mono font-bold">MR.HOBBY</div>
                             <div className="px-2 py-1 bg-macaron-purple/20 text-macaron-purple text-[10px] rounded font-mono font-bold">GAIA</div>

@@ -5,14 +5,16 @@ import MixerResult from './components/MixerResult';
 import PaletteVisualizer from './components/PaletteVisualizer';
 import RadialPaletteMixer from './components/RadialPaletteMixer';
 import BasicColorMixer from './components/BasicColorMixer';
-import { ColorData, AppMode, RGB, Language, Theme } from './types';
+import { ColorData, AppMode, RGB, Language, Theme, ColorSpace } from './types';
 import { extractProminentColors, generateId, rgbToCmyk, rgbToHex } from './utils/colorUtils';
+import { convertToWorkingSpace, isInGamut } from './utils/colorSpaceConverter';
 import { translations } from './utils/translations';
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.ANALYZE);
   const [lang, setLang] = useState<Language>('zh');
   const [theme, setTheme] = useState<Theme>('light');
+  const [colorSpace, setColorSpace] = useState<ColorSpace>('srgb');
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [colors, setColors] = useState<ColorData[]>([]);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
@@ -48,7 +50,7 @@ const App: React.FC = () => {
     setScale(1);
     setOffset({ x: 0, y: 0 });
     
-    const extracted = await extractProminentColors(img);
+    const extracted = await extractProminentColors(img, 5, colorSpace);
     setColors(extracted);
     if (extracted.length > 0) {
       setSelectedColorId(extracted[0].id);
@@ -75,9 +77,9 @@ const App: React.FC = () => {
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
 
-    // Use sRGB colorspace for consistent color extraction with Photoshop
+    // Use user-selected colorspace for color extraction
     const ctx = canvasRef.current.getContext('2d', { 
-      colorSpace: 'srgb',
+      colorSpace: colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace, // Adobe RGB fallback to sRGB in canvas
       willReadFrequently: true 
     });
     if (ctx) {
@@ -88,7 +90,13 @@ const App: React.FC = () => {
         const pixelY = Math.floor(y * scaleY);
 
         const pixel = ctx.getImageData(pixelX, pixelY, 1, 1).data;
-        const rgb: RGB = { r: pixel[0], g: pixel[1], b: pixel[2] };
+        let rgb: RGB = { r: pixel[0], g: pixel[1], b: pixel[2] };
+        
+        // 如果是Adobe RGB模式,需要转换到工作空间(sRGB)
+        if (colorSpace === 'adobe-rgb') {
+          rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
+        }
+        
         const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
         
         const newColor: ColorData = {
@@ -96,7 +104,8 @@ const App: React.FC = () => {
             hex,
             rgb,
             cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
-            source: 'manual'
+            source: 'manual',
+            colorSpace: colorSpace
         };
 
         setColors(prev => [newColor, ...prev]);
@@ -161,10 +170,10 @@ const App: React.FC = () => {
   React.useEffect(() => {
     if (sourceImage && canvasRef.current && imageRef.current) {
         const canvas = canvasRef.current;
-        // Use sRGB colorspace for accurate color display and extraction
-        // This ensures consistent color values with Photoshop's sRGB mode
+        // Use user-selected colorspace for accurate color display
+        const canvasColorSpace = colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace;
         const ctx = canvas.getContext('2d', { 
-          colorSpace: 'srgb',
+          colorSpace: canvasColorSpace,
           willReadFrequently: true 
         });
         const img = imageRef.current;
@@ -176,7 +185,7 @@ const App: React.FC = () => {
              ctx.drawImage(img, 0, 0);
         }
     }
-  }, [sourceImage]);
+  }, [sourceImage, colorSpace]); // Re-render canvas when colorSpace changes
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 flex flex-col">
@@ -193,7 +202,32 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex flex-wrap gap-4 items-center">
-             {/* Controls */}
+             {/* Color Space Selector */}
+             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
+                <button 
+                  onClick={() => setColorSpace('srgb')} 
+                  className={`px-2 py-1 text-xs rounded transition-all ${colorSpace === 'srgb' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                  title={t.colorSpaceSrgb}
+                >
+                  sRGB
+                </button>
+                <button 
+                  onClick={() => setColorSpace('display-p3')} 
+                  className={`px-2 py-1 text-xs rounded transition-all ${colorSpace === 'display-p3' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                  title={t.colorSpaceP3}
+                >
+                  P3
+                </button>
+                <button 
+                  onClick={() => setColorSpace('adobe-rgb')} 
+                  className={`px-2 py-1 text-xs rounded transition-all ${colorSpace === 'adobe-rgb' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                  title={t.colorSpaceAdobe}
+                >
+                  Adobe
+                </button>
+             </div>
+
+             {/* Language Selector */}
              <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
                 <button onClick={() => setLang('en')} className={`px-2 py-1 text-xs rounded ${lang === 'en' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>EN</button>
                 <button onClick={() => setLang('zh')} className={`px-2 py-1 text-xs rounded ${lang === 'zh' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>中文</button>
@@ -209,6 +243,20 @@ const App: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Color Space Info Banner */}
+      {colorSpace !== 'srgb' && (
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-b border-purple-100 dark:border-purple-800">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 py-2">
+            <div className="flex items-center gap-2 text-xs text-purple-700 dark:text-purple-300">
+              <span className="font-bold">🎨 {t.colorSpace}:</span>
+              <span>{colorSpace === 'display-p3' ? t.colorSpaceP3 : t.colorSpaceAdobe}</span>
+              <span className="text-purple-500 dark:text-purple-400">•</span>
+              <span className="text-purple-600 dark:text-purple-400 italic">{t.outOfGamutHint}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">

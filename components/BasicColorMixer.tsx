@@ -22,10 +22,13 @@ const BASE_COLORS = [
 const BASE_WIDTH = 500;
 const BASE_HEIGHT = 500;
 
-// 计算响应式尺寸
-const getCanvasSize = () => {
-  const isMobile = window.innerWidth < 768;
-  const scale = isMobile ? Math.min(window.innerWidth - 40, 380) / BASE_WIDTH : 1;
+// 计算响应式尺寸 - 基于容器宽度的流式缩放
+const getCanvasSize = (containerWidth?: number) => {
+  const fallbackWidth = typeof window !== 'undefined' ? window.innerWidth : BASE_WIDTH;
+  const rawWidth = containerWidth ?? fallbackWidth;
+  const paddedWidth = Math.max(0, rawWidth - 32); // 留出内边距
+  const availableWidth = Math.min(Math.max(paddedWidth, 240), BASE_WIDTH); // 保持最小宽度,但不超过基础宽度
+  const scale = availableWidth / BASE_WIDTH;
   return {
     width: BASE_WIDTH * scale,
     height: BASE_HEIGHT * scale,
@@ -34,6 +37,7 @@ const getCanvasSize = () => {
 };
 
 const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
   const [mixRatios, setMixRatios] = useState<number[]>([0, 0, 0, 0, 0]);
@@ -53,15 +57,25 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
 
   // 响应式调整画布尺寸
   useEffect(() => {
-    const handleResize = () => {
-      const newSize = getCanvasSize();
+    const updateSize = () => {
+      const width = containerRef.current?.offsetWidth;
+      const newSize = getCanvasSize(width);
       setCanvasSize(newSize);
       initializePositions(newSize.scale);
     };
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    updateSize();
+    const resizeObserver = new ResizeObserver(() => updateSize());
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    const handleWindowResize = () => updateSize();
+    window.addEventListener('resize', handleWindowResize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', handleWindowResize);
+    };
   }, []);
 
   // 初始化位置
@@ -103,6 +117,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // 使用逻辑坐标系统(总是BASE_WIDTH),与实际显示尺寸分离
     const WIDTH = BASE_WIDTH;
     const HEIGHT = BASE_HEIGHT;
     const CENTER_X = WIDTH / 2;
@@ -114,20 +129,23 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
 
     // 支持高DPI屏幕
     const dpr = window.devicePixelRatio || 1;
-    const displayWidth = WIDTH;
-    const displayHeight = HEIGHT;
+    // 使用响应式缩放后的实际显示尺寸
+    const displayWidth = canvasSize.width;
+    const displayHeight = canvasSize.height;
     
-    // 设置Canvas实际像素尺寸
+    // 设置Canvas实际像素尺寸(高DPI)
     if (canvas.width !== displayWidth * dpr || canvas.height !== displayHeight * dpr) {
       canvas.width = displayWidth * dpr;
       canvas.height = displayHeight * dpr;
+      // CSS显示尺寸与canvas内部尺寸匹配
       canvas.style.width = displayWidth + 'px';
       canvas.style.height = displayHeight + 'px';
     }
 
     // 每次绘制前都重置变换并应用缩放
+    // 需要同时应用DPI缩放和响应式缩放,以便在逻辑坐标系(500×500)上绘制
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(dpr, dpr);
+    ctx.scale(dpr * canvasSize.scale, dpr * canvasSize.scale);
 
     // 清空
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -460,6 +478,8 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
 
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length > 0) {
+        // 设备模拟模式需要 preventDefault 才能正确触发
+        e.preventDefault();
         handleStart(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
@@ -480,7 +500,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
 
@@ -548,9 +568,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
   const t = translations[lang];
 
   return (
-    <div className="grid gap-2 h-full" style={{
-      gridTemplateRows: `auto auto ${canvasSize.height}px auto`
-    }}>
+    <div ref={containerRef} className="grid gap-2 h-full">
       {/* Header */}
       <div>
         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{t.title}</h2>
@@ -584,13 +602,16 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
       <div className="flex items-center justify-center">
         <canvas
           ref={canvasRef}
-          className="max-w-full"
-          style={{ touchAction: 'none' }}
+          style={{ 
+            touchAction: 'none',
+            display: 'block',
+            margin: '0 auto'
+          }}
         />
       </div>
 
       {/* 配方显示 - 始终显示 */}
-      <div className="min-h-0">
+      <div>
         <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
           <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">{t.formula}</h3>
           <div className="space-y-1 min-h-[60px]">

@@ -1,5 +1,6 @@
-import { RGB, CMYK, ColorData, PaintBrand } from '../types';
+import { RGB, CMYK, ColorData, PaintBrand, ColorSpace } from '../types';
 import * as mixbox from './mixbox';
+import { convertToWorkingSpace } from './colorSpaceConverter';
 
 // Helper to create unique IDs
 export const generateId = (): string => Math.random().toString(36).substr(2, 9);
@@ -394,13 +395,18 @@ export const findNearestPaints = (targetHex: string, count: number = 3): PaintBr
   return sorted.slice(0, count);
 };
 
-export const extractProminentColors = (imgElement: HTMLImageElement, count: number = 5): Promise<ColorData[]> => {
+export const extractProminentColors = (
+  imgElement: HTMLImageElement, 
+  count: number = 5,
+  colorSpace: ColorSpace = 'srgb'
+): Promise<ColorData[]> => {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
-    // Use sRGB colorspace and willReadFrequently for accurate color extraction
-    // This ensures consistent color values with Photoshop's sRGB mode
+    // Use specified colorspace for color extraction
+    // Adobe RGB uses sRGB as fallback with manual conversion
+    const canvasColorSpace = colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace;
     const ctx = canvas.getContext('2d', { 
-      colorSpace: 'srgb',
+      colorSpace: canvasColorSpace,
       willReadFrequently: true 
     });
     if (!ctx) return resolve([]);
@@ -440,13 +446,20 @@ export const extractProminentColors = (imgElement: HTMLImageElement, count: numb
       .map(([hex]) => hex);
 
     const colors: ColorData[] = sortedHex.map(hex => {
-      const rgb = hexToRgb(hex);
+      let rgb = hexToRgb(hex);
+      
+      // 如果是Adobe RGB模式,需要从Canvas提取的sRGB值转换到工作空间
+      if (colorSpace === 'adobe-rgb') {
+        rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
+      }
+      
       return {
         id: generateId(),
-        hex,
+        hex: rgbToHex(rgb.r, rgb.g, rgb.b),
         rgb,
         cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
-        source: 'auto'
+        source: 'auto',
+        colorSpace: colorSpace
       };
     });
 

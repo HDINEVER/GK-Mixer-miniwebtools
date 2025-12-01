@@ -39,7 +39,13 @@ export const translations = {
     tabMixer: 'Mixer',
     tabVisualizer: 'Visualizer',
     visualizerTitle: 'PALETTE VISUALIZER',
-    visualizerDesc: 'Choose a visualization mode to showcase your extracted color palette'
+    visualizerDesc: 'Choose a visualization mode to showcase your extracted color palette',
+    colorSpace: 'COLOR SPACE',
+    colorSpaceSrgb: 'sRGB (Standard)',
+    colorSpaceP3: 'Display P3 (Wide Gamut)',
+    colorSpaceAdobe: 'Adobe RGB (1998)',
+    outOfGamut: '⚠️ Out of gamut',
+    outOfGamutHint: 'This color may look different on standard displays'
   },
   zh: {
     title: 'GK_混色模拟器.exe',
@@ -79,7 +85,13 @@ export const translations = {
     tabMixer: '混色台',
     tabVisualizer: '调色板展示',
     visualizerTitle: '调色板可视化',
-    visualizerDesc: '选择一种可视化模式来展示您提取的颜色调色板'
+    visualizerDesc: '选择一种可视化模式来展示您提取的颜色调色板',
+    colorSpace: '色彩空间',
+    colorSpaceSrgb: 'sRGB (标准)',
+    colorSpaceP3: 'Display P3 (广色域)',
+    colorSpaceAdobe: 'Adobe RGB (1998)',
+    outOfGamut: '⚠️ 超出色域',
+    outOfGamutHint: '此颜色在普通显示器上可能失真'
   },
   ja: {
     title: 'GK_調色シミュレーター.exe',
@@ -119,6 +131,12 @@ export const translations = {
     tabMixer: 'ミキサー',
     tabVisualizer: 'ビジュアライザー',
     visualizerTitle: 'パレットビジュアライザー',
-    visualizerDesc: '抽出されたカラーパレットを展示するビジュアライゼーションモードを選択します'
+    visualizerDesc: '抽出されたカラーパレットを展示するビジュアライゼーションモードを選択します',
+    colorSpace: '色空間',
+    colorSpaceSrgb: 'sRGB (標準)',
+    colorSpaceP3: 'Display P3 (広色域)',
+    colorSpaceAdobe: 'Adobe RGB (1998)',
+    outOfGamut: '⚠️ 色域外',
+    outOfGamutHint: 'この色は標準ディスプレイで異なって見える可能性があります'
   }
 };

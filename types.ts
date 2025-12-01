@@ -17,6 +17,7 @@ export interface ColorData {
   rgb: RGB;
   cmyk: CMYK;
   source: 'auto' | 'manual';
+  colorSpace?: ColorSpace; // 色彩空间标识
 }
 
 export interface PaintBrand {
@@ -40,3 +41,4 @@ export enum AppMode {
 
 export type Language = 'en' | 'zh' | 'ja';
 export type Theme = 'light' | 'dark';
+export type ColorSpace = 'srgb' | 'display-p3' | 'adobe-rgb';

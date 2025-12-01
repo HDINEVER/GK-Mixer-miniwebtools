@@ -25,10 +25,14 @@ interface SliderState {
 const BASE_WIDTH = 450;
 const BASE_HEIGHT = 450;
 
-// 计算响应式尺寸
+// 计算响应式尺寸 - 纯粹基于可用宽度,不区分设备类型
 const getCanvasSize = () => {
-  const isMobile = window.innerWidth < 768;
-  const scale = isMobile ? Math.min(window.innerWidth - 40, 350) / BASE_WIDTH : 1;
+  // 根据视口宽度自动计算可用空间
+  // 窄屏(如手机):留40px边距
+  // 宽屏(如PC):使用基础宽度或留40px边距,取较小值
+  const viewportWidth = window.innerWidth;
+  const availableWidth = Math.min(viewportWidth - 40, BASE_WIDTH);
+  const scale = availableWidth / BASE_WIDTH;
   return {
     width: BASE_WIDTH * scale,
     height: BASE_HEIGHT * scale,
@@ -184,20 +188,23 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     
     // 支持高DPI屏幕
     const dpr = window.devicePixelRatio || 1;
-    const displayWidth = WIDTH;
-    const displayHeight = HEIGHT;
+    // 使用响应式缩放后的实际显示尺寸
+    const displayWidth = canvasSize.width;
+    const displayHeight = canvasSize.height;
     
-    // 设置Canvas实际像素尺寸
+    // 设置Canvas实际像素尺寸(高DPI)
     if (canvas.width !== displayWidth * dpr || canvas.height !== displayHeight * dpr) {
       canvas.width = displayWidth * dpr;
       canvas.height = displayHeight * dpr;
+      // CSS显示尺寸与canvas内部尺寸匹配
       canvas.style.width = displayWidth + 'px';
       canvas.style.height = displayHeight + 'px';
     }
     
     // 每次绘制前都重置变换并应用缩放
+    // 需要同时应用DPI缩放和响应式缩放,以便在逻辑坐标系(450×450)上绘制
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(dpr, dpr);
+    ctx.scale(dpr * canvasSize.scale, dpr * canvasSize.scale);
     
     // Clear canvas
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -694,12 +701,11 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         onTouchEnd={(e) => {
           handleMouseUp();
         }}
-        className="rounded-lg cursor-crosshair touch-none"
+        className="rounded-lg cursor-crosshair"
         style={{ 
-          maxWidth: '100%', 
-          height: 'auto',
-          width: `${canvasSize.width}px`,
-          touchAction: draggingIndex !== -1 ? 'none' : 'auto'
+          touchAction: draggingIndex !== -1 ? 'none' : 'auto',
+          display: 'block',
+          margin: '0 auto'
         }}
       />
       

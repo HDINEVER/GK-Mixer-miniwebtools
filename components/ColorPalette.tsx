@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { ColorData } from '../types';
 import { getContrastColor } from '../utils/colorUtils';
+import { isInGamut, getColorSpaceName } from '../utils/colorSpaceConverter';
 
 // Use global anime instance from CDN
 declare var anime: any;
@@ -87,16 +88,27 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
             />
             <div className="flex justify-between items-end relative">
                 <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[10px] sm:text-xs text-slate-600 font-bold truncate">{c.hex}</p>
-                    <p className="font-mono text-[9px] sm:text-[10px] text-slate-400">
+                    <p className="font-mono text-[10px] sm:text-xs text-slate-600 dark:text-slate-300 font-bold truncate">{c.hex}</p>
+                    <p className="font-mono text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500">
                         C{c.cmyk.c} M{c.cmyk.m} Y{c.cmyk.y} K{c.cmyk.k}
                     </p>
+                    {/* Color Space Badge & Gamut Warning */}
+                    {c.colorSpace && c.colorSpace !== 'srgb' && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="text-[8px] bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1 rounded">
+                          {getColorSpaceName(c.colorSpace, 'en')}
+                        </span>
+                        {!isInGamut(c.rgb, c.colorSpace) && (
+                          <span className="text-[8px] text-amber-600 dark:text-amber-400" title="Out of gamut">⚠️</span>
+                        )}
+                      </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     {c.source === 'auto' ? (
-                        <span className="text-[9px] sm:text-[10px] bg-slate-100 text-slate-400 px-1 rounded">AUTO</span>
+                        <span className="text-[9px] sm:text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 px-1 rounded">AUTO</span>
                     ) : (
-                        <span className="text-[9px] sm:text-[10px] bg-macaron-yellow text-slate-600 px-1 rounded">USR</span>
+                        <span className="text-[9px] sm:text-[10px] bg-macaron-yellow dark:bg-yellow-700 text-slate-600 dark:text-yellow-200 px-1 rounded">USR</span>
                     )}
                     
                     {/* Selection Indicator - Inside Info Area */}

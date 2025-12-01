@@ -21,6 +21,21 @@ interface SliderState {
   scale: number;    // Dynamic scale based on weight (for animation)
 }
 
+// Canvas 基础常量
+const BASE_WIDTH = 450;
+const BASE_HEIGHT = 450;
+
+// 计算响应式尺寸
+const getCanvasSize = () => {
+  const isMobile = window.innerWidth < 768;
+  const scale = isMobile ? Math.min(window.innerWidth - 40, 350) / BASE_WIDTH : 1;
+  return {
+    width: BASE_WIDTH * scale,
+    height: BASE_HEIGHT * scale,
+    scale: scale
+  };
+};
+
 const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({ 
   targetColor, 
   availableColors,
@@ -32,22 +47,36 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   const [hoverIndex, setHoverIndex] = useState<number>(-1);
   const [mixedColor, setMixedColor] = useState<string>('');
   const [targetVolume, setTargetVolume] = useState<number>(20);
+  const [canvasSize, setCanvasSize] = useState(getCanvasSize());
   const knobSizes = useRef<number[]>([]); // For anime.js dynamic sizing
   const requestRef = useRef<number>(0); // For animation loop
   const animatingSliders = useRef<boolean>(false);
+  const lastMoveTimeRef = useRef<number>(0); // 触控节流
   
   const t = translations[lang];
   
-  // Canvas dimensions (matching RadialMixer exactly)
-  const WIDTH = 450;
-  const HEIGHT = 450;
+  // Canvas dimensions
+  const WIDTH = BASE_WIDTH;
+  const HEIGHT = BASE_HEIGHT;
   const CENTER_X = WIDTH / 2;
   const CENTER_Y = HEIGHT / 2;
   const OUTER_RADIUS = 200;
   const INNER_RADIUS = 65;
-  const BASE_KNOB_RADIUS = 20;  // Base radius
-  const ACTIVE_KNOB_RADIUS = 30; // Active radius (when dragging)
-  const CENTER_RADIUS = INNER_RADIUS - 5; // Center circle size
+  const BASE_KNOB_RADIUS = 20;
+  const ACTIVE_KNOB_RADIUS = 30;
+  const CENTER_RADIUS = INNER_RADIUS - 5;
+  
+  // 响应式调整画布尺寸
+  useEffect(() => {
+    const handleResize = () => {
+      const newSize = getCanvasSize();
+      setCanvasSize(newSize);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Initialize sliders when available colors change
   useEffect(() => {
@@ -643,19 +672,35 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onTouchStart={(e) => {
-          e.preventDefault();
-          handleMouseDown({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as any);
+          // 不阻止默认,允许触摸开始
+          if (e.touches.length > 0) {
+            handleMouseDown({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as any);
+          }
         }}
         onTouchMove={(e) => {
-          e.preventDefault();
-          handleMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as any);
+          // 只在拖动时阻止滚动
+          if (draggingIndex !== -1) {
+            e.preventDefault();
+          }
+          // 节流优化
+          const now = Date.now();
+          if (now - lastMoveTimeRef.current < 16) return; // ~60fps
+          lastMoveTimeRef.current = now;
+          
+          if (e.touches.length > 0) {
+            handleMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as any);
+          }
         }}
         onTouchEnd={(e) => {
-          e.preventDefault();
           handleMouseUp();
         }}
         className="rounded-lg cursor-crosshair touch-none"
-        style={{ maxWidth: '100%', height: 'auto' }}
+        style={{ 
+          maxWidth: '100%', 
+          height: 'auto',
+          width: `${canvasSize.width}px`,
+          touchAction: draggingIndex !== -1 ? 'none' : 'auto'
+        }}
       />
       
       {/* Readout Panel (like RadialMixer) */}

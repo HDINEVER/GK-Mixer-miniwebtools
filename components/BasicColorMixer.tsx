@@ -18,40 +18,69 @@ const BASE_COLORS = [
   { id: 'gaia-005', brand: 'Gaia', code: '005', name: '光泽黄', hex: '#FFD900' },
 ];
 
-// Canvas 常量
-const WIDTH = 500;
-const HEIGHT = 500;
-const CENTER_X = WIDTH / 2;
-const CENTER_Y = HEIGHT / 2;
-const OUTER_RADIUS = 215;
-const INNER_RADIUS = 70;
-const BASE_KNOB_RADIUS = 22;
-const ACTIVE_KNOB_RADIUS = 32;
+// Canvas 基础常量
+const BASE_WIDTH = 500;
+const BASE_HEIGHT = 500;
+
+// 计算响应式尺寸
+const getCanvasSize = () => {
+  const isMobile = window.innerWidth < 768;
+  const scale = isMobile ? Math.min(window.innerWidth - 40, 380) / BASE_WIDTH : 1;
+  return {
+    width: BASE_WIDTH * scale,
+    height: BASE_HEIGHT * scale,
+    scale: scale
+  };
+};
 
 const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
   const [mixRatios, setMixRatios] = useState<number[]>([0, 0, 0, 0, 0]);
   const [finalColor, setFinalColor] = useState<string>('');
-  const [totalVolume, setTotalVolume] = useState<number>(20); // Default 20ml
+  const [totalVolume, setTotalVolume] = useState<number>(20);
+  const [canvasSize, setCanvasSize] = useState(getCanvasSize());
   
   // 拖动状态
   const draggedIndexRef = useRef<number>(-1);
-  const knobSizesRef = useRef<number[]>([BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS]);
+  const lastMoveTimeRef = useRef<number>(0); // 触控节流
+  const knobSizesRef = useRef<number[]>([22, 22, 22, 22, 22]);
   
   // 位置缓存
   const centersOutside = useRef<Array<{x: number, y: number}>>([]);
   const centersInside = useRef<Array<{x: number, y: number}>>([]);
   const slidersPos = useRef<Array<{x: number, y: number}>>([]);
 
-  // 初始化位置
+  // 响应式调整画布尺寸
   useEffect(() => {
+    const handleResize = () => {
+      const newSize = getCanvasSize();
+      setCanvasSize(newSize);
+      initializePositions(newSize.scale);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // 初始化位置
+  const initializePositions = (scale: number) => {
+    const WIDTH = BASE_WIDTH;
+    const HEIGHT = BASE_HEIGHT;
+    const CENTER_X = WIDTH / 2;
+    const CENTER_Y = HEIGHT / 2;
+    const OUTER_RADIUS = 215;
+    const INNER_RADIUS = 70;
+    const BASE_KNOB_RADIUS = 22;
+    
     const numColors = BASE_COLORS.length;
     const step = (Math.PI * 2) / numColors;
 
     centersOutside.current = [];
     centersInside.current = [];
     slidersPos.current = [];
+    knobSizesRef.current = [BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS];
 
     for (let i = 0; i < numColors; i++) {
       const angle = i * step;
@@ -64,7 +93,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
       centersOutside.current.push({ x: x1, y: y1 });
       slidersPos.current.push({ x: x1, y: y1 });
     }
-  }, []);
+  };
 
   // 绘制循环
   const draw = () => {
@@ -73,6 +102,15 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    const WIDTH = BASE_WIDTH;
+    const HEIGHT = BASE_HEIGHT;
+    const CENTER_X = WIDTH / 2;
+    const CENTER_Y = HEIGHT / 2;
+    const OUTER_RADIUS = 215;
+    const INNER_RADIUS = 70;
+    const BASE_KNOB_RADIUS = 22;
+    const ACTIVE_KNOB_RADIUS = 32;
 
     // 支持高DPI屏幕
     const dpr = window.devicePixelRatio || 1;
@@ -285,6 +323,9 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
+    const WIDTH = BASE_WIDTH;
+    const HEIGHT = BASE_HEIGHT;
+    const ACTIVE_KNOB_RADIUS = 32;
     // 使用显示尺寸计算,不考虑DPI
     const x = (clientX - rect.left) * (WIDTH / rect.width);
     const y = (clientY - rect.top) * (HEIGHT / rect.height);
@@ -317,10 +358,21 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
   const handleMove = (clientX: number, clientY: number) => {
     if (draggedIndexRef.current === -1) return;
 
+    // 移动端触控节流优化 - 限制更新频率
+    const now = Date.now();
+    if (now - lastMoveTimeRef.current < 16) return; // ~60fps
+    lastMoveTimeRef.current = now;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
+    const WIDTH = BASE_WIDTH;
+    const HEIGHT = BASE_HEIGHT;
+    const CENTER_X = WIDTH / 2;
+    const CENTER_Y = HEIGHT / 2;
+    const OUTER_RADIUS = 215;
+    const INNER_RADIUS = 70;
     // 使用显示尺寸计算
     const x = (clientX - rect.left) * (WIDTH / rect.width);
     const y = (clientY - rect.top) * (HEIGHT / rect.height);
@@ -378,6 +430,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     if (draggedIndexRef.current === -1) return;
 
     const i = draggedIndexRef.current;
+    const BASE_KNOB_RADIUS = 22;
     
     // 恢复大小动画
     anime({
@@ -398,24 +451,28 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const handleMouseDown = (e: MouseEvent) => handleStart(e.clientX, e.clientY);
+    const handleMouseDown = (e: MouseEvent) => {
+      e.preventDefault();
+      handleStart(e.clientX, e.clientY);
+    };
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
     const handleMouseUp = () => handleEnd();
 
     const handleTouchStart = (e: TouchEvent) => {
-      e.preventDefault();
       if (e.touches.length > 0) {
         handleStart(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
     const handleTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
+      // 只在拖动时阻止滚动
+      if (draggedIndexRef.current !== -1) {
+        e.preventDefault();
+      }
       if (e.touches.length > 0) {
         handleMove(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
-    const handleTouchEnd = (e: TouchEvent) => {
-      e.preventDefault();
+    const handleTouchEnd = () => {
       handleEnd();
     };
 
@@ -423,9 +480,9 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
       canvas.removeEventListener('mousedown', handleMouseDown);
@@ -491,7 +548,9 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
   const t = translations[lang];
 
   return (
-    <div className="grid grid-rows-[auto_auto_500px_auto] gap-2 h-full">
+    <div className="grid gap-2 h-full" style={{
+      gridTemplateRows: `auto auto ${canvasSize.height}px auto`
+    }}>
       {/* Header */}
       <div>
         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{t.title}</h2>

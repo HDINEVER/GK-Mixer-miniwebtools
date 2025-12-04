@@ -54,49 +54,51 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-macaron-blue/30 dark:border-slate-700 shadow-sm p-4 md:p-6 h-full flex flex-col transition-colors duration-300">
-      <div className="flex justify-between items-center mb-6">
+      {/* 响应式头部: 大屏水平布局，小屏垂直布局 */}
+      <div className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-3 xs:gap-0 mb-6">
+        {/* 标题 */}
         <h3 className="text-xs font-bold text-macaron-purple tracking-wider flex items-center gap-2">
             <span className="w-2 h-2 bg-macaron-purple rounded-full"></span>
             {t.visualizerTitle}
         </h3>
         
-        <div className="flex gap-2 items-center">
-          <button
-            onClick={handleExportImage}
-            className="px-3 py-1 text-[10px] font-bold rounded bg-macaron-green/20 text-macaron-green hover:bg-macaron-green hover:text-white transition-all border border-macaron-green/50 flex items-center gap-1"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33A3 3 0 0116.5 19.5H6.75Z" />
-            </svg>
-            EXPORT
-          </button>
-          
-          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
-              <button
-                  onClick={() => setMode('TICKET')}
-                  className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${mode === 'TICKET' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                  STONES
-              </button>
-              <button
-                  onClick={() => setMode('COMIC')}
-                  className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${mode === 'COMIC' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                  COMIC
-              </button>
-              <button
-                  onClick={() => setMode('CLAY')}
-                  className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${mode === 'CLAY' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                  CLAY
-              </button>
-              <button
-                  onClick={() => setMode('STRIPES')}
-                  className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${mode === 'STRIPES' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                  STRIPES
-              </button>
-          </div>
+        {/* 导出按钮 */}
+        <button
+          onClick={handleExportImage}
+          className="px-3 py-1.5 text-[10px] font-bold rounded bg-macaron-green/20 text-macaron-green hover:bg-macaron-green hover:text-white transition-all border border-macaron-green/50 flex items-center justify-center gap-1 w-full xs:w-auto"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33A3 3 0 0116.5 19.5H6.75Z" />
+          </svg>
+          EXPORT
+        </button>
+        
+        {/* 模式切换按钮组 */}
+        <div className="grid grid-cols-2 xs:flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1 w-full xs:w-auto">
+            <button
+                onClick={() => setMode('TICKET')}
+                className={`px-2 py-1.5 text-[10px] font-bold rounded transition-all ${mode === 'TICKET' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            >
+                STONES
+            </button>
+            <button
+                onClick={() => setMode('COMIC')}
+                className={`px-2 py-1.5 text-[10px] font-bold rounded transition-all ${mode === 'COMIC' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            >
+                COMIC
+            </button>
+            <button
+                onClick={() => setMode('CLAY')}
+                className={`px-2 py-1.5 text-[10px] font-bold rounded transition-all ${mode === 'CLAY' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            >
+                CLAY
+            </button>
+            <button
+                onClick={() => setMode('STRIPES')}
+                className={`px-2 py-1.5 text-[10px] font-bold rounded transition-all ${mode === 'STRIPES' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            >
+                STRIPES
+            </button>
         </div>
       </div>
 

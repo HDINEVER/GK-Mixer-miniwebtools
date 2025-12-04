@@ -6,6 +6,20 @@ import { translations } from '../utils/translations';
 
 declare var anime: any;
 
+// Helper: Calculate relative luminance (perceived brightness)
+// Uses ITU-R BT.709 coefficients for perceptual brightness
+const getLuminance = (rgb: { r: number; g: number; b: number }): number => {
+  const r = rgb.r / 255;
+  const g = rgb.g / 255;
+  const b = rgb.b / 255;
+  // sRGB to linear conversion
+  const rLinear = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
+  const gLinear = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
+  const bLinear = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
+  // Perceptual luminance (0.0 - 1.0)
+  return 0.2126 * rLinear + 0.7152 * gLinear + 0.0722 * bLinear;
+};
+
 interface MixerResultProps {
   color: ColorData | null;
   lang: Language;
@@ -127,29 +141,40 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
 
       } else {
         // --- PURE CMYK MODE (No Base) ---
-        // We simulate a mix using White Base + C/M/Y/K pigments
+        // Intelligently select base color based on target luminance
         const c = color.cmyk.c;
         const m = color.cmyk.m;
         const y = color.cmyk.y;
         const k = color.cmyk.k;
         
-        // Estimate White needed based on brightness/lack of pigment
-        // Lighter colors need more white.
-        const whiteWeight = (color.rgb.r + color.rgb.g + color.rgb.b) / (255 * 3) * 100;
+        // Calculate perceptual luminance (0.0 = black, 1.0 = white)
+        const luminance = getLuminance(color.rgb);
         
-        const totalParts = whiteWeight + c + m + y + k;
+        // Smart base selection based on luminance threshold
+        // Dark colors (luminance < 0.3) → Black base
+        // Light colors (luminance >= 0.3) → White base
+        const isDark = luminance < 0.3;
+        
+        // Base weight calculation:
+        // - For dark colors: Use black base, reduce CMY, rely more on base
+        // - For light colors: Use white base, traditional CMY mixing
+        const baseWeight = isDark 
+          ? 100 - (c + m + y) * 0.4  // Dark: high base, low pigment
+          : luminance * 100;           // Light: scale with brightness
+        
+        const totalParts = Math.max(baseWeight, 10) + c + m + y;
         
         const getVol = (part: number) => (part / totalParts) * bottleVolume;
         const getH = (part: number) => (part / totalParts) * 100;
 
-        // White Base (Implicit)
-        if (whiteWeight > 1) {
+        // Base Layer (White for light colors, Black for dark colors)
+        if (baseWeight > 1) {
             layers.push({
-                color: '#FFFFFF',
-                heightPercent: getH(whiteWeight),
-                volume: getVol(whiteWeight),
-                label: 'White',
-                textColor: '#000',
+                color: isDark ? '#000000' : '#FFFFFF',
+                heightPercent: getH(baseWeight),
+                volume: getVol(baseWeight),
+                label: isDark ? 'Black' : 'White',
+                textColor: isDark ? '#fff' : '#000',
                 isBase: true
             });
         }

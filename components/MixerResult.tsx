@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { ColorData, PaintBrand, Language } from '../types';
 import { generatePaintRecipe } from '../services/geminiService';
-import { findNearestPaints, hexToRgb, rgbToCmyk, mixboxBlend } from '../utils/colorUtils';
+import { findNearestPaints, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, BASE_MIXING_COLORS } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
 
 declare var anime: any;
@@ -25,8 +25,6 @@ interface MixerResultProps {
   lang: Language;
 }
 
-type MixMode = 'CMYK' | 'PAINT';
-
 interface Layer {
     color: string;
     heightPercent: number;
@@ -42,7 +40,6 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
   const [nearest, setNearest] = useState<PaintBrand[]>([]);
   const [bottleVolume, setBottleVolume] = useState<number>(20); // Default to 20ml
   const [selectedBasePaint, setSelectedBasePaint] = useState<PaintBrand | null>(null);
-  const [mixMode, setMixMode] = useState<MixMode>('CMYK');
   
   const t = translations[lang];
   const bottleRef = useRef<HTMLDivElement>(null);
@@ -99,19 +96,41 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
       
       if (selectedBasePaint) {
         // --- BASE PAINT MODE ---
-        // Calculate difference between Target and Base
-        const targetCmyk = color.cmyk;
+        // Use Mixbox to calculate how to mix from selected base paint to target
+        // Strategy: Use inverse Mixbox with base paint as one component
+        
         const baseRgb = hexToRgb(selectedBasePaint.hex);
-        const baseCmyk = rgbToCmyk(baseRgb.r, baseRgb.g, baseRgb.b);
-
-        const diffC = Math.max(0, targetCmyk.c - baseCmyk.c);
-        const diffM = Math.max(0, targetCmyk.m - baseCmyk.m);
-        const diffY = Math.max(0, targetCmyk.y - baseCmyk.y);
-        const diffK = Math.max(0, targetCmyk.k - baseCmyk.k);
+        const targetRgb = hexToRgb(color.hex);
         
-        let basePart = 100; // Arbitrary weight for the base paint
+        // Calculate optimal mixing ratios using Mixbox
+        const ratios = calculateMixboxRatios(color.hex);
         
-        const totalParts = basePart + diffC + diffM + diffY + diffK;
+        // Find which base color index matches our selected paint best
+        let basePaintIndex = 0;
+        let minDist = Infinity;
+        
+        BASE_MIXING_COLORS.forEach((baseColor, index) => {
+          const baseColorRgb = hexToRgb(baseColor.hex);
+          const dist = Math.sqrt(
+            Math.pow(baseColorRgb.r - baseRgb.r, 2) +
+            Math.pow(baseColorRgb.g - baseRgb.g, 2) +
+            Math.pow(baseColorRgb.b - baseRgb.b, 2)
+          );
+          if (dist < minDist) {
+            minDist = dist;
+            basePaintIndex = index;
+          }
+        });
+        
+        // Use base paint weight from Mixbox calculation
+        let basePart = ratios[basePaintIndex] || 50; // Fallback to 50% if not found
+        
+        // Other colors
+        const otherRatios = ratios.map((r, i) => i === basePaintIndex ? 0 : r);
+        const totalOther = otherRatios.reduce((a, b) => a + b, 0);
+        
+        // Normalize so base + others = 100
+        const totalParts = basePart + totalOther;
         
         const getVol = (part: number) => (part / totalParts) * bottleVolume;
         const getH = (part: number) => (part / totalParts) * 100;
@@ -126,75 +145,68 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
             isBase: true
         });
 
-        // Additive Layers (only CMY, no K!)
-        if (mixMode === 'CMYK') {
-            // Removed K channel - only CMY primaries for physical mixing
-            if (diffC > 0) layers.push({ color: '#00ffff', heightPercent: getH(diffC), volume: getVol(diffC), label: 'C', textColor: '#000' });
-            if (diffM > 0) layers.push({ color: '#ff00ff', heightPercent: getH(diffM), volume: getVol(diffM), label: 'M', textColor: '#fff' });
-            if (diffY > 0) layers.push({ color: '#ffff00', heightPercent: getH(diffY), volume: getVol(diffY), label: 'Y', textColor: '#000' });
-        } else {
-            // Paint mode - use realistic paint colors (no black!)
-            if (diffC > 0) layers.push({ color: '#0047AB', heightPercent: getH(diffC), volume: getVol(diffC), label: 'Blu', textColor: '#fff' });
-            if (diffM > 0) layers.push({ color: '#DC143C', heightPercent: getH(diffM), volume: getVol(diffM), label: 'Red', textColor: '#fff' });
-            if (diffY > 0) layers.push({ color: '#FFD700', heightPercent: getH(diffY), volume: getVol(diffY), label: 'Yel', textColor: '#000' });
-        }
+        // Add other base colors if needed
+        otherRatios.forEach((ratio, index) => {
+          if (ratio > 1) { // Only significant contributions
+            const baseColor = BASE_MIXING_COLORS[index];
+            layers.push({
+              color: baseColor.hex,
+              heightPercent: getH(ratio),
+              volume: getVol(ratio),
+              label: baseColor.code,
+              textColor: baseColor.hex === '#FFFFFF' ? '#000' : '#fff',
+              isBase: false
+            });
+          }
+        });
 
       } else {
-        // --- PURE CMYK MODE (No Base) ---
-        // Intelligently select base color based on target luminance
-        const c = color.cmyk.c;
-        const m = color.cmyk.m;
-        const y = color.cmyk.y;
-        const k = color.cmyk.k;
+        // --- PURE MIXBOX MODE (No Base Paint Selected) ---
+        // Use Mixbox inverse algorithm to calculate optimal base color ratios
+        // This matches the BasicColorMixer algorithm but works backwards
         
-        // Calculate perceptual luminance (0.0 = black, 1.0 = white)
-        const luminance = getLuminance(color.rgb);
+        // Calculate optimal weights for 5 base colors using Mixbox latent space
+        const weights = calculateMixboxRatios(color.hex);
         
-        // Smart base selection based on luminance threshold
-        // Dark colors (luminance < 0.3) → Black base
-        // Light colors (luminance >= 0.3) → White base
-        const isDark = luminance < 0.3;
+        // Base colors: [White, Black, Red, Blue, Yellow]
+        const totalWeight = weights.reduce((a, b) => a + b, 0);
         
-        // Base weight calculation:
-        // - For dark colors: Use black base, reduce CMY, rely more on base
-        // - For light colors: Use white base, traditional CMY mixing
-        const baseWeight = isDark 
-          ? 100 - (c + m + y) * 0.4  // Dark: high base, low pigment
-          : luminance * 100;           // Light: scale with brightness
-        
-        const totalParts = Math.max(baseWeight, 10) + c + m + y;
-        
-        const getVol = (part: number) => (part / totalParts) * bottleVolume;
-        const getH = (part: number) => (part / totalParts) * 100;
-
-        // Base Layer (White for light colors, Black for dark colors)
-        if (baseWeight > 1) {
-            layers.push({
-                color: isDark ? '#000000' : '#FFFFFF',
-                heightPercent: getH(baseWeight),
-                volume: getVol(baseWeight),
-                label: isDark ? 'Black' : 'White',
-                textColor: isDark ? '#fff' : '#000',
-                isBase: true
-            });
-        }
-
-        // CMYK Pigments (only CMY, no K!)
-        if (mixMode === 'CMYK') {
-             // Removed K channel - only CMY primaries
-             if (c > 0) layers.push({ color: '#00ffff', heightPercent: getH(c), volume: getVol(c), label: 'C', textColor: '#000' });
-             if (m > 0) layers.push({ color: '#ff00ff', heightPercent: getH(m), volume: getVol(m), label: 'M', textColor: '#fff' });
-             if (y > 0) layers.push({ color: '#ffff00', heightPercent: getH(y), volume: getVol(y), label: 'Y', textColor: '#000' });
+        if (totalWeight < 0.1) {
+          // Fallback to gray if optimization failed
+          layers.push({
+            color: '#808080',
+            heightPercent: 100,
+            volume: bottleVolume,
+            label: 'Gray',
+            textColor: '#fff',
+            isBase: true
+          });
         } else {
-            // "Paint" mode - use realistic paint colors (no black!)
-             if (c > 0) layers.push({ color: '#0047AB', heightPercent: getH(c), volume: getVol(c), label: 'Blue', textColor: '#fff' });
-             if (m > 0) layers.push({ color: '#DC143C', heightPercent: getH(m), volume: getVol(m), label: 'Red', textColor: '#fff' });
-             if (y > 0) layers.push({ color: '#FFD700', heightPercent: getH(y), volume: getVol(y), label: 'Yel', textColor: '#000' });
+          const getVol = (weight: number) => (weight / totalWeight) * bottleVolume;
+          const getH = (weight: number) => (weight / totalWeight) * 100;
+          
+          // Add layers for each base color with significant weight (> 1%)
+          weights.forEach((weight, index) => {
+            if (weight > 1) { // Only show colors with > 1% contribution
+              const baseColor = BASE_MIXING_COLORS[index];
+              const isWhite = baseColor.hex === '#FFFFFF';
+              const isBlack = baseColor.hex === '#000000';
+              
+              layers.push({
+                color: baseColor.hex,
+                heightPercent: getH(weight),
+                volume: getVol(weight),
+                label: baseColor.code,
+                textColor: isWhite ? '#000' : '#fff',
+                isBase: index < 2 // White and Black are considered base
+              });
+            }
+          });
         }
       }
 
       return layers.reverse(); // Stack visual: Bottom first in array if flex-col-reverse
-  }, [color, selectedBasePaint, bottleVolume, mixMode]);
+  }, [color, selectedBasePaint, bottleVolume]);
 
   useEffect(() => {
     if (bottleRef.current && color) {
@@ -375,22 +387,6 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang }) => {
                          </div>
                      ))}
                 </div>
-             </div>
-
-             {/* Mode Switcher */}
-             <div className="mt-4 flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-full max-w-sm">
-                 <button 
-                    onClick={() => setMixMode('CMYK')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${mixMode === 'CMYK' ? 'bg-white dark:bg-slate-600 shadow text-macaron-blue' : 'text-slate-400 hover:text-slate-600'}`}
-                 >
-                     {t.mixModeCMYK}
-                 </button>
-                 <button 
-                    onClick={() => setMixMode('PAINT')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${mixMode === 'PAINT' ? 'bg-white dark:bg-slate-600 shadow text-macaron-pink' : 'text-slate-400 hover:text-slate-600'}`}
-                 >
-                     {t.mixModePaints}
-                 </button>
              </div>
         </div>
 

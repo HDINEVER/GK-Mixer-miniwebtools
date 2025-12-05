@@ -448,7 +448,7 @@ export const extractProminentColors = (
     const colors: ColorData[] = sortedHex.map(hex => {
       let rgb = hexToRgb(hex);
       
-      // 如果是Adobe RGB模式,需要从Canvas提取的sRGB值转换到工作空间
+      // 如果是 Adobe RGB 模式，需要从 Canvas 提取的 sRGB 值转换到工作空间
       if (colorSpace === 'adobe-rgb') {
         rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
       }
@@ -557,4 +557,121 @@ export const mixboxMultiBlend = (colorWeights: { hex: string; weight: number }[]
   
   // Fallback
   return filtered[0].hex;
+};
+
+/**
+ * Base colors matching BasicColorMixer
+ * White, Black, Red, Blue, Yellow
+ */
+export const BASE_MIXING_COLORS = [
+  { id: 'gaia-001', brand: 'Gaia', code: '001', name: '光泽白', hex: '#FFFFFF' },
+  { id: 'gaia-002', brand: 'Gaia', code: '002', name: '光泽黑', hex: '#000000' },
+  { id: 'gaia-003', brand: 'Gaia', code: '003', name: '光泽红', hex: '#E60012' },
+  { id: 'gaia-004', brand: 'Gaia', code: '004', name: '光泽蓝', hex: '#004098' },
+  { id: 'gaia-005', brand: 'Gaia', code: '005', name: '光泽黄', hex: '#FFD900' },
+];
+
+/**
+ * Calculate optimal mixing ratios using Mixbox algorithm (Inverse Problem)
+ * This solves: "Given a target color, what ratio of base colors produces it?"
+ * 
+ * Algorithm: Iterative optimization to find weights that minimize color difference
+ * 
+ * @param targetHex Target color hex string
+ * @returns Array of 5 weights [white, black, red, blue, yellow]
+ */
+export const calculateMixboxRatios = (targetHex: string): number[] => {
+  const targetRgb = hexToRgb(targetHex);
+  const targetLatent = mixbox.rgbToLatent(targetRgb.r, targetRgb.g, targetRgb.b);
+  
+  if (!targetLatent) {
+    return [0, 0, 0, 0, 0];
+  }
+  
+  // Get latent representations of base colors
+  const baseLatents = BASE_MIXING_COLORS.map(color => {
+    const rgb = hexToRgb(color.hex);
+    return mixbox.rgbToLatent(rgb.r, rgb.g, rgb.b);
+  }).filter(latent => latent !== undefined) as number[][];
+  
+  if (baseLatents.length !== 5) {
+    return [0, 0, 0, 0, 0];
+  }
+  
+  // Initial guess: Start with luminance-based heuristic
+  const luminance = getLuminance(targetRgb);
+  let weights = [
+    luminance * 0.5,      // White
+    (1 - luminance) * 0.5, // Black
+    targetRgb.r / 255 * 0.3,  // Red
+    targetRgb.b / 255 * 0.3,  // Blue
+    targetRgb.g / 255 * 0.3   // Yellow
+  ];
+  
+  // Normalize
+  const normalizeWeights = (w: number[]) => {
+    const sum = w.reduce((a, b) => a + b, 0);
+    return sum > 0.001 ? w.map(x => x / sum) : [0.2, 0.2, 0.2, 0.2, 0.2];
+  };
+  
+  weights = normalizeWeights(weights);
+  
+  // Gradient descent optimization (50 iterations)
+  const learningRate = 0.1;
+  const iterations = 50;
+  
+  for (let iter = 0; iter < iterations; iter++) {
+    // Compute current mixed latent
+    const mixedLatent = [0, 0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < 5; i++) {
+      for (let j = 0; j < 7; j++) {
+        mixedLatent[j] += baseLatents[i][j] * weights[i];
+      }
+    }
+    
+    // Compute error (latent space distance)
+    let error = 0;
+    const gradient = [0, 0, 0, 0, 0];
+    
+    for (let j = 0; j < 7; j++) {
+      const diff = mixedLatent[j] - targetLatent[j];
+      error += diff * diff;
+      
+      // Gradient for each weight
+      for (let i = 0; i < 5; i++) {
+        gradient[i] += 2 * diff * baseLatents[i][j];
+      }
+    }
+    
+    // Early stopping if error is small enough
+    if (error < 0.0001) break;
+    
+    // Update weights using gradient descent
+    for (let i = 0; i < 5; i++) {
+      weights[i] -= learningRate * gradient[i];
+      weights[i] = Math.max(0, weights[i]); // Keep non-negative
+    }
+    
+    // Normalize after each step
+    weights = normalizeWeights(weights);
+  }
+  
+  // Return weights as percentages
+  return weights.map(w => w * 100);
+};
+
+/**
+ * Helper: Calculate relative luminance (perceived brightness)
+ * Uses ITU-R BT.709 coefficients
+ */
+const getLuminance = (rgb: RGB): number => {
+  const r = rgb.r / 255;
+  const g = rgb.g / 255;
+  const b = rgb.b / 255;
+  
+  const rLinear = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
+  const gLinear = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
+  const bLinear = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
+  
+  return 0.2126 * rLinear + 0.7152 * gLinear + 0.0722 * bLinear;
 };

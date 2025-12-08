@@ -8,6 +8,7 @@ export const translations = {
     dragDrop: 'DRAG & DROP REFERENCE IMAGE',
     detectedPalette: 'DETECTED PALETTE',
     manualPick: '+ MANUAL PICK',
+    continuousPick: '⟳ CONTINUOUS',
     mixingConsole: 'MIXING CONSOLE',
     auto: 'AUTO',
     usr: 'USR',
@@ -45,7 +46,14 @@ export const translations = {
     colorSpaceP3: 'Display P3 (Wide Gamut)',
     colorSpaceAdobe: 'Adobe RGB (1998)',
     outOfGamut: '⚠️ Out of gamut',
-    outOfGamutHint: 'This color may look different on standard displays'
+    outOfGamutHint: 'This color may look different on standard displays',
+    ralStandard: 'RAL STANDARD COLOR',
+    ralNumber: 'RAL No.',
+    ralName: 'Color Name',
+    ralLrv: 'LRV (Light Reflectance)',
+    ralNotFound: 'RAL match not found',
+    ralToggle: 'Show RAL Standard',
+    industryStandard: 'Industrial Standard Color System'
   },
   zh: {
     title: 'GK_混色模拟器.exe',
@@ -54,6 +62,7 @@ export const translations = {
     dragDrop: '拖入参考图片',
     detectedPalette: '检测调色板',
     manualPick: '+ 手动拾取',
+    continuousPick: '⟳ 连续取色',
     mixingConsole: '混色控制台',
     auto: '自动',
     usr: '手动',
@@ -91,7 +100,14 @@ export const translations = {
     colorSpaceP3: 'Display P3 (广色域)',
     colorSpaceAdobe: 'Adobe RGB (1998)',
     outOfGamut: '⚠️ 超出色域',
-    outOfGamutHint: '此颜色在普通显示器上可能失真'
+    outOfGamutHint: '此颜色在普通显示器上可能失真',
+    ralStandard: 'RAL 工业标准色',
+    ralNumber: 'RAL 色号',
+    ralName: '颜色名称',
+    ralLrv: 'LRV (反光值)',
+    ralNotFound: '未找到 RAL 匹配',
+    ralToggle: '显示 RAL 标准色',
+    industryStandard: '工业标准色系统'
   },
   ja: {
     title: 'GK_調色シミュレーター.exe',
@@ -100,6 +116,7 @@ export const translations = {
     dragDrop: '参考画像をドロップ',
     detectedPalette: '検出パレット',
     manualPick: '+ 手動選択',
+    continuousPick: '⟳ 連続選択',
     mixingConsole: 'ミキシングコンソール',
     auto: '自動',
     usr: '手動',
@@ -137,6 +154,13 @@ export const translations = {
     colorSpaceP3: 'Display P3 (広色域)',
     colorSpaceAdobe: 'Adobe RGB (1998)',
     outOfGamut: '⚠️ 色域外',
-    outOfGamutHint: 'この色は標準ディスプレイで異なって見える可能性があります'
+    outOfGamutHint: 'この色は標準ディスプレイで異なって見える可能性があります',
+    ralStandard: 'RAL 工業標準色',
+    ralNumber: 'RAL 番号',
+    ralName: '色名',
+    ralLrv: 'LRV (反射率)',
+    ralNotFound: 'RAL マッチなし',
+    ralToggle: 'RAL 標準色を表示',
+    industryStandard: '工業標準色システム'
   }
 };

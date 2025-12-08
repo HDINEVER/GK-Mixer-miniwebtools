@@ -1,6 +1,11 @@
-import { RGB, CMYK, ColorData, PaintBrand, ColorSpace } from '../types';
+import { RGB, CMYK, HSB, LAB, ColorData, PaintBrand, ColorSpace, RALColor } from '../types';
 import * as mixbox from './mixbox';
 import { convertToWorkingSpace } from './colorSpaceConverter';
+
+// Import simple-color-converter for RAL support
+// @ts-ignore - Dynamic import for CJS module compatibility
+import simpleColorConverterModule from 'simple-color-converter';
+const simpleColorConverter = (simpleColorConverterModule as any).default || simpleColorConverterModule;
 
 // Helper to create unique IDs
 export const generateId = (): string => Math.random().toString(36).substr(2, 9);
@@ -59,6 +64,178 @@ export const getColorDistance = (c1: RGB, c2: RGB): number => {
     Math.pow(c1.g - c2.g, 2) +
     Math.pow(c1.b - c2.b, 2)
   );
+};
+
+/**
+ * Convert RGB to HSB (HSV) color space
+ * Based on Photoshop color picker algorithm
+ * H: 0-360° (full color wheel)
+ * S: 0-100% (saturation)
+ * B: 0-100% (brightness/value)
+ */
+export const rgbToHsb = (r: number, g: number, b: number): HSB => {
+  // Normalize RGB values to 0-1
+  const rNorm = r / 255;
+  const gNorm = g / 255;
+  const bNorm = b / 255;
+
+  const max = Math.max(rNorm, gNorm, bNorm);
+  const min = Math.min(rNorm, gNorm, bNorm);
+  const delta = max - min;
+
+  // Calculate brightness (value)
+  const brightness = max * 100;
+
+  // Calculate saturation
+  const saturation = max === 0 ? 0 : (delta / max) * 100;
+
+  // Calculate hue
+  let hue = 0;
+  if (delta !== 0) {
+    if (max === rNorm) {
+      hue = ((gNorm - bNorm) / delta + (gNorm < bNorm ? 6 : 0)) * 60;
+    } else if (max === gNorm) {
+      hue = ((bNorm - rNorm) / delta + 2) * 60;
+    } else {
+      hue = ((rNorm - gNorm) / delta + 4) * 60;
+    }
+  }
+
+  return {
+    h: Math.round(hue),
+    s: Math.round(saturation),
+    b: Math.round(brightness)
+  };
+};
+
+/**
+ * Convert HSB (HSV) to RGB color space
+ * Based on Photoshop color picker algorithm
+ * Inverse of rgbToHsb
+ */
+export const hsbToRgb = (h: number, s: number, b: number): RGB => {
+  // Normalize inputs
+  const hNorm = h / 360;
+  const sNorm = s / 100;
+  const bNorm = b / 100;
+
+  const hIndex = Math.floor(hNorm * 6);
+  const f = hNorm * 6 - hIndex;
+  const p = bNorm * (1 - sNorm);
+  const q = bNorm * (1 - f * sNorm);
+  const t = bNorm * (1 - (1 - f) * sNorm);
+
+  let rNorm = 0, gNorm = 0, bNormOut = 0;
+
+  switch (hIndex % 6) {
+    case 0: rNorm = bNorm; gNorm = t; bNormOut = p; break;
+    case 1: rNorm = q; gNorm = bNorm; bNormOut = p; break;
+    case 2: rNorm = p; gNorm = bNorm; bNormOut = t; break;
+    case 3: rNorm = p; gNorm = q; bNormOut = bNorm; break;
+    case 4: rNorm = t; gNorm = p; bNormOut = bNorm; break;
+    case 5: rNorm = bNorm; gNorm = p; bNormOut = q; break;
+  }
+
+  return {
+    r: Math.round(rNorm * 255),
+    g: Math.round(gNorm * 255),
+    b: Math.round(bNormOut * 255)
+  };
+};
+
+/**
+ * Convert RGB to LAB color space (via XYZ)
+ * LAB provides perceptual uniformity for color mixing
+ * L: 0-100 (lightness)
+ * a: -128~127 (green to red)
+ * b: -128~127 (blue to yellow)
+ */
+export const rgbToLab = (r: number, g: number, b: number): LAB => {
+  // Step 1: RGB to XYZ (D65 illuminant, sRGB color space)
+  let rNorm = r / 255;
+  let gNorm = g / 255;
+  let bNorm = b / 255;
+
+  // Apply gamma correction (sRGB)
+  rNorm = rNorm > 0.04045 ? Math.pow((rNorm + 0.055) / 1.055, 2.4) : rNorm / 12.92;
+  gNorm = gNorm > 0.04045 ? Math.pow((gNorm + 0.055) / 1.055, 2.4) : gNorm / 12.92;
+  bNorm = bNorm > 0.04045 ? Math.pow((bNorm + 0.055) / 1.055, 2.4) : bNorm / 12.92;
+
+  // Convert to XYZ (D65 standard observer)
+  const x = (rNorm * 0.4124564 + gNorm * 0.3575761 + bNorm * 0.1804375) * 100;
+  const y = (rNorm * 0.2126729 + gNorm * 0.7151522 + bNorm * 0.0721750) * 100;
+  const z = (rNorm * 0.0193339 + gNorm * 0.1191920 + bNorm * 0.9503041) * 100;
+
+  // Step 2: XYZ to LAB
+  // Reference white point D65
+  const refX = 95.047;
+  const refY = 100.000;
+  const refZ = 108.883;
+
+  let xNorm = x / refX;
+  let yNorm = y / refY;
+  let zNorm = z / refZ;
+
+  // Apply LAB transformation function
+  const labF = (t: number) => t > 0.008856 ? Math.pow(t, 1/3) : (7.787 * t + 16/116);
+
+  xNorm = labF(xNorm);
+  yNorm = labF(yNorm);
+  zNorm = labF(zNorm);
+
+  const l = (116 * yNorm) - 16;
+  const a = 500 * (xNorm - yNorm);
+  const bLab = 200 * (yNorm - zNorm);
+
+  return {
+    l: Math.round(l * 100) / 100,
+    a: Math.round(a * 100) / 100,
+    b: Math.round(bLab * 100) / 100
+  };
+};
+
+/**
+ * Convert LAB to RGB color space (via XYZ)
+ * Inverse of rgbToLab
+ */
+export const labToRgb = (l: number, a: number, b: number): RGB => {
+  // Step 1: LAB to XYZ
+  let y = (l + 16) / 116;
+  let x = a / 500 + y;
+  let z = y - b / 200;
+
+  // Inverse LAB transformation
+  const labInvF = (t: number) => t > 0.206897 ? Math.pow(t, 3) : (t - 16/116) / 7.787;
+
+  x = labInvF(x);
+  y = labInvF(y);
+  z = labInvF(z);
+
+  // Reference white point D65
+  const refX = 95.047;
+  const refY = 100.000;
+  const refZ = 108.883;
+
+  x *= refX;
+  y *= refY;
+  z *= refZ;
+
+  // Step 2: XYZ to RGB
+  let rNorm = (x * 0.0032404542 + y * -0.0015371385 + z * -0.0004985314) / 100;
+  let gNorm = (x * -0.0009692660 + y * 0.0018760108 + z * 0.0004155506) / 100;
+  let bNorm = (x * 0.0005563008 + y * -0.0002040259 + z * 0.0010572252) / 100;
+
+  // Apply inverse gamma correction (sRGB)
+  rNorm = rNorm > 0.0031308 ? 1.055 * Math.pow(rNorm, 1/2.4) - 0.055 : 12.92 * rNorm;
+  gNorm = gNorm > 0.0031308 ? 1.055 * Math.pow(gNorm, 1/2.4) - 0.055 : 12.92 * gNorm;
+  bNorm = bNorm > 0.0031308 ? 1.055 * Math.pow(bNorm, 1/2.4) - 0.055 : 12.92 * bNorm;
+
+  // Clamp to valid RGB range
+  const r = Math.max(0, Math.min(255, Math.round(rNorm * 255)));
+  const g = Math.max(0, Math.min(255, Math.round(gNorm * 255)));
+  const bOut = Math.max(0, Math.min(255, Math.round(bNorm * 255)));
+
+  return { r, g, b: bOut };
 };
 
 // Mock Database of common GK paints
@@ -385,6 +562,134 @@ export const COMMON_PAINTS: PaintBrand[] = [
   ...GUNZE_PAINTS
 ];
 
+/**
+ * CMY Pigment Colors (颜料三原色)
+ * Used in professional spray painting workflow
+ * Different from RGB solid colors - these are subtractive color primaries
+ */
+export const CMY_PIGMENT_COLORS: PaintBrand[] = [
+  {
+    id: 'cmy-pigment-white',
+    brand: 'CMY Pigment',
+    code: 'WHITE',
+    name: '白色',
+    hex: '#FFFFFF'
+  },
+  {
+    id: 'cmy-pigment-black',
+    brand: 'CMY Pigment',
+    code: 'BLACK',
+    name: '黑色',
+    hex: '#000000'
+  },
+  {
+    id: 'cmy-pigment-cyan',
+    brand: 'CMY Pigment',
+    code: 'CYAN',
+    name: '青色颜料',
+    hex: '#00FFFF'
+  },
+  {
+    id: 'cmy-pigment-magenta',
+    brand: 'CMY Pigment',
+    code: 'MAGENTA',
+    name: '品红颜料',
+    hex: '#FF00FF'
+  },
+  {
+    id: 'cmy-pigment-yellow',
+    brand: 'CMY Pigment',
+    code: 'YELLOW',
+    name: '黄色颜料',
+    hex: '#FFFF00'
+  }
+];
+
+/**
+ * CMY Solid Colors (实色三原色)
+ * Using RGB primaries as solid colors for mixing
+ */
+export const CMY_SOLID_COLORS: PaintBrand[] = [
+  {
+    id: 'cmy-solid-white',
+    brand: 'CMY Solid',
+    code: 'WHITE',
+    name: '白色',
+    hex: '#FFFFFF'
+  },
+  {
+    id: 'cmy-solid-black',
+    brand: 'CMY Solid',
+    code: 'BLACK',
+    name: '黑色',
+    hex: '#000000'
+  },
+  {
+    id: 'cmy-solid-red',
+    brand: 'CMY Solid',
+    code: 'RED',
+    name: '红色实色',
+    hex: '#FF0000'
+  },
+  {
+    id: 'cmy-solid-blue',
+    brand: 'CMY Solid',
+    code: 'BLUE',
+    name: '蓝色实色',
+    hex: '#0000FF'
+  },
+  {
+    id: 'cmy-solid-yellow',
+    brand: 'CMY Solid',
+    code: 'YELLOW',
+    name: '黄色实色',
+    hex: '#FFFF00'
+  }
+];
+
+/**
+ * Base Mixing Colors (Gaia 001-005) for Mixbox algorithm
+ * White, Black, Red, Blue, Yellow
+ * These are used in BasicColorMixer and MixerResult physical mixing
+ */
+export const BASE_MIXING_COLORS: PaintBrand[] = [
+  {
+    id: 'gaia-001',
+    brand: 'Gaia',
+    code: '001',
+    name: '纯白',
+    hex: '#FFFFFF'
+  },
+  {
+    id: 'gaia-002',
+    brand: 'Gaia',
+    code: '002',
+    name: '纯黑',
+    hex: '#000000'
+  },
+  {
+    id: 'gaia-003',
+    brand: 'Gaia',
+    code: '003',
+    name: '红色',
+    hex: '#FF0000'
+  },
+  {
+    id: 'gaia-004',
+    brand: 'Gaia',
+    code: '004',
+    name: '蓝色',
+    hex: '#0000FF'
+  },
+  {
+    id: 'gaia-005',
+    brand: 'Gaia',
+    code: '005',
+    name: '黄色',
+    hex: '#FFFF00'
+  }
+];
+
 export const findNearestPaints = (targetHex: string, count: number = 3): PaintBrand[] => {
   const targetRgb = hexToRgb(targetHex);
   const sorted = [...COMMON_PAINTS].sort((a, b) => {
@@ -422,8 +727,8 @@ export const extractProminentColors = (
 
     const colorMap: Record<string, number> = {};
 
-    // Sample every 10th pixel for speed
-    for (let i = 0; i < data.length; i += 40) {
+    // Sample every 5th pixel for better accuracy in color weight detection
+    for (let i = 0; i < data.length; i += 20) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
@@ -431,10 +736,10 @@ export const extractProminentColors = (
 
       if (a < 128) continue; // Skip transparent
 
-      // Quantize colors to reduce noise (round to nearest 10)
-      const qr = Math.round(r / 20) * 20;
-      const qg = Math.round(g / 20) * 20;
-      const qb = Math.round(b / 20) * 20;
+      // Quantize colors to reduce noise (round to nearest 15 for better clustering)
+      const qr = Math.round(r / 15) * 15;
+      const qg = Math.round(g / 15) * 15;
+      const qb = Math.round(b / 15) * 15;
 
       const hex = rgbToHex(qr, qg, qb);
       colorMap[hex] = (colorMap[hex] || 0) + 1;
@@ -453,11 +758,17 @@ export const extractProminentColors = (
         rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
       }
       
+      // 计算 HSB 和 LAB 色彩空间
+      const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
+      const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
+      
       return {
         id: generateId(),
         hex: rgbToHex(rgb.r, rgb.g, rgb.b),
         rgb,
         cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
+        hsb,
+        lab,
         source: 'auto',
         colorSpace: colorSpace
       };
@@ -560,28 +871,25 @@ export const mixboxMultiBlend = (colorWeights: { hex: string; weight: number }[]
 };
 
 /**
- * Base colors matching BasicColorMixer
- * White, Black, Red, Blue, Yellow
- */
-export const BASE_MIXING_COLORS = [
-  { id: 'gaia-001', brand: 'Gaia', code: '001', name: '光泽白', hex: '#FFFFFF' },
-  { id: 'gaia-002', brand: 'Gaia', code: '002', name: '光泽黑', hex: '#000000' },
-  { id: 'gaia-003', brand: 'Gaia', code: '003', name: '光泽红', hex: '#E60012' },
-  { id: 'gaia-004', brand: 'Gaia', code: '004', name: '光泽蓝', hex: '#004098' },
-  { id: 'gaia-005', brand: 'Gaia', code: '005', name: '光泽黄', hex: '#FFD900' },
-];
-
-/**
  * Calculate optimal mixing ratios using Mixbox algorithm (Inverse Problem)
  * This solves: "Given a target color, what ratio of base colors produces it?"
  * 
- * Algorithm: Iterative optimization to find weights that minimize color difference
+ * Algorithm: Two-step HSB-based approach
+ * Step 1: Find pure hue (chromatic colors only, no white/black)
+ * Step 2: Add white/black based on saturation and brightness
  * 
  * @param targetHex Target color hex string
+ * @param colorSpace Source color space (default: 'srgb')
  * @returns Array of 5 weights [white, black, red, blue, yellow]
  */
-export const calculateMixboxRatios = (targetHex: string): number[] => {
-  const targetRgb = hexToRgb(targetHex);
+export const calculateMixboxRatios = (targetHex: string, colorSpace: ColorSpace = 'srgb'): number[] => {
+  let targetRgb = hexToRgb(targetHex);
+  
+  // Convert to sRGB if needed (Mixbox works in sRGB space)
+  if (colorSpace !== 'srgb') {
+    targetRgb = convertToWorkingSpace(targetRgb, colorSpace);
+  }
+  
   const targetLatent = mixbox.rgbToLatent(targetRgb.r, targetRgb.g, targetRgb.b);
   
   if (!targetLatent) {
@@ -598,66 +906,353 @@ export const calculateMixboxRatios = (targetHex: string): number[] => {
     return [0, 0, 0, 0, 0];
   }
   
-  // Initial guess: Start with luminance-based heuristic
-  const luminance = getLuminance(targetRgb);
-  let weights = [
-    luminance * 0.5,      // White
-    (1 - luminance) * 0.5, // Black
-    targetRgb.r / 255 * 0.3,  // Red
-    targetRgb.b / 255 * 0.3,  // Blue
-    targetRgb.g / 255 * 0.3   // Yellow
-  ];
+  // Calculate HSB values
+  const hsb = rgbToHsb(targetRgb.r, targetRgb.g, targetRgb.b);
   
-  // Normalize
-  const normalizeWeights = (w: number[]) => {
-    const sum = w.reduce((a, b) => a + b, 0);
-    return sum > 0.001 ? w.map(x => x / sum) : [0.2, 0.2, 0.2, 0.2, 0.2];
-  };
+  // Check if color is grayscale (no saturation)
+  const maxChannel = Math.max(targetRgb.r, targetRgb.g, targetRgb.b);
+  const minChannel = Math.min(targetRgb.r, targetRgb.g, targetRgb.b);
+  const saturation = maxChannel === 0 ? 0 : (maxChannel - minChannel) / maxChannel;
   
-  weights = normalizeWeights(weights);
-  
-  // Gradient descent optimization (50 iterations)
-  const learningRate = 0.1;
-  const iterations = 50;
-  
-  for (let iter = 0; iter < iterations; iter++) {
-    // Compute current mixed latent
-    const mixedLatent = [0, 0, 0, 0, 0, 0, 0];
-    for (let i = 0; i < 5; i++) {
-      for (let j = 0; j < 7; j++) {
-        mixedLatent[j] += baseLatents[i][j] * weights[i];
-      }
-    }
-    
-    // Compute error (latent space distance)
-    let error = 0;
-    const gradient = [0, 0, 0, 0, 0];
-    
-    for (let j = 0; j < 7; j++) {
-      const diff = mixedLatent[j] - targetLatent[j];
-      error += diff * diff;
-      
-      // Gradient for each weight
-      for (let i = 0; i < 5; i++) {
-        gradient[i] += 2 * diff * baseLatents[i][j];
-      }
-    }
-    
-    // Early stopping if error is small enough
-    if (error < 0.0001) break;
-    
-    // Update weights using gradient descent
-    for (let i = 0; i < 5; i++) {
-      weights[i] -= learningRate * gradient[i];
-      weights[i] = Math.max(0, weights[i]); // Keep non-negative
-    }
-    
-    // Normalize after each step
-    weights = normalizeWeights(weights);
+  // For extremely low saturation colors (pure gray), skip mixbox optimization
+  if (saturation < 0.05) {
+    // Pure grayscale (< 5%): Only use black + white
+    // Use HSB brightness (not ITU luminance) for grayscale to match visual appearance
+    const whitePercent = hsb.b;
+    const blackPercent = 100 - hsb.b;
+    return [whitePercent, blackPercent, 0, 0, 0];
   }
   
-  // Return weights as percentages
-  return weights.map(w => w * 100);
+  // For very low saturation colors (5-12%), use simplified formula
+  // These colors are perceptible but subtle, avoid complex 3-color mixing
+  if (saturation < 0.12) {
+    // Determine dominant hue direction
+    const hue = hsb.h;
+    let dominantColor: 'red' | 'blue' | 'yellow';
+    
+    if (hue >= 15 && hue < 75) {
+      dominantColor = 'yellow';
+    } else if (hue >= 165 && hue < 285) {
+      dominantColor = 'blue';
+    } else if (hue >= 75 && hue < 165) {
+      // Green zone: prefer yellow over blue (more visible)
+      dominantColor = 'yellow';
+    } else {
+      // Red/Purple/Magenta zones
+      dominantColor = 'red';
+    }
+    
+    // Simplified formula: gray base + small amount of dominant color
+    // Use HSB brightness for consistency
+    const whitePercent = hsb.b * (1 - saturation);
+    const blackPercent = (100 - hsb.b) * (1 - saturation);
+    const colorPercent = saturation * 100;
+    
+    if (dominantColor === 'red') {
+      return [whitePercent, blackPercent, colorPercent, 0, 0];
+    } else if (dominantColor === 'blue') {
+      return [whitePercent, blackPercent, 0, colorPercent, 0];
+    } else {
+      return [whitePercent, blackPercent, 0, 0, colorPercent];
+    }
+  }
+  
+  // === STEP 1: Find pure hue (chromatic colors only) ===
+  // Convert to maximum saturation version (pure hue)
+  const pureHueRgb = hsbToRgb(hsb.h, 100, 100);
+  const pureHueLatent = mixbox.rgbToLatent(pureHueRgb.r, pureHueRgb.g, pureHueRgb.b);
+  
+  if (!pureHueLatent) {
+    return [0, 0, 0, 0, 0];
+  }
+  
+  // Optimize only chromatic colors (indices 2, 3, 4: red, blue, yellow)
+  let chromaWeights = [0, 0, 0]; // [red, blue, yellow]
+  
+  // Smart initialization based on hue
+  const hue = hsb.h;
+  if (hue >= 345 || hue < 15) {
+    // Red (345-15°)
+    chromaWeights = [0.8, 0.1, 0.1];
+  } else if (hue >= 15 && hue < 45) {
+    // Orange (Red + Yellow)
+    chromaWeights = [0.5, 0.0, 0.5];
+  } else if (hue >= 45 && hue < 75) {
+    // Yellow (45-75°)
+    chromaWeights = [0.1, 0.1, 0.8];
+  } else if (hue >= 75 && hue < 165) {
+    // Green (Yellow + Blue)
+    chromaWeights = [0.0, 0.5, 0.5];
+  } else if (hue >= 165 && hue < 220) {
+    // Cyan (Blue + Yellow for green tint)
+    chromaWeights = [0.0, 0.6, 0.4];
+  } else if (hue >= 220 && hue < 260) {
+    // Pure Blue (220-260°)
+    chromaWeights = [0.1, 0.8, 0.1];
+  } else if (hue >= 260 && hue < 300) {
+    // Blue-Purple (260-300°: blue-purple transition zone)
+    // 263° and 285° fall here, blue dominant with red component
+    chromaWeights = [0.4, 0.6, 0.0];
+  } else {
+    // Purple-Red (300-345°: closer to magenta)
+    // More balanced or red-dominant
+    chromaWeights = [0.55, 0.45, 0.0];
+  }
+  
+  // Normalize
+  const normalizeChroma = (w: number[]) => {
+    const sum = w.reduce((a, b) => a + b, 0);
+    return sum > 0.001 ? w.map(x => x / sum) : [0.33, 0.33, 0.34];
+  };
+  
+  chromaWeights = normalizeChroma(chromaWeights);
+  
+  // Gradient descent for pure hue (chromatic colors only)
+  let learningRate = 0.2;
+  const iterations = 100;
+  const minLearningRate = 0.01;
+  
+  for (let iter = 0; iter < iterations; iter++) {
+    // Compute current mixed latent (chromatic only)
+    const mixedLatent = [0, 0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < 3; i++) {
+      const baseIdx = i + 2; // Map to red(2), blue(3), yellow(4)
+      for (let j = 0; j < 7; j++) {
+        mixedLatent[j] += baseLatents[baseIdx][j] * chromaWeights[i];
+      }
+    }
+    
+    // Compute error
+    let error = 0;
+    const gradient = [0, 0, 0];
+    
+    for (let j = 0; j < 7; j++) {
+      const diff = mixedLatent[j] - pureHueLatent[j];
+      error += diff * diff;
+      
+      for (let i = 0; i < 3; i++) {
+        const baseIdx = i + 2;
+        gradient[i] += 2 * diff * baseLatents[baseIdx][j];
+      }
+    }
+    
+    // Early stopping
+    if (error < 0.0001) break;
+    
+    // Update weights
+    for (let i = 0; i < 3; i++) {
+      chromaWeights[i] -= learningRate * gradient[i];
+      chromaWeights[i] = Math.max(0, chromaWeights[i]);
+    }
+    
+    chromaWeights = normalizeChroma(chromaWeights);
+    
+    // Adaptive learning rate
+    if (iter > 20) {
+      learningRate = Math.max(minLearningRate, learningRate * 0.95);
+    }
+  }
+  
+  // === STEP 2: Add white/black based on saturation and brightness ===
+  const chromaRatio = hsb.s / 100; // How much of the pure hue
+  const grayRatio = 1 - chromaRatio; // How much gray (white + black)
+  
+  // Distribute gray between white and black based on brightness
+  const whiteRatio = grayRatio * (hsb.b / 100);
+  const blackRatio = grayRatio * (1 - hsb.b / 100);
+  
+  // Final weights
+  const finalWeights = [
+    whiteRatio,                    // White
+    blackRatio,                    // Black
+    chromaWeights[0] * chromaRatio, // Red
+    chromaWeights[1] * chromaRatio, // Blue
+    chromaWeights[2] * chromaRatio  // Yellow
+  ];
+  
+  // Return as percentages
+  return finalWeights.map(w => w * 100);
+};
+
+/**
+ * Professional Paint Mixing Recipe Calculator
+ * Based on real-world spray painting experience
+ * 
+ * Workflow:
+ * - High Brightness (B > 70%): Mix hue first, then add to white base
+ * - Mid Brightness (30% < B ≤ 70%): Standard mixing with all 5 colors
+ * - Low Brightness (B ≤ 30%): Black base + hue adjustment
+ * 
+ * @param targetHex Target color hex string
+ * @returns Mixing recipe with HSB/LAB analysis and step-by-step instructions
+ */
+export const calculateProfessionalRecipe = (targetHex: string): {
+  hsb: { h: number; s: number; b: number };
+  lab: { l: number; a: number; b: number };
+  strategy: 'high-brightness' | 'mid-brightness' | 'low-brightness';
+  steps: string[];
+  ratios: { color: string; percentage: number }[];
+} => {
+  const rgb = hexToRgb(targetHex);
+  const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
+  const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
+
+  let strategy: 'high-brightness' | 'mid-brightness' | 'low-brightness';
+  let steps: string[] = [];
+  let ratios: { color: string; percentage: number }[] = [];
+
+  // Check for grayscale first (saturation-based detection)
+  const maxChannel = Math.max(rgb.r, rgb.g, rgb.b);
+  const minChannel = Math.min(rgb.r, rgb.g, rgb.b);
+  const saturation = maxChannel === 0 ? 0 : (maxChannel - minChannel) / maxChannel;
+  
+  // Handle pure grayscale colors (< 5% saturation)
+  if (saturation < 0.05) {
+    strategy = hsb.b > 50 ? 'high-brightness' : 'low-brightness';
+    
+    const whitePercent = hsb.b;
+    const blackPercent = 100 - hsb.b;
+    
+    ratios = [
+      { color: '白色 (Gaia 001)', percentage: Math.round(whitePercent * 10) / 10 },
+      { color: '黑色 (Gaia 002)', percentage: Math.round(blackPercent * 10) / 10 }
+    ].filter(r => r.percentage > 0);
+    
+    steps = [
+      `1. 色彩分析: 纯灰色 (饱和度 < 5%)`,
+      `2. 明度分析: B=${hsb.b.toFixed(1)}% → ${strategy === 'high-brightness' ? '浅灰色' : '深灰色'}`,
+      `3. 配方: 白色 ${whitePercent.toFixed(1)}% + 黑色 ${blackPercent.toFixed(1)}%`,
+      `4. 调色步骤:`,
+      `   a) 准备基础白色和黑色`,
+      `   b) 按比例混合，确保均匀`,
+      `   c) 使用灰度卡验证明度`,
+      `5. LAB 校准: L*=${lab.l.toFixed(1)} (目标明度)`
+    ];
+    
+    return { hsb, lab, strategy, steps, ratios };
+  }
+
+  if (hsb.b > 70) {
+    // High brightness: White base + hue
+    strategy = 'high-brightness';
+    
+    // Calculate hue-only color (maximum saturation at current hue)
+    const pureHue = hsbToRgb(hsb.h, 100, 100);
+    const pureHueHex = rgbToHex(pureHue.r, pureHue.g, pureHue.b);
+    
+    // Get Mixbox ratios for pure hue color (excluding white to get concentrated color)
+    const hueRatios = calculateMixboxRatios(pureHueHex);
+    const [, black, red, blue, yellow] = hueRatios;
+    
+    // Normalize non-white colors
+    const totalColor = black + red + blue + yellow;
+    const normalizedRed = totalColor > 0 ? (red / totalColor) * hsb.s : 0;
+    const normalizedBlue = totalColor > 0 ? (blue / totalColor) * hsb.s : 0;
+    const normalizedYellow = totalColor > 0 ? (yellow / totalColor) * hsb.s : 0;
+    const normalizedBlack = totalColor > 0 ? (black / totalColor) * hsb.s : 0;
+    
+    const whiteAmount = 100 - hsb.s;
+    
+    ratios = [
+      { color: '白色 (Gaia 001)', percentage: Math.round(whiteAmount * 10) / 10 },
+      { color: '红色 (Gaia 003)', percentage: Math.round(normalizedRed * 10) / 10 },
+      { color: '蓝色 (Gaia 004)', percentage: Math.round(normalizedBlue * 10) / 10 },
+      { color: '黄色 (Gaia 005)', percentage: Math.round(normalizedYellow * 10) / 10 },
+      { color: '黑色 (Gaia 002)', percentage: Math.round(normalizedBlack * 10) / 10 }
+    ].filter(r => r.percentage > 0);
+    
+    steps = [
+      `1. 明度分析: B=${hsb.b}% (高明度) → 采用"白底调色"策略`,
+      `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
+      `3. 饱和度分析: S=${hsb.s}% → 白色占比 ${whiteAmount.toFixed(1)}%`,
+      `4. 调色步骤:`,
+      `   a) 准备白色底漆 ${whiteAmount.toFixed(1)}%`,
+      `   b) 混合色相颜料: 红${normalizedRed.toFixed(1)}% + 蓝${normalizedBlue.toFixed(1)}% + 黄${normalizedYellow.toFixed(1)}%`,
+      `   c) 将色相颜料逐步加入白色底漆中,边加边测试`,
+      `5. LAB 校准: L*=${lab.l.toFixed(1)} (目标明度), a*=${lab.a.toFixed(1)}, b*=${lab.b.toFixed(1)}`
+    ];
+    
+  } else if (hsb.b > 30) {
+    // Mid brightness: Standard Mixbox blending
+    strategy = 'mid-brightness';
+    
+    const mixboxRatios = calculateMixboxRatios(targetHex);
+    const [white, black, red, blue, yellow] = mixboxRatios;
+    
+    ratios = [
+      { color: '白色 (Gaia 001)', percentage: Math.round(white * 10) / 10 },
+      { color: '黑色 (Gaia 002)', percentage: Math.round(black * 10) / 10 },
+      { color: '红色 (Gaia 003)', percentage: Math.round(red * 10) / 10 },
+      { color: '蓝色 (Gaia 004)', percentage: Math.round(blue * 10) / 10 },
+      { color: '黄色 (Gaia 005)', percentage: Math.round(yellow * 10) / 10 }
+    ].filter(r => r.percentage > 0);
+    
+    steps = [
+      `1. 明度分析: B=${hsb.b}% (中等明度) → 采用"标准混合"策略`,
+      `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
+      `3. Mixbox 物理混色算法计算得出五色比例`,
+      `4. 调色步骤:`,
+      `   a) 按比例准备五种基础色`,
+      `   b) 先混合主色相 (占比最大的颜色)`,
+      `   c) 逐步加入其他颜色,充分搅拌`,
+      `   d) 使用分光光度计或色卡进行对比校准`,
+      `5. LAB 校准: L*=${lab.l.toFixed(1)}, a*=${lab.a.toFixed(1)}, b*=${lab.b.toFixed(1)}`
+    ];
+    
+  } else {
+    // Low brightness: Black base + hue adjustment
+    strategy = 'low-brightness';
+    
+    // For dark colors, use black as base and add hue colors
+    const mixboxRatios = calculateMixboxRatios(targetHex);
+    const [white, black, red, blue, yellow] = mixboxRatios;
+    
+    // Emphasize black and reduce white
+    const totalColor = red + blue + yellow;
+    const adjustedBlack = Math.max(black, 60); // Minimum 60% black for dark colors
+    const adjustedWhite = Math.max(white - (adjustedBlack - black), 0);
+    const colorRatio = 100 - adjustedBlack - adjustedWhite;
+    
+    const adjustedRed = totalColor > 0 ? (red / totalColor) * colorRatio : 0;
+    const adjustedBlue = totalColor > 0 ? (blue / totalColor) * colorRatio : 0;
+    const adjustedYellow = totalColor > 0 ? (yellow / totalColor) * colorRatio : 0;
+    
+    ratios = [
+      { color: '黑色 (Gaia 002)', percentage: Math.round(adjustedBlack * 10) / 10 },
+      { color: '红色 (Gaia 003)', percentage: Math.round(adjustedRed * 10) / 10 },
+      { color: '蓝色 (Gaia 004)', percentage: Math.round(adjustedBlue * 10) / 10 },
+      { color: '黄色 (Gaia 005)', percentage: Math.round(adjustedYellow * 10) / 10 },
+      { color: '白色 (Gaia 001)', percentage: Math.round(adjustedWhite * 10) / 10 }
+    ].filter(r => r.percentage > 0);
+    
+    steps = [
+      `1. 明度分析: B=${hsb.b}% (低明度) → 采用"黑底提亮"策略`,
+      `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
+      `3. 深色调色注意: 需要黑色底漆至少 ${adjustedBlack.toFixed(1)}%`,
+      `4. 调色步骤:`,
+      `   a) 准备黑色底漆 ${adjustedBlack.toFixed(1)}%`,
+      `   b) 混合色相颜料: 红${adjustedRed.toFixed(1)}% + 蓝${adjustedBlue.toFixed(1)}% + 黄${adjustedYellow.toFixed(1)}%`,
+      `   c) 将色相颜料少量多次加入黑色底漆`,
+      `   d) 深色容易过深,建议预留5-10%用于微调`,
+      `5. LAB 校准: L*=${lab.l.toFixed(1)} (低明度), a*=${lab.a.toFixed(1)}, b*=${lab.b.toFixed(1)}`
+    ];
+  }
+
+  return { hsb, lab, strategy, steps, ratios };
+};
+
+/**
+ * Get Chinese hue name from HSB hue value (0-360°)
+ */
+const getHueName = (hue: number): string => {
+  if (hue >= 0 && hue < 30) return '红色系';
+  if (hue >= 30 && hue < 60) return '橙色系';
+  if (hue >= 60 && hue < 90) return '黄色系';
+  if (hue >= 90 && hue < 150) return '绿色系';
+  if (hue >= 150 && hue < 210) return '青色系';
+  if (hue >= 210 && hue < 270) return '蓝色系';
+  if (hue >= 270 && hue < 330) return '紫色系';
+  return '红色系';
 };
 
 /**
@@ -675,3 +1270,135 @@ const getLuminance = (rgb: RGB): number => {
   
   return 0.2126 * rLinear + 0.7152 * gLinear + 0.0722 * bLinear;
 };
+
+// ==================== RAL Color System Support ====================
+
+/**
+ * Find the nearest RAL color for a given RGB value
+ * Uses Delta E (CIE76) algorithm through LAB color space for perceptually accurate matching
+ * 
+ * @param rgb RGB color object
+ * @returns RALColor object with RAL number, name, LRV, hex, and RGB
+ */
+export const findNearestRAL = (rgb: RGB): RALColor | null => {
+  try {
+    const converter = new simpleColorConverter({
+      rgb: { r: rgb.r, g: rgb.g, b: rgb.b },
+      to: 'ral'
+    });
+    
+    if (converter.color && converter.color.ral) {
+      return {
+        ral: converter.color.ral,
+        name: converter.color.name || `RAL ${converter.color.ral}`,
+        lrv: converter.color.lrv || 0,
+        hex: rgbToHex(rgb.r, rgb.g, rgb.b),
+        rgb: rgb,
+        type: 'ral'
+      };
+    }
+    return null;
+  } catch (error) {
+    console.warn('RAL conversion failed:', error);
+    return null;
+  }
+};
+
+/**
+ * Convert Hex color to RAL standard color
+ * 
+ * @param hex Hex color string
+ * @returns RALColor object or null if conversion fails
+ */
+export const hexToRAL = (hex: string): RALColor | null => {
+  const rgb = hexToRgb(hex);
+  return findNearestRAL(rgb);
+};
+
+/**
+ * Convert CMYK color to RAL standard color
+ * 
+ * @param cmyk CMYK color object
+ * @returns RALColor object or null if conversion fails
+ */
+export const cmykToRAL = (cmyk: CMYK): RALColor | null => {
+  try {
+    const converter = new simpleColorConverter({
+      cmyk: { c: cmyk.c, m: cmyk.m, y: cmyk.y, k: cmyk.k },
+      to: 'ral'
+    });
+    
+    if (converter.color && converter.color.ral) {
+      // Convert back to RGB for hex representation
+      const rgbConverter = new simpleColorConverter({
+        ral: { ral: converter.color.ral },
+        to: 'rgb'
+      });
+      
+      const rgb = rgbConverter.color || { r: 128, g: 128, b: 128 };
+      
+      return {
+        ral: converter.color.ral,
+        name: converter.color.name || `RAL ${converter.color.ral}`,
+        lrv: converter.color.lrv || 0,
+        hex: rgbToHex(rgb.r, rgb.g, rgb.b),
+        rgb: rgb,
+        type: 'ral'
+      };
+    }
+    return null;
+  } catch (error) {
+    console.warn('CMYK to RAL conversion failed:', error);
+    return null;
+  }
+};
+
+/**
+ * Get RAL color information by RAL number
+ * 
+ * @param ralNumber RAL color number (e.g., 3009)
+ * @returns RALColor object or null if not found
+ */
+export const getRALByNumber = (ralNumber: number): RALColor | null => {
+  try {
+    const converter = new simpleColorConverter({
+      ral: { ral: ralNumber },
+      to: 'rgb'
+    });
+    
+    if (converter.color) {
+      const rgb = converter.color;
+      const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+      
+      // Get full RAL info
+      const ralInfo = new simpleColorConverter({
+        rgb: rgb,
+        to: 'ral'
+      });
+      
+      return {
+        ral: ralNumber,
+        name: ralInfo.color?.name || `RAL ${ralNumber}`,
+        lrv: ralInfo.color?.lrv || 0,
+        hex: hex,
+        rgb: rgb,
+        type: 'ral'
+      };
+    }
+    return null;
+  } catch (error) {
+    console.warn(`RAL ${ralNumber} lookup failed:`, error);
+    return null;
+  }
+};
+
+/**
+ * Convert ColorData to RAL (convenience function)
+ * 
+ * @param colorData ColorData object
+ * @returns RALColor object or null
+ */
+export const colorDataToRAL = (colorData: ColorData): RALColor | null => {
+  return findNearestRAL(colorData.rgb);
+};
+

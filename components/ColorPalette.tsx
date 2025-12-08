@@ -11,11 +11,14 @@ interface ColorPaletteProps {
   onColorSelect: (color: ColorData) => void;
   selectedColorId?: string;
   onAddManual: () => void;
+  onContinuousPick: () => void;
   onDeleteColor: (colorId: string) => void;
   hasImage?: boolean; // New prop to check if image is loaded
+  isPicking?: boolean;
+  isContinuousPicking?: boolean;
 }
 
-const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, selectedColorId, onAddManual, onDeleteColor, hasImage = false }) => {
+const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, selectedColorId, onAddManual, onContinuousPick, onDeleteColor, hasImage = false, isPicking = false, isContinuousPicking = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const selectionIndicatorRef = useRef<HTMLDivElement>(null);
 
@@ -49,18 +52,36 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
     <div className="w-full">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-xs sm:text-sm font-bold text-macaron-blue tracking-wider">DETECTED PALETTE</h3>
-        <button 
-            onClick={onAddManual}
-            disabled={!hasImage}
-            className={`text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
-              hasImage 
-                ? 'border-macaron-green text-macaron-green hover:bg-macaron-green hover:text-white cursor-pointer'
-                : 'border-slate-300 text-slate-300 cursor-not-allowed opacity-50'
-            }`}
-            title={hasImage ? 'Click to pick color from image' : 'Please upload an image first'}
-        >
-            + MANUAL PICK
-        </button>
+        <div className="flex gap-2">
+          <button 
+              onClick={onAddManual}
+              disabled={!hasImage}
+              className={`text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
+                hasImage 
+                  ? isPicking && !isContinuousPicking
+                    ? 'border-macaron-green bg-macaron-green text-white cursor-pointer'
+                    : 'border-macaron-green text-macaron-green hover:bg-macaron-green hover:text-white cursor-pointer'
+                  : 'border-slate-300 text-slate-300 cursor-not-allowed opacity-50'
+              }`}
+              title={hasImage ? 'Click to pick color from image' : 'Please upload an image first'}
+          >
+              + MANUAL PICK
+          </button>
+          <button 
+              onClick={onContinuousPick}
+              disabled={!hasImage}
+              className={`text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
+                hasImage 
+                  ? isContinuousPicking
+                    ? 'border-macaron-blue bg-macaron-blue text-white cursor-pointer'
+                    : 'border-macaron-blue text-macaron-blue hover:bg-macaron-blue hover:text-white cursor-pointer'
+                  : 'border-slate-300 text-slate-300 cursor-not-allowed opacity-50'
+              }`}
+              title={hasImage ? 'Continuous color picking mode' : 'Please upload an image first'}
+          >
+              ⟳ CONTINUOUS
+          </button>
+        </div>
       </div>
       
       {colors.length === 0 ? (

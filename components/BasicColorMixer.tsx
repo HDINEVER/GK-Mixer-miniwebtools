@@ -9,13 +9,16 @@ interface BasicColorMixerProps {
   lang: Language;
 }
 
-// 5 Gaia base colors
+// 8 base colors: 5 Gaia + 3 Process colors
 const BASE_COLORS = [
   { id: 'gaia-001', brand: 'Gaia', code: '001', name: '光泽白', hex: '#FFFFFF' },
   { id: 'gaia-002', brand: 'Gaia', code: '002', name: '光泽黑', hex: '#000000' },
   { id: 'gaia-003', brand: 'Gaia', code: '003', name: '光泽红', hex: '#E60012' },
   { id: 'gaia-004', brand: 'Gaia', code: '004', name: '光泽蓝', hex: '#004098' },
   { id: 'gaia-005', brand: 'Gaia', code: '005', name: '光泽黄', hex: '#FFD900' },
+  { id: 'process-cyan', brand: 'Process', code: 'C', name: '印刷青', hex: '#00B7EB' },
+  { id: 'process-magenta', brand: 'Process', code: 'M', name: '印刷品红', hex: '#FF0090' },
+  { id: 'process-yellow', brand: 'Process', code: 'Y', name: '印刷黄', hex: '#FFEF00' },
 ];
 
 // Canvas 基础常量
@@ -40,7 +43,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
-  const [mixRatios, setMixRatios] = useState<number[]>([0, 0, 0, 0, 0]);
+  const [mixRatios, setMixRatios] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0]);
   const [finalColor, setFinalColor] = useState<string>('');
   const [totalVolume, setTotalVolume] = useState<number>(20);
   const [canvasSize, setCanvasSize] = useState(getCanvasSize());
@@ -48,7 +51,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
   // 拖动状态
   const draggedIndexRef = useRef<number>(-1);
   const lastMoveTimeRef = useRef<number>(0); // 触控节流
-  const knobSizesRef = useRef<number[]>([22, 22, 22, 22, 22]);
+  const knobSizesRef = useRef<number[]>([22, 22, 22, 22, 22, 22, 22, 22]);
   
   // 位置缓存
   const centersOutside = useRef<Array<{x: number, y: number}>>([]);
@@ -78,6 +81,30 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     };
   }, []);
 
+  // 根据mixRatios更新滑块位置
+  const updateSliderPositions = () => {
+    const WIDTH = BASE_WIDTH;
+    const HEIGHT = BASE_HEIGHT;
+    const CENTER_X = WIDTH / 2;
+    const CENTER_Y = HEIGHT / 2;
+    const OUTER_RADIUS = 215;
+    const INNER_RADIUS = 70;
+    
+    const numColors = BASE_COLORS.length;
+    const step = (Math.PI * 2) / numColors;
+
+    for (let i = 0; i < numColors; i++) {
+      const angle = i * step;
+      // t值就是mixRatios[i]，从0(外圈)到1(内圈)
+      const t = mixRatios[i];
+      const distance = OUTER_RADIUS - t * (OUTER_RADIUS - INNER_RADIUS);
+      slidersPos.current[i] = {
+        x: CENTER_X + Math.sin(angle) * distance,
+        y: CENTER_Y - Math.cos(angle) * distance
+      };
+    }
+  };
+
   // 初始化位置
   const initializePositions = (scale: number) => {
     const WIDTH = BASE_WIDTH;
@@ -94,7 +121,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     centersOutside.current = [];
     centersInside.current = [];
     slidersPos.current = [];
-    knobSizesRef.current = [BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS];
+    knobSizesRef.current = [BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS];
 
     for (let i = 0; i < numColors; i++) {
       const angle = i * step;
@@ -400,17 +427,10 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     const outerPos = centersOutside.current[i];
     const innerPos = centersInside.current[i];
 
+    // 计算t值：从外圈(t=0)到内圈(t=1)
     const t = getT(outerPos.x, outerPos.y, innerPos.x, innerPos.y, x, y);
-    
-    // 更新滑块位置
-    const angle = Math.atan2(outerPos.y - CENTER_Y, outerPos.x - CENTER_X);
-    const distance = OUTER_RADIUS - t * (OUTER_RADIUS - INNER_RADIUS);
-    slidersPos.current[i] = {
-      x: CENTER_X + Math.cos(angle) * distance,
-      y: CENTER_Y + Math.sin(angle) * distance
-    };
 
-    // 更新配比
+    // 只更新配比，滑块位置会通过useEffect自动同步
     const newRatios = [...mixRatios];
     newRatios[i] = t;
     setMixRatios(newRatios);
@@ -515,6 +535,11 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     };
   }, [mixRatios, canvasSize]);
 
+  // 同步滑块位置到mixRatios
+  useEffect(() => {
+    updateSliderPositions();
+  }, [mixRatios]);
+
   // 启动绘制循环
   useEffect(() => {
     draw();
@@ -527,13 +552,9 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
 
   // 重置功能
   const handleReset = () => {
-    setMixRatios([0, 0, 0, 0, 0]);
+    setMixRatios([0, 0, 0, 0, 0, 0, 0, 0]);
     setFinalColor('');
-    
-    // 重置滑块位置
-    for (let i = 0; i < BASE_COLORS.length; i++) {
-      slidersPos.current[i] = { ...centersOutside.current[i] };
-    }
+    // 滑块位置会通过useEffect自动重置到外圈
   };
 
   const translations = {

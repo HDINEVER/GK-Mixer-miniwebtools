@@ -45,7 +45,12 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
       link.download = `palette-${mode.toLowerCase()}-${Date.now()}.png`;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      // Use setTimeout to ensure the click event completes before cleanup
+      setTimeout(() => {
+        if (link.parentNode) {
+          link.parentNode.removeChild(link);
+        }
+      }, 100);
     } catch (error) {
       console.error('Export failed:', error);
       alert('Export failed. Please try again.');

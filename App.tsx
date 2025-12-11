@@ -6,7 +6,7 @@ import PaletteVisualizer from './components/PaletteVisualizer';
 import RadialPaletteMixer from './components/RadialPaletteMixer';
 import BasicColorMixer from './components/BasicColorMixer';
 import { ColorData, AppMode, RGB, Language, Theme, ColorSpace } from './types';
-import { extractProminentColors, generateId, rgbToCmyk, rgbToHex, rgbToHsb, rgbToLab } from './utils/colorUtils';
+import { extractProminentColors, generateId, rgbToCmyk, rgbToHex, hexToRgb, rgbToHsb, rgbToLab } from './utils/colorUtils';
 import { convertToWorkingSpace, isInGamut } from './utils/colorSpaceConverter';
 import { translations } from './utils/translations';
 
@@ -86,6 +86,54 @@ const App: React.FC = () => {
     if (selectedColorId === colorId) {
       const remaining = colors.filter(c => c.id !== colorId);
       setSelectedColorId(remaining.length > 0 ? remaining[0].id : null);
+    }
+  };
+
+  const handleAddColor = (hex: string) => {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return;
+    
+    const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
+    const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
+    
+    const newColor: ColorData = {
+      id: generateId(),
+      hex,
+      rgb,
+      cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
+      hsb,
+      lab,
+      source: 'manual',
+      colorSpace: colorSpace
+    };
+    
+    setColors(prev => [newColor, ...prev]);
+    setSelectedColorId(newColor.id);
+  };
+
+  const handleAddColors = (hexColors: string[]) => {
+    const newColors = hexColors.map(hex => {
+      const rgb = hexToRgb(hex);
+      if (!rgb) return null;
+      
+      const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
+      const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
+      
+      return {
+        id: generateId(),
+        hex,
+        rgb,
+        cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
+        hsb,
+        lab,
+        source: 'manual' as const,
+        colorSpace: colorSpace
+      };
+    }).filter(Boolean) as ColorData[];
+    
+    setColors(prev => [...newColors, ...prev]);
+    if (newColors.length > 0) {
+      setSelectedColorId(newColors[0].id);
     }
   };
 
@@ -456,12 +504,13 @@ const App: React.FC = () => {
                 </div>
 
                 {rightPanelTab === 'mixer' ? (
-                    <MixerResult color={selectedColor} lang={lang} colorSpace={colorSpace} />
+                    <MixerResult color={selectedColor} lang={lang} colorSpace={colorSpace} onAddColor={handleAddColor} />
                 ) : rightPanelTab === 'radial' ? (
                     <RadialPaletteMixer
                         targetColor={selectedColor}
                         availableColors={colors}
                         lang={lang}
+                        onAddColors={handleAddColors}
                     />
                 ) : rightPanelTab === 'basic' ? (
                     <BasicColorMixer lang={lang} />
@@ -479,38 +528,38 @@ const App: React.FC = () => {
 
       {/* Footer with Author Info */}
       <footer className="border-t border-slate-200/50 dark:border-slate-700/50 mt-auto">
-        <div className="max-w-[1920px] mx-auto px-4 md:px-6 py-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="max-w-[1920px] mx-auto px-4 md:px-6 py-2.5">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-2">
             
             {/* Author Info */}
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-macaron-pink via-macaron-blue to-macaron-purple flex items-center justify-center text-white font-bold text-sm shadow-md">
+            <div className="flex items-center gap-1.5">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-macaron-pink via-macaron-blue to-macaron-purple flex items-center justify-center text-white font-bold text-xs shadow-md">
                 HD
               </div>
               <div>
-                <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
                   {lang === 'zh' ? '开发者' : lang === 'ja' ? '開発者' : 'Developer'}: <span className="text-macaron-blue">@HDIN</span>
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                <div className="text-[9px] text-slate-500 dark:text-slate-400">
                   {lang === 'zh' ? '模型爱好者的调色工具' : lang === 'ja' ? 'モデラーのための塗装ツール' : 'Paint Mixing Tool for Modelers'}
                 </div>
               </div>
             </div>
 
             {/* Social Links */}
-            <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
               {/* Bilibili */}
               <a 
                 href="https://space.bilibili.com/23848833?spm_id_from=333.1007.0.0"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded-md border border-slate-200/60 dark:border-slate-600/60 hover:border-pink-400 dark:hover:border-pink-500 hover:bg-pink-50/50 dark:hover:bg-pink-900/10 transition-all group"
+                className="flex items-center gap-1 px-1.5 py-1 rounded-md border border-slate-200/60 dark:border-slate-600/60 hover:border-pink-400 dark:hover:border-pink-500 hover:bg-pink-50/50 dark:hover:bg-pink-900/10 transition-all group"
                 title="Bilibili"
               >
-                <svg className="w-4 h-4 text-pink-500 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-3.5 h-3.5 text-pink-500 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373Z"/>
                 </svg>
-                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-pink-500">Bilibili</span>
+                <span className="text-[9px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-pink-500">Bilibili</span>
               </a>
 
               {/* X (Twitter) */}
@@ -518,13 +567,13 @@ const App: React.FC = () => {
                 href="https://x.com/rfQ4nGLccl4bqCP"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded-md border border-slate-200/60 dark:border-slate-600/60 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all group"
+                className="flex items-center gap-1 px-1.5 py-1 rounded-md border border-slate-200/60 dark:border-slate-600/60 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all group"
                 title="X (Twitter)"
               >
-                <svg className="w-4 h-4 text-slate-700 dark:text-slate-300 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                 </svg>
-                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-blue-500">X / Twitter</span>
+                <span className="text-[9px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-blue-500">X / Twitter</span>
               </a>
 
               {/* QQ Group */}
@@ -532,29 +581,29 @@ const App: React.FC = () => {
                 href="https://qm.qq.com/q/QtX0ZBOWIe"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded-md border border-slate-200/60 dark:border-slate-600/60 hover:border-blue-500 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all group"
+                className="flex items-center gap-1 px-1.5 py-1 rounded-md border border-slate-200/60 dark:border-slate-600/60 hover:border-blue-500 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all group"
                 title="QQ Group"
               >
-                <svg className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-3.5 h-3.5 text-blue-500 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M21.395 15.035a39.548 39.548 0 0 0-.803-2.264l-1.079-2.695c.001-.032.014-.562.014-.836C19.527 4.632 17.081 0 12 0S4.473 4.632 4.473 9.241c0 .274.013.804.014.836l-1.08 2.695a39.548 39.548 0 0 0-.802 2.264c-1.021 3.283-.69 4.643-.438 4.673.54.065 1.187-2.216 1.187-2.216.09.482.255.946.486 1.363 0 0-1.125 2.181-.685 2.433.435.247 1.134-.851 1.134-.851.371.48.84.87 1.361 1.134 0 0-.698 1.262-.228 1.262.47 0 1.273-1.41 1.273-1.41.583.201 1.18.309 1.781.322v.356c0 .309 1.576.373 2.524.373s2.524-.064 2.524-.373v-.356a6.104 6.104 0 0 0 1.781-.322s.803 1.41 1.273 1.41c.47 0-.228-1.262-.228-1.262a4.57 4.57 0 0 0 1.361-1.134s.699 1.098 1.134.851c.44-.252-.685-2.433-.685-2.433.231-.417.396-.881.486-1.363 0 0 .647 2.281 1.187 2.216.252-.03.583-1.39-.438-4.673z"/>
                 </svg>
-                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-blue-500">
+                <span className="text-[9px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-blue-500">
                   {lang === 'zh' ? '功能讨论群' : lang === 'ja' ? 'QQグループ' : 'QQ Group'}
                 </span>
               </a>
             </div>
 
             {/* Copyright & Special Thanks */}
-            <div className="text-[10px] text-slate-400 dark:text-slate-500 text-center md:text-right">
+            <div className="text-[9px] text-slate-400 dark:text-slate-500 text-center md:text-right">
               <div>© 2025 GK-Mixer</div>
               <div className="mt-0.5">
                 {lang === 'zh' ? '为模型爱好者打造' : lang === 'ja' ? 'モデラーのために' : 'Made for Modelers'}
               </div>
-              <div className="mt-1 flex items-center justify-center md:justify-end gap-1 text-pink-400 dark:text-pink-300">
+              <div className="mt-0.5 flex items-center justify-center md:justify-end gap-1 text-pink-400 dark:text-pink-300">
                 <span>✨</span>
                 <span>{lang === 'zh' ? '特别鸣谢' : lang === 'ja' ? '特別感謝' : 'Special Thanks'}: スミレ</span>
               </div>
-              <div className="mt-1 text-[8px] opacity-60">
+              <div className="mt-0.5 text-[8px] opacity-60">
                 {lang === 'zh' ? '引用: Mixbox 2.0 · RAL 色库' : lang === 'ja' ? '引用: Mixbox 2.0 · RAL カラーライブラリ' : 'Powered by: Mixbox 2.0 · RAL Color Library'}
               </div>
             </div>

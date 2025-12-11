@@ -690,6 +690,70 @@ export const BASE_MIXING_COLORS: PaintBrand[] = [
   }
 ];
 
+/**
+ * Extended Mixing Colors (8-color system for better color coverage)
+ * Adds Cyan, Magenta, Orange to cover more hues accurately
+ * Used for advanced color matching when 5-color system is insufficient
+ */
+export const EXTENDED_MIXING_COLORS: PaintBrand[] = [
+  {
+    id: 'gaia-001',
+    brand: 'Gaia',
+    code: '001',
+    name: '纯白',
+    hex: '#FFFFFF'
+  },
+  {
+    id: 'gaia-002',
+    brand: 'Gaia',
+    code: '002',
+    name: '纯黑',
+    hex: '#000000'
+  },
+  {
+    id: 'gaia-003',
+    brand: 'Gaia',
+    code: '003',
+    name: '红色',
+    hex: '#FF0000'
+  },
+  {
+    id: 'gaia-006',
+    brand: 'Gaia',
+    code: '006',
+    name: '品红',
+    hex: '#FF00FF'
+  },
+  {
+    id: 'gaia-004',
+    brand: 'Gaia',
+    code: '004',
+    name: '蓝色',
+    hex: '#0000FF'
+  },
+  {
+    id: 'gaia-007',
+    brand: 'Gaia',
+    code: '007',
+    name: '青色',
+    hex: '#00FFFF'
+  },
+  {
+    id: 'gaia-005',
+    brand: 'Gaia',
+    code: '005',
+    name: '黄色',
+    hex: '#FFFF00'
+  },
+  {
+    id: 'gaia-008',
+    brand: 'Gaia',
+    code: '008',
+    name: '橙色',
+    hex: '#FF8000'
+  }
+];
+
 export const findNearestPaints = (targetHex: string, count: number = 3): PaintBrand[] => {
   const targetRgb = hexToRgb(targetHex);
   const sorted = [...COMMON_PAINTS].sort((a, b) => {
@@ -727,8 +791,8 @@ export const extractProminentColors = (
 
     const colorMap: Record<string, number> = {};
 
-    // Sample every 5th pixel for better accuracy in color weight detection
-    for (let i = 0; i < data.length; i += 20) {
+    // Sample every 10th pixel for speed
+    for (let i = 0; i < data.length; i += 40) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
@@ -736,10 +800,10 @@ export const extractProminentColors = (
 
       if (a < 128) continue; // Skip transparent
 
-      // Quantize colors to reduce noise (round to nearest 15 for better clustering)
-      const qr = Math.round(r / 15) * 15;
-      const qg = Math.round(g / 15) * 15;
-      const qb = Math.round(b / 15) * 15;
+      // Quantize colors to reduce noise (round to nearest 10)
+      const qr = Math.round(r / 20) * 20;
+      const qg = Math.round(g / 20) * 20;
+      const qb = Math.round(b / 20) * 20;
 
       const hex = rgbToHex(qr, qg, qb);
       colorMap[hex] = (colorMap[hex] || 0) + 1;
@@ -880,9 +944,14 @@ export const mixboxMultiBlend = (colorWeights: { hex: string; weight: number }[]
  * 
  * @param targetHex Target color hex string
  * @param colorSpace Source color space (default: 'srgb')
- * @returns Array of 5 weights [white, black, red, blue, yellow]
+ * @param useExtendedPalette Use 8-color palette for better accuracy (default: false)
+ * @returns Array of weights [white, black, ...chromatic colors]
  */
-export const calculateMixboxRatios = (targetHex: string, colorSpace: ColorSpace = 'srgb'): number[] => {
+export const calculateMixboxRatios = (
+  targetHex: string, 
+  colorSpace: ColorSpace = 'srgb',
+  useExtendedPalette: boolean = false
+): number[] => {
   let targetRgb = hexToRgb(targetHex);
   
   // Convert to sRGB if needed (Mixbox works in sRGB space)
@@ -893,17 +962,20 @@ export const calculateMixboxRatios = (targetHex: string, colorSpace: ColorSpace 
   const targetLatent = mixbox.rgbToLatent(targetRgb.r, targetRgb.g, targetRgb.b);
   
   if (!targetLatent) {
-    return [0, 0, 0, 0, 0];
+    return useExtendedPalette ? [0, 0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
   }
   
+  // Choose color palette
+  const palette = useExtendedPalette ? EXTENDED_MIXING_COLORS : BASE_MIXING_COLORS;
+  
   // Get latent representations of base colors
-  const baseLatents = BASE_MIXING_COLORS.map(color => {
+  const baseLatents = palette.map(color => {
     const rgb = hexToRgb(color.hex);
     return mixbox.rgbToLatent(rgb.r, rgb.g, rgb.b);
   }).filter(latent => latent !== undefined) as number[][];
   
-  if (baseLatents.length !== 5) {
-    return [0, 0, 0, 0, 0];
+  if (baseLatents.length !== palette.length) {
+    return useExtendedPalette ? [0, 0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
   }
   
   // Calculate HSB values
@@ -928,19 +1000,6 @@ export const calculateMixboxRatios = (targetHex: string, colorSpace: ColorSpace 
   if (saturation < 0.12) {
     // Determine dominant hue direction
     const hue = hsb.h;
-    let dominantColor: 'red' | 'blue' | 'yellow';
-    
-    if (hue >= 15 && hue < 75) {
-      dominantColor = 'yellow';
-    } else if (hue >= 165 && hue < 285) {
-      dominantColor = 'blue';
-    } else if (hue >= 75 && hue < 165) {
-      // Green zone: prefer yellow over blue (more visible)
-      dominantColor = 'yellow';
-    } else {
-      // Red/Purple/Magenta zones
-      dominantColor = 'red';
-    }
     
     // Simplified formula: gray base + small amount of dominant color
     // Use HSB brightness for consistency
@@ -948,61 +1007,168 @@ export const calculateMixboxRatios = (targetHex: string, colorSpace: ColorSpace 
     const blackPercent = (100 - hsb.b) * (1 - saturation);
     const colorPercent = saturation * 100;
     
-    if (dominantColor === 'red') {
-      return [whitePercent, blackPercent, colorPercent, 0, 0];
-    } else if (dominantColor === 'blue') {
-      return [whitePercent, blackPercent, 0, colorPercent, 0];
+    if (useExtendedPalette) {
+      // 8-color palette: [white, black, red, magenta, blue, cyan, yellow, orange]
+      let colorWeights = [0, 0, 0, 0, 0, 0]; // chromatic colors
+      
+      if (hue >= 345 || hue < 22.5) {
+        colorWeights = [1, 0, 0, 0, 0, 0]; // red
+      } else if (hue >= 22.5 && hue < 45) {
+        colorWeights = [0, 0, 0, 0, 0, 1]; // orange
+      } else if (hue >= 45 && hue < 75) {
+        colorWeights = [0, 0, 0, 0, 1, 0]; // yellow
+      } else if (hue >= 75 && hue < 150) {
+        colorWeights = [0, 0, 0, 0.3, 1, 0]; // yellow-dominant green
+      } else if (hue >= 150 && hue < 195) {
+        colorWeights = [0, 0, 0, 1, 0, 0]; // cyan
+      } else if (hue >= 195 && hue < 240) {
+        colorWeights = [0, 0, 1, 0, 0, 0]; // blue
+      } else if (hue >= 240 && hue < 300) {
+        colorWeights = [0, 1, 0.3, 0, 0, 0]; // magenta-blue
+      } else {
+        colorWeights = [0.5, 1, 0, 0, 0, 0]; // magenta-red
+      }
+      
+      return [
+        whitePercent,
+        blackPercent,
+        ...colorWeights.map(w => w * colorPercent)
+      ];
     } else {
-      return [whitePercent, blackPercent, 0, 0, colorPercent];
+      // 5-color palette: [white, black, red, blue, yellow]
+      let dominantColor: 'red' | 'blue' | 'yellow';
+      
+      if (hue >= 15 && hue < 75) {
+        dominantColor = 'yellow';
+      } else if (hue >= 165 && hue < 285) {
+        dominantColor = 'blue';
+      } else if (hue >= 75 && hue < 165) {
+        dominantColor = 'yellow';
+      } else {
+        dominantColor = 'red';
+      }
+      
+      if (dominantColor === 'red') {
+        return [whitePercent, blackPercent, colorPercent, 0, 0];
+      } else if (dominantColor === 'blue') {
+        return [whitePercent, blackPercent, 0, colorPercent, 0];
+      } else {
+        return [whitePercent, blackPercent, 0, 0, colorPercent];
+      }
     }
   }
   
-  // === STEP 1: Find pure hue (chromatic colors only) ===
-  // Convert to maximum saturation version (pure hue)
-  const pureHueRgb = hsbToRgb(hsb.h, 100, 100);
-  const pureHueLatent = mixbox.rgbToLatent(pureHueRgb.r, pureHueRgb.g, pureHueRgb.b);
+  // === STEP 1: Find chromatic color target for mixbox ===
+  // For medium saturation (12-40%), remove gray and use actual desaturated color
+  // For high saturation (>40%), use pure hue for better accuracy
+  let chromaticTargetRgb: RGB;
+  let useMediumSaturationMode = false;
   
-  if (!pureHueLatent) {
-    return [0, 0, 0, 0, 0];
+  if (saturation >= 0.12 && saturation < 0.40) {
+    // Medium saturation: Remove gray component to get actual chromatic color
+    // This preserves subtle hue shifts (like purple tints) better than pure hue
+    useMediumSaturationMode = true;
+    
+    // Calculate gray amount (minimum channel value represents gray)
+    const grayAmount = minChannel;
+    
+    // Remove gray to get chromatic component
+    const chromaR = targetRgb.r - grayAmount;
+    const chromaG = targetRgb.g - grayAmount;
+    const chromaB = targetRgb.b - grayAmount;
+    
+    // Scale up to use full range for better mixbox accuracy
+    const chromaMax = Math.max(chromaR, chromaG, chromaB);
+    if (chromaMax > 0) {
+      const scale = 255 / chromaMax;
+      chromaticTargetRgb = {
+        r: Math.round(chromaR * scale),
+        g: Math.round(chromaG * scale),
+        b: Math.round(chromaB * scale)
+      };
+    } else {
+      // Fallback if no chroma (shouldn't happen due to saturation check)
+      chromaticTargetRgb = hsbToRgb(hsb.h, 100, 100);
+    }
+  } else {
+    // High saturation (>40%): Use pure hue (maximum saturation)
+    chromaticTargetRgb = hsbToRgb(hsb.h, 100, 100);
   }
   
-  // Optimize only chromatic colors (indices 2, 3, 4: red, blue, yellow)
-  let chromaWeights = [0, 0, 0]; // [red, blue, yellow]
+  const pureHueLatent = mixbox.rgbToLatent(chromaticTargetRgb.r, chromaticTargetRgb.g, chromaticTargetRgb.b);
+  
+  if (!pureHueLatent) {
+    return useExtendedPalette ? [0, 0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+  }
+  
+  // Determine number of chromatic colors to optimize
+  const numChromatic = useExtendedPalette ? 6 : 3;
+  const chromaStartIdx = 2; // Start after white(0) and black(1)
+  
+  // Initialize chromatic weights
+  let chromaWeights = new Array(numChromatic).fill(0);
   
   // Smart initialization based on hue
   const hue = hsb.h;
-  if (hue >= 345 || hue < 15) {
-    // Red (345-15°)
-    chromaWeights = [0.8, 0.1, 0.1];
-  } else if (hue >= 15 && hue < 45) {
-    // Orange (Red + Yellow)
-    chromaWeights = [0.5, 0.0, 0.5];
-  } else if (hue >= 45 && hue < 75) {
-    // Yellow (45-75°)
-    chromaWeights = [0.1, 0.1, 0.8];
-  } else if (hue >= 75 && hue < 165) {
-    // Green (Yellow + Blue)
-    chromaWeights = [0.0, 0.5, 0.5];
-  } else if (hue >= 165 && hue < 220) {
-    // Cyan (Blue + Yellow for green tint)
-    chromaWeights = [0.0, 0.6, 0.4];
-  } else if (hue >= 220 && hue < 260) {
-    // Pure Blue (220-260°)
-    chromaWeights = [0.1, 0.8, 0.1];
-  } else if (hue >= 260 && hue < 300) {
-    // Blue-Purple (260-300°: blue-purple transition zone)
-    // 263° and 285° fall here, blue dominant with red component
-    chromaWeights = [0.4, 0.6, 0.0];
+  
+  if (useExtendedPalette) {
+    // 8-color palette: [white, black, red, magenta, blue, cyan, yellow, orange]
+    // Indices: 0=white, 1=black, 2=red, 3=magenta, 4=blue, 5=cyan, 6=yellow, 7=orange
+    if (hue >= 345 || hue < 15) {
+      chromaWeights = [0.9, 0.05, 0.0, 0.0, 0.0, 0.05]; // Pure red
+    } else if (hue >= 15 && hue < 30) {
+      chromaWeights = [0.6, 0.0, 0.0, 0.0, 0.0, 0.4]; // Red-Orange
+    } else if (hue >= 30 && hue < 45) {
+      chromaWeights = [0.3, 0.0, 0.0, 0.0, 0.0, 0.7]; // Orange
+    } else if (hue >= 45 && hue < 60) {
+      chromaWeights = [0.0, 0.0, 0.0, 0.0, 0.9, 0.1]; // Yellow-Orange
+    } else if (hue >= 60 && hue < 75) {
+      chromaWeights = [0.0, 0.0, 0.0, 0.0, 0.95, 0.05]; // Pure Yellow
+    } else if (hue >= 75 && hue < 120) {
+      chromaWeights = [0.0, 0.0, 0.0, 0.3, 0.7, 0.0]; // Yellow-Green
+    } else if (hue >= 120 && hue < 165) {
+      chromaWeights = [0.0, 0.0, 0.0, 0.6, 0.4, 0.0]; // Green (Cyan+Yellow)
+    } else if (hue >= 165 && hue < 195) {
+      chromaWeights = [0.0, 0.0, 0.0, 0.9, 0.1, 0.0]; // Pure Cyan
+    } else if (hue >= 195 && hue < 225) {
+      chromaWeights = [0.0, 0.0, 0.7, 0.3, 0.0, 0.0]; // Cyan-Blue
+    } else if (hue >= 225 && hue < 255) {
+      chromaWeights = [0.0, 0.0, 0.9, 0.1, 0.0, 0.0]; // Pure Blue
+    } else if (hue >= 255 && hue < 285) {
+      chromaWeights = [0.0, 0.6, 0.4, 0.0, 0.0, 0.0]; // Blue-Magenta
+    } else if (hue >= 285 && hue < 315) {
+      chromaWeights = [0.0, 0.9, 0.1, 0.0, 0.0, 0.0]; // Pure Magenta
+    } else {
+      chromaWeights = [0.5, 0.5, 0.0, 0.0, 0.0, 0.0]; // Magenta-Red
+    }
   } else {
-    // Purple-Red (300-345°: closer to magenta)
-    // More balanced or red-dominant
-    chromaWeights = [0.55, 0.45, 0.0];
+    // 5-color palette: [white, black, red, blue, yellow]
+    if (hue >= 345 || hue < 15) {
+      chromaWeights = [0.8, 0.1, 0.1]; // Red
+    } else if (hue >= 15 && hue < 45) {
+      chromaWeights = [0.5, 0.0, 0.5]; // Orange (Red + Yellow)
+    } else if (hue >= 45 && hue < 75) {
+      chromaWeights = [0.1, 0.1, 0.8]; // Yellow
+    } else if (hue >= 75 && hue < 165) {
+      chromaWeights = [0.0, 0.5, 0.5]; // Green (Yellow + Blue)
+    } else if (hue >= 165 && hue < 220) {
+      chromaWeights = [0.0, 0.6, 0.4]; // Cyan (Blue + Yellow for green tint)
+    } else if (hue >= 220 && hue < 260) {
+      chromaWeights = [0.1, 0.8, 0.1]; // Pure Blue
+    } else if (hue >= 260 && hue < 300) {
+      chromaWeights = [0.4, 0.6, 0.0]; // Blue-Purple
+    } else {
+      chromaWeights = [0.55, 0.45, 0.0]; // Purple-Red
+    }
   }
   
   // Normalize
   const normalizeChroma = (w: number[]) => {
     const sum = w.reduce((a, b) => a + b, 0);
-    return sum > 0.001 ? w.map(x => x / sum) : [0.33, 0.33, 0.34];
+    if (sum > 0.001) {
+      return w.map(x => x / sum);
+    }
+    return new Array(w.length).fill(1 / w.length);
   };
   
   chromaWeights = normalizeChroma(chromaWeights);
@@ -1015,8 +1181,8 @@ export const calculateMixboxRatios = (targetHex: string, colorSpace: ColorSpace 
   for (let iter = 0; iter < iterations; iter++) {
     // Compute current mixed latent (chromatic only)
     const mixedLatent = [0, 0, 0, 0, 0, 0, 0];
-    for (let i = 0; i < 3; i++) {
-      const baseIdx = i + 2; // Map to red(2), blue(3), yellow(4)
+    for (let i = 0; i < numChromatic; i++) {
+      const baseIdx = chromaStartIdx + i;
       for (let j = 0; j < 7; j++) {
         mixedLatent[j] += baseLatents[baseIdx][j] * chromaWeights[i];
       }
@@ -1024,14 +1190,14 @@ export const calculateMixboxRatios = (targetHex: string, colorSpace: ColorSpace 
     
     // Compute error
     let error = 0;
-    const gradient = [0, 0, 0];
+    const gradient = new Array(numChromatic).fill(0);
     
     for (let j = 0; j < 7; j++) {
       const diff = mixedLatent[j] - pureHueLatent[j];
       error += diff * diff;
       
-      for (let i = 0; i < 3; i++) {
-        const baseIdx = i + 2;
+      for (let i = 0; i < numChromatic; i++) {
+        const baseIdx = chromaStartIdx + i;
         gradient[i] += 2 * diff * baseLatents[baseIdx][j];
       }
     }
@@ -1040,7 +1206,7 @@ export const calculateMixboxRatios = (targetHex: string, colorSpace: ColorSpace 
     if (error < 0.0001) break;
     
     // Update weights
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < numChromatic; i++) {
       chromaWeights[i] -= learningRate * gradient[i];
       chromaWeights[i] = Math.max(0, chromaWeights[i]);
     }
@@ -1054,21 +1220,40 @@ export const calculateMixboxRatios = (targetHex: string, colorSpace: ColorSpace 
   }
   
   // === STEP 2: Add white/black based on saturation and brightness ===
-  const chromaRatio = hsb.s / 100; // How much of the pure hue
-  const grayRatio = 1 - chromaRatio; // How much gray (white + black)
+  let finalWeights: number[];
   
-  // Distribute gray between white and black based on brightness
-  const whiteRatio = grayRatio * (hsb.b / 100);
-  const blackRatio = grayRatio * (1 - hsb.b / 100);
-  
-  // Final weights
-  const finalWeights = [
-    whiteRatio,                    // White
-    blackRatio,                    // Black
-    chromaWeights[0] * chromaRatio, // Red
-    chromaWeights[1] * chromaRatio, // Blue
-    chromaWeights[2] * chromaRatio  // Yellow
-  ];
+  if (useMediumSaturationMode) {
+    // Medium saturation mode: Gray was already removed, so calculate directly from RGB
+    // Gray amount = minimum channel value
+    const grayAmount = minChannel / 255; // Normalized to 0-1
+    
+    // Distribute gray between white and black based on brightness
+    const whiteRatio = grayAmount * (hsb.b / 100);
+    const blackRatio = grayAmount * (1 - hsb.b / 100);
+    
+    // Chromatic ratio = how much non-gray color we have
+    const chromaRatio = 1 - grayAmount;
+    
+    finalWeights = [
+      whiteRatio,                      // White
+      blackRatio,                      // Black
+      ...chromaWeights.map(w => w * chromaRatio)  // Chromatic colors
+    ];
+  } else {
+    // High saturation mode: Use HSB saturation directly
+    const chromaRatio = hsb.s / 100; // How much of the pure hue
+    const grayRatio = 1 - chromaRatio; // How much gray (white + black)
+    
+    // Distribute gray between white and black based on brightness
+    const whiteRatio = grayRatio * (hsb.b / 100);
+    const blackRatio = grayRatio * (1 - hsb.b / 100);
+    
+    finalWeights = [
+      whiteRatio,                      // White
+      blackRatio,                      // Black
+      ...chromaWeights.map(w => w * chromaRatio)  // Chromatic colors
+    ];
+  }
   
   // Return as percentages
   return finalWeights.map(w => w * 100);

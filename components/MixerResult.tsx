@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { ColorData, PaintBrand, RALColor, Language, ColorSpace } from '../types';
-import { generatePaintRecipe } from '../services/geminiService';
-import { findNearestPaints, findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS } from '../utils/colorUtils';
+import { findNearestPaints, findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS, EXTENDED_MIXING_COLORS } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
 import * as mixbox from '../utils/mixbox';
 
@@ -79,6 +78,7 @@ interface MixerResultProps {
   color: ColorData | null;
   lang: Language;
   colorSpace?: ColorSpace;
+  onAddColor?: (hex: string) => void;
 }
 
 interface Layer {
@@ -90,15 +90,14 @@ interface Layer {
     isBase?: boolean;
 }
 
-const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'srgb' }) => {
-  const [recipe, setRecipe] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'srgb', onAddColor }) => {
   const [nearest, setNearest] = useState<PaintBrand[]>([]);
   const [ralMatch, setRalMatch] = useState<RALColor | null>(null);
   const [bottleVolume, setBottleVolume] = useState<number>(20); // Default to 20ml
   const [selectedBasePaint, setSelectedBasePaint] = useState<PaintBrand | null>(null);
-  const [mixingMode, setMixingMode] = useState<MixingMode>('mixbox');
+  const [mixingMode, setMixingMode] = useState<MixingMode>('professional');
   const [professionalRecipe, setProfessionalRecipe] = useState<ReturnType<typeof calculateProfessionalRecipe> | null>(null);
+  const [addedToPalette, setAddedToPalette] = useState(false);
   
   const t = translations[lang];
   const bottleRef = useRef<HTMLDivElement>(null);
@@ -119,9 +118,8 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
 
   useEffect(() => {
     if (color) {
-      setLoading(true);
-      setRecipe('');
       setProfessionalRecipe(null);
+      setAddedToPalette(false); // Reset added state when color changes
       
       const found = findNearestPaints(color.hex);
       setNearest(found);
@@ -133,18 +131,9 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
       // Don't auto-select base paint, only provide recommendations
       setSelectedBasePaint(null);
 
-      // Generate AI recipe for non-professional modes
-      if (mixingMode !== 'professional') {
-        generatePaintRecipe(color, lang).then(res => {
-          setRecipe(res);
-          setLoading(false);
-        });
-      } else {
-        // Generate professional recipe
-        const profRecipe = calculateProfessionalRecipe(color.hex);
-        setProfessionalRecipe(profRecipe);
-        setLoading(false);
-      }
+      // Generate professional recipe
+      const profRecipe = calculateProfessionalRecipe(color.hex);
+      setProfessionalRecipe(profRecipe);
     }
   }, [color, lang, mixingMode]);
 
@@ -161,14 +150,14 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
       if (!color) return [];
 
       const layers: Layer[] = [];
-      const baseColors = BASE_MIXING_COLORS; // Always use BASE_MIXING_COLORS
+      const baseColors = EXTENDED_MIXING_COLORS; // Use 8-color extended palette for better color accuracy
       
       if (selectedBasePaint) {
         // --- BASE PAINT MODE ---
         // Use Mixbox to calculate how to mix from selected base paint to target
         
         const baseRgb = hexToRgb(selectedBasePaint.hex);
-        const ratios = calculateMixboxRatios(color.hex, colorSpace);
+        const ratios = calculateMixboxRatios(color.hex, colorSpace, true); // Use 8-color extended palette
         
         // Find which base color index matches our selected paint best
         let basePaintIndex = 0;
@@ -254,8 +243,8 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
           });
           
         } else {
-          // Mixbox, CMY-Pigment, CMY-Solid modes use Mixbox inverse algorithm
-          const weights = calculateMixboxRatios(color.hex, colorSpace);
+          // Mixbox, CMY-Pigment, CMY-Solid modes use Mixbox inverse algorithm with 8-color palette
+          const weights = calculateMixboxRatios(color.hex, colorSpace, true); // Use 8-color extended palette
           const totalWeight = weights.reduce((a, b) => a + b, 0);
           
           if (totalWeight < 0.1) {
@@ -319,10 +308,10 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-macaron-blue/30 dark:border-slate-700 shadow-sm p-3 md:p-5 overflow-hidden transition-colors duration-300">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-macaron-blue/30 dark:border-slate-700 shadow-sm p-4 md:p-6 overflow-hidden transition-colors duration-300">
       
       {/* Top Section: Color Info & CMYK Dashboard */}
-      <div className="flex flex-col md:flex-row gap-4 md:gap-6 border-b border-slate-100 dark:border-slate-800 pb-4 md:pb-6 mb-4 md:mb-6">
+      <div className="flex flex-col md:flex-row gap-6 border-b border-slate-100 dark:border-slate-800 pb-6 mb-6">
         {/* Swatch & Hex */}
         <div className="flex items-center gap-4 min-w-[200px]">
             <div 
@@ -385,25 +374,11 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
       </div>
 
       {/* Mixing Mode Selector */}
-      <div className="border-b border-slate-100 dark:border-slate-800 pb-4 md:pb-6 mb-4 md:mb-6">
+      <div className="border-b border-slate-100 dark:border-slate-800 pb-6 mb-6">
         <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
           {lang === 'zh' ? '混色算法' : lang === 'ja' ? '混色アルゴリズム' : 'Mixing Algorithm'}
         </h3>
         <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => setMixingMode('mixbox')}
-            className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium ${
-              mixingMode === 'mixbox'
-                ? 'border-macaron-blue bg-macaron-blue/10 text-macaron-blue dark:bg-macaron-blue/20'
-                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-macaron-blue/50'
-            }`}
-          >
-            <div className="font-bold mb-1">🎨 Mixbox</div>
-            <div className="text-xs opacity-70">
-              {lang === 'zh' ? '物理混色算法' : lang === 'ja' ? '物理混色' : 'Physical Mixing'}
-            </div>
-          </button>
-          
           <button
             onClick={() => setMixingMode('professional')}
             className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium ${
@@ -417,31 +392,45 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
               {lang === 'zh' ? 'HSB 专业喷涂' : lang === 'ja' ? 'プロ塗装' : 'Pro Spray Painting'}
             </div>
           </button>
+          
+          <button
+            onClick={() => setMixingMode('mixbox')}
+            className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium ${
+              mixingMode === 'mixbox'
+                ? 'border-macaron-blue bg-macaron-blue/10 text-macaron-blue dark:bg-macaron-blue/20'
+                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-macaron-blue/50'
+            }`}
+          >
+            <div className="font-bold mb-1">🎨 Mixbox</div>
+            <div className="text-xs opacity-70">
+              {lang === 'zh' ? '物理混色算法' : lang === 'ja' ? '物理混色' : 'Physical Mixing'}
+            </div>
+          </button>
         </div>
         
         {/* Mode Description */}
         <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
+          {mixingMode === 'professional' && (
+            lang === 'zh'
+              ? 'Professional 专业模式 - HSB 色彩空间分析 + LAB 色差计算，模拟专业喷涂工艺'
+              : lang === 'ja'
+              ? 'Professional モード - HSB 色空間分析 + LAB 色差計算、プロのスプレー塗装をシミュレート'
+              : 'Professional Mode - HSB color space analysis + LAB color difference calculation, simulates pro spray painting'
+          )}
           {mixingMode === 'mixbox' && (
             lang === 'zh' 
-              ? 'Mixbox 2.0 物理混色算法 - 基于 7 维潜在空间模拟真实颜料混合,蓝+黄=绿(非灰色)'
+              ? 'Mixbox 2.0 物理混色算法 - 基于 7 维潜在空间模拟真实颜料混合，蓝 + 黄=绿 (非灰色)'
               : lang === 'ja'
               ? 'Mixbox 2.0 物理混色アルゴリズム - 7 次元潜在空間による物理的な絵の具混合シミュレーション'
               : 'Mixbox 2.0 Physical Mixing - 7D latent space simulation, Blue+Yellow=Green (not Gray)'
           )}
-          {mixingMode === 'professional' && (
-            lang === 'zh'
-              ? 'HSB 专业喷涂算法 - 基于明度分层策略:高明度(白底调色) | 中明度(标准混合) | 低明度(黑底提亮)'
-              : lang === 'ja'
-              ? 'HSB プロ塗装アルゴリズム - 明度分析による専門的な調色プロセス'
-              : 'HSB Professional Algorithm - Brightness-based strategy: High(White base) | Mid(Standard) | Low(Black base)'
-          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="flex flex-col lg:flex-row gap-8">
         
-        {/* Left Column: Bottle & Base Paint Selection */}
-        <div className="flex flex-col">
+        {/* Left: Bottle & Calculator */}
+        <div className="flex-1 flex flex-col items-center">
              <div className="w-full flex justify-between items-center mb-4">
                  <h3 className="text-xs font-bold text-macaron-blue tracking-wider flex items-center gap-2">
                     <span className="w-2 h-2 bg-macaron-blue rounded-full"></span>
@@ -464,15 +453,15 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                 </div>
              </div>
 
-             <div className="flex flex-col sm:flex-row gap-4 items-stretch w-full bg-slate-50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-100 dark:border-slate-700 relative overflow-hidden">
+             <div className="flex flex-col sm:flex-row gap-6 items-end w-full justify-center bg-slate-50 dark:bg-slate-800/30 p-6 rounded-xl border border-slate-100 dark:border-slate-700 relative overflow-hidden min-h-[320px]">
                 
                 {/* Bottle Graphic */}
-                <div className="relative mx-auto sm:mx-0 flex flex-col items-center">
+                <div className="relative mx-auto sm:mx-0">
                     {/* Bottle Neck */}
                     <div className="w-16 h-4 bg-slate-200 dark:bg-slate-600 mx-auto rounded-t-sm border-x border-t border-slate-300 dark:border-slate-500 opacity-50"></div>
                     
                     {/* Bottle Body */}
-                    <div className="relative w-28 h-56 border-2 border-slate-400 dark:border-slate-500 bg-white/50 dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm overflow-hidden z-10">
+                    <div className="relative w-32 h-64 border-2 border-slate-400 dark:border-slate-500 bg-white/50 dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm overflow-hidden z-10">
                         
                         {/* Ticks */}
                         <div className="absolute right-0 top-0 h-full w-full pointer-events-none z-20 flex flex-col justify-end pb-0">
@@ -515,11 +504,11 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                     </div>
                     
                     {/* Reflection overlay */}
-                    <div className="absolute top-4 left-2 w-2 h-48 bg-white opacity-20 rounded-full blur-[1px] z-20 pointer-events-none"></div>
+                    <div className="absolute top-4 left-2 w-2 h-56 bg-white opacity-20 rounded-full blur-[1px] z-20 pointer-events-none"></div>
                 </div>
 
                 {/* Legend / List */}
-                <div className="flex-1 max-h-56 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                <div className="w-full sm:flex-1 h-auto sm:h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 border-b border-slate-200 dark:border-slate-700 pb-1 mb-2">
                         <span>{t.totalVolume}: {bottleVolume}ml</span>
                         <span className="text-macaron-purple">{selectedBasePaint ? 'BASE MODE' : 'PURE MODE'}</span>
@@ -582,6 +571,23 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                                                  {mixedColorHex.toUpperCase()}
                                              </div>
                                          </div>
+                                         {onAddColor && mixedColorHex !== '#808080' && (
+                                             <button
+                                                 onClick={() => {
+                                                     onAddColor(mixedColorHex);
+                                                     setAddedToPalette(true);
+                                                     setTimeout(() => setAddedToPalette(false), 2000);
+                                                 }}
+                                                 disabled={addedToPalette}
+                                                 className={`px-2 py-1 text-[10px] font-medium rounded transition-all ${
+                                                     addedToPalette
+                                                         ? 'bg-green-500 text-white cursor-default'
+                                                         : 'bg-blue-500 hover:bg-blue-600 text-white'
+                                                 }`}
+                                             >
+                                                 {addedToPalette ? t.addedToPalette : t.addMixedToPalette}
+                                             </button>
+                                         )}
                                      </div>
                                      
                                      {/* 色相准确度验证 */}
@@ -667,36 +673,40 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                      ))}
                 </div>
              </div>
+        </div>
 
-            {/* Base Paint Selection - Moved below bottle */}
-            <div className="mt-4">
+        {/* Right: Selection & AI */}
+        <div className="flex-1 flex flex-col gap-6">
+            
+            {/* Nearest Paints Selection */}
+            <div>
                 <h3 className="text-xs font-bold text-macaron-purple tracking-wider mb-2 flex items-center gap-2">
                   {t.closestMatches}
                   <span className="text-[10px] font-normal bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded">
                     {lang === 'zh' ? '推荐' : lang === 'ja' ? '推奨' : 'Recommended'}
                   </span>
                 </h3>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-2">
-                  {lang === 'zh' ? '点击选择作为底漆,或直接使用纯混合模式' : lang === 'ja' ? 'ベースペイントとして選択、または純粋な混合モードを使用' : 'Click to use as base paint, or use pure mixing mode'}
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-3">
+                  {lang === 'zh' ? '点击选择作为底漆，或直接使用纯混合模式' : lang === 'ja' ? 'ベースペイントとして選択、または純粋な混合モードを使用' : 'Click to use as base paint, or use pure mixing mode'}
                 </div>
-                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                   {nearest.map((paint) => (
                     <button 
                         key={paint.id} 
                         onClick={() => handleBasePaintToggle(paint)}
-                        className={`flex items-center gap-2 p-2 rounded-md transition-all border text-left ${selectedBasePaint?.id === paint.id ? 'bg-macaron-purple/10 border-macaron-purple ring-1 ring-macaron-purple' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                        className={`w-full flex items-center gap-3 p-2 rounded-md transition-all border ${selectedBasePaint?.id === paint.id ? 'bg-macaron-purple/10 border-macaron-purple ring-1 ring-macaron-purple' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
-                      <div className="w-6 h-6 rounded border border-slate-200 dark:border-slate-600 shadow-sm flex-shrink-0" style={{ backgroundColor: paint.hex }}></div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center gap-1">
-                            <span className="font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">[{paint.brand}] {paint.code}</span>
+                      <div className="w-8 h-8 rounded-md border border-slate-200 dark:border-slate-600 shadow-sm flex-shrink-0" style={{ backgroundColor: paint.hex }}></div>
+                      <div className="flex-1 text-left">
+                        <div className="flex justify-between items-center">
+                            <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-200">[{paint.brand}] {paint.code}</span>
                             {selectedBasePaint?.id === paint.id && (
-                                <span className="text-[9px] bg-macaron-purple text-white px-1 rounded flex-shrink-0">
-                                    ✓
+                                <span className="text-[10px] bg-macaron-purple text-white px-1 rounded flex items-center gap-1">
+                                    ✓ <span className="hidden sm:inline">ACTIVE</span>
                                 </span>
                             )}
                         </div>
-                        <span className="font-mono text-[9px] text-slate-500 dark:text-slate-500 truncate block">{paint.name}</span>
+                        <span className="font-mono text-[10px] text-slate-500 dark:text-slate-500 truncate block">{paint.name}</span>
                       </div>
                     </button>
                   ))}
@@ -708,11 +718,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                     </div>
                 )}
             </div>
-        </div>
 
-        {/* Right Column: RAL Standard & Professional Recipe */}
-        <div className="flex flex-col gap-6">
-            
             {/* RAL Color Match */}
             {ralMatch && (
                 <div>
@@ -751,17 +757,17 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                 </div>
             )}
 
-            {/* Professional Recipe Analysis (only shown in professional mode) */}
-            {mixingMode === 'professional' && (
+            {/* Professional Recipe Analysis */}
+            {professionalRecipe && (
             <div className="flex-1 flex flex-col">
-                <h3 className="text-xs font-bold text-purple-600 dark:text-purple-400 tracking-wider mb-3 flex justify-between items-center">
-                  {lang === 'zh' ? '专业配方分析' : lang === 'ja' ? 'プロレシピ分析' : 'Professional Recipe Analysis'}
+                <h3 className="text-xs font-bold text-macaron-green tracking-wider mb-3 flex justify-between items-center">
+                  {lang === 'zh' ? '专业配方分析' : lang === 'ja' ? 'プロレシピ分析' : 'Professional Recipe'}
                   <span className="text-[10px] font-normal opacity-50 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-500">
                      HSB+LAB
                   </span>
                 </h3>
                 
-                {professionalRecipe ? (
+                {
                   /* Professional Mode Display */
                   <div className="flex-1 font-mono text-xs text-slate-600 dark:text-slate-300 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-700 p-4 rounded-lg border-2 border-purple-200 dark:border-purple-900/30 overflow-y-auto max-h-[400px] custom-scrollbar space-y-3">
                     
@@ -828,15 +834,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                       </div>
                     </div>
                   </div>
-                ) : loading ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-purple-500 animate-pulse bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700 min-h-[200px]">
-                     <svg className="w-6 h-6 animate-spin mb-2" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                     </svg>
-                     <span className="font-mono text-xs">{t.analyzing}</span>
-                  </div>
-                ) : null}
+                }
             </div>
             )}
         </div>

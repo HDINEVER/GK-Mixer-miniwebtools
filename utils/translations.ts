@@ -53,7 +53,13 @@ export const translations = {
     ralLrv: 'LRV (Light Reflectance)',
     ralNotFound: 'RAL match not found',
     ralToggle: 'Show RAL Standard',
-    industryStandard: 'Industrial Standard Color System'
+    industryStandard: 'Industrial Standard Color System',
+    addMixedToPalette: '+ Add to Palette',
+    addedToPalette: '✓ Added',
+    addCmyColors: '+ Add CMY Colors',
+    cmyColorsAdded: '✓ CMY Added',
+    addBwColors: '+ Add Black & White',
+    bwColorsAdded: '✓ B&W Added'
   },
   zh: {
     title: 'GK_混色模拟器.exe',
@@ -107,7 +113,13 @@ export const translations = {
     ralLrv: 'LRV (反光值)',
     ralNotFound: '未找到 RAL 匹配',
     ralToggle: '显示 RAL 标准色',
-    industryStandard: '工业标准色系统'
+    industryStandard: '工业标准色系统',
+    addMixedToPalette: '+ 添加到色板',
+    addedToPalette: '✓ 已添加',
+    addCmyColors: '+ 添加 CMY 三原色',
+    cmyColorsAdded: '✓ 已添加 CMY',
+    addBwColors: '+ 添加黑白色',
+    bwColorsAdded: '✓ 已添加黑白'
   },
   ja: {
     title: 'GK_調色シミュレーター.exe',
@@ -161,6 +173,12 @@ export const translations = {
     ralLrv: 'LRV (反射率)',
     ralNotFound: 'RAL マッチなし',
     ralToggle: 'RAL 標準色を表示',
-    industryStandard: '工業標準色システム'
+    industryStandard: '工業標準色システム',
+    addMixedToPalette: '+ パレットに追加',
+    addedToPalette: '✓ 追加済み',
+    addCmyColors: '+ CMY 三原色を追加',
+    cmyColorsAdded: '✓ CMY 追加済み',
+    addBwColors: '+ 白黒色を追加',
+    bwColorsAdded: '✓ 白黒追加済み'
   }
 };

@@ -10,7 +10,7 @@ interface BasicColorMixerProps {
 }
 
 // 8 base colors: 5 Gaia + 3 Process colors
-const BASE_COLORS = [
+const DEFAULT_BASE_COLORS = [
   { id: 'gaia-001', brand: 'Gaia', code: '001', name: '光泽白', hex: '#FFFFFF' },
   { id: 'gaia-002', brand: 'Gaia', code: '002', name: '光泽黑', hex: '#000000' },
   { id: 'gaia-003', brand: 'Gaia', code: '003', name: '光泽红', hex: '#E60012' },
@@ -19,6 +19,13 @@ const BASE_COLORS = [
   { id: 'process-cyan', brand: 'Process', code: 'C', name: '印刷青', hex: '#00B7EB' },
   { id: 'process-magenta', brand: 'Process', code: 'M', name: '印刷品红', hex: '#FF0090' },
   { id: 'process-yellow', brand: 'Process', code: 'Y', name: '印刷黄', hex: '#FFEF00' },
+];
+
+// Gaia 扩展颜色 (006品红、007青、008橙)
+const GAIA_EXTENDED_COLORS = [
+  { id: 'gaia-006', brand: 'Gaia', code: '006', name: '品红', hex: '#FF00FF' },
+  { id: 'gaia-007', brand: 'Gaia', code: '007', name: '青', hex: '#00FFFF' },
+  { id: 'gaia-008', brand: 'Gaia', code: '008', name: '橙', hex: '#FF8000' },
 ];
 
 // Canvas 基础常量
@@ -43,7 +50,8 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
-  const [mixRatios, setMixRatios] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0]);
+  const [baseColors, setBaseColors] = useState(DEFAULT_BASE_COLORS);
+  const [mixRatios, setMixRatios] = useState<number[]>(DEFAULT_BASE_COLORS.map(() => 0));
   const [finalColor, setFinalColor] = useState<string>('');
   const [totalVolume, setTotalVolume] = useState<number>(20);
   const [canvasSize, setCanvasSize] = useState(getCanvasSize());
@@ -51,7 +59,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
   // 拖动状态
   const draggedIndexRef = useRef<number>(-1);
   const lastMoveTimeRef = useRef<number>(0); // 触控节流
-  const knobSizesRef = useRef<number[]>([22, 22, 22, 22, 22, 22, 22, 22]);
+  const knobSizesRef = useRef<number[]>(baseColors.map(() => 22));
   
   // 位置缓存
   const centersOutside = useRef<Array<{x: number, y: number}>>([]);
@@ -80,6 +88,11 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
       window.removeEventListener('resize', handleWindowResize);
     };
   }, []);
+  
+  // 当baseColors改变时重新初始化位置
+  useEffect(() => {
+    initializePositions(canvasSize.scale);
+  }, [baseColors.length, canvasSize.scale]);
 
   // 根据mixRatios更新滑块位置
   const updateSliderPositions = () => {
@@ -90,7 +103,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     const OUTER_RADIUS = 215;
     const INNER_RADIUS = 70;
     
-    const numColors = BASE_COLORS.length;
+    const numColors = baseColors.length;
     const step = (Math.PI * 2) / numColors;
 
     for (let i = 0; i < numColors; i++) {
@@ -115,7 +128,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     const INNER_RADIUS = 70;
     const BASE_KNOB_RADIUS = 22;
     
-    const numColors = BASE_COLORS.length;
+    const numColors = baseColors.length;
     const step = (Math.PI * 2) / numColors;
 
     centersOutside.current = [];
@@ -178,7 +191,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
     // 1. 绘制轨道（连线）
-    for (let i = 0; i < BASE_COLORS.length; i++) {
+    for (let i = 0; i < baseColors.length; i++) {
       const innerPos = centersInside.current[i];
       const outerPos = centersOutside.current[i];
 
@@ -192,10 +205,10 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     }
 
     // 2. 绘制旋钮
-    for (let i = 0; i < BASE_COLORS.length; i++) {
+    for (let i = 0; i < baseColors.length; i++) {
       const pos = slidersPos.current[i];
       const currentRadius = knobSizesRef.current[i];
-      const hex = BASE_COLORS[i].hex;
+      const hex = baseColors[i].hex;
 
       // 阴影
       ctx.beginPath();
@@ -241,12 +254,12 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     }
 
     // 4. 绘制数据标签（最后绘制，确保在最上层）
-    for (let i = 0; i < BASE_COLORS.length; i++) {
+    for (let i = 0; i < baseColors.length; i++) {
       // 如果有配比，显示数据标签
       if (mixRatios[i] > 0.001 || draggedIndexRef.current === i) {
         const pos = slidersPos.current[i];
         const currentRadius = knobSizesRef.current[i];
-        const hex = BASE_COLORS[i].hex;
+        const hex = baseColors[i].hex;
         const totalRatio = mixRatios.reduce((a, b) => a + b, 0);
         const percentage = totalRatio > 0 ? (mixRatios[i] / totalRatio * 100).toFixed(1) : '0.0';
         const ml = (parseFloat(percentage) * totalVolume / 100).toFixed(1);
@@ -377,7 +390,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     const y = (clientY - rect.top) * (HEIGHT / canvasSize.height);
 
     // 检测点击了哪个旋钮
-    for (let i = 0; i < BASE_COLORS.length; i++) {
+    for (let i = 0; i < baseColors.length; i++) {
       const pos = slidersPos.current[i];
       const radius = knobSizesRef.current[i];
       const dx = x - pos.x;
@@ -387,15 +400,17 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
         draggedIndexRef.current = i;
         
         // 放大动画
-        anime({
-          targets: { radius: knobSizesRef.current[i] },
-          radius: ACTIVE_KNOB_RADIUS,
-          duration: 400,
-          easing: 'easeOutElastic(1, .6)',
-          update: (anim: any) => {
-            knobSizesRef.current[i] = anim.animatables[0].target.radius;
-          }
-        });
+        if (typeof anime !== 'undefined') {
+          anime({
+            targets: { radius: knobSizesRef.current[i] },
+            radius: ACTIVE_KNOB_RADIUS,
+            duration: 400,
+            easing: 'easeOutElastic(1, .6)',
+            update: (anim: any) => {
+              knobSizesRef.current[i] = anim.animatables[0].target.radius;
+            }
+          });
+        }
         break;
       }
     }
@@ -441,9 +456,9 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
       // 使用 mixbox 算法混合颜色
       let latentMix = [0, 0, 0, 0, 0, 0, 0];
       
-      for (let j = 0; j < BASE_COLORS.length; j++) {
+      for (let j = 0; j < baseColors.length; j++) {
         if (newRatios[j] > 0.001) {
-          const latent = rgbToLatent(BASE_COLORS[j].hex);
+          const latent = rgbToLatent(baseColors[j].hex);
           if (latent) {
             const weight = newRatios[j] / totalWeight;
             for (let k = 0; k < latent.length; k++) {
@@ -472,15 +487,19 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     const BASE_KNOB_RADIUS = 22;
     
     // 恢复大小动画
-    anime({
-      targets: { radius: knobSizesRef.current[i] },
-      radius: BASE_KNOB_RADIUS,
-      duration: 300,
-      easing: 'easeOutQuad',
-      update: (anim: any) => {
-        knobSizesRef.current[i] = anim.animatables[0].target.radius;
-      }
-    });
+    if (typeof anime !== 'undefined') {
+      anime({
+        targets: { radius: knobSizesRef.current[i] },
+        radius: BASE_KNOB_RADIUS,
+        duration: 300,
+        easing: 'easeOutQuad',
+        update: (anim: any) => {
+          knobSizesRef.current[i] = anim.animatables[0].target.radius;
+        }
+      });
+    } else {
+      knobSizesRef.current[i] = BASE_KNOB_RADIUS;
+    }
 
     draggedIndexRef.current = -1;
   };
@@ -549,6 +568,8 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
       }
     };
   }, [mixRatios, finalColor, canvasSize]);
+
+
 
   // 重置功能
   const handleReset = () => {
@@ -638,7 +659,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
           <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">{t.formula}</h3>
           <div className="space-y-1 min-h-[60px]">
             {finalColor ? (
-              BASE_COLORS.map((color, i) => {
+              baseColors.map((color, i) => {
                 const totalRatio = mixRatios.reduce((a, b) => a + b, 0);
                 const percentage = totalRatio > 0 ? (mixRatios[i] / totalRatio * 100) : 0;
                 const ml = (percentage * totalVolume / 100).toFixed(1);

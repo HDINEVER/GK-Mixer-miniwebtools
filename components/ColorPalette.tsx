@@ -23,29 +23,31 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
   const selectionIndicatorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (containerRef.current) {
-      anime({
-        targets: containerRef.current.children,
-        translateY: [20, 0],
-        opacity: [0, 1],
-        delay: anime.stagger(100),
-        easing: 'easeOutExpo'
-      });
-    }
+    if (!containerRef.current) return;
+    const animeInstance = typeof anime === 'undefined' ? null : anime;
+    if (!animeInstance) return;
+    animeInstance({
+      targets: containerRef.current.children,
+      translateY: [20, 0],
+      opacity: [0, 1],
+      delay: animeInstance.stagger(100),
+      easing: 'easeOutExpo'
+    });
   }, [colors.length]); // Re-animate if list changes significantly
 
   // Animate selection indicator when selected color changes
   useEffect(() => {
-    if (selectionIndicatorRef.current) {
-      anime({
-        targets: selectionIndicatorRef.current,
-        scale: [0.3, 1],
-        opacity: [0, 1],
-        rotate: [-180, 0],
-        duration: 500,
-        easing: 'easeOutElastic(1, .6)'
-      });
-    }
+    if (!selectionIndicatorRef.current) return;
+    const animeInstance = typeof anime === 'undefined' ? null : anime;
+    if (!animeInstance) return;
+    animeInstance({
+      targets: selectionIndicatorRef.current,
+      scale: [0.3, 1],
+      opacity: [0, 1],
+      rotate: [-180, 0],
+      duration: 500,
+      easing: 'easeOutElastic(1, .6)'
+    });
   }, [selectedColorId]);
 
   return (

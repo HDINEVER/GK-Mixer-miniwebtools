@@ -10,6 +10,7 @@ interface RadialPaletteMixerProps {
   targetColor: ColorData | null;
   availableColors: ColorData[];
   lang: Language;
+  onAddColors?: (colors: string[]) => void;
 }
 
 interface SliderState {
@@ -43,10 +44,13 @@ const getCanvasSize = () => {
 const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({ 
   targetColor, 
   availableColors,
-  lang 
+  lang,
+  onAddColors
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [sliders, setSliders] = useState<SliderState[]>([]);
+  const [cmyAdded, setCmyAdded] = useState(false);
+  const [bwAdded, setBwAdded] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState<number>(-1);
   const [hoverIndex, setHoverIndex] = useState<number>(-1);
   const [mixedColor, setMixedColor] = useState<string>('');
@@ -81,6 +85,24 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  
+  // 移动端: 在拖动时阻止页面滚动
+  useEffect(() => {
+    if (draggingIndex !== -1) {
+      // 阻止页面滚动
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      // 恢复页面滚动
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [draggingIndex]);
   
   // Initialize sliders when available colors change
   useEffect(() => {
@@ -679,16 +701,50 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onTouchStart={(e) => {
-          // 不阻止默认,允许触摸开始
           if (e.touches.length > 0) {
-            handleMouseDown({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as any);
+            const touch = e.touches[0];
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (touch.clientX - rect.left) * (WIDTH / rect.width);
+            const mouseY = (touch.clientY - rect.top) * (HEIGHT / rect.height);
+            
+            // 检查是否点击在滑块上
+            let touchingSlider = false;
+            for (let i = 0; i < sliders.length; i++) {
+              const slider = sliders[i];
+              const t = slider.position;
+              const angle = slider.angle;
+              const sinA = Math.sin(angle);
+              const cosA = Math.cos(angle);
+              
+              const outerX = CENTER_X + sinA * OUTER_RADIUS;
+              const outerY = CENTER_Y + cosA * OUTER_RADIUS;
+              
+              const kx = outerX - sinA * t * (OUTER_RADIUS - INNER_RADIUS);
+              const ky = outerY - cosA * t * (OUTER_RADIUS - INNER_RADIUS);
+              
+              const dist = Math.sqrt(Math.pow(mouseX - kx, 2) + Math.pow(mouseY - ky, 2));
+              
+              if (dist < 40) {
+                touchingSlider = true;
+                break;
+              }
+            }
+            
+            // 如果触摸到滑块,阻止默认行为(防止滚动)
+            if (touchingSlider) {
+              e.preventDefault();
+            }
+            
+            handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY } as any);
           }
         }}
         onTouchMove={(e) => {
-          // 只在拖动时阻止滚动
-          if (draggingIndex !== -1) {
-            e.preventDefault();
-          }
+          // 在canvas区域内触摸移动时,总是阻止默认行为以防止滚动
+          e.preventDefault();
+          
           // 节流优化
           const now = Date.now();
           if (now - lastMoveTimeRef.current < 16) return; // ~60fps
@@ -703,7 +759,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         }}
         className="rounded-lg cursor-crosshair"
         style={{ 
-          touchAction: draggingIndex !== -1 ? 'none' : 'auto',
+          touchAction: 'none', // 完全禁止默认触摸行为(防止滚动/缩放)
           display: 'block',
           margin: '0 auto'
         }}
@@ -770,6 +826,44 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
             {lang === 'zh' ? '🔄 重置' : lang === 'ja' ? '🔄 リセット' : '🔄 Reset'}
           </button>
         </div>
+        
+        {onAddColors && (
+          <>
+            <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
+            
+            <button
+              onClick={() => {
+                onAddColors(['#00B7EB', '#FF0090', '#FFEF00']);
+                setCmyAdded(true);
+                setTimeout(() => setCmyAdded(false), 2000);
+              }}
+              disabled={cmyAdded}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-500 shadow-sm relative overflow-hidden ${
+                cmyAdded
+                  ? 'bg-green-500 text-white cursor-default'
+                  : 'bg-purple-500 text-white before:absolute before:w-8 before:h-8 before:content-[\'\'] before:right-0 before:top-0 before:z-0 before:bg-[#00B7EB] before:rounded-full before:blur-md before:transition-all before:duration-500 after:absolute after:w-10 after:h-10 after:content-[\'\'] after:bg-[#FF0090] after:right-4 after:top-1 after:z-0 after:rounded-full after:blur-md after:transition-all after:duration-500 hover:before:right-8 hover:before:-bottom-4 hover:before:blur-lg hover:after:-right-6 hover:after:blur-lg'
+              }`}
+            >
+              <span className="relative z-10">{cmyAdded ? t.cmyColorsAdded : t.addCmyColors}</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                onAddColors(['#FFFFFF', '#000000']);
+                setBwAdded(true);
+                setTimeout(() => setBwAdded(false), 2000);
+              }}
+              disabled={bwAdded}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm ${
+                bwAdded
+                  ? 'bg-green-500 text-white cursor-default'
+                  : 'bg-slate-600 hover:bg-slate-700 text-white'
+              }`}
+            >
+              {bwAdded ? t.bwColorsAdded : t.addBwColors}
+            </button>
+          </>
+        )}
       </div>
       
       {/* Control Panel */}

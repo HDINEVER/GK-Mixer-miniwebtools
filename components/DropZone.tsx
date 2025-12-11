@@ -19,7 +19,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onImageLoaded, label = "DRAG & DROP
     setIsDragging(true);
     
     // Anime.js effect
-    if (borderRef.current) {
+    if (borderRef.current && typeof anime !== 'undefined') {
         anime({
             targets: borderRef.current,
             scale: [1, 1.02],
@@ -34,13 +34,13 @@ const DropZone: React.FC<DropZoneProps> = ({ onImageLoaded, label = "DRAG & DROP
     e.stopPropagation();
     setIsDragging(false);
     
-    if (borderRef.current) {
-        anime({
-            targets: borderRef.current,
-            scale: 1,
-            duration: 300,
-            easing: 'easeOutQuad'
-        });
+    if (borderRef.current && typeof anime !== 'undefined') {
+      anime({
+        targets: borderRef.current,
+        scale: 1,
+        duration: 300,
+        easing: 'easeOutQuad'
+      });
     }
   }, []);
 

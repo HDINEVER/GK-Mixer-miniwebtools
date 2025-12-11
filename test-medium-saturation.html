@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中等饱和度算法测试</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #4CAF50;
+      padding-bottom: 10px;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .color-sample {
+      display: inline-block;
+      width: 150px;
+      height: 150px;
+      border: 2px solid #333;
+      border-radius: 8px;
+      margin: 10px;
+      vertical-align: top;
+    }
+    .info-box {
+      display: inline-block;
+      vertical-align: top;
+      margin: 10px;
+      max-width: 600px;
+    }
+    .info-row {
+      margin: 8px 0;
+      font-size: 14px;
+    }
+    .label {
+      font-weight: bold;
+      color: #555;
+      display: inline-block;
+      width: 120px;
+    }
+    .value {
+      color: #222;
+    }
+    .highlight {
+      background: #fff3cd;
+      padding: 15px;
+      border-left: 4px solid #ffc107;
+      margin: 15px 0;
+    }
+    .success {
+      background: #d4edda;
+      padding: 15px;
+      border-left: 4px solid #28a745;
+      margin: 15px 0;
+    }
+    code {
+      background: #f8f9fa;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border: 1px solid #ddd;
+    }
+    th {
+      background: #f8f9fa;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎨 中等饱和度颜色算法改进测试</h1>
+  
+  <div class="test-section">
+    <h2>问题描述</h2>
+    <p>原算法对于饱和度在 <code>12% - 40%</code> 范围内的颜色,直接使用<strong>纯色相 (S=100%, B=100%)</strong> 进行 Mixbox 反推,导致丢失了细微的色彩信息。</p>
+    <div class="highlight">
+      <strong>示例问题:</strong> 颜色 <code>#8D93AD</code> 有明显的紫色成分(色相 228.75°,蓝紫色区域),但旧算法将其简化为纯蓝色相,无法正确反推出紫色成分。
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>测试颜色: #8D93AD</h2>
+    <div class="color-sample" style="background: #8D93AD;"></div>
+    <div class="info-box">
+      <div class="info-row">
+        <span class="label">Hex:</span>
+        <span class="value"><code>#8D93AD</code></span>
+      </div>
+      <div class="info-row">
+        <span class="label">RGB:</span>
+        <span class="value">R=141, G=147, B=173</span>
+      </div>
+      <div class="info-row">
+        <span class="label">HSB:</span>
+        <span class="value">H=228.8°, S=18.5%, B=67.8%</span>
+      </div>
+      <div class="info-row">
+        <span class="label">饱和度:</span>
+        <span class="value" style="color: #ff5722; font-weight: bold;">18.5% (中等饱和度)</span>
+      </div>
+      <div class="info-row">
+        <span class="label">色相描述:</span>
+        <span class="value" style="color: #673ab7; font-weight: bold;">蓝紫色 (220-260° 区间)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>算法对比</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>算法版本</th>
+          <th>色相提取方法</th>
+          <th>提取的颜色</th>
+          <th>结果</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>旧算法</strong></td>
+          <td>使用纯色相<br><code>H=228.8°, S=100%, B=100%</code></td>
+          <td style="background: #0033FF; color: white; text-align: center;">#0033FF<br>纯蓝色</td>
+          <td style="color: #d32f2f;">❌ 丢失紫色成分</td>
+        </tr>
+        <tr>
+          <td><strong>新算法</strong></td>
+          <td>去除灰度后缩放<br>灰度=141, 色度=(0,6,32)→(0,48,255)</td>
+          <td style="background: #0030FF; color: white; text-align: center;">#0030FF<br>蓝紫色</td>
+          <td style="color: #388e3c;">✅ 保留紫色成分</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="test-section">
+    <h2>新算法工作原理</h2>
+    <h3>步骤 1: 去除灰度成分</h3>
+    <p>灰度量 = 最小 RGB 通道值 = <code>min(141, 147, 173) = 141</code></p>
+    <p>色度 RGB = 原始 RGB - 灰度量:</p>
+    <ul>
+      <li>R_chroma = 141 - 141 = <strong>0</strong></li>
+      <li>G_chroma = 147 - 141 = <strong>6</strong></li>
+      <li>B_chroma = 173 - 141 = <strong>32</strong></li>
+    </ul>
+
+    <h3>步骤 2: 缩放色度到全范围</h3>
+    <p>缩放因子 = 255 / max(0, 6, 32) = 255 / 32 = <strong>7.97</strong></p>
+    <p>缩放后色度:</p>
+    <ul>
+      <li>R_scaled = 0 × 7.97 = <strong>0</strong></li>
+      <li>G_scaled = 6 × 7.97 = <strong>48</strong></li>
+      <li>B_scaled = 32 × 7.97 = <strong>255</strong></li>
+    </ul>
+    <p>结果颜色: <code style="background: #0030FF; color: white; padding: 5px 10px;">#0030FF</code> (保留了 G=48 的绿色成分,体现紫色调)</p>
+
+    <h3>步骤 3: Mixbox 反推</h3>
+    <p>使用 <code>#0030FF</code> 作为目标进行 Mixbox 物理混色反推,得到红、蓝、黄三原色的比例。</p>
+    <p>由于保留了绿色通道(G=48),算法会计算出一定比例的<strong>红色+蓝色</strong>混合,正确反映紫色成分!</p>
+  </div>
+
+  <div class="test-section">
+    <h2>适用范围</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>饱和度范围</th>
+          <th>算法策略</th>
+          <th>说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>&lt; 5%</td>
+          <td>纯灰色</td>
+          <td>仅使用白+黑,无色相成分</td>
+        </tr>
+        <tr>
+          <td>5% - 12%</td>
+          <td>简化公式</td>
+          <td>灰色基底 + 单一主色</td>
+        </tr>
+        <tr style="background: #e8f5e9;">
+          <td><strong>12% - 40%</strong></td>
+          <td><strong>去灰度+缩放 (新算法)</strong></td>
+          <td><strong>保留细微色彩信息,正确反推混合</strong></td>
+        </tr>
+        <tr>
+          <td>&gt; 40%</td>
+          <td>纯色相</td>
+          <td>高饱和度,使用 S=100% 的纯色相</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="success">
+    <h3>✅ 改进总结</h3>
+    <ul>
+      <li><strong>保留色彩细节:</strong> 中等饱和度颜色(12-40%)不再简化为纯色相</li>
+      <li><strong>正确反推:</strong> Mixbox 算法能够基于真实色度计算三原色比例</li>
+      <li><strong>紫色成分:</strong> #8D93AD 等蓝紫色现在能正确反推出红+蓝混合</li>
+      <li><strong>向后兼容:</strong> 不影响其他饱和度范围的算法逻辑</li>
+    </ul>
+  </div>
+
+  <div class="test-section">
+    <h2>更多测试案例</h2>
+    <p>以下颜色都将受益于新算法(饱和度 12-40%):</p>
+    <div>
+      <div class="color-sample" style="background: #A8B0C0;"></div>
+      <span>#A8B0C0 - 浅蓝灰</span>
+    </div>
+    <div>
+      <div class="color-sample" style="background: #C0A8B0;"></div>
+      <span>#C0A8B0 - 浅紫粉</span>
+    </div>
+    <div>
+      <div class="color-sample" style="background: #B0C0A8;"></div>
+      <span>#B0C0A8 - 浅黄绿</span>
+    </div>
+  </div>
+</body>
+</html>

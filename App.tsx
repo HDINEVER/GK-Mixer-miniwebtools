@@ -533,9 +533,15 @@ const App: React.FC = () => {
             
             {/* Author Info */}
             <div className="flex items-center gap-1.5">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-macaron-pink via-macaron-blue to-macaron-purple flex items-center justify-center text-white font-bold text-xs shadow-md">
+              <a 
+                href="https://github.com/HDINEVER/GK-Mixer-miniwebtools" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-7 h-7 rounded-full bg-gradient-to-br from-macaron-pink via-macaron-blue to-macaron-purple flex items-center justify-center text-white font-bold text-xs shadow-md hover:scale-110 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                title="Visit GitHub Repository"
+              >
                 HD
-              </div>
+              </a>
               <div>
                 <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
                   {lang === 'zh' ? '开发者' : lang === 'ja' ? '開発者' : 'Developer'}: <span className="text-macaron-blue">@HDIN</span>

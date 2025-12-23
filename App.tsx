@@ -454,9 +454,11 @@ const App: React.FC = () => {
                         onAddManual={handleManualAdd}
                         onContinuousPick={handleContinuousPick}
                         onDeleteColor={handleDeleteColor}
+                        onAddColorByHex={handleAddColor}
                         hasImage={!!sourceImage}
                         isPicking={isPicking}
                         isContinuousPicking={isContinuousPicking}
+                        lang={lang}
                     />
                 </div>
             )}

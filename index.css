@@ -33,3 +33,87 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Animation keyframes for HEX input */
+@keyframes slide-in-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: slide-in-from-top 0.3s ease-out forwards;
+}
+
+/* Delete particle glow effect */
+.delete-particle {
+  animation: particle-glow 0.8s ease-out forwards;
+}
+
+@keyframes particle-glow {
+  0% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.5);
+  }
+  100% {
+    filter: brightness(0.5);
+  }
+}
+
+/* Trail particle shimmer */
+.trail-particle {
+  animation: trail-shimmer 0.6s ease-out forwards;
+}
+
+@keyframes trail-shimmer {
+  0% {
+    filter: blur(0px) brightness(1.2);
+  }
+  100% {
+    filter: blur(2px) brightness(0.5);
+  }
+}
+
+/* Hex input focus glow */
+.hex-input-container input:focus {
+  animation: input-glow 0.3s ease-out forwards;
+}
+
+@keyframes input-glow {
+  from {
+    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0);
+  }
+  to {
+    box-shadow: 0 0 0 4px rgba(147, 51, 234, 0.15);
+  }
+}
+
+/* Color card hover lift effect */
+.color-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.color-card:hover {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+/* Quick color button pulse on hover */
+.hex-input-container button[style*="background-color"]:hover {
+  animation: color-pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes color-pulse {
+  from {
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  to {
+    box-shadow: 0 0 10px 2px currentColor;
+  }
+}

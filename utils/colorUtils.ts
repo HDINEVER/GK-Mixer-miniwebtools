@@ -22,58 +22,23 @@ const QUANT_TABLE: Uint8Array = (() => {
 })();
 
 const SAMPLE_STRIDE = 40; // Skip 9 pixels between samples to keep extraction fast
-const PIXEL_CHUNK_BUDGET_MS = 8; // Process pixels in ~8ms slices to yield back to the browser
-const ITERATION_GUARD = 0x3ff; // Only check the time budget every 1024 iterations to minimize perf hits
 
-const scheduleChunk = (cb: () => void) => {
-  if (typeof window !== 'undefined') {
-    const idle = (window as any).requestIdleCallback;
-    if (typeof idle === 'function') {
-      idle(() => cb());
-      return;
-    }
-    if (typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => cb());
-      return;
+/**
+ * Process pixels synchronously - safe because image is already scaled down to max 300px
+ * For a 300x300 image with stride 40, we only process ~2250 pixels which is fast enough
+ */
+const processPixelsSync = (data: Uint8ClampedArray, colorMap: Map<number, number>, stride: number): void => {
+  const totalLength = data.length;
+  for (let index = 0; index < totalLength; index += stride) {
+    const alpha = data[index + 3];
+    if (alpha >= 128) {
+      const qr = QUANT_TABLE[data[index]];
+      const qg = QUANT_TABLE[data[index + 1]];
+      const qb = QUANT_TABLE[data[index + 2]];
+      const packed = (qr << 16) | (qg << 8) | qb;
+      colorMap.set(packed, (colorMap.get(packed) || 0) + 1);
     }
   }
-  setTimeout(cb, 0);
-};
-
-const processPixelStream = (data: Uint8ClampedArray, colorMap: Map<number, number>, stride: number): Promise<void> => {
-  let index = 0;
-  const totalLength = data.length;
-  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
-
-  return new Promise((resolve) => {
-    const runChunk = () => {
-      const deadline = now() + PIXEL_CHUNK_BUDGET_MS;
-      let iterations = 0;
-
-      while (index < totalLength) {
-        const alpha = data[index + 3];
-        if (alpha >= 128) {
-          const qr = QUANT_TABLE[data[index]];
-          const qg = QUANT_TABLE[data[index + 1]];
-          const qb = QUANT_TABLE[data[index + 2]];
-          const packed = (qr << 16) | (qg << 8) | qb;
-          colorMap.set(packed, (colorMap.get(packed) || 0) + 1);
-        }
-
-        index += stride;
-        iterations++;
-
-        if ((iterations & ITERATION_GUARD) === 0 && now() >= deadline) {
-          scheduleChunk(runChunk);
-          return;
-        }
-      }
-
-      resolve();
-    };
-
-    runChunk();
-  });
 };
 
 export const hexToRgb = (hex: string): RGB => {
@@ -835,56 +800,78 @@ export const extractProminentColors = async (
   count: number = 5,
   colorSpace: ColorSpace = 'srgb'
 ): Promise<ColorData[]> => {
-  const canvas = document.createElement('canvas');
-  const canvasColorSpace = colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace;
-  const ctx = canvas.getContext('2d', {
-    colorSpace: canvasColorSpace,
-    willReadFrequently: true
-  });
-
-  if (!ctx) return [];
-
-  const scale = Math.min(1, 300 / Math.max(imgElement.naturalWidth, imgElement.naturalHeight));
-  canvas.width = imgElement.naturalWidth * scale;
-  canvas.height = imgElement.naturalHeight * scale;
-
-  ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
-  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-  const colorMap = new Map<number, number>();
-  await processPixelStream(data, colorMap, SAMPLE_STRIDE);
-
-  const sorted = Array.from(colorMap.entries())
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, count)
-    .map(([packed]) => {
-      const r = (packed >> 16) & 0xff;
-      const g = (packed >> 8) & 0xff;
-      const b = packed & 0xff;
-      return rgbToHex(r, g, b);
+  try {
+    const canvas = document.createElement('canvas');
+    const canvasColorSpace = colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace;
+    const ctx = canvas.getContext('2d', {
+      colorSpace: canvasColorSpace,
+      willReadFrequently: true
     });
 
-  return sorted.map(hex => {
-    let rgb = hexToRgb(hex);
+    if (!ctx) return [];
 
-    if (colorSpace === 'adobe-rgb') {
-      rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
+    // Scale down to max 300px - this makes the image small enough for fast sync processing
+    // 4K (3840x2160) -> ~300x169, 8K -> ~300x169
+    const maxDimension = 300;
+    const scale = Math.min(1, maxDimension / Math.max(imgElement.naturalWidth, imgElement.naturalHeight));
+    canvas.width = Math.floor(imgElement.naturalWidth * scale);
+    canvas.height = Math.floor(imgElement.naturalHeight * scale);
+
+    ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+    
+    // Use try-catch for getImageData as it can fail on tainted canvases
+    let data: Uint8ClampedArray;
+    try {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      data = imageData.data;
+    } catch (e) {
+      console.warn('Failed to get image data:', e);
+      return [];
     }
 
-    const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
-    const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
+    const colorMap = new Map<number, number>();
+    
+    // Sync processing is safe here because:
+    // - Max canvas size is 300x300 = 90,000 pixels
+    // - With stride 40, we process ~9,000 samples
+    // - This takes <5ms on modern hardware
+    processPixelsSync(data, colorMap, SAMPLE_STRIDE);
 
-    return {
-      id: generateId(),
-      hex: rgbToHex(rgb.r, rgb.g, rgb.b),
-      rgb,
-      cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
-      hsb,
-      lab,
-      source: 'auto',
-      colorSpace: colorSpace
-    } as ColorData;
-  });
+    const sorted = Array.from(colorMap.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, count)
+      .map(([packed]) => {
+        const r = (packed >> 16) & 0xff;
+        const g = (packed >> 8) & 0xff;
+        const b = packed & 0xff;
+        return rgbToHex(r, g, b);
+      });
+
+    return sorted.map(hex => {
+      let rgb = hexToRgb(hex);
+
+      if (colorSpace === 'adobe-rgb') {
+        rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
+      }
+
+      const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
+      const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
+
+      return {
+        id: generateId(),
+        hex: rgbToHex(rgb.r, rgb.g, rgb.b),
+        rgb,
+        cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
+        hsb,
+        lab,
+        source: 'auto',
+        colorSpace: colorSpace
+      } as ColorData;
+    });
+  } catch (error) {
+    console.error('Error extracting colors:', error);
+    return [];
+  }
 };
 
 /**

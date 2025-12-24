@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import DropZone from './components/DropZone';
 import ColorPalette from './components/ColorPalette';
 import MixerResult from './components/MixerResult';
 import PaletteVisualizer from './components/PaletteVisualizer';
 import RadialPaletteMixer from './components/RadialPaletteMixer';
 import BasicColorMixer from './components/BasicColorMixer';
+import Loader from './components/Loader';
 import { ColorData, AppMode, RGB, Language, Theme, ColorSpace } from './types';
 import { extractProminentColors, generateId, rgbToCmyk, rgbToHex, hexToRgb, rgbToHsb, rgbToLab } from './utils/colorUtils';
 import { convertToWorkingSpace, isInGamut } from './utils/colorSpaceConverter';
@@ -25,13 +26,17 @@ const App: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isPicking, setIsPicking] = useState(false);
   const [isContinuousPicking, setIsContinuousPicking] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
 
   // Zoom State
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const startPos = useRef({ x: 0, y: 0 });
+  const currentOffset = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const transformRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
 
   const selectedColor = colors.find(c => c.id === selectedColorId) || null;
   const t = translations[lang];
@@ -51,10 +56,16 @@ const App: React.FC = () => {
     setScale(1);
     setOffset({ x: 0, y: 0 });
     
-    const extracted = await extractProminentColors(img, 3, colorSpace);
-    setColors(extracted);
-    if (extracted.length > 0) {
-      setSelectedColorId(extracted[0].id);
+    // Show loading animation
+    setIsExtracting(true);
+    try {
+      const extracted = await extractProminentColors(img, 3, colorSpace);
+      setColors(extracted);
+      if (extracted.length > 0) {
+        setSelectedColorId(extracted[0].id);
+      }
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -202,45 +213,86 @@ const App: React.FC = () => {
   const handleZoomOut = () => setScale(s => Math.max(1, s - 0.5));
   const handleReset = () => { setScale(1); setOffset({x:0, y:0}); };
 
-  // Pan Handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-     if (!isPicking && scale > 1) {
-         setIsDragging(true);
-         setStartPos({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-     }
-  };
+  // Pan Handlers - Optimized for high-res images
+  const updateTransform = useCallback(() => {
+    if (transformRef.current) {
+      transformRef.current.style.transform = `translate(${currentOffset.current.x}px, ${currentOffset.current.y}px) scale(${scale})`;
+    }
+  }, [scale]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isPicking && scale > 1) {
+      setIsDragging(true);
+      currentOffset.current = { x: offset.x, y: offset.y };
+      startPos.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
+    }
+  }, [isPicking, scale, offset]);
   
-  const handleMouseMove = (e: React.MouseEvent) => {
-      if (isDragging) {
-          setOffset({
-              x: e.clientX - startPos.x,
-              y: e.clientY - startPos.y
-          });
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDragging) {
+      // Cancel any pending RAF to avoid stacking
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
       }
-  };
+      // Use RAF for smooth 60fps updates
+      rafRef.current = requestAnimationFrame(() => {
+        currentOffset.current = {
+          x: e.clientX - startPos.current.x,
+          y: e.clientY - startPos.current.y
+        };
+        updateTransform();
+      });
+    }
+  }, [isDragging, updateTransform]);
 
-  const handleMouseUp = () => setIsDragging(false);
+  const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      // Sync final position to React state
+      setOffset({ ...currentOffset.current });
+    }
+    setIsDragging(false);
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, [isDragging]);
 
-  // Touch Handlers for Mobile
-  const handleTouchStart = (e: React.TouchEvent) => {
+  // Touch Handlers for Mobile - Optimized
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (!isPicking && scale > 1 && e.touches.length === 1) {
       setIsDragging(true);
       const touch = e.touches[0];
-      setStartPos({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
+      currentOffset.current = { x: offset.x, y: offset.y };
+      startPos.current = { x: touch.clientX - offset.x, y: touch.clientY - offset.y };
     }
-  };
+  }, [isPicking, scale, offset]);
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (isDragging && e.touches.length === 1) {
-      const touch = e.touches[0];
-      setOffset({
-        x: touch.clientX - startPos.x,
-        y: touch.clientY - startPos.y
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      rafRef.current = requestAnimationFrame(() => {
+        const touch = e.touches[0];
+        currentOffset.current = {
+          x: touch.clientX - startPos.current.x,
+          y: touch.clientY - startPos.current.y
+        };
+        updateTransform();
       });
     }
-  };
+  }, [isDragging, updateTransform]);
 
-  const handleTouchEnd = () => setIsDragging(false);
+  const handleTouchEnd = useCallback(() => {
+    if (isDragging) {
+      setOffset({ ...currentOffset.current });
+    }
+    setIsDragging(false);
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, [isDragging]);
 
   React.useEffect(() => {
     if (sourceImage && canvasRef.current && imageRef.current) {
@@ -342,7 +394,17 @@ const App: React.FC = () => {
             <h2 className="text-xs font-bold text-slate-400 mb-4 tracking-widest">{t.sourceInput}</h2>
             
             {!sourceImage ? (
-                <DropZone onImageLoaded={handleImageLoaded} label={t.dragDrop} />
+                <div className="relative">
+                  <DropZone onImageLoaded={handleImageLoaded} label={t.dragDrop} />
+                  {isExtracting && (
+                    <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10">
+                      <Loader size="md" />
+                      <p className="mt-4 text-sm text-slate-500 dark:text-slate-400 font-medium">
+                        {lang === 'zh' ? '正在分析颜色...' : lang === 'ja' ? '色を分析中...' : 'Analyzing colors...'}
+                      </p>
+                    </div>
+                  )}
+                </div>
             ) : (
                 <div className="flex flex-col gap-4">
                     {/* Toolbar */}
@@ -395,6 +457,7 @@ const App: React.FC = () => {
 
                         {/* Canvas for display and picking */}
                         <div 
+                            ref={transformRef}
                             style={{ 
                                 transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
                                 transformOrigin: '0 0',
@@ -402,7 +465,8 @@ const App: React.FC = () => {
                                 height: '100%',
                                 display: 'flex',
                                 justifyContent: 'center',
-                                alignItems: 'center'
+                                alignItems: 'center',
+                                willChange: isDragging ? 'transform' : 'auto'
                             }}
                         >
                             <canvas 

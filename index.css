@@ -2,10 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fix overscroll background color issue on mobile (iOS Safari bounce effect) */
+html {
+  background-color: #f8fafc; /* slate-50 for light mode */
+}
+
+html.dark {
+  background-color: #020617; /* slate-950 for dark mode */
+}
+
 body {
   font-family: 'JetBrains Mono', monospace;
   transition: background-color 0.3s, color 0.3s;
+  background-color: #f8fafc; /* slate-50 */
+  min-height: 100vh;
+  min-height: 100dvh; /* Use dynamic viewport height for mobile */
 }
+
+.dark body,
+body:has(.dark) {
+  background-color: #020617; /* slate-950 */
+}
+
+/* 
+ * iOS overscroll bounce will now show the correct background color
+ * (html.dark background-color) instead of white
+ */
 
 /* Custom Macaron Scrollbar */
 ::-webkit-scrollbar {

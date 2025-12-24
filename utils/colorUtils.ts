@@ -10,6 +10,72 @@ const simpleColorConverter = (simpleColorConverterModule as any).default || simp
 // Helper to create unique IDs
 export const generateId = (): string => Math.random().toString(36).substr(2, 9);
 
+// Precomputed quantization table to avoid repeated Math.round calls during sampling
+const COLOR_QUANT_STEP = 20;
+const QUANT_TABLE: Uint8Array = (() => {
+  const table = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) {
+    const quantized = Math.round(i / COLOR_QUANT_STEP) * COLOR_QUANT_STEP;
+    table[i] = quantized > 255 ? 255 : quantized;
+  }
+  return table;
+})();
+
+const SAMPLE_STRIDE = 40; // Skip 9 pixels between samples to keep extraction fast
+const PIXEL_CHUNK_BUDGET_MS = 8; // Process pixels in ~8ms slices to yield back to the browser
+const ITERATION_GUARD = 0x3ff; // Only check the time budget every 1024 iterations to minimize perf hits
+
+const scheduleChunk = (cb: () => void) => {
+  if (typeof window !== 'undefined') {
+    const idle = (window as any).requestIdleCallback;
+    if (typeof idle === 'function') {
+      idle(() => cb());
+      return;
+    }
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => cb());
+      return;
+    }
+  }
+  setTimeout(cb, 0);
+};
+
+const processPixelStream = (data: Uint8ClampedArray, colorMap: Map<number, number>, stride: number): Promise<void> => {
+  let index = 0;
+  const totalLength = data.length;
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+  return new Promise((resolve) => {
+    const runChunk = () => {
+      const deadline = now() + PIXEL_CHUNK_BUDGET_MS;
+      let iterations = 0;
+
+      while (index < totalLength) {
+        const alpha = data[index + 3];
+        if (alpha >= 128) {
+          const qr = QUANT_TABLE[data[index]];
+          const qg = QUANT_TABLE[data[index + 1]];
+          const qb = QUANT_TABLE[data[index + 2]];
+          const packed = (qr << 16) | (qg << 8) | qb;
+          colorMap.set(packed, (colorMap.get(packed) || 0) + 1);
+        }
+
+        index += stride;
+        iterations++;
+
+        if ((iterations & ITERATION_GUARD) === 0 && now() >= deadline) {
+          scheduleChunk(runChunk);
+          return;
+        }
+      }
+
+      resolve();
+    };
+
+    runChunk();
+  });
+};
+
 export const hexToRgb = (hex: string): RGB => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result ? {
@@ -764,81 +830,60 @@ export const findNearestPaints = (targetHex: string, count: number = 3): PaintBr
   return sorted.slice(0, count);
 };
 
-export const extractProminentColors = (
-  imgElement: HTMLImageElement, 
+export const extractProminentColors = async (
+  imgElement: HTMLImageElement,
   count: number = 5,
   colorSpace: ColorSpace = 'srgb'
 ): Promise<ColorData[]> => {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas');
-    // Use specified colorspace for color extraction
-    // Adobe RGB uses sRGB as fallback with manual conversion
-    const canvasColorSpace = colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace;
-    const ctx = canvas.getContext('2d', { 
-      colorSpace: canvasColorSpace,
-      willReadFrequently: true 
+  const canvas = document.createElement('canvas');
+  const canvasColorSpace = colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace;
+  const ctx = canvas.getContext('2d', {
+    colorSpace: canvasColorSpace,
+    willReadFrequently: true
+  });
+
+  if (!ctx) return [];
+
+  const scale = Math.min(1, 300 / Math.max(imgElement.naturalWidth, imgElement.naturalHeight));
+  canvas.width = imgElement.naturalWidth * scale;
+  canvas.height = imgElement.naturalHeight * scale;
+
+  ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  const colorMap = new Map<number, number>();
+  await processPixelStream(data, colorMap, SAMPLE_STRIDE);
+
+  const sorted = Array.from(colorMap.entries())
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, count)
+    .map(([packed]) => {
+      const r = (packed >> 16) & 0xff;
+      const g = (packed >> 8) & 0xff;
+      const b = packed & 0xff;
+      return rgbToHex(r, g, b);
     });
-    if (!ctx) return resolve([]);
 
-    // Scale down for performance
-    const scale = Math.min(1, 300 / Math.max(imgElement.naturalWidth, imgElement.naturalHeight));
-    canvas.width = imgElement.naturalWidth * scale;
-    canvas.height = imgElement.naturalHeight * scale;
+  return sorted.map(hex => {
+    let rgb = hexToRgb(hex);
 
-    ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-
-    const colorMap: Record<string, number> = {};
-
-    // Sample every 10th pixel for speed
-    for (let i = 0; i < data.length; i += 40) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const a = data[i + 3];
-
-      if (a < 128) continue; // Skip transparent
-
-      // Quantize colors to reduce noise (round to nearest 10)
-      const qr = Math.round(r / 20) * 20;
-      const qg = Math.round(g / 20) * 20;
-      const qb = Math.round(b / 20) * 20;
-
-      const hex = rgbToHex(qr, qg, qb);
-      colorMap[hex] = (colorMap[hex] || 0) + 1;
+    if (colorSpace === 'adobe-rgb') {
+      rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
     }
 
-    const sortedHex = Object.entries(colorMap)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, count)
-      .map(([hex]) => hex);
+    const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
+    const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
 
-    const colors: ColorData[] = sortedHex.map(hex => {
-      let rgb = hexToRgb(hex);
-      
-      // 如果是 Adobe RGB 模式，需要从 Canvas 提取的 sRGB 值转换到工作空间
-      if (colorSpace === 'adobe-rgb') {
-        rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
-      }
-      
-      // 计算 HSB 和 LAB 色彩空间
-      const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
-      const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
-      
-      return {
-        id: generateId(),
-        hex: rgbToHex(rgb.r, rgb.g, rgb.b),
-        rgb,
-        cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
-        hsb,
-        lab,
-        source: 'auto',
-        colorSpace: colorSpace
-      };
-    });
-
-    resolve(colors);
+    return {
+      id: generateId(),
+      hex: rgbToHex(rgb.r, rgb.g, rgb.b),
+      rgb,
+      cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
+      hsb,
+      lab,
+      source: 'auto',
+      colorSpace: colorSpace
+    } as ColorData;
   });
 };
 

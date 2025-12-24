@@ -203,7 +203,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
       targets: containerRef.current.children,
       translateY: [20, 0],
       opacity: [0, 1],
-      delay: animeInstance.stagger(100),
+      delay: animeInstance.stagger(40),
+      duration: 300,
       easing: 'easeOutExpo'
     });
   }, [colors.length]); // Re-animate if list changes significantly
@@ -391,9 +392,10 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
             key={c.id}
             onClick={() => onColorSelect(c)}
             className={`
-              color-card relative p-2 sm:p-3 rounded-lg border-2 cursor-pointer transition-all duration-300 group
-              ${selectedColorId === c.id ? 'border-slate-800 dark:border-slate-200 shadow-md transform -translate-y-1' : 'border-slate-100 dark:border-slate-700 hover:border-macaron-pink'}
+              color-card relative p-2 sm:p-3 rounded-lg border-2 cursor-pointer transition-all duration-150 group
+              ${selectedColorId === c.id ? 'shadow-md transform -translate-y-1' : 'border-slate-100 dark:border-slate-700 hover:border-macaron-pink'}
             `}
+            style={selectedColorId === c.id ? { borderColor: c.hex, boxShadow: `0 4px 12px -2px ${c.hex}40` } : undefined}
           >
             <div 
               className="w-full h-12 sm:h-16 rounded-md mb-2 shadow-inner" 

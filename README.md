@@ -2,8 +2,11 @@
 
 > A futuristic, programmer-style color mixing tool for model kit painters.
 > 专为 GK 模玩爱好者设计的赛博风格调漆模拟器。
+> 模型塗装のための調色シミュレーションツールです。
 
-![App Screenshot](./docs/screenshots/屏幕截图%202025-11-29%20234749.png)
+![OG Preview](./public/og-image.png)
+
+🔗 **Live Demo**: [gk-colormixer.com.hdinever.top](https://gk-colormixer.com.hdinever.top/)
 
 
 ## 🎨 Project Overview
@@ -69,10 +72,11 @@ Designed with a clean, low-saturation "Macaron" aesthetic for high readability, 
 * **Fluid Animations**: Powered by `anime.js` for smooth liquid transitions.
 * **CMYK Layer Visualization**: Stacked liquid layers representing each CMYK component.
 
-### 6. AI Assistant (Gemini 2.5 Flash)
-* Generates human-readable mixing recipes based on CMYK ratios and selected color space.
-* Auto-translates paint brand names and instructions to the selected language.
-* Fallback handling for API errors with graceful degradation.
+### 6. Brightness Algorithm (明度调配算法)
+* **Custom Algorithm**: Self-developed brightness-based color mixing calculation.
+* **Primer Recommendation**: Intelligent primer selection (white/gray/black) based on target color luminance.
+* **Accurate Ratios**: Precise percentage calculations for achieving target brightness levels.
+* **No External API**: Fully offline, instant response without network dependency.
 
 ### 7. Advanced UX/UI
 * **Theming**: Seamless Dark/Light mode toggle with system preference detection.
@@ -87,8 +91,7 @@ Designed with a clean, low-saturation "Macaron" aesthetic for high readability, 
 * **Styling**: Tailwind CSS with custom Macaron color palette
 * **Animation**: Anime.js for fluid UI transitions
 * **Canvas**: HTML5 Canvas API with color space support
-* **Algorithm**: Mixbox (Physics-based Kubelka-Munk pigment mixing)
-* **AI**: Google Gemini 2.5 Flash API
+* **Algorithm**: Mixbox (Physics-based Kubelka-Munk pigment mixing) + Custom Brightness Algorithm
 * **Export**: html2canvas for high-resolution palette exports
 * **Deployment**: Cloudflare Pages with serverless functions
 
@@ -129,13 +132,37 @@ npm run build
 npm run preview
 ```
 
-### Environment Setup
-Create `.env.local` in project root:
-```
-API_KEY=your_gemini_api_key_here
+
+## � Git Workflow
+
+### Quick Push (推送更新)
+```bash
+# Stage all changes
+git add .
+
+# Commit with message
+git commit -m "feat: your feature description"
+
+# Push to remote
+git push origin main
 ```
 
-## 📱 Browser Compatibility
+### Commit Message Convention
+| Prefix | Usage |
+|--------|-------|
+| `feat:` | New feature |
+| `fix:` | Bug fix |
+| `docs:` | Documentation update |
+| `style:` | UI/CSS changes |
+| `perf:` | Performance optimization |
+| `refactor:` | Code refactoring |
+
+### After Push
+- Cloudflare Pages auto-deploys on push to `main`
+- Wait ~1-2 minutes for build completion
+- Verify at: https://gk-colormixer.com.hdinever.top/
+
+## �📱 Browser Compatibility
 
 * **Desktop**: Chrome 94+, Firefox 94+, Safari 15+, Edge 94+
 * **Mobile**: iOS Safari 15+, Chrome for Android 94+
@@ -150,12 +177,41 @@ Detailed deployment guide: [CLOUDFLARE_DOCS.md](./CLOUDFLARE_DOCS.md)
 1. Connect Git repository to Cloudflare Dashboard
 2. Build command: `npm run build`
 3. Build output: `dist`
-4. Environment variable: `API_KEY=your_gemini_api_key`
-5. Access: `https://your-project.pages.dev`
+4. Access: `https://your-project.pages.dev`
 
 📖 More deployment info: [docs/deployment/](./docs/deployment/)
 
-## 📚 Documentation
+## �️ Social Media Preview (OG Image)
+
+Open Graph meta tags enable rich link previews on Telegram, Discord, Twitter, Facebook, etc.
+
+### Configuration
+Located in `index.html`:
+```html
+<meta property="og:image" content="https://gk-colormixer.com.hdinever.top/og-image.png" />
+<meta property="og:title" content="GK Paint Mixer - 模型喷涂调色模拟器" />
+<meta property="og:description" content="模型喷涂调色模拟工具..." />
+```
+
+### Image Specifications
+| Property | Value |
+|----------|-------|
+| Location | `public/og-image.png` |
+| Size | 1200 × 630 px |
+| Format | PNG |
+| Max Size | < 5MB |
+
+### Refresh Telegram Preview Cache
+If preview doesn't update after deployment:
+1. Search `@WebpageBot` in Telegram
+2. Send your URL to force re-fetch
+
+### Validation Tools
+- [opengraph.xyz](https://www.opengraph.xyz/) - Preview checker
+- [Facebook Debugger](https://developers.facebook.com/tools/debug/) - Meta debugger
+- [Twitter Card Validator](https://cards-dev.twitter.com/validator)
+
+## �📚 Documentation
 
 * [Color Space Support](./docs/COLOR_SPACE_SUPPORT.md) - Technical details on sRGB/P3/Adobe RGB implementation
 * [Mobile Optimization](./docs/MOBILE_OPTIMIZATION.md) - Performance improvements and responsive design
@@ -165,12 +221,50 @@ Detailed deployment guide: [CLOUDFLARE_DOCS.md](./CLOUDFLARE_DOCS.md)
 
 ## 🔬 Architecture Notes
 
+### Utils Module Overview (工具模块概览)
+
+| 模块 | 功能 | 核心函数 |
+|------|------|---------|
+| **colorUtils.ts** | 色彩转换 & 混色算法 | `rgbToHsb`, `rgbToLab`, `hexToRgb`, `rgbToCmyk` |
+| | 图片取色 | `extractProminentColors` (量化+采样) |
+| | 物理混色 | `mixboxBlend`, `mixboxMultiBlend` (Kubelka-Munk) |
+| | 明度配方算法 | `calculateMixboxRatios`, `analyzeBrightnessStrategy` |
+| | 品牌漆数据库 | `GAIA_PAINTS`, `JUMPWIND_PAINTS`, `GUNZE_PAINTS` |
+| | 品牌漆匹配 | `findNearestPaints` (欧氏距离) |
+| | RAL 工业色 | `findNearestRAL`, `hexToRAL`, `colorDataToRAL` |
+| **mixbox.ts** | Mixbox 物理混色引擎 | `lerp`, `rgbToLatent`, `latentToRgb` |
+| | 潜空间混合 | 7维 latent space 实现真实颜料混合 |
+| **colorSpaceConverter.ts** | 色彩空间转换 | `convertToWorkingSpace`, `convertFromWorkingSpace` |
+| | 色域检测 | `isInGamut` (sRGB/P3/Adobe RGB) |
+| | Gamma 校正 | sRGB/Adobe RGB/P3 gamma 曲线 |
+| **translations.ts** | 多语言支持 | 中文/English/日本語 UI 文本 |
+
+### Key Algorithms (核心算法)
+
+**1. 明度配方算法 (`analyzeBrightnessStrategy`)**
+- 基于 HSB 明度 (B) 判断底漆选择
+- 高明度 (>70%): 白色底漆 + 少量色相
+- 中明度 (30-70%): 灰色底漆 + 色相调整
+- 低明度 (<30%): 黑色底漆 + 提亮色相
+- 输出: 调色步骤 + 各色百分比
+
+**2. Mixbox 物理混色 (`mixboxBlend`)**
+- Kubelka-Munk 颜料理论
+- 蓝 + 黄 = 绿 (非灰色)
+- 7维潜空间 (latent space) 混合
+
+**3. 图片取色 (`extractProminentColors`)**
+- 图片缩放至 300px (性能优化)
+- 量化表 (QUANT_TABLE) 快速采样
+- 跳跃采样 (SAMPLE_STRIDE=40)
+- HSB 排序返回主色
+
 ### Component Structure
 ```
 App.tsx                      # Main orchestrator, state management
 ├── DropZone                # Image upload & drag-drop
 ├── ColorPalette            # Extracted color grid with manual picker
-├── MixerResult             # CMYK analysis + AI recipe + bottle simulator
+├── MixerResult             # CMYK analysis + brightness algorithm + bottle simulator
 ├── RadialPaletteMixer      # Interactive radial canvas mixer
 ├── BasicColorMixer         # Foundation color blending tool
 └── PaletteVisualizer       # Export palette as styled images
@@ -180,14 +274,14 @@ App.tsx                      # Main orchestrator, state management
 ```
 Image Upload → Color Extraction → Color Space Conversion → Palette Display
                                                          ↓
-Selected Color → CMYK Decomposition → Paint Matching → AI Recipe Generation
+Selected Color → CMYK Decomposition → Paint Matching → Brightness Calculation
                                                          ↓
                                    Mixing Simulation → Volume Calculation → Bottle Visualization
 ```
 
 ### Critical Patterns
 1. **Single Selected Color Model**: Only one color drives the mixing console at a time
-2. **Lazy AI Evaluation**: Gemini API calls only on color/language changes with caching
+2. **Brightness Algorithm**: Custom luminance-based primer and ratio calculation
 3. **Base Paint Toggle**: Deselecting paint triggers pure CMYK mode
 4. **Volume Calculation**: Mixing bottle layers scaled by CMYK % × total volume
 5. **Canvas Coordinate Mapping**: Proper scaling between display size and pixel coordinates
@@ -218,7 +312,7 @@ This project uses **Mixbox** for accurate pigment mixing simulation based on Kub
 
 - [x] Basic color extraction and CMYK decomposition
 - [x] Paint brand database matching (Mr. Hobby, Gaia, Jumpwind, Gunze)
-- [x] Gemini AI recipe generation
+- [x] Custom brightness algorithm for primer selection
 - [x] Dark/Light theme toggle
 - [x] Multi-language support (EN/中文/日文)
 - [x] Radial palette mixer with drag-and-drop
@@ -271,7 +365,7 @@ For commercial use inquiries, please contact the repository owner.
 
 ---
 
-**Developed with ❤️ by HDINEBER**
+**Developed with ❤️ by HDINEVER**
 
 *Last Updated: December 2025*
 

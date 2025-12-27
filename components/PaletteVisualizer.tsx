@@ -1,7 +1,74 @@
-import React, { useState, useRef } from 'react';
-import { ColorData, Language } from '../types';
+import React, { useState, useRef, useMemo } from 'react';
+import { ColorData, Language, RALColor } from '../types';
 import { translations } from '../utils/translations';
+import { findNearestRAL, calculateMixboxRatios, EXTENDED_MIXING_COLORS, getContrastColor } from '../utils/colorUtils';
 import html2canvas from 'html2canvas';
+
+// 8色扩展调色板的颜色名称映射
+const COLOR_NAMES_8 = {
+  en: ['White', 'Black', 'Red', 'Magenta', 'Blue', 'Cyan', 'Yellow', 'Orange'],
+  zh: ['白', '黑', '红', '品红', '蓝', '青', '黄', '橙'],
+  ja: ['白', '黒', '赤', 'マゼンタ', '青', 'シアン', '黄', 'オレンジ']
+};
+
+// Gaia 色号映射
+const GAIA_CODES = ['001', '002', '003', '004', '005', '006', '007', '008'];
+
+// 生成 Mixbox 配方文字描述（使用 Gaia 编号格式）
+const getMixboxRecipeText = (hex: string, lang: Language): string => {
+  const ratios = calculateMixboxRatios(hex, 'srgb', true);
+  const names = COLOR_NAMES_8[lang];
+  
+  // 筛选出比例大于1%的颜色，并按比例排序
+  const validColors = ratios
+    .map((ratio, index) => ({ 
+      ratio, 
+      index, 
+      name: names[index],
+      code: GAIA_CODES[index]
+    }))
+    .filter(item => item.ratio > 1)
+    .sort((a, b) => b.ratio - a.ratio);
+  
+  if (validColors.length === 0) return '-';
+  
+  // 格式化输出：显示前3个主要颜色
+  return validColors
+    .slice(0, 3)
+    .map(item => `${item.code}${item.name} ${Math.round(item.ratio)}%`)
+    .join(' + ');
+};
+
+// 生成简短配方（用于紧凑显示）
+const getShortRecipeText = (hex: string, lang: Language): string => {
+  const ratios = calculateMixboxRatios(hex, 'srgb', true);
+  const names = COLOR_NAMES_8[lang];
+  
+  const validColors = ratios
+    .map((ratio, index) => ({ ratio, index, name: names[index], code: GAIA_CODES[index] }))
+    .filter(item => item.ratio > 1)
+    .sort((a, b) => b.ratio - a.ratio);
+  
+  if (validColors.length === 0) return '-';
+  
+  // 更简短的格式：只显示编号和比例
+  return validColors
+    .slice(0, 3)
+    .map(item => `${item.code}:${Math.round(item.ratio)}%`)
+    .join(' ');
+};
+
+// 获取 RAL 色号和名称
+const getRALInfo = (rgb: { r: number; g: number; b: number }): { number: string; name: string } | null => {
+  const ral = findNearestRAL(rgb);
+  if (ral) {
+    return {
+      number: `RAL ${ral.ral}`,
+      name: ral.name
+    };
+  }
+  return null;
+};
 
 interface PaletteVisualizerProps {
   sourceImage: string | null;
@@ -26,6 +93,7 @@ const adjustColor = (color: string, amount: number) => {
 
 const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colors, lang }) => {
   const [mode, setMode] = useState<VisualizerMode>('TICKET');
+  const [isExporting, setIsExporting] = useState(false);
   const t = translations[lang];
   const visualizerRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +101,12 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
     if (!visualizerRef.current) return;
 
     try {
+      // 设置导出状态，让隐藏的信息显示出来
+      setIsExporting(true);
+      
+      // 等待 React 重新渲染完成
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const canvas = await html2canvas(visualizerRef.current, {
         backgroundColor: null,
         scale: 2,
@@ -50,6 +124,8 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
         if (link.parentNode) {
           link.parentNode.removeChild(link);
         }
+        // 恢复正常状态
+        setIsExporting(false);
       }, 100);
     } catch (error) {
       console.error('Export failed:', error);
@@ -123,20 +199,33 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
         )}
         <div className="relative z-10 w-full flex justify-center items-center">
             {/* CSS Injection for the selected mode */}
-            <style>{getStyleForMode(mode)}</style>
+            <style>{getStyleForMode(mode, isExporting)}</style>
 
             {mode === 'STRIPES' && (
-                <div className="viz-wrapper">
+                <div className={`viz-wrapper ${isExporting ? 'exporting' : ''}`}>
                     <div className="container">
                         <div className="palette">
-                            {colors.slice(0, 5).map((col) => (
-                                <div key={col.id} className="color" style={{ backgroundColor: col.hex }}>
-                                    <span>{col.hex.replace('#', '')}</span>
-                                </div>
-                            ))}
+                            {colors.slice(0, 5).map((col) => {
+                                const ralInfo = getRALInfo(col.rgb);
+                                const mixRecipe = getMixboxRecipeText(col.hex, lang);
+                                const textColor = getContrastColor(col.hex);
+                                return (
+                                    <div key={col.id} className="color" style={{ backgroundColor: col.hex }}>
+                                        <div className="stripe-info" style={{ color: textColor }}>
+                                            <span className="stripe-hex">{col.hex.replace('#', '')}</span>
+                                            <span className="stripe-recipe">{mixRecipe}</span>
+                                            {ralInfo && <span className="stripe-ral">{ralInfo.number} {ralInfo.name}</span>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                             {/* Fill remaining if < 5 */}
                             {[...Array(Math.max(0, 5 - colors.length))].map((_, i) => (
-                                <div key={i} className="color" style={{ backgroundColor: '#eee' }}><span>---</span></div>
+                                <div key={i} className="color" style={{ backgroundColor: '#eee' }}>
+                                    <div className="stripe-info" style={{ color: '#999' }}>
+                                        <span className="stripe-hex">---</span>
+                                    </div>
+                                </div>
                             ))}
                         </div>
                         <div id="stats">
@@ -154,16 +243,26 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
                     <div className="card">
                         <div className="clay-slab">
                             <div className="container-items">
-                                {colors.map(col => (
-                                    <button 
-                                        key={col.id}
-                                        className="item-color" 
-                                        style={{ ['--color' as any]: col.hex }} 
-                                        aria-label={col.hex}
-                                        data-color={col.hex}
-                                        onClick={() => navigator.clipboard.writeText(col.hex)}
-                                    />
-                                ))}
+                                {colors.map(col => {
+                                    const ralInfo = getRALInfo(col.rgb);
+                                    const mixRecipe = getMixboxRecipeText(col.hex, lang);
+                                    return (
+                                        <div key={col.id} className="clay-color-wrapper">
+                                            <button 
+                                                className="item-color" 
+                                                style={{ ['--color' as any]: col.hex }} 
+                                                aria-label={col.hex}
+                                                data-color={col.hex}
+                                                onClick={() => navigator.clipboard.writeText(col.hex)}
+                                            />
+                                            <div className="clay-info">
+                                                <span className="clay-hex">{col.hex}</span>
+                                                <span className="clay-recipe">{mixRecipe}</span>
+                                                {ralInfo && <span className="clay-ral">{ralInfo.number} {ralInfo.name}</span>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -175,15 +274,27 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
                     <div className="body">
                         <div className="comic-panel">
                             <div className="container-items">
-                                {colors.map(col => (
-                                    <button 
-                                        key={col.id}
-                                        className="item-color" 
-                                        style={{ ['--color' as any]: col.hex }} 
-                                        aria-color={col.hex}
-                                        onClick={() => navigator.clipboard.writeText(col.hex)}
-                                    />
-                                ))}
+                                {colors.map(col => {
+                                    const ralInfo = getRALInfo(col.rgb);
+                                    const mixRecipe = getMixboxRecipeText(col.hex, lang);
+                                    return (
+                                        <div key={col.id} className="comic-color-wrapper">
+                                            <button 
+                                                className="item-color" 
+                                                style={{ ['--color' as any]: col.hex }} 
+                                                aria-color={col.hex}
+                                                data-recipe={mixRecipe}
+                                                data-ral={ralInfo?.number || ''}
+                                                onClick={() => navigator.clipboard.writeText(col.hex)}
+                                            />
+                                            <div className="comic-info">
+                                                <span className="comic-hex">{col.hex}</span>
+                                                <span className="comic-recipe">{mixRecipe}</span>
+                                                {ralInfo && <span className="comic-ral">{ralInfo.number} {ralInfo.name}</span>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -196,6 +307,9 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
                         <div className="stones-container">
                             {colors.slice(0, 6).map((col, i) => {
                                 const path = STONE_PATHS[i % STONE_PATHS.length];
+                                const ralInfo = getRALInfo(col.rgb);
+                                const mixRecipe = getMixboxRecipeText(col.hex, lang);
+                                const textColor = getContrastColor(col.hex);
                                 // Very rough brightness adjustment for gradient simulation
                                 // In a real app, use a proper color library
                                 return (
@@ -216,7 +330,17 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
                                                 strokeWidth="2"
                                             />
                                         </svg>
-                                        <div style={{color: col.hex}} className="stone-name">{col.hex}</div>
+                                        <div className="stone-info">
+                                            <div className="stone-hex" style={{color: col.hex}}>{col.hex}</div>
+                                            <div className="stone-recipe" style={{color: textColor === '#FFFFFF' ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'}}>
+                                                {mixRecipe}
+                                            </div>
+                                            {ralInfo && (
+                                                <div className="stone-ral" style={{color: col.hex}}>
+                                                    {ralInfo.number} {ralInfo.name}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -242,7 +366,17 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({ sourceImage, colo
 };
 
 // CSS Styles
-const getStyleForMode = (mode: VisualizerMode) => {
+const getStyleForMode = (mode: VisualizerMode, isExporting: boolean = false) => {
+    // 导出时的额外样式 - 强制显示所有信息并停止动画
+    const exportStyles = isExporting ? `
+        /* 导出时强制显示所有信息 */
+        .exporting .stripe-info { opacity: 1 !important; }
+        .exporting .color { flex: 1 !important; }
+        .stone-info { opacity: 1 !important; }
+        /* 导出时停止动画 */
+        .stone-wrapper { animation: none !important; transform: translateY(0) !important; }
+    ` : '';
+    
     switch (mode) {
         case 'STRIPES': return `
             .viz-wrapper {
@@ -252,8 +386,8 @@ const getStyleForMode = (mode: VisualizerMode) => {
                 align-items: center;
             }
             .container {
-                height: 200px;
-                width: 350px;
+                height: 280px;
+                width: 400px;
                 border-radius: 1em;
                 overflow: hidden;
                 box-shadow: 0 10px 20px #dbdbdb;
@@ -262,18 +396,50 @@ const getStyleForMode = (mode: VisualizerMode) => {
             .palette { display: flex; height: 86%; width: 100%; }
             .color {
                 height: 100%; flex: 1; display: flex; align-items: center; justify-content: center;
-                color: white; font-weight: 600; letter-spacing: 1px; transition: flex 0.1s linear;
+                font-weight: 600; letter-spacing: 1px; transition: flex 0.2s linear;
                 text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+                position: relative;
             }
-            .color span { opacity: 0; transition: opacity 0.1s linear; font-size: 10px; }
-            .color:hover { flex: 2; box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px; }
-            .color:hover span { opacity: 1; }
+            .stripe-info {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                opacity: 0;
+                transition: opacity 0.2s linear;
+                text-align: center;
+                padding: 8px 4px;
+            }
+            .stripe-hex {
+                font-size: 11px;
+                font-weight: bold;
+                letter-spacing: 1px;
+            }
+            .stripe-recipe {
+                font-size: 8px;
+                font-weight: 500;
+                opacity: 0.85;
+                line-height: 1.3;
+                max-width: 60px;
+                word-wrap: break-word;
+            }
+            .stripe-ral {
+                font-size: 8px;
+                font-weight: 600;
+                opacity: 0.9;
+                padding: 2px 4px;
+                background: rgba(0,0,0,0.15);
+                border-radius: 3px;
+            }
+            .color:hover { flex: 2.5; box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px; }
+            .color:hover .stripe-info { opacity: 1; }
             #stats {
                 height: 14%; width: 100%; background: white; display: flex; align-items: center;
                 justify-content: space-between; padding: 0 1.5em; box-sizing: border-box; color: #bebebe;
                 font-size: 12px;
             }
             #stats svg { fill: #bebebe; transform: scale(0.8); }
+            ${exportStyles}
         `;
         case 'CLAY': return `
             .viz-wrapper {
@@ -285,12 +451,18 @@ const getStyleForMode = (mode: VisualizerMode) => {
                 background: #e7e7e7; padding: 20px; border-radius: 20px;
             }
             .clay-slab {
-                padding: 1rem; border-radius: 40px; background: #e7e7e7;
+                padding: 1.5rem; border-radius: 40px; background: #e7e7e7;
                 box-shadow: inset 6px 6px 12px #c5c5c5, inset -6px -6px 12px #ffffff;
             }
-            .container-items { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: 300px; }
+            .container-items { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; max-width: 400px; }
+            .clay-color-wrapper {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+            }
             .item-color {
-                position: relative; flex-shrink: 0; width: 40px; height: 40px;
+                position: relative; flex-shrink: 0; width: 48px; height: 48px;
                 border: none; outline: none; cursor: pointer; background-color: var(--color);
                 border-radius: 41% 59% 45% 55% / 58% 44% 56% 42%;
                 transition: all 300ms cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -308,6 +480,35 @@ const getStyleForMode = (mode: VisualizerMode) => {
             .item-color:hover { transform: translateY(-5px) scale(1.05); border-radius: 50%; }
             .item-color:hover::before { opacity: 1; transform: translateX(-50%) scale(1); }
             .item-color:active { transform: translateY(2px) scale(0.95); }
+            .clay-info {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
+                font-size: 8px;
+                color: #666;
+                text-align: center;
+                max-width: 70px;
+            }
+            .clay-hex {
+                font-weight: bold;
+                font-size: 9px;
+                color: #444;
+            }
+            .clay-recipe {
+                font-size: 7px;
+                opacity: 0.8;
+                line-height: 1.2;
+                word-wrap: break-word;
+            }
+            .clay-ral {
+                font-size: 7px;
+                font-weight: 600;
+                color: #777;
+                padding: 1px 4px;
+                background: rgba(0,0,0,0.08);
+                border-radius: 3px;
+            }
         `;
         case 'COMIC': return `
              .viz-wrapper {
@@ -325,51 +526,70 @@ const getStyleForMode = (mode: VisualizerMode) => {
              .comic-panel {
                 background: #ffffff;
                 border: 4px solid #000;
-                padding: 1.2rem;
+                padding: 1.5rem;
                 border-radius: 8px;
                 box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
              }
              .container-items {
                 display: flex;
-                transform-style: preserve-3d;
-                transform: perspective(1000px);
+                flex-wrap: wrap;
+                gap: 8px;
+                justify-content: center;
+                max-width: 400px;
+             }
+             .comic-color-wrapper {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
              }
              .item-color {
                 position: relative;
                 flex-shrink: 0;
-                width: 40px;
+                width: 48px;
                 height: 48px;
                 border: none;
                 outline: none;
-                margin: -4px;
-                background-color: transparent;
-                transition: 300ms ease-out;
+                background-color: var(--color);
+                border-radius: 6px;
+                border: 3px solid #000;
+                box-shadow: 3px 3px 0 0 #000;
+                transition: 200ms ease-out;
                 cursor: pointer;
                 -webkit-tap-highlight-color: transparent;
              }
-             .item-color::after {
-                position: absolute; content: ""; inset: 0; width: 40px; height: 40px;
-                background-color: var(--color); border-radius: 6px; border: 3px solid #000;
-                box-shadow: 4px 4px 0 0 #000; pointer-events: none; transition: 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+             .item-color:hover { transform: scale(1.1) translateY(-3px); box-shadow: 5px 5px 0 0 #000; }
+             .item-color:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 0 #000; }
+             .comic-info {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
+                font-family: "Arial", sans-serif;
+                text-align: center;
+                max-width: 70px;
              }
-             .item-color::before {
-                position: absolute; content: attr(aria-color);
-                left: 50%; bottom: 60px; font-size: 16px; letter-spacing: 1px; line-height: 1;
-                padding: 6px 10px; background-color: #fef3c7; color: #000; border: 3px solid #000; border-radius: 6px;
-                pointer-events: none; opacity: 0; visibility: hidden; transform-origin: bottom center;
-                transition: all 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 300ms ease-out, visibility 300ms ease-out;
-                transform: translateX(-50%) scale(0.5) translateY(10px); white-space: nowrap; z-index: 1000;
+             .comic-hex {
+                font-size: 9px;
+                font-weight: bold;
+                color: #000;
+                letter-spacing: 0.5px;
              }
-             .item-color:hover { transform: scale(1.5) translateY(-5px); z-index: 99999; }
-             .item-color:hover::before { opacity: 1; visibility: visible; transform: translateX(-50%) scale(1) translateY(0); }
-             .item-color:active::after { transform: translate(2px, 2px); box-shadow: 2px 2px 0 0 #000; }
-             .item-color:focus::before { content: "COPIED!"; opacity: 1; visibility: visible; background-color: #a7f3d0; transform: translateX(-50%) scale(1) translateY(0); }
-             
-             /* Stacking Effects */
-             .item-color:hover + * { transform: scale(1.3) translateY(-3px); z-index: 9999; }
-             .item-color:hover + * + * { transform: scale(1.15); z-index: 999; }
-             .item-color:has(+ *:hover) { transform: scale(1.3) translateY(-3px); z-index: 9999; }
-             .item-color:has(+ * + *:hover) { transform: scale(1.15); z-index: 999; }
+             .comic-recipe {
+                font-size: 7px;
+                color: #555;
+                line-height: 1.2;
+                word-wrap: break-word;
+             }
+             .comic-ral {
+                font-size: 7px;
+                font-weight: 600;
+                color: #333;
+                padding: 1px 4px;
+                background: #fef3c7;
+                border: 1px solid #000;
+                border-radius: 2px;
+             }
         `;
         case 'TICKET': return `
              .viz-wrapper { display: flex; justify-content: center; perspective: 1000px; font-family: sans-serif; }
@@ -379,22 +599,61 @@ const getStyleForMode = (mode: VisualizerMode) => {
              }
              .stones-container {
                 position: relative; width: 100%; display: flex; justify-content: space-around;
-                align-items: center; padding: 2rem; flex-wrap: wrap; gap: 10px;
+                align-items: flex-start; padding: 2rem 1rem; flex-wrap: wrap; gap: 20px;
              }
-             .stone-wrapper { position: relative; width: 100px; height: 100px; animation: float 4s ease-in-out infinite; }
-             .stone { position: absolute; width: 100%; height: 100%; cursor: pointer; transition: transform 0.3s ease; }
-             .stone:hover { transform: scale(1.2); }
-             .stone-name {
-                position: absolute; width: 100%; text-align: center; bottom: -30px; left: 0;
-                margin-top: 10px; color: #fff; font-size: 12px; font-weight: bold;
-                text-transform: uppercase; letter-spacing: 1px; opacity: 0;
-                transition: opacity 0.3s ease; text-shadow: 0 0 5px currentColor;
+             .stone-wrapper { 
+                position: relative; 
+                width: 100px; 
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                animation: float 4s ease-in-out infinite; 
              }
-             .stone:hover + .stone-name { opacity: 1; }
+             .stone { 
+                width: 80px; 
+                height: 80px; 
+                cursor: pointer; 
+                transition: transform 0.3s ease; 
+             }
+             .stone:hover { transform: scale(1.15); }
+             .stone-info {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                margin-top: 8px;
+                text-align: center;
+                opacity: 0.9;
+                transition: opacity 0.3s ease;
+             }
+             .stone-wrapper:hover .stone-info { opacity: 1; }
+             .stone-hex {
+                font-size: 11px;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                text-shadow: 0 0 8px currentColor, 0 0 12px currentColor;
+             }
+             .stone-recipe {
+                font-size: 8px;
+                font-weight: 500;
+                line-height: 1.3;
+                max-width: 90px;
+                word-wrap: break-word;
+             }
+             .stone-ral {
+                font-size: 8px;
+                font-weight: 600;
+                padding: 2px 6px;
+                background: rgba(255,255,255,0.15);
+                border-radius: 4px;
+                backdrop-filter: blur(4px);
+                text-shadow: 0 0 5px currentColor;
+             }
              
              @keyframes float {
                 0%, 100% { transform: translateY(0); }
-                50% { transform: translateY(-10px); }
+                50% { transform: translateY(-8px); }
              }
              
              .stone-wrapper:nth-child(2) { animation-delay: -0.5s; }
@@ -402,9 +661,10 @@ const getStyleForMode = (mode: VisualizerMode) => {
              .stone-wrapper:nth-child(4) { animation-delay: -1.5s; }
              .stone-wrapper:nth-child(5) { animation-delay: -2s; }
              .stone-wrapper:nth-child(6) { animation-delay: -2.5s; }
+             ${exportStyles}
         `;
     }
-    return '';
+    return exportStyles;
 };
 
 export default PaletteVisualizer;

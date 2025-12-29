@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ColorData, Language } from '../types';
+import { ColorData, Language, RadialMixerCache, SliderState } from '../types';
 import { hexToRgb, mixboxMultiBlend } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
 import * as mixbox from '../utils/mixbox';
@@ -11,15 +11,8 @@ interface RadialPaletteMixerProps {
   availableColors: ColorData[];
   lang: Language;
   onAddColors?: (colors: string[]) => void;
-}
-
-interface SliderState {
-  id: string;
-  color: string;
-  angle: number;
-  position: number; // 0.0 to 1.0 (outer to inner - reversed!)
-  weight: number;   // Calculated from position
-  scale: number;    // Dynamic scale based on weight (for animation)
+  cache?: RadialMixerCache;
+  onCacheUpdate?: (cache: RadialMixerCache) => void;
 }
 
 // Canvas 基础常量
@@ -45,21 +38,26 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   targetColor, 
   availableColors,
   lang,
-  onAddColors
+  onAddColors,
+  cache,
+  onCacheUpdate
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [sliders, setSliders] = useState<SliderState[]>([]);
-  const [cmyAdded, setCmyAdded] = useState(false);
-  const [bwAdded, setBwAdded] = useState(false);
+  // Use cache values if available, otherwise use defaults
+  const [sliders, setSliders] = useState<SliderState[]>(cache?.sliders ?? []);
+  const [cmyAdded, setCmyAdded] = useState(cache?.cmyAdded ?? false);
+  const [bwAdded, setBwAdded] = useState(cache?.bwAdded ?? false);
   const [draggingIndex, setDraggingIndex] = useState<number>(-1);
   const [hoverIndex, setHoverIndex] = useState<number>(-1);
   const [mixedColor, setMixedColor] = useState<string>('');
-  const [targetVolume, setTargetVolume] = useState<number>(20);
+  const [targetVolume, setTargetVolume] = useState<number>(cache?.targetVolume ?? 20);
   const [canvasSize, setCanvasSize] = useState(getCanvasSize());
-  const knobSizes = useRef<number[]>([]); // For anime.js dynamic sizing
+  const knobSizes = useRef<number[]>(cache?.sliders ? new Array(cache.sliders.length).fill(20) : []); // For anime.js dynamic sizing
   const requestRef = useRef<number>(0); // For animation loop
   const animatingSliders = useRef<boolean>(false);
   const lastMoveTimeRef = useRef<number>(0); // 触控节流
+  // Track if sliders were initialized from colors
+  const slidersInitializedRef = useRef<boolean>(cache?.sliders && cache.sliders.length > 0 ? true : false);
   
   const t = translations[lang];
   
@@ -73,6 +71,13 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   const BASE_KNOB_RADIUS = 20;
   const ACTIVE_KNOB_RADIUS = 30;
   const CENTER_RADIUS = INNER_RADIUS - 5;
+  
+  // Initialize knobSizes if restored from cache
+  useEffect(() => {
+    if (sliders.length > 0 && knobSizes.current.length !== sliders.length) {
+      knobSizes.current = new Array(sliders.length).fill(BASE_KNOB_RADIUS);
+    }
+  }, [sliders.length]);
   
   // 响应式调整画布尺寸
   useEffect(() => {
@@ -104,9 +109,44 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     };
   }, [draggingIndex]);
   
-  // Initialize sliders when available colors change
+  // Track available colors IDs for change detection
+  const prevAvailableColorsRef = useRef<string>('');
+  
+  // Initialize sliders when available colors change (only if not restored from cache)
   useEffect(() => {
-    if (availableColors.length === 0) return;
+    if (availableColors.length === 0) {
+      // If no colors available, reset
+      if (sliders.length > 0) {
+        setSliders([]);
+        setCmyAdded(false);
+        setBwAdded(false);
+        slidersInitializedRef.current = false;
+      }
+      return;
+    }
+    
+    // Build a signature from available colors
+    const newColorSignature = availableColors.slice(0, 19).map(c => c.id).sort().join(',');
+    
+    // If we have cached sliders, check if the base palette colors have changed
+    if (slidersInitializedRef.current && sliders.length > 0) {
+      // Get only the palette color IDs (not CMY/BW additions)
+      const currentPaletteIds = sliders
+        .filter(s => !s.id.startsWith('cmy-') && !s.id.startsWith('bw-'))
+        .map(s => s.id)
+        .sort()
+        .join(',');
+      
+      // If palette colors haven't changed, keep current state
+      if (currentPaletteIds === newColorSignature || prevAvailableColorsRef.current === newColorSignature) {
+        knobSizes.current = new Array(sliders.length).fill(BASE_KNOB_RADIUS);
+        prevAvailableColorsRef.current = newColorSignature;
+        return;
+      }
+    }
+    
+    // Colors have changed - reinitialize
+    prevAvailableColorsRef.current = newColorSignature;
     
     const numColors = Math.min(availableColors.length, 19); // Max 19 like RadialMixer
     const step = (2 * Math.PI) / numColors;
@@ -121,9 +161,24 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     }));
     
     setSliders(initialSliders);
+    setCmyAdded(false);
+    setBwAdded(false);
     knobSizes.current = new Array(numColors).fill(BASE_KNOB_RADIUS);
     setMixedColor('');
+    slidersInitializedRef.current = true;
   }, [availableColors]);
+  
+  // Update cache when state changes
+  useEffect(() => {
+    if (onCacheUpdate && slidersInitializedRef.current) {
+      onCacheUpdate({
+        sliders,
+        cmyAdded,
+        bwAdded,
+        targetVolume
+      });
+    }
+  }, [sliders, cmyAdded, bwAdded, targetVolume, onCacheUpdate]);
   
   // Calculate mixed color and volumes whenever sliders change
   useEffect(() => {

@@ -1,13 +1,8 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { ColorData, PaintBrand, RALColor, Language, ColorSpace } from '../types';
+import { ColorData, PaintBrand, RALColor, Language, ColorSpace, MixerResultCache, MixingMode } from '../types';
 import { findNearestPaints, findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS, EXTENDED_MIXING_COLORS } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
 import * as mixbox from '../utils/mixbox';
-
-// Mixing Mode Types (simplified to 2 modes)
-type MixingMode = 'mixbox' | 'professional';
-
-declare var anime: any;
 
 // Helper: Calculate relative luminance (perceived brightness)
 // Uses ITU-R BT.709 coefficients for perceptual brightness
@@ -74,11 +69,15 @@ const calculateHueAccuracy = (targetHex: string, mixedHex: string): { accuracy: 
   return { accuracy, hueDiff, status };
 };
 
+declare var anime: any;
+
 interface MixerResultProps {
   color: ColorData | null;
   lang: Language;
   colorSpace?: ColorSpace;
   onAddColor?: (hex: string) => void;
+  cache?: MixerResultCache;
+  onCacheUpdate?: (cache: MixerResultCache) => void;
 }
 
 interface Layer {
@@ -90,18 +89,29 @@ interface Layer {
     isBase?: boolean;
 }
 
-const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'srgb', onAddColor }) => {
+const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'srgb', onAddColor, cache, onCacheUpdate }) => {
   const [nearest, setNearest] = useState<PaintBrand[]>([]);
   const [ralMatch, setRalMatch] = useState<RALColor | null>(null);
-  const [bottleVolume, setBottleVolume] = useState<number>(20); // Default to 20ml
+  // Use cache values if available, otherwise use defaults
+  const [bottleVolume, setBottleVolume] = useState<number>(cache?.bottleVolume ?? 20);
+  const [mixingMode, setMixingMode] = useState<MixingMode>(cache?.mixingMode ?? 'professional');
   const [selectedBasePaint, setSelectedBasePaint] = useState<PaintBrand | null>(null);
-  const [mixingMode, setMixingMode] = useState<MixingMode>('professional');
   const [professionalRecipe, setProfessionalRecipe] = useState<ReturnType<typeof calculateProfessionalRecipe> | null>(null);
   const [addedToPalette, setAddedToPalette] = useState(false);
   
   const t = translations[lang];
   const bottleRef = useRef<HTMLDivElement>(null);
   const cmykRefs = useRef<(HTMLDivElement | null)[]>([]);
+  
+  // Update cache when state changes
+  useEffect(() => {
+    if (onCacheUpdate) {
+      onCacheUpdate({
+        mixingMode,
+        bottleVolume
+      });
+    }
+  }, [mixingMode, bottleVolume, onCacheUpdate]);
 
   // Update CMYK Bars Animation
   useEffect(() => {

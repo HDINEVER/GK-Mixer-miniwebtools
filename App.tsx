@@ -6,10 +6,22 @@ import PaletteVisualizer from './components/PaletteVisualizer';
 import RadialPaletteMixer from './components/RadialPaletteMixer';
 import BasicColorMixer from './components/BasicColorMixer';
 import Loader from './components/Loader';
-import { ColorData, AppMode, RGB, Language, Theme, ColorSpace } from './types';
+import { ColorData, AppMode, RGB, Language, Theme, ColorSpace, MixerResultCache, RadialMixerCache, BasicMixerCache, MixingMode, SliderState, BaseColor } from './types';
 import { extractProminentColors, generateId, rgbToCmyk, rgbToHex, hexToRgb, rgbToHsb, rgbToLab } from './utils/colorUtils';
 import { convertToWorkingSpace, isInGamut } from './utils/colorSpaceConverter';
 import { translations } from './utils/translations';
+
+// Default base colors for BasicColorMixer
+const DEFAULT_BASE_COLORS: BaseColor[] = [
+  { id: 'gaia-001', brand: 'Gaia', code: '001', name: '光泽白', hex: '#FFFFFF' },
+  { id: 'gaia-002', brand: 'Gaia', code: '002', name: '光泽黑', hex: '#000000' },
+  { id: 'gaia-003', brand: 'Gaia', code: '003', name: '光泽红', hex: '#E60012' },
+  { id: 'gaia-004', brand: 'Gaia', code: '004', name: '光泽蓝', hex: '#004098' },
+  { id: 'gaia-005', brand: 'Gaia', code: '005', name: '光泽黄', hex: '#FFD900' },
+  { id: 'process-cyan', brand: 'Process', code: 'C', name: '印刷青', hex: '#00B7EB' },
+  { id: 'process-magenta', brand: 'Process', code: 'M', name: '印刷品红', hex: '#FF0090' },
+  { id: 'process-yellow', brand: 'Process', code: 'Y', name: '印刷黄', hex: '#FFEF00' },
+];
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.ANALYZE);
@@ -20,6 +32,28 @@ const App: React.FC = () => {
   const [colors, setColors] = useState<ColorData[]>([]);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer' | 'radial' | 'basic'>('mixer');
+  
+  // === Cache states for preserving component states across tab switches ===
+  // MixerResult cache
+  const [mixerResultCache, setMixerResultCache] = useState<MixerResultCache>({
+    mixingMode: 'professional',
+    bottleVolume: 20
+  });
+  
+  // RadialPaletteMixer cache
+  const [radialMixerCache, setRadialMixerCache] = useState<RadialMixerCache>({
+    sliders: [],
+    cmyAdded: false,
+    bwAdded: false,
+    targetVolume: 20
+  });
+  
+  // BasicColorMixer cache
+  const [basicMixerCache, setBasicMixerCache] = useState<BasicMixerCache>({
+    baseColors: DEFAULT_BASE_COLORS,
+    mixRatios: DEFAULT_BASE_COLORS.map(() => 0),
+    totalVolume: 20
+  });
   
   // Ref for manual picker canvas
   const imageRef = useRef<HTMLImageElement>(null);
@@ -570,16 +604,29 @@ const App: React.FC = () => {
                 </div>
 
                 {rightPanelTab === 'mixer' ? (
-                    <MixerResult color={selectedColor} lang={lang} colorSpace={colorSpace} onAddColor={handleAddColor} />
+                    <MixerResult 
+                        color={selectedColor} 
+                        lang={lang} 
+                        colorSpace={colorSpace} 
+                        onAddColor={handleAddColor}
+                        cache={mixerResultCache}
+                        onCacheUpdate={setMixerResultCache}
+                    />
                 ) : rightPanelTab === 'radial' ? (
                     <RadialPaletteMixer
                         targetColor={selectedColor}
                         availableColors={colors}
                         lang={lang}
                         onAddColors={handleAddColors}
+                        cache={radialMixerCache}
+                        onCacheUpdate={setRadialMixerCache}
                     />
                 ) : rightPanelTab === 'basic' ? (
-                    <BasicColorMixer lang={lang} />
+                    <BasicColorMixer 
+                        lang={lang}
+                        cache={basicMixerCache}
+                        onCacheUpdate={setBasicMixerCache}
+                    />
                 ) : (
                     <PaletteVisualizer 
                         sourceImage={sourceImage}

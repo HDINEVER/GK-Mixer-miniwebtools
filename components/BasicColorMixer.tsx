@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Language } from '../types';
+import { Language, BasicMixerCache, BaseColor } from '../types';
 import { lerp, rgbToLatent, latentToRgb } from '../utils/mixbox';
 
 // 声明 anime
@@ -7,10 +7,12 @@ declare var anime: any;
 
 interface BasicColorMixerProps {
   lang: Language;
+  cache?: BasicMixerCache;
+  onCacheUpdate?: (cache: BasicMixerCache) => void;
 }
 
 // 8 base colors: 5 Gaia + 3 Process colors
-const DEFAULT_BASE_COLORS = [
+const DEFAULT_BASE_COLORS: BaseColor[] = [
   { id: 'gaia-001', brand: 'Gaia', code: '001', name: '光泽白', hex: '#FFFFFF' },
   { id: 'gaia-002', brand: 'Gaia', code: '002', name: '光泽黑', hex: '#000000' },
   { id: 'gaia-003', brand: 'Gaia', code: '003', name: '光泽红', hex: '#E60012' },
@@ -22,7 +24,7 @@ const DEFAULT_BASE_COLORS = [
 ];
 
 // Gaia 扩展颜色 (006品红、007青、008橙)
-const GAIA_EXTENDED_COLORS = [
+const GAIA_EXTENDED_COLORS: BaseColor[] = [
   { id: 'gaia-006', brand: 'Gaia', code: '006', name: '品红', hex: '#FF00FF' },
   { id: 'gaia-007', brand: 'Gaia', code: '007', name: '青', hex: '#00FFFF' },
   { id: 'gaia-008', brand: 'Gaia', code: '008', name: '橙', hex: '#FF8000' },
@@ -46,14 +48,15 @@ const getCanvasSize = (containerWidth?: number) => {
   };
 };
 
-const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
+const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheUpdate }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
-  const [baseColors, setBaseColors] = useState(DEFAULT_BASE_COLORS);
-  const [mixRatios, setMixRatios] = useState<number[]>(DEFAULT_BASE_COLORS.map(() => 0));
+  // Use cache values if available, otherwise use defaults
+  const [baseColors, setBaseColors] = useState<BaseColor[]>(cache?.baseColors ?? DEFAULT_BASE_COLORS);
+  const [mixRatios, setMixRatios] = useState<number[]>(cache?.mixRatios ?? DEFAULT_BASE_COLORS.map(() => 0));
   const [finalColor, setFinalColor] = useState<string>('');
-  const [totalVolume, setTotalVolume] = useState<number>(20);
+  const [totalVolume, setTotalVolume] = useState<number>(cache?.totalVolume ?? 20);
   const [canvasSize, setCanvasSize] = useState(getCanvasSize());
   
   // 拖动状态
@@ -65,6 +68,57 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
   const centersOutside = useRef<Array<{x: number, y: number}>>([]);
   const centersInside = useRef<Array<{x: number, y: number}>>([]);
   const slidersPos = useRef<Array<{x: number, y: number}>>([]);
+  
+  // Update cache when state changes
+  useEffect(() => {
+    if (onCacheUpdate) {
+      onCacheUpdate({
+        baseColors,
+        mixRatios,
+        totalVolume
+      });
+    }
+  }, [baseColors, mixRatios, totalVolume, onCacheUpdate]);
+  
+  // 计算混合颜色的辅助函数
+  const calculateMixedColor = (ratios: number[]): string => {
+    const totalWeight = ratios.reduce((a, b) => a + b, 0);
+    if (totalWeight > 0.001) {
+      // 使用 mixbox 算法混合颜色
+      let latentMix = [0, 0, 0, 0, 0, 0, 0];
+      
+      for (let j = 0; j < baseColors.length; j++) {
+        if (ratios[j] > 0.001) {
+          const latent = rgbToLatent(baseColors[j].hex);
+          if (latent) {
+            const weight = ratios[j] / totalWeight;
+            for (let k = 0; k < latent.length; k++) {
+              latentMix[k] += latent[k] * weight;
+            }
+          }
+        }
+      }
+      
+      const mixedRgb = latentToRgb(latentMix);
+      if (mixedRgb) {
+        const r = mixedRgb[0].toString(16).padStart(2, '0');
+        const g = mixedRgb[1].toString(16).padStart(2, '0');
+        const b = mixedRgb[2].toString(16).padStart(2, '0');
+        return `#${r}${g}${b}`;
+      }
+    }
+    return '';
+  };
+  
+  // 从缓存恢复时重新计算混合颜色
+  useEffect(() => {
+    if (cache?.mixRatios && cache.mixRatios.some(r => r > 0.001)) {
+      const color = calculateMixedColor(cache.mixRatios);
+      if (color) {
+        setFinalColor(color);
+      }
+    }
+  }, []); // 只在组件挂载时执行一次
 
   // 响应式调整画布尺寸
   useEffect(() => {
@@ -73,6 +127,8 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
       const newSize = getCanvasSize(width);
       setCanvasSize(newSize);
       initializePositions(newSize.scale);
+      // After initializing positions, update slider positions based on current mixRatios
+      updateSliderPositionsFromRatios();
     };
 
     updateSize();
@@ -92,7 +148,32 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
   // 当baseColors改变时重新初始化位置
   useEffect(() => {
     initializePositions(canvasSize.scale);
+    // After initializing, restore slider positions from mixRatios
+    updateSliderPositionsFromRatios();
   }, [baseColors.length, canvasSize.scale]);
+  
+  // 根据 mixRatios 更新滑块位置（用于从缓存恢复）
+  const updateSliderPositionsFromRatios = () => {
+    const WIDTH = BASE_WIDTH;
+    const HEIGHT = BASE_HEIGHT;
+    const CENTER_X = WIDTH / 2;
+    const CENTER_Y = HEIGHT / 2;
+    const OUTER_RADIUS = 215;
+    const INNER_RADIUS = 70;
+    
+    const numColors = baseColors.length;
+    const step = (Math.PI * 2) / numColors;
+
+    for (let i = 0; i < numColors; i++) {
+      const angle = i * step;
+      const t = mixRatios[i];
+      const distance = OUTER_RADIUS - t * (OUTER_RADIUS - INNER_RADIUS);
+      slidersPos.current[i] = {
+        x: CENTER_X + Math.sin(angle) * distance,
+        y: CENTER_Y - Math.cos(angle) * distance
+      };
+    }
+  };
 
   // 根据mixRatios更新滑块位置
   const updateSliderPositions = () => {
@@ -451,33 +532,8 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang }) => {
     setMixRatios(newRatios);
 
     // 计算混合颜色
-    const totalWeight = newRatios.reduce((a, b) => a + b, 0);
-    if (totalWeight > 0.001) {
-      // 使用 mixbox 算法混合颜色
-      let latentMix = [0, 0, 0, 0, 0, 0, 0];
-      
-      for (let j = 0; j < baseColors.length; j++) {
-        if (newRatios[j] > 0.001) {
-          const latent = rgbToLatent(baseColors[j].hex);
-          if (latent) {
-            const weight = newRatios[j] / totalWeight;
-            for (let k = 0; k < latent.length; k++) {
-              latentMix[k] += latent[k] * weight;
-            }
-          }
-        }
-      }
-      
-      const mixedRgb = latentToRgb(latentMix);
-      if (mixedRgb) {
-        const r = mixedRgb[0].toString(16).padStart(2, '0');
-        const g = mixedRgb[1].toString(16).padStart(2, '0');
-        const b = mixedRgb[2].toString(16).padStart(2, '0');
-        setFinalColor(`#${r}${g}${b}`);
-      }
-    } else {
-      setFinalColor('');
-    }
+    const color = calculateMixedColor(newRatios);
+    setFinalColor(color);
   };
 
   const handleEnd = () => {

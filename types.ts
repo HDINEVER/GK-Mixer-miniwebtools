@@ -74,3 +74,44 @@ export enum AppMode {
 export type Language = 'en' | 'zh' | 'ja';
 export type Theme = 'light' | 'dark';
 export type ColorSpace = 'srgb' | 'display-p3' | 'adobe-rgb';
+
+// Mixing Mode Types for MixerResult
+export type MixingMode = 'mixbox' | 'professional';
+
+// Slider state for RadialPaletteMixer
+export interface SliderState {
+  id: string;
+  color: string;
+  angle: number;
+  position: number; // 0.0 to 1.0 (outer to inner)
+  weight: number;   // Calculated from position
+  scale: number;    // Dynamic scale for animation
+}
+
+// Base color type for BasicColorMixer
+export interface BaseColor {
+  id: string;
+  brand: string;
+  code: string;
+  name: string;
+  hex: string;
+}
+
+// Cache state for preserving component states across tab switches
+export interface MixerResultCache {
+  mixingMode: MixingMode;
+  bottleVolume: number;
+}
+
+export interface RadialMixerCache {
+  sliders: SliderState[];
+  cmyAdded: boolean;
+  bwAdded: boolean;
+  targetVolume: number;
+}
+
+export interface BasicMixerCache {
+  baseColors: BaseColor[];
+  mixRatios: number[];
+  totalVolume: number;
+}

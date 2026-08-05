@@ -1,0 +1,20 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+allowBuilds:
+  '@google/genai': set this to true or false
+  esbuild: set this to true or false
+  protobufjs: set this to true or false
+  sharp: set this to true or false
+  workerd: set this to true or false
+
+# pnpm 11: build scripts allowed to run
+onlyBuiltDependencies:
+  - esbuild
+  - "@google/genai"
+  - protobufjs
+  - sharp
+  - workerd
+  - "@parcel/watcher"
+  - "@swc/core"

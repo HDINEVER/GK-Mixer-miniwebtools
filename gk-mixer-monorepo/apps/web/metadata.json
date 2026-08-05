@@ -1,0 +1,7 @@
+{
+  "name": "GK-Mixer-HDINEVER",
+  "description": "A programmer-style, macaron-colored paint mixing simulator for Garage Kits (GK), featuring CMYK decomposition and brand-specific paint recipes using Gemini AI.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

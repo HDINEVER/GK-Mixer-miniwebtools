@@ -1,213 +1,238 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Animated,
-  FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import {
   convertHexToAllSpaces,
-  findNearestPaints,
-  findNearestRAL,
   calculateMixboxRatios,
   calculateProfessionalRecipe,
+  findNearestRAL,
+  findNearestPaints,
+  BASE_MIXING_COLORS,
   EXTENDED_MIXING_COLORS,
+  hexToRgb,
   type ColorData,
-  type PaintBrand,
-  type RALColor,
 } from '@gk-mixer/core';
-
-const VOLUMES = [10, 20, 30, 50, 100];
+import { useTargetColor } from '../context/ColorContext';
 
 export default function MixerScreen() {
-  const [hexInput, setHexInput] = useState('FF9900');
-  const [bottleVolume, setBottleVolume] = useState(20);
-  const animValues = useRef<Animated.Value[]>([]);
+  const { targetColor } = useTargetColor();
+  const [bottleVolume, setBottleVolume] = useState('20');
+  const tv = parseFloat(bottleVolume) || 20;
 
-  const colorData: ColorData = useMemo(() => convertHexToAllSpaces(`#${hexInput.replace(/^#/, '')}`), [hexInput]);
-  const ralMatch: RALColor | null = useMemo(() => findNearestRAL(colorData.rgb), [colorData]);
-  const nearestPaints: PaintBrand[] = useMemo(() => findNearestPaints(colorData.hex, 3), [colorData.hex]);
-  const recipe = useMemo(() => calculateProfessionalRecipe(colorData.hex), [colorData.hex]);
-  const mixRatios = useMemo(() => calculateMixboxRatios(colorData.hex, 'srgb', true), [colorData.hex]);
+  // Ensure we always have valid ColorData to work with
+  const color: ColorData = useMemo(
+    () => targetColor ?? convertHexToAllSpaces('#FF9900'),
+    [targetColor],
+  );
 
-  // Normalize 8-color ratios to percentages and pair with palette
-  const layers = useMemo(() => {
-    return mixRatios
-      .map((r, i) => ({
-        ratio: r,
-        paint: EXTENDED_MIXING_COLORS[i],
-        volume: ((r / 100) * bottleVolume).toFixed(1),
-      }))
-      .filter(l => l.ratio > 1)
-      .sort((a, b) => b.ratio - a.ratio);
-  }, [mixRatios, bottleVolume]);
+  const rgb = useMemo(() => hexToRgb(color.hex), [color.hex]);
 
-  // Animate layer heights on change
-  useEffect(() => {
-    // Ensure enough anim values
-    while (animValues.current.length < layers.length) {
-      animValues.current.push(new Animated.Value(0));
-    }
-    const animations = layers.map((_, i) => {
-      animValues.current[i]?.setValue(0);
-      return Animated.timing(animValues.current[i]!, {
-        toValue: 1,
-        duration: 500,
-        delay: i * 80,
-        useNativeDriver: false,
-      });
-    });
-    Animated.stagger(80, animations).start();
-  }, [layers]);
+  // ── Computations ──
+  const ratios5 = useMemo(() => calculateMixboxRatios(color.hex), [color.hex]);
+  const ratios8 = useMemo(() => calculateMixboxRatios(color.hex, 'srgb', true), [color.hex]);
+  const ral = useMemo(() => findNearestRAL(color.rgb), [color.rgb]);
+  const nearest = useMemo(() => findNearestPaints(color.hex, 5), [color.hex]);
+  const recipe = useMemo(() => calculateProfessionalRecipe(color.hex), [color.hex]);
 
-  const hex = colorData.hex;
-  const { rgb, cmyk, hsb, lab } = colorData;
+  const recipeMl = useMemo(() => {
+    const r = recipe?.ratios as { color: string; percentage: number }[] | undefined;
+    if (!r) return [];
+    return r.map((n) => ({ ...n, ml: (n.percentage / 100) * tv }));
+  }, [recipe, tv]);
 
+  // ── Render ──
   return (
-    <FlatList
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      data={layers}
-      keyExtractor={(item, i) => `${item.paint.code}-${i}`}
-      ListHeaderComponent={
-        <View>
-          {/* Color Input */}
-          <View style={styles.inputRow}>
-            <Text style={styles.hash}>#</Text>
-            <TextInput
-              style={styles.hexInput}
-              value={hexInput}
-              onChangeText={(t) => setHexInput(t.replace(/[^0-9a-fA-F]/g, '').slice(0, 6))}
-              maxLength={6}
-              autoCapitalize="none"
-              placeholderTextColor="#555"
-            />
-          </View>
-
-          {/* Color Swatch + Data */}
-          <View style={styles.swatchRow}>
-            <View style={[styles.swatch, { backgroundColor: hex }]} />
-            <View style={styles.colorData}>
-              <Text style={styles.hexLabel}>{hex}</Text>
-              <Text style={styles.dataLine}>RGB  {rgb.r}, {rgb.g}, {rgb.b}</Text>
-              <Text style={styles.dataLine}>CMYK {cmyk.c}, {cmyk.m}, {cmyk.y}, {cmyk.k}</Text>
-              <Text style={styles.dataLine}>HSB  {hsb.h}° {hsb.s}% {hsb.b}%</Text>
-            </View>
-          </View>
-
-          {/* RAL Match */}
-          {ralMatch && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🎯 RAL 标准色</Text>
-              <View style={styles.ralCard}>
-                <View style={[styles.ralSwatch, { backgroundColor: ralMatch.hex }]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.ralName}>RAL {ralMatch.ral} {ralMatch.name}</Text>
-                  <Text style={styles.ralHex}>{ralMatch.hex}</Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Bottle Volume */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🧪 烧杯容量 (ml)</Text>
-            <View style={styles.volumeRow}>
-              {VOLUMES.map((v) => (
-                <TouchableOpacity
-                  key={v}
-                  style={[styles.volumeBtn, bottleVolume === v && styles.volumeBtnActive]}
-                  onPress={() => setBottleVolume(v)}
-                >
-                  <Text style={[styles.volumeText, bottleVolume === v && styles.volumeTextActive]}>
-                    {v}ml
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Layers Header */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🧪 混合比例</Text>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 140 }}>
+      {/* Target color header */}
+      <View style={styles.headerCard}>
+        <View style={[styles.bigSwatch, { backgroundColor: color.hex }]} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.hex}>{color.hex}</Text>
+          <Text style={styles.rgb}>RGB {color.rgb.r}, {color.rgb.g}, {color.rgb.b}</Text>
+          <View style={styles.cmykRow}>
+            <Text style={styles.cmyk}>C{color.cmyk.c}</Text>
+            <Text style={styles.cmyk}>M{color.cmyk.m}</Text>
+            <Text style={styles.cmyk}>Y{color.cmyk.y}</Text>
+            <Text style={styles.cmyk}>K{color.cmyk.k}</Text>
           </View>
         </View>
-      }
-      renderItem={({ item, index }) => (
-        <Animated.View
-          style={{
-            opacity: animValues.current[index] ?? new Animated.Value(1),
-            transform: [{
-              translateY: (animValues.current[index] ?? new Animated.Value(1)).interpolate({
-                inputRange: [0, 1],
-                outputRange: [20, 0],
-              }),
-            }],
-          }}
-        >
-          <View style={styles.layerRow}>
-            <View style={[styles.layerBar, { flex: item.ratio, backgroundColor: item.paint.hex }]} />
-            <View style={{ flex: 100 - item.ratio }} />
-            <Text style={styles.layerLabel}>{item.paint.name}</Text>
-            <View style={styles.layerVol}>
-              <Text style={styles.layerVolText}>{item.ratio.toFixed(0)}%</Text>
-              <Text style={styles.layerMl}>{item.volume}ml</Text>
-            </View>
-          </View>
-        </Animated.View>
+        {targetColor ? (
+          <View style={styles.badge}><Text style={styles.badgeText}>已设目标</Text></View>
+        ) : (
+          <View style={styles.badgeDefault}><Text style={styles.badgeText}>默认色</Text></View>
+        )}
+      </View>
+
+      {/* RAL */}
+      {ral && (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>RAL 标准色</Text>
+          <Text style={styles.ralText}>
+            RAL {ral.ral} · {ral.name}
+          </Text>
+          <View style={[styles.ralSwatch, { backgroundColor: ral.hex }]} />
+        </View>
       )}
-      ListFooterComponent={
-        nearestPaints.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🎨 最近漆料匹配</Text>
-            {nearestPaints.map((p) => (
-              <View key={p.id} style={styles.paintRow}>
-                <View style={[styles.paintSwatch, { backgroundColor: p.hex }]} />
-                <Text style={styles.paintName}>{p.brand} {p.code} {p.name}</Text>
+
+      {/* Bottle volume */}
+      <View style={styles.card}>
+        <View style={styles.volRow}>
+          <Text style={styles.volLabel}>烧杯容量 (ml)</Text>
+          <TextInput
+            style={styles.volInput}
+            value={bottleVolume}
+            onChangeText={setBottleVolume}
+            keyboardType="numeric"
+            maxLength={3}
+          />
+        </View>
+      </View>
+
+      {/* 5-color ratios */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>5色 Mixbox 配比</Text>
+        <View style={styles.barTrack}>
+          {BASE_MIXING_COLORS.map((p, i) => {
+            const v = ratios5[i] ?? 0;
+            return v > 0.5 ? (
+              <View
+                key={p.id}
+                style={[styles.bar, { flex: v, backgroundColor: p.hex }]}
+              />
+            ) : null;
+          })}
+        </View>
+        <View style={styles.ratioGrid}>
+          {BASE_MIXING_COLORS.map((p, i) => {
+            const v = ratios5[i] ?? 0;
+            const ml = tv * (v / 100);
+            return (
+              <View key={p.id} style={styles.ratioItem}>
+                <View style={[styles.dot, { backgroundColor: p.hex }]} />
+                <Text style={styles.ratioText}>
+                  {p.name} {v.toFixed(1)}%
+                </Text>
+                {v > 0.01 && (
+                  <Text style={styles.ratioMl}>{ml.toFixed(1)}ml</Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* 8-color ratios */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>8色 Mixbox 配比</Text>
+        <View style={styles.barTrack}>
+          {EXTENDED_MIXING_COLORS.map((p, i) => {
+            const v = ratios8[i] ?? 0;
+            return v > 0.5 ? (
+              <View
+                key={p.id}
+                style={[styles.bar, { flex: v, backgroundColor: p.hex }]}
+              />
+            ) : null;
+          })}
+        </View>
+        {EXTENDED_MIXING_COLORS.map((p, i) => {
+          const v = ratios8[i] ?? 0;
+          const ml = tv * (v / 100);
+          if (v < 0.01) return null;
+          return (
+            <View key={p.id} style={styles.ratioItem}>
+              <View style={[styles.dot, { backgroundColor: p.hex }]} />
+              <Text style={styles.ratioText}>{p.name} {v.toFixed(1)}%</Text>
+              <Text style={styles.ratioMl}>{ml.toFixed(1)}ml</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Nearest paints */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>最近漆料匹配 (ΔE)</Text>
+        {nearest.map((p) => (
+          <View key={p.id} style={styles.ratioItem}>
+            <View style={[styles.dot, { backgroundColor: p.hex }]} />
+            <Text style={styles.ratioText}>{p.brand} {p.code}</Text>
+            <Text style={styles.ratioMl}>{p.name}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Professional recipe */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>专业配方</Text>
+        {recipe?.strategy && (
+          <Text style={styles.strategy}>策略: {recipe.strategy}</Text>
+        )}
+        {recipe?.steps?.map((s: string, i: number) => (
+          <Text key={i} style={styles.step}>{i + 1}. {s}</Text>
+        ))}
+        {recipe?.ratios && recipeMl.length > 0 && (
+          <View style={{ marginTop: 8, borderTopWidth: 1, borderTopColor: '#333', paddingTop: 8 }}>
+            {recipeMl.map((r, i) => (
+              <View key={i} style={styles.ratioItem}>
+                <View style={[styles.dot, { backgroundColor: r.color }]} />
+                <Text style={styles.ratioText}>{r.percentage.toFixed(1)}%</Text>
+                <Text style={styles.ratioMl}>{r.ml.toFixed(1)}ml</Text>
               </View>
             ))}
           </View>
-        ) : null
-      }
-    />
+        )}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111' },
-  content: { padding: 16, paddingBottom: 120 },
-  inputRow: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A',
-    borderRadius: 12, paddingHorizontal: 16, marginBottom: 16,
+
+  headerCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#1A1A1A', borderRadius: 12, padding: 14, margin: 12,
+    borderWidth: 1, borderColor: '#2A2A2A', gap: 14,
   },
-  hash: { color: '#FF9900', fontSize: 24, fontWeight: '700', marginRight: 4 },
-  hexInput: { flex: 1, color: '#fff', fontSize: 24, fontFamily: 'monospace', paddingVertical: 14 },
-  swatchRow: { flexDirection: 'row', marginBottom: 20 },
-  swatch: { width: 80, height: 80, borderRadius: 16, marginRight: 16, borderWidth: 1, borderColor: '#333' },
-  colorData: { flex: 1, justifyContent: 'center' },
-  hexLabel: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 6 },
-  dataLine: { color: '#999', fontSize: 12, fontFamily: 'monospace', marginBottom: 2 },
-  section: { marginBottom: 16 },
-  sectionTitle: { color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 10 },
-  ralCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 10, padding: 12 },
-  ralSwatch: { width: 40, height: 40, borderRadius: 8, marginRight: 12, borderWidth: 1, borderColor: '#333' },
-  ralName: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  ralHex: { color: '#888', fontSize: 12, fontFamily: 'monospace', marginTop: 2 },
-  volumeRow: { flexDirection: 'row', gap: 8 },
-  volumeBtn: { flex: 1, backgroundColor: '#1A1A1A', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
-  volumeBtnActive: { backgroundColor: '#FF9900' },
-  volumeText: { color: '#888', fontSize: 13, fontWeight: '600' },
-  volumeTextActive: { color: '#111', fontWeight: '700' },
-  layerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  layerBar: { height: 36, borderRadius: 8 },
-  layerLabel: { color: '#ccc', fontSize: 13, fontWeight: '500', marginLeft: 10, minWidth: 50 },
-  layerVol: { alignItems: 'flex-end', minWidth: 60, marginLeft: 8 },
-  layerVolText: { color: '#FF9900', fontSize: 14, fontWeight: '700' },
-  layerMl: { color: '#666', fontSize: 11 },
-  paintRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 10, padding: 10, marginBottom: 6 },
-  paintSwatch: { width: 28, height: 28, borderRadius: 6, marginRight: 10, borderWidth: 1, borderColor: '#333' },
-  paintName: { color: '#ccc', fontSize: 13 },
+  bigSwatch: { width: 64, height: 64, borderRadius: 14, borderWidth: 1, borderColor: '#555' },
+  hex: { color: '#fff', fontSize: 22, fontWeight: '700', fontFamily: 'monospace' as any },
+  rgb: { color: '#999', fontSize: 12, marginTop: 2, fontFamily: 'monospace' as any },
+  cmykRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  cmyk: { color: '#666', fontSize: 11, fontFamily: 'monospace' as any },
+  badge: { backgroundColor: '#FF9900', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeDefault: { backgroundColor: '#444', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeText: { color: '#111', fontSize: 10, fontWeight: '700' },
+
+  card: {
+    backgroundColor: '#1A1A1A', borderRadius: 12, padding: 14, marginHorizontal: 12, marginBottom: 8,
+    borderWidth: 1, borderColor: '#2A2A2A',
+  },
+  sectionTitle: { color: '#FF9900', fontSize: 12, fontWeight: '700', marginBottom: 8, textTransform: 'uppercase' as any },
+
+  ralText: { color: '#ddd', fontSize: 16, fontWeight: '600' },
+  ralSwatch: { width: 40, height: 40, borderRadius: 8, borderWidth: 1, borderColor: '#555', marginTop: 6 },
+
+  volRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  volLabel: { color: '#aaa', fontSize: 14 },
+  volInput: {
+    color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'monospace' as any,
+    backgroundColor: '#2A2A2A', borderRadius: 8, padding: 6, width: 56, textAlign: 'center',
+  },
+
+  barTrack: { flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: '#333', marginBottom: 10 },
+  bar: { minWidth: 2, borderRightWidth: 1, borderRightColor: '#111' },
+
+  ratioGrid: { gap: 3 },
+  ratioItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 },
+  dot: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: '#555' },
+  ratioText: { color: '#ccc', fontSize: 13 },
+  ratioMl: { color: '#888', fontSize: 12, fontFamily: 'monospace' as any },
+
+  strategy: { color: '#aaa', fontSize: 12, marginBottom: 6 },
+  step: { color: '#999', fontSize: 12, lineHeight: 18 },
 });

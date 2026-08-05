@@ -32,6 +32,9 @@ importers:
       '@react-navigation/native':
         specifier: ^7.3.14
         version: 7.3.14(react-native@0.86.2(@babel/core@7.29.7)(@react-native-community/cli@20.1.0(typescript@5.8.3))(@react-native/jest-preset@0.86.2(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
       jpeg-js:
         specifier: ^0.4.4
         version: 0.4.4
@@ -2422,6 +2425,9 @@ packages:
 
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
+
+  buffer@6.0.3:
+    resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
 
   bundle-require@5.1.0:
     resolution: {integrity: sha512-3WrrOuZiyaaZPWiEt4G3+IffISVC9HYlWueJEBWED4ZH4aIAC2PnkdnuRrR94M+w6yGWn4AglWtJtBI8YqvgoA==}
@@ -7664,6 +7670,11 @@ snapshots:
   buffer-from@1.1.2: {}
 
   buffer@5.7.1:
+    dependencies:
+      base64-js: 1.5.1
+      ieee754: 1.2.1
+
+  buffer@6.0.3:
     dependencies:
       base64-js: 1.5.1
       ieee754: 1.2.1

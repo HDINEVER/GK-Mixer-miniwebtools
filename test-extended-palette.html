@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>扩展色板算法测试</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+    h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }
+    .section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .color-box { display: inline-block; width: 100px; height: 100px; margin: 10px; border: 2px solid #333; vertical-align: top; }
+    .palette { margin: 15px 0; }
+    .palette-item { display: inline-block; margin: 5px; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+    th { background: #f8f9fa; font-weight: bold; }
+    .highlight { background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 10px 0; }
+    code { background: #f8f9fa; padding: 2px 6px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <h1>🎨 扩展色板算法改进</h1>
+  
+  <div class="section">
+    <h2>问题分析</h2>
+    <p><strong>核心问题:</strong> 5色体系(白、黑、红、蓝、黄)无法覆盖完整色域</p>
+    <div class="highlight">
+      <strong>色相偏差案例:</strong><br>
+      • #8D93AD (H=228.8°) 蓝紫色 <br>
+      • #0610EC (H=237.4°) 深蓝色<br>
+      • 两者色相差 8.6°,但5色体系难以精确调配蓝紫色区域(220-260°)
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>5色体系 vs 8色体系</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>体系</th>
+          <th>颜色列表</th>
+          <th>色相覆盖</th>
+          <th>优缺点</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>5色体系</strong></td>
+          <td>
+            <div class="palette">
+              <span class="palette-item" style="background: #FFF; border: 1px solid #ccc;">白</span>
+              <span class="palette-item" style="background: #000; color: white;">黑</span>
+              <span class="palette-item" style="background: #F00; color: white;">红</span>
+              <span class="palette-item" style="background: #00F; color: white;">蓝</span>
+              <span class="palette-item" style="background: #FF0;">黄</span>
+            </div>
+          </td>
+          <td>基础色域<br>(缺少次级色)</td>
+          <td>✅ 简单易用<br>❌ 色相偏差大<br>❌ 无法精确调配紫、青、橙</td>
+        </tr>
+        <tr>
+          <td><strong>8色体系</strong></td>
+          <td>
+            <div class="palette">
+              <span class="palette-item" style="background: #FFF; border: 1px solid #ccc;">白</span>
+              <span class="palette-item" style="background: #000; color: white;">黑</span>
+              <span class="palette-item" style="background: #F00; color: white;">红</span>
+              <span class="palette-item" style="background: #F0F; color: white;">品红</span>
+              <span class="palette-item" style="background: #00F; color: white;">蓝</span>
+              <span class="palette-item" style="background: #0FF;">青</span>
+              <span class="palette-item" style="background: #FF0;">黄</span>
+              <span class="palette-item" style="background: #F80; color: white;">橙</span>
+            </div>
+          </td>
+          <td>完整色域<br>(含次级色)</td>
+          <td>✅ 精确调配<br>✅ 覆盖完整色相<br>⚠️ 复杂度略高</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>色相映射对比</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>色相范围</th>
+          <th>5色体系</th>
+          <th>8色体系</th>
+          <th>改进效果</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>0-30° (红橙)</td>
+          <td>红+黄混合</td>
+          <td>红+橙混合</td>
+          <td>✅ 更准确的橙色调</td>
+        </tr>
+        <tr>
+          <td>165-195° (青)</td>
+          <td>蓝+黄混合(→绿色!)</td>
+          <td>纯青色</td>
+          <td>✅ 避免绿色污染</td>
+        </tr>
+        <tr>
+          <td>220-260° (蓝紫)</td>
+          <td>蓝+红混合(偏差大)</td>
+          <td>蓝+品红混合</td>
+          <td>✅ 精确蓝紫色</td>
+        </tr>
+        <tr>
+          <td>285-315° (紫)</td>
+          <td>红+蓝混合(不准)</td>
+          <td>纯品红</td>
+          <td>✅ 准确的紫红色</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>算法改进要点</h2>
+    <ol>
+      <li><strong>扩展色板定义:</strong> 添加 <code>EXTENDED_MIXING_COLORS</code>(8色)</li>
+      <li><strong>参数支持:</strong> <code>calculateMixboxRatios(hex, colorSpace, useExtendedPalette)</code></li>
+      <li><strong>智能初始化:</strong> 根据色相(H)选择最接近的颜色组合</li>
+      <li><strong>Mixbox反推:</strong> 使用去灰度后的真实色相,而非纯色相</li>
+      <li><strong>梯度优化:</strong> 支持可变数量颜色(3或6种色度颜色)</li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>测试案例: #8D93AD (蓝紫灰)</h2>
+    <div class="color-box" style="background: #8D93AD;"></div>
+    <div style="display: inline-block; vertical-align: top; margin-left: 20px;">
+      <p><strong>颜色属性:</strong></p>
+      <p>• RGB: (141, 147, 173)</p>
+      <p>• HSB: H=228.8° S=18.5% B=67.8%</p>
+      <p>• 去灰度后: (0, 6, 32) → 缩放 → (0, 48, 255)</p>
+      
+      <p><strong>5色体系分析:</strong></p>
+      <p>• H=228.8° → 蓝色主导 + 少量红色</p>
+      <p>• 结果: 偏蓝,紫色成分不足</p>
+      
+      <p><strong>8色体系分析:</strong></p>
+      <p style="color: #4CAF50; font-weight: bold;">• H=228.8° → 蓝色(70%) + 品红(30%)</p>
+      <p style="color: #4CAF50; font-weight: bold;">• 结果: 准确的蓝紫色!</p>
+    </div>
+  </div>
+
+  <div class="section" style="background: #e8f5e9; border-left: 4px solid #4CAF50;">
+    <h2>✅ 改进总结</h2>
+    <ul>
+      <li><strong>扩展色板:</strong> 8色体系覆盖完整色域</li>
+      <li><strong>次级色支持:</strong> 青、品红、橙色直接可用</li>
+      <li><strong>色相精度:</strong> 蓝紫色、青色等问题区域得到解决</li>
+      <li><strong>向后兼容:</strong> 默认仍使用5色,可选启用8色</li>
+      <li><strong>算法统一:</strong> 低/中/高饱和度统一处理逻辑</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>使用建议</h2>
+    <p><strong>默认模式(5色):</strong> 适合简单调色,快速配方</p>
+    <p><strong>精确模式(8色):</strong> 需要高精度色相匹配时启用</p>
+    <code>const ratios = calculateMixboxRatios('#8D93AD', 'srgb', true); // 启用8色</code>
+  </div>
+</body>
+</html>

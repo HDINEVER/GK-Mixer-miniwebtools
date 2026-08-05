@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HSB & LAB Color Space Test</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    h1 {
+      color: #4fc3f7;
+      margin-bottom: 30px;
+    }
+    .test-section {
+      margin-bottom: 40px;
+      padding: 20px;
+      background: #2a2a2a;
+      border-radius: 8px;
+    }
+    .test-case {
+      display: flex;
+      align-items: center;
+      margin: 15px 0;
+      padding: 10px;
+      background: #333;
+      border-radius: 4px;
+    }
+    .color-box {
+      width: 60px;
+      height: 60px;
+      border: 2px solid #555;
+      margin-right: 20px;
+      border-radius: 4px;
+    }
+    .color-info {
+      flex: 1;
+    }
+    .color-name {
+      font-weight: bold;
+      color: #4fc3f7;
+      margin-bottom: 5px;
+    }
+    .color-values {
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .pass { color: #4caf50; }
+    .fail { color: #f44336; }
+    .summary {
+      margin-top: 20px;
+      padding: 15px;
+      background: #1a237e;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎨 HSB & LAB Color Space Conversion Test</h1>
+  
+  <div class="test-section">
+    <h2>RGB → HSB → RGB (Round Trip Test)</h2>
+    <div id="hsb-tests"></div>
+    <div class="summary" id="hsb-summary"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>RGB → LAB → RGB (Round Trip Test)</h2>
+    <div id="lab-tests"></div>
+    <div class="summary" id="lab-summary"></div>
+  </div>
+
+  <script type="module">
+    // HSB Conversion Functions
+    function rgbToHsb(r, g, b) {
+      const rNorm = r / 255;
+      const gNorm = g / 255;
+      const bNorm = b / 255;
+
+      const max = Math.max(rNorm, gNorm, bNorm);
+      const min = Math.min(rNorm, gNorm, bNorm);
+      const delta = max - min;
+
+      const brightness = max * 100;
+      const saturation = max === 0 ? 0 : (delta / max) * 100;
+
+      let hue = 0;
+      if (delta !== 0) {
+        if (max === rNorm) {
+          hue = ((gNorm - bNorm) / delta + (gNorm < bNorm ? 6 : 0)) * 60;
+        } else if (max === gNorm) {
+          hue = ((bNorm - rNorm) / delta + 2) * 60;
+        } else {
+          hue = ((rNorm - gNorm) / delta + 4) * 60;
+        }
+      }
+
+      return {
+        h: Math.round(hue),
+        s: Math.round(saturation),
+        b: Math.round(brightness)
+      };
+    }
+
+    function hsbToRgb(h, s, b) {
+      const hNorm = h / 360;
+      const sNorm = s / 100;
+      const bNorm = b / 100;
+
+      const hIndex = Math.floor(hNorm * 6);
+      const f = hNorm * 6 - hIndex;
+      const p = bNorm * (1 - sNorm);
+      const q = bNorm * (1 - f * sNorm);
+      const t = bNorm * (1 - (1 - f) * sNorm);
+
+      let rNorm = 0, gNorm = 0, bNormOut = 0;
+
+      switch (hIndex % 6) {
+        case 0: rNorm = bNorm; gNorm = t; bNormOut = p; break;
+        case 1: rNorm = q; gNorm = bNorm; bNormOut = p; break;
+        case 2: rNorm = p; gNorm = bNorm; bNormOut = t; break;
+        case 3: rNorm = p; gNorm = q; bNormOut = bNorm; break;
+        case 4: rNorm = t; gNorm = p; bNormOut = bNorm; break;
+        case 5: rNorm = bNorm; gNorm = p; bNormOut = q; break;
+      }
+
+      return {
+        r: Math.round(rNorm * 255),
+        g: Math.round(gNorm * 255),
+        b: Math.round(bNormOut * 255)
+      };
+    }
+
+    // LAB Conversion Functions
+    function rgbToLab(r, g, b) {
+      let rNorm = r / 255;
+      let gNorm = g / 255;
+      let bNorm = b / 255;
+
+      rNorm = rNorm > 0.04045 ? Math.pow((rNorm + 0.055) / 1.055, 2.4) : rNorm / 12.92;
+      gNorm = gNorm > 0.04045 ? Math.pow((gNorm + 0.055) / 1.055, 2.4) : gNorm / 12.92;
+      bNorm = bNorm > 0.04045 ? Math.pow((bNorm + 0.055) / 1.055, 2.4) : bNorm / 12.92;
+
+      const x = (rNorm * 0.4124564 + gNorm * 0.3575761 + bNorm * 0.1804375) * 100;
+      const y = (rNorm * 0.2126729 + gNorm * 0.7151522 + bNorm * 0.0721750) * 100;
+      const z = (rNorm * 0.0193339 + gNorm * 0.1191920 + bNorm * 0.9503041) * 100;
+
+      const refX = 95.047;
+      const refY = 100.000;
+      const refZ = 108.883;
+
+      let xNorm = x / refX;
+      let yNorm = y / refY;
+      let zNorm = z / refZ;
+
+      const labF = (t) => t > 0.008856 ? Math.pow(t, 1/3) : (7.787 * t + 16/116);
+
+      xNorm = labF(xNorm);
+      yNorm = labF(yNorm);
+      zNorm = labF(zNorm);
+
+      const l = (116 * yNorm) - 16;
+      const a = 500 * (xNorm - yNorm);
+      const bLab = 200 * (yNorm - zNorm);
+
+      return {
+        l: Math.round(l * 100) / 100,
+        a: Math.round(a * 100) / 100,
+        b: Math.round(bLab * 100) / 100
+      };
+    }
+
+    function labToRgb(l, a, b) {
+      let y = (l + 16) / 116;
+      let x = a / 500 + y;
+      let z = y - b / 200;
+
+      const labInvF = (t) => t > 0.206897 ? Math.pow(t, 3) : (t - 16/116) / 7.787;
+
+      x = labInvF(x);
+      y = labInvF(y);
+      z = labInvF(z);
+
+      const refX = 95.047;
+      const refY = 100.000;
+      const refZ = 108.883;
+
+      x *= refX;
+      y *= refY;
+      z *= refZ;
+
+      let rNorm = (x * 0.0032404542 + y * -0.0015371385 + z * -0.0004985314) / 100;
+      let gNorm = (x * -0.0009692660 + y * 0.0018760108 + z * 0.0004155506) / 100;
+      let bNorm = (x * 0.0005563008 + y * -0.0002040259 + z * 0.0010572252) / 100;
+
+      rNorm = rNorm > 0.0031308 ? 1.055 * Math.pow(rNorm, 1/2.4) - 0.055 : 12.92 * rNorm;
+      gNorm = gNorm > 0.0031308 ? 1.055 * Math.pow(gNorm, 1/2.4) - 0.055 : 12.92 * gNorm;
+      bNorm = bNorm > 0.0031308 ? 1.055 * Math.pow(bNorm, 1/2.4) - 0.055 : 12.92 * bNorm;
+
+      const r = Math.max(0, Math.min(255, Math.round(rNorm * 255)));
+      const g = Math.max(0, Math.min(255, Math.round(gNorm * 255)));
+      const bOut = Math.max(0, Math.min(255, Math.round(bNorm * 255)));
+
+      return { r, g, b: bOut };
+    }
+
+    // Test Cases
+    const testColors = [
+      { name: 'Pure Red', r: 255, g: 0, b: 0 },
+      { name: 'Pure Green', r: 0, g: 255, b: 0 },
+      { name: 'Pure Blue', r: 0, g: 0, b: 255 },
+      { name: 'Pure Cyan', r: 0, g: 255, b: 255 },
+      { name: 'Pure Magenta', r: 255, g: 0, b: 255 },
+      { name: 'Pure Yellow', r: 255, g: 255, b: 0 },
+      { name: 'White', r: 255, g: 255, b: 255 },
+      { name: 'Black', r: 0, g: 0, b: 0 },
+      { name: 'Mid Gray', r: 128, g: 128, b: 128 },
+      { name: 'Orange', r: 255, g: 165, b: 0 },
+      { name: 'Purple', r: 128, g: 0, b: 128 },
+      { name: 'Brown', r: 139, g: 69, b: 19 },
+      { name: 'Pink', r: 255, g: 192, b: 203 },
+      { name: 'Lime', r: 50, g: 205, b: 50 },
+    ];
+
+    // HSB Tests
+    let hsbPassCount = 0;
+    const hsbTestsDiv = document.getElementById('hsb-tests');
+    
+    testColors.forEach(color => {
+      const hsb = rgbToHsb(color.r, color.g, color.b);
+      const rgbBack = hsbToRgb(hsb.h, hsb.s, hsb.b);
+      
+      const deltaR = Math.abs(color.r - rgbBack.r);
+      const deltaG = Math.abs(color.g - rgbBack.g);
+      const deltaB = Math.abs(color.b - rgbBack.b);
+      const maxDelta = Math.max(deltaR, deltaG, deltaB);
+      
+      const passed = maxDelta <= 2; // Allow 2-unit tolerance for rounding
+      if (passed) hsbPassCount++;
+      
+      const testCase = document.createElement('div');
+      testCase.className = 'test-case';
+      testCase.innerHTML = `
+        <div class="color-box" style="background: rgb(${color.r}, ${color.g}, ${color.b})"></div>
+        <div class="color-info">
+          <div class="color-name">${color.name} ${passed ? '<span class="pass">✓ PASS</span>' : '<span class="fail">✗ FAIL</span>'}</div>
+          <div class="color-values">
+            Original RGB: (${color.r}, ${color.g}, ${color.b})<br>
+            HSB: (H:${hsb.h}°, S:${hsb.s}%, B:${hsb.b}%)<br>
+            Converted Back: (${rgbBack.r}, ${rgbBack.g}, ${rgbBack.b})<br>
+            Max Delta: ${maxDelta}
+          </div>
+        </div>
+      `;
+      hsbTestsDiv.appendChild(testCase);
+    });
+
+    document.getElementById('hsb-summary').textContent = 
+      `HSB Round Trip: ${hsbPassCount}/${testColors.length} tests passed (${Math.round(hsbPassCount/testColors.length*100)}%)`;
+
+    // LAB Tests
+    let labPassCount = 0;
+    const labTestsDiv = document.getElementById('lab-tests');
+    
+    testColors.forEach(color => {
+      const lab = rgbToLab(color.r, color.g, color.b);
+      const rgbBack = labToRgb(lab.l, lab.a, lab.b);
+      
+      const deltaR = Math.abs(color.r - rgbBack.r);
+      const deltaG = Math.abs(color.g - rgbBack.g);
+      const deltaB = Math.abs(color.b - rgbBack.b);
+      const maxDelta = Math.max(deltaR, deltaG, deltaB);
+      
+      const passed = maxDelta <= 3; // Allow 3-unit tolerance for LAB's more complex conversion
+      if (passed) labPassCount++;
+      
+      const testCase = document.createElement('div');
+      testCase.className = 'test-case';
+      testCase.innerHTML = `
+        <div class="color-box" style="background: rgb(${color.r}, ${color.g}, ${color.b})"></div>
+        <div class="color-info">
+          <div class="color-name">${color.name} ${passed ? '<span class="pass">✓ PASS</span>' : '<span class="fail">✗ FAIL</span>'}</div>
+          <div class="color-values">
+            Original RGB: (${color.r}, ${color.g}, ${color.b})<br>
+            LAB: (L:${lab.l}, a:${lab.a}, b:${lab.b})<br>
+            Converted Back: (${rgbBack.r}, ${rgbBack.g}, ${rgbBack.b})<br>
+            Max Delta: ${maxDelta}
+          </div>
+        </div>
+      `;
+      labTestsDiv.appendChild(testCase);
+    });
+
+    document.getElementById('lab-summary').textContent = 
+      `LAB Round Trip: ${labPassCount}/${testColors.length} tests passed (${Math.round(labPassCount/testColors.length*100)}%)`;
+  </script>
+</body>
+</html>

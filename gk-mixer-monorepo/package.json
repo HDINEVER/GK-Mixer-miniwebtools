@@ -12,8 +12,7 @@
     "dev:mobile": "turbo run dev --filter=@gk-mixer/mobile",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "clean": "turbo run clean && rm -rf node_modules",
-    "postinstall": "node -e \"const p=require('path');const s=require('fs');const d=require('fs').globSync('node_modules/.pnpm/react-native-svg*/node_modules');if(d.length){try{const r='node_modules/.pnpm/react@19.2.3/node_modules/react';const t=d[0]+'/react';if(!s.existsSync(t)){s.rmSync(t,{recursive:true,force:true});s.symlinkSync(r,t);console.log('[postinstall] react symlinked for react-native-svg')}}catch(e){}}\""
+    "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
     "turbo": "^2.5.0",

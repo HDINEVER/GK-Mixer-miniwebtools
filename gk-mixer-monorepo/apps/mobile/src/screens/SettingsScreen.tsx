@@ -9,6 +9,8 @@ import {
   View,
   useColorScheme,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors, FontSize, Spacing, MinTouchTarget, FontMono } from '../theme';
 
 type Language = 'zh' | 'en' | 'ja';
 const LANGS: { key: Language; label: string }[] = [
@@ -18,181 +20,243 @@ const LANGS: { key: Language; label: string }[] = [
 ];
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
+  const isDark = useColorScheme() !== 'light';
+  const c = isDark ? Colors.dark : Colors.light;
   const systemDark = useColorScheme() === 'dark';
   const [lang, setLang] = useState<Language>('zh');
   const [followSystem, setFollowSystem] = useState(true);
-
   const openLink = (url: string) => Linking.openURL(url).catch(() => {});
 
+  const sections = (gap = Spacing.xl) => ({ marginTop: gap });
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 120 }}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: c.bg }]}
+      contentContainerStyle={{ paddingTop: insets.top + Spacing.md, paddingBottom: 120 }}
+    >
       {/* ── Appearance ── */}
-      <Text style={styles.section}>外观</Text>
+      <Text style={[styles.sectionHeader, { color: c.accent }]}>外观</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.rowLabel}>语言 / Language</Text>
-        <View style={styles.langRow}>
-          {LANGS.map((l) => (
-            <TouchableOpacity
-              key={l.key}
-              style={[styles.langBtn, lang === l.key && styles.langBtnActive]}
-              onPress={() => setLang(l.key)}
-            >
-              <Text style={[styles.langText, lang === l.key && styles.langTextActive]}>
-                {l.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      <View style={[styles.group, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+        <View style={[styles.groupRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.divider }]}>
+          <Text style={[styles.rowLabel, { color: c.primaryText }]}>语言</Text>
+          <View style={styles.langRow}>
+            {LANGS.map((l) => {
+              const active = lang === l.key;
+              return (
+                <TouchableOpacity
+                  key={l.key}
+                  style={[
+                    styles.langBtn,
+                    { height: MinTouchTarget - 4 },
+                    active
+                      ? { backgroundColor: c.accent }
+                      : { backgroundColor: c.bg, borderWidth: StyleSheet.hairlineWidth, borderColor: c.divider },
+                  ]}
+                  onPress={() => setLang(l.key)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.langText,
+                      active ? { color: '#111', fontWeight: '700' } : { color: c.secondaryText },
+                    ]}
+                  >
+                    {l.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.card}>
-        <View style={styles.row}>
+        <View style={[styles.groupRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.divider }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.rowLabel}>跟随系统深色模式</Text>
-            <Text style={styles.rowHint}>当前: {systemDark ? '深色' : '浅色'}</Text>
+            <Text style={[styles.rowLabel, { color: c.primaryText }]}>跟随系统深色模式</Text>
+            <Text style={[styles.rowHint, { color: c.tertiaryText }]}>
+              当前: {systemDark ? '深色' : '浅色'}
+            </Text>
           </View>
           <Switch
             value={followSystem}
             onValueChange={setFollowSystem}
-            trackColor={{ false: '#444', true: '#FF9900' }}
+            trackColor={{ false: c.divider, true: c.accent }}
             thumbColor="#fff"
           />
         </View>
-      </View>
 
-      <View style={styles.card}>
-        <TouchableOpacity style={styles.row} onPress={() => {}}>
-          <Text style={styles.rowLabel}>App 图标</Text>
-          <Text style={styles.rowValue}>默认</Text>
-        </TouchableOpacity>
+        <View style={styles.groupRow}>
+          <Text style={[styles.rowLabel, { color: c.primaryText }]}>App 图标</Text>
+          <Text style={[styles.rowValue, { color: c.tertiaryText }]}>默认</Text>
+        </View>
       </View>
 
       {/* ── Premium ── */}
-      <Text style={styles.section}>高级功能</Text>
-      <TouchableOpacity style={styles.premiumCard} onPress={() => {}}>
+      <Text style={[styles.sectionHeader, { color: c.accent, ...sections() }]}>高级功能</Text>
+
+      <TouchableOpacity
+        style={[styles.premiumCard, { backgroundColor: c.card, borderColor: c.accent }]}
+        onPress={() => {}}
+        activeOpacity={0.7}
+      >
         <View style={{ flex: 1 }}>
-          <Text style={styles.premiumTitle}>🚀 GK Mixer Pro</Text>
-          <Text style={styles.premiumDesc}>解锁无限取色 · AI 配方 · 自定义漆料库</Text>
+          <Text style={[styles.premiumTitle, { color: c.accent }]}>🚀 GK Mixer Pro</Text>
+          <Text style={[styles.premiumDesc, { color: c.secondaryText }]}>
+            解锁无限取色 · AI 配方 · 自定义漆料库
+          </Text>
         </View>
-        <Text style={styles.premiumArrow}>›</Text>
+        <Text style={[styles.premiumArrow, { color: c.accent }]}>›</Text>
       </TouchableOpacity>
 
       {/* ── Developer ── */}
-      <Text style={styles.section}>开发者</Text>
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>开发者</Text>
-          <Text style={styles.rowValue}>@HDIN</Text>
+      <Text style={[styles.sectionHeader, { color: c.accent, ...sections() }]}>开发者</Text>
+
+      <View style={[styles.group, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+        <View style={[styles.groupRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.divider }]}>
+          <Text style={[styles.rowLabel, { color: c.primaryText }]}>开发者</Text>
+          <Text style={[styles.rowValue, { color: c.secondaryText, fontSize: FontSize.body }]}>@HDIN</Text>
         </View>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>为模型爱好者打造</Text>
+        <View style={styles.groupRow}>
+          <Text style={[styles.rowValue, { color: c.tertiaryText }]}>为模型爱好者打造</Text>
         </View>
       </View>
 
-      {/* ── Social Links ── */}
-      <Text style={styles.section}>讨论群</Text>
-      <View style={styles.card}>
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() => openLink('https://space.bilibili.com/23848833')}
-        >
-          <Text style={styles.linkIcon}>📺</Text>
-          <Text style={styles.linkLabel}>Bilibili</Text>
-          <Text style={styles.linkArrow}>›</Text>
-        </TouchableOpacity>
-        <View style={styles.divider} />
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() => openLink('https://x.com/rfQ4nGLccl4bqCP')}
-        >
-          <Text style={styles.linkIcon}>𝕏</Text>
-          <Text style={styles.linkLabel}>X / Twitter</Text>
-          <Text style={styles.linkArrow}>›</Text>
-        </TouchableOpacity>
-        <View style={styles.divider} />
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() => openLink('https://qm.qq.com/q/QtX0ZBOWIe')}
-        >
-          <Text style={styles.linkIcon}>🐧</Text>
-          <Text style={styles.linkLabel}>功能讨论群</Text>
-          <Text style={styles.linkArrow}>›</Text>
-        </TouchableOpacity>
+      {/* ── Social ── */}
+      <Text style={[styles.sectionHeader, { color: c.accent, ...sections() }]}>讨论群</Text>
+
+      <View style={[styles.group, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+        {[
+          ['📺', 'Bilibili', 'https://space.bilibili.com/23848833'],
+          ['𝕏', 'X / Twitter', 'https://x.com/rfQ4nGLccl4bqCP'],
+          ['🐧', 'QQ 功能讨论群', 'https://qm.qq.com/q/QtX0ZBOWIe'],
+        ].map(([icon, label, url], i, arr) => (
+          <TouchableOpacity
+            key={label}
+            style={[
+              styles.socialRow,
+              i < arr.length - 1 && {
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: c.divider,
+              },
+            ]}
+            onPress={() => openLink(url)}
+            activeOpacity={0.5}
+          >
+            <View style={styles.socialIconBox}>
+              <Text style={styles.socialIcon}>{icon}</Text>
+            </View>
+            <Text style={[styles.socialLabel, { color: c.primaryText }]}>{label}</Text>
+            <Text style={[styles.arrow, { color: c.tertiaryText }]}>›</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* ── Thanks ── */}
-      <Text style={styles.section}>特别鸣谢</Text>
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>✨ スミレ</Text>
+      <Text style={[styles.sectionHeader, { color: c.accent, ...sections() }]}>特别鸣谢</Text>
+
+      <View style={[styles.group, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+        <View style={styles.groupRow}>
+          <Text style={[styles.rowLabel, { color: c.primaryText }]}>✨ スミレ</Text>
         </View>
       </View>
 
-      {/* ── Credits ── */}
-      <View style={styles.credits}>
-        <Text style={styles.creditText}>© 2025 GK-Mixer</Text>
-        <Text style={styles.creditSub}>Powered by Mixbox 2.0 · RAL Color Library</Text>
+      {/* ── Footer ── */}
+      <View style={styles.footer}>
+        <Text style={[styles.footerText, { color: c.tertiaryText }]}>
+          © 2025 GK-Mixer
+        </Text>
+        <Text style={[styles.footerSub, { color: c.tertiaryText }]}>
+          Powered by Mixbox 2.0 · RAL Color Library
+        </Text>
+        <Text style={[styles.footerSub, { color: c.tertiaryText, marginTop: 2 }]}>
+          v0.0.1 · iOS 26
+        </Text>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111' },
-  section: {
-    color: '#FF9900',
-    fontSize: 12,
-    fontWeight: '700',
+  container: { flex: 1 },
+
+  // Section header
+  sectionHeader: {
+    fontSize: FontSize.footnote,
+    fontWeight: '600',
     textTransform: 'uppercase',
-    paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingHorizontal: Spacing.md + 4,
     paddingBottom: 6,
   },
 
-  card: {
-    backgroundColor: '#1A1A1A',
+  // Grouped list (iOS style)
+  group: {
     borderRadius: 12,
-    marginHorizontal: 12,
-    marginBottom: 4,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  rowLabel: { color: '#ddd', fontSize: 15, flex: 1 },
-  rowHint: { color: '#666', fontSize: 11, marginTop: 2 },
-  rowValue: { color: '#888', fontSize: 14 },
+  groupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    minHeight: MinTouchTarget,
+  },
 
-  // language picker
-  langRow: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 12 },
+  // Language picker
+  langRow: { flexDirection: 'row', gap: 6, marginTop: Spacing.xs },
   langBtn: {
-    flex: 1, paddingVertical: 8, borderRadius: 8,
-    backgroundColor: '#2A2A2A', alignItems: 'center',
+    flex: 1,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xs,
   },
-  langBtnActive: { backgroundColor: '#FF9900' },
-  langText: { color: '#888', fontSize: 13, fontWeight: '600' },
-  langTextActive: { color: '#111' },
+  langText: { fontSize: FontSize.footnote },
 
-  // premium
+  // Standard rows
+  rowLabel: { fontSize: FontSize.body, flex: 1 },
+  rowHint: { fontSize: FontSize.caption2, marginTop: 3 },
+  rowValue: { fontSize: FontSize.footnote, fontFamily: FontMono },
+
+  // Premium card
   premiumCard: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#1A1A1A', borderRadius: 12, marginHorizontal: 12,
-    padding: 16, borderWidth: 1, borderColor: '#FF9900',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    marginHorizontal: Spacing.md,
+    padding: Spacing.md,
+    borderWidth: 1.5,
   },
-  premiumTitle: { color: '#FF9900', fontSize: 16, fontWeight: '700' },
-  premiumDesc: { color: '#888', fontSize: 12, marginTop: 4 },
-  premiumArrow: { color: '#FF9900', fontSize: 28, marginLeft: 8 },
+  premiumTitle: { fontSize: FontSize.callout, fontWeight: '700', fontFamily: FontMono },
+  premiumDesc: { fontSize: FontSize.footnote, marginTop: 4 },
+  premiumArrow: { fontSize: 28, marginLeft: Spacing.xs },
 
-  // links
-  linkRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
-  linkIcon: { fontSize: 16, width: 32, textAlign: 'center' },
-  linkLabel: { color: '#ddd', fontSize: 15, flex: 1 },
-  linkArrow: { color: '#555', fontSize: 18 },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#333' },
+  // Social links
+  socialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 4,
+    minHeight: MinTouchTarget,
+  },
+  socialIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#00000010',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
+  },
+  socialIcon: { fontSize: 16 },
+  socialLabel: { fontSize: FontSize.body, flex: 1 },
+  arrow: { fontSize: 20, marginLeft: Spacing.xs },
 
-  // credits
-  credits: { alignItems: 'center', paddingVertical: 24, paddingBottom: 40 },
-  creditText: { color: '#555', fontSize: 12 },
-  creditSub: { color: '#444', fontSize: 10, marginTop: 4 },
+  // Footer
+  footer: { alignItems: 'center', paddingVertical: Spacing.xxl, paddingBottom: 60 },
+  footerText: { fontSize: FontSize.footnote },
+  footerSub: { fontSize: FontSize.caption2, marginTop: 4 },
 });

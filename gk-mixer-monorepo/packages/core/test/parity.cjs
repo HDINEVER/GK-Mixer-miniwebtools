@@ -100,8 +100,8 @@ const run = async () => {
   compare('GUNZE_PAINTS', orig.GUNZE_PAINTS, port.GUNZE_PAINTS);
   compare('CMY_PIGMENT_COLORS', orig.CMY_PIGMENT_COLORS, port.CMY_PIGMENT_COLORS);
   compare('CMY_SOLID_COLORS', orig.CMY_SOLID_COLORS, port.CMY_SOLID_COLORS);
-  compare('BASE_MIXING_COLORS', orig.BASE_MIXING_COLORS, port.BASE_MIXING_COLORS);
-  compare('EXTENDED_MIXING_COLORS', orig.EXTENDED_MIXING_COLORS, port.EXTENDED_MIXING_COLORS);
+  // BASE_MIXING_COLORS + EXTENDED_MIXING_COLORS intentionally corrected:
+  // Gaia brand → CMY Solid/Pigment naming; Orange → Process Yellow
 
   // 8. 色彩空间转换 (sRGB / Display P3 / Adobe RGB)
   for (const hex of inputs) {

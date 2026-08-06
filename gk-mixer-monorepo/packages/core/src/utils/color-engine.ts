@@ -434,40 +434,40 @@ export const CMY_SOLID_COLORS: PaintBrand[] = [
  */
 export const BASE_MIXING_COLORS: PaintBrand[] = [
   {
-    id: 'gaia-001',
-    brand: 'Gaia',
-    code: '001',
-    name: '纯白',
-    hex: '#FFFFFF'
+    id: 'b-white',
+    brand: 'CMY Solid' as any,
+    code: 'W',
+    name: '白色',
+    hex: '#FFFFFF',
   },
   {
-    id: 'gaia-002',
-    brand: 'Gaia',
-    code: '002',
-    name: '纯黑',
-    hex: '#000000'
+    id: 'b-black',
+    brand: 'CMY Solid' as any,
+    code: 'B',
+    name: '黑色',
+    hex: '#000000',
   },
   {
-    id: 'gaia-003',
-    brand: 'Gaia',
-    code: '003',
+    id: 'b-red',
+    brand: 'CMY Solid' as any,
+    code: 'R',
     name: '红色',
-    hex: '#FF0000'
+    hex: '#FF0000',
   },
   {
-    id: 'gaia-004',
-    brand: 'Gaia',
-    code: '004',
+    id: 'b-blue',
+    brand: 'CMY Solid' as any,
+    code: 'BL',
     name: '蓝色',
-    hex: '#0000FF'
+    hex: '#0000FF',
   },
   {
-    id: 'gaia-005',
-    brand: 'Gaia',
-    code: '005',
+    id: 'b-yellow',
+    brand: 'CMY Solid' as any,
+    code: 'Y',
     name: '黄色',
-    hex: '#FFFF00'
-  }
+    hex: '#FFFF00',
+  },
 ];
 
 /**
@@ -477,61 +477,61 @@ export const BASE_MIXING_COLORS: PaintBrand[] = [
  */
 export const EXTENDED_MIXING_COLORS: PaintBrand[] = [
   {
-    id: 'gaia-001',
-    brand: 'Gaia',
-    code: '001',
-    name: '纯白',
-    hex: '#FFFFFF'
+    id: 'p-white',
+    brand: 'CMY Solid' as any,
+    code: 'W',
+    name: '白色',
+    hex: '#FFFFFF',
   },
   {
-    id: 'gaia-002',
-    brand: 'Gaia',
-    code: '002',
-    name: '纯黑',
-    hex: '#000000'
+    id: 'p-black',
+    brand: 'CMY Solid' as any,
+    code: 'B',
+    name: '黑色',
+    hex: '#000000',
   },
   {
-    id: 'gaia-003',
-    brand: 'Gaia',
-    code: '003',
+    id: 'p-red',
+    brand: 'CMY Solid' as any,
+    code: 'R',
     name: '红色',
-    hex: '#FF0000'
+    hex: '#FF0000',
   },
   {
-    id: 'gaia-006',
-    brand: 'Gaia',
-    code: '006',
+    id: 'p-magenta',
+    brand: 'CMY Pigment' as any,
+    code: 'M',
     name: '品红',
-    hex: '#FF00FF'
+    hex: '#FF00FF',
   },
   {
-    id: 'gaia-004',
-    brand: 'Gaia',
-    code: '004',
+    id: 'p-blue',
+    brand: 'CMY Solid' as any,
+    code: 'BL',
     name: '蓝色',
-    hex: '#0000FF'
+    hex: '#0000FF',
   },
   {
-    id: 'gaia-007',
-    brand: 'Gaia',
-    code: '007',
+    id: 'p-cyan',
+    brand: 'CMY Pigment' as any,
+    code: 'C',
     name: '青色',
-    hex: '#00FFFF'
+    hex: '#00FFFF',
   },
   {
-    id: 'gaia-005',
-    brand: 'Gaia',
-    code: '005',
+    id: 'p-yellow',
+    brand: 'CMY Solid' as any,
+    code: 'Y',
     name: '黄色',
-    hex: '#FFFF00'
+    hex: '#FFFF00',
   },
   {
-    id: 'gaia-008',
-    brand: 'Gaia',
-    code: '008',
+    id: 'b-orange',
+    brand: 'CMY Solid' as any,
+    code: 'O',
     name: '橙色',
-    hex: '#FF8000'
-  }
+    hex: '#FF8000',
+  },
 ];
 
 export const findNearestPaints = (targetHex: string, count: number = 3): PaintBrand[] => {

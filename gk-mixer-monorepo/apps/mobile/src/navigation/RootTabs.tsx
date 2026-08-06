@@ -1,11 +1,13 @@
 import React from 'react';
-import { Text, useColorScheme } from 'react-native';
+import { Platform, Text, useColorScheme } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ExtractScreen from '../screens/ExtractScreen';
 import MixerScreen from '../screens/MixerScreen';
 import RadialMixerScreen from '../screens/RadialMixerScreen';
 import BasicMixerScreen from '../screens/BasicMixerScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import { Colors, FontSize } from '../theme';
 
 export type RootTabParamList = {
   Extract: undefined;
@@ -18,68 +20,43 @@ export type RootTabParamList = {
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
 function TabIcon({ glyph }: { glyph: string }) {
-  return <Text style={{ fontSize: 20, lineHeight: 24 }}>{glyph}</Text>;
+  return <Text style={{ fontSize: 22 }}>{glyph}</Text>;
 }
 
 export default function RootTabs() {
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useColorScheme() !== 'light';
+  const c = isDark ? Colors.dark : Colors.light;
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
       initialRouteName="Mixer"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#FF9900',
-        tabBarInactiveTintColor: '#888',
+        tabBarActiveTintColor: c.accent,
+        tabBarInactiveTintColor: c.tertiaryText,
         tabBarStyle: {
-          backgroundColor: isDark ? '#151515' : '#fff',
-          borderTopColor: isDark ? '#333' : '#e5e5e5',
-          paddingBottom: 4,
-          height: 60,
+          backgroundColor: c.tabBarBg,
+          borderTopColor: c.tabBarBorder,
+          height: 49 + insets.bottom,
+          paddingBottom: insets.bottom,
         },
-        tabBarLabelStyle: { fontSize: 11, marginTop: -2 },
+        tabBarLabelStyle: {
+          fontSize: Platform.OS === 'ios' ? 10 : FontSize.caption2,
+          fontWeight: '500',
+        },
       }}
     >
-      <Tab.Screen
-        name="Extract"
-        component={ExtractScreen}
-        options={{
-          tabBarLabel: '拾色',
-          tabBarIcon: () => <TabIcon glyph="📷" />,
-        }}
-      />
-      <Tab.Screen
-        name="Mixer"
-        component={MixerScreen}
-        options={{
-          tabBarLabel: '混色',
-          tabBarIcon: () => <TabIcon glyph="🧪" />,
-        }}
-      />
-      <Tab.Screen
-        name="RadialMixer"
-        component={RadialMixerScreen}
-        options={{
-          tabBarLabel: '自选',
-          tabBarIcon: () => <TabIcon glyph="🎨" />,
-        }}
-      />
-      <Tab.Screen
-        name="BasicMixer"
-        component={BasicMixerScreen}
-        options={{
-          tabBarLabel: '基础',
-          tabBarIcon: () => <TabIcon glyph="🖌️" />,
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          tabBarLabel: '设置',
-          tabBarIcon: () => <TabIcon glyph="⚙️" />,
-        }}
-      />
+      <Tab.Screen name="Extract" component={ExtractScreen}
+        options={{ tabBarLabel: '拾色', tabBarIcon: () => <TabIcon glyph="📷" /> }} />
+      <Tab.Screen name="Mixer" component={MixerScreen}
+        options={{ tabBarLabel: '混色', tabBarIcon: () => <TabIcon glyph="🧪" /> }} />
+      <Tab.Screen name="RadialMixer" component={RadialMixerScreen}
+        options={{ tabBarLabel: '自选', tabBarIcon: () => <TabIcon glyph="🎨" /> }} />
+      <Tab.Screen name="BasicMixer" component={BasicMixerScreen}
+        options={{ tabBarLabel: '基础', tabBarIcon: () => <TabIcon glyph="🖌️" /> }} />
+      <Tab.Screen name="Settings" component={SettingsScreen}
+        options={{ tabBarLabel: '设置', tabBarIcon: () => <TabIcon glyph="⚙️" /> }} />
     </Tab.Navigator>
   );
 }

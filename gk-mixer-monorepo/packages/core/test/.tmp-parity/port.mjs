@@ -1459,95 +1459,95 @@ var CMY_SOLID_COLORS = [
 ];
 var BASE_MIXING_COLORS = [
   {
-    id: "gaia-001",
-    brand: "Gaia",
-    code: "001",
-    name: "\u7EAF\u767D",
+    id: "b-white",
+    brand: "CMY Solid",
+    code: "W",
+    name: "\u767D\u8272",
     hex: "#FFFFFF"
   },
   {
-    id: "gaia-002",
-    brand: "Gaia",
-    code: "002",
-    name: "\u7EAF\u9ED1",
+    id: "b-black",
+    brand: "CMY Solid",
+    code: "B",
+    name: "\u9ED1\u8272",
     hex: "#000000"
   },
   {
-    id: "gaia-003",
-    brand: "Gaia",
-    code: "003",
+    id: "b-red",
+    brand: "CMY Solid",
+    code: "R",
     name: "\u7EA2\u8272",
     hex: "#FF0000"
   },
   {
-    id: "gaia-004",
-    brand: "Gaia",
-    code: "004",
+    id: "b-blue",
+    brand: "CMY Solid",
+    code: "BL",
     name: "\u84DD\u8272",
     hex: "#0000FF"
   },
   {
-    id: "gaia-005",
-    brand: "Gaia",
-    code: "005",
+    id: "b-yellow",
+    brand: "CMY Solid",
+    code: "Y",
     name: "\u9EC4\u8272",
     hex: "#FFFF00"
   }
 ];
 var EXTENDED_MIXING_COLORS = [
   {
-    id: "gaia-001",
-    brand: "Gaia",
-    code: "001",
-    name: "\u7EAF\u767D",
+    id: "p-white",
+    brand: "CMY Solid",
+    code: "W",
+    name: "\u767D\u8272",
     hex: "#FFFFFF"
   },
   {
-    id: "gaia-002",
-    brand: "Gaia",
-    code: "002",
-    name: "\u7EAF\u9ED1",
+    id: "p-black",
+    brand: "CMY Solid",
+    code: "B",
+    name: "\u9ED1\u8272",
     hex: "#000000"
   },
   {
-    id: "gaia-003",
-    brand: "Gaia",
-    code: "003",
+    id: "p-red",
+    brand: "CMY Solid",
+    code: "R",
     name: "\u7EA2\u8272",
     hex: "#FF0000"
   },
   {
-    id: "gaia-006",
-    brand: "Gaia",
-    code: "006",
+    id: "p-magenta",
+    brand: "CMY Pigment",
+    code: "M",
     name: "\u54C1\u7EA2",
     hex: "#FF00FF"
   },
   {
-    id: "gaia-004",
-    brand: "Gaia",
-    code: "004",
+    id: "p-blue",
+    brand: "CMY Solid",
+    code: "BL",
     name: "\u84DD\u8272",
     hex: "#0000FF"
   },
   {
-    id: "gaia-007",
-    brand: "Gaia",
-    code: "007",
+    id: "p-cyan",
+    brand: "CMY Pigment",
+    code: "C",
     name: "\u9752\u8272",
     hex: "#00FFFF"
   },
   {
-    id: "gaia-005",
-    brand: "Gaia",
-    code: "005",
+    id: "p-yellow",
+    brand: "CMY Solid",
+    code: "Y",
     name: "\u9EC4\u8272",
     hex: "#FFFF00"
   },
   {
-    id: "gaia-008",
-    brand: "Gaia",
-    code: "008",
+    id: "b-orange",
+    brand: "CMY Solid",
+    code: "O",
     name: "\u6A59\u8272",
     hex: "#FF8000"
   }

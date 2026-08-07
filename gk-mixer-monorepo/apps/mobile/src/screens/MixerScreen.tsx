@@ -17,7 +17,7 @@ import {
   type ColorData,
 } from '@gk-mixer/core';
 import { useTargetColor } from '../context/ColorContext';
-import { Colors, FontSize, Spacing, MinTouchTarget, FontMono } from '../theme';
+import { Colors, FontSize, Spacing, MinTouchTarget, FontMono, tabularNums } from '../theme';
 
 export default function MixerScreen() {
   const insets = useSafeAreaInsets();
@@ -164,9 +164,9 @@ const styles = StyleSheet.create({
   card: { borderRadius: 12, padding: Spacing.md, marginHorizontal: Spacing.md, marginBottom: Spacing.xs, borderWidth: StyleSheet.hairlineWidth },
   swatch: { width: 60, height: 60, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: '#FFFFFF20' },
   hex: { fontSize: FontSize.title2, fontWeight: '700', fontFamily: FontMono },
-  rgb: { fontSize: FontSize.footnote, marginTop: 2, fontFamily: FontMono },
-  chip: { fontSize: FontSize.caption2, fontFamily: FontMono },
-  hsbLab: { fontSize: FontSize.caption2, marginTop: 3, fontFamily: FontMono },
+  rgb: { fontSize: FontSize.footnote, marginTop: 2, fontFamily: FontMono, fontVariant: ['tabular-nums'] },
+  chip: { fontSize: FontSize.caption2, fontFamily: FontMono, fontVariant: ['tabular-nums'] },
+  hsbLab: { fontSize: FontSize.caption2, marginTop: 3, fontFamily: FontMono, fontVariant: ['tabular-nums'] },
   badge: { borderRadius: 6, paddingHorizontal: Spacing.xs, paddingVertical: 3 },
   badgeDefault: { borderRadius: 6, paddingHorizontal: Spacing.xs, paddingVertical: 3 },
   badgeText: { color: '#111', fontSize: FontSize.caption2, fontWeight: '700' },

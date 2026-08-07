@@ -76,3 +76,6 @@ export const MinTouchTarget = 44;
 // iOS 原生等宽: Menlo (Terminal 同款, 所有 iOS 设备自带)
 // 比 Courier 更现代, 数字/字母对齐更好
 export const FontMono = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+
+// Tabular numbers: keep dynamically updating hex/rgb/pct/ml stable
+export const tabularNums = { fontVariant: ['tabular-nums'] as string[] };

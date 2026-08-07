@@ -27,7 +27,7 @@ import {
   type ColorData,
 } from '@gk-mixer/core';
 import { useTargetColor } from '../context/ColorContext';
-import { Colors, FontSize, Spacing, MinTouchTarget } from '../theme';
+import { Colors, FontSize, Spacing, MinTouchTarget, tabularNums } from '../theme';
 import { NativeModules } from 'react-native';
 
 const NativeColorPicker: { showColorPicker(hex: string): Promise<string> } | undefined =

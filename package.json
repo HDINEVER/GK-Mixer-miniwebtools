@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:ios-algorithms": "esbuild native/ios-bridge.ts --bundle --format=iife --platform=browser --target=safari16 --minify --outfile=../GK-Mixer/GK-Mixer/Resources/gk-color-algorithms.js",
     "preview": "vite preview",
     "cf:dev": "wrangler pages dev dist"
   },
@@ -21,6 +22,7 @@
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.22",
+    "esbuild": "^0.28.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.1",
     "typescript": "~5.8.2",

@@ -16,6 +16,7 @@
               "value" : true
             }
           ],
+          "hidden" : true,
           "image-name" : "apple-touch-icon.png",
           "name" : "apple-touch-icon",
           "opacity" : 1,
@@ -24,6 +25,141 @@
             "translation-in-points" : [
               10,
               10
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "blend-mode" : "plus-lighter",
+          "fill-specializations" : [
+            {
+              "value" : "automatic"
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "extended-gray:0.75000,1.00000"
+              }
+            }
+          ],
+          "image-name" : "layer-pill-bottle.png",
+          "name" : "layer-pill-bottle",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              229.59396092521956,
+              86.01076665556934
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "blend-mode" : "darken",
+          "fill-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "extended-srgb:0.20392,0.78039,0.34902,1.00000"
+              }
+            }
+          ],
+          "image-name" : "layer-brown-hat.png",
+          "name" : "layer-brown-hat",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              19.674057700326898,
+              -310.9795702636472
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "blend-mode" : "lighten",
+          "fill-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "extended-gray:0.75000,1.00000"
+              }
+            }
+          ],
+          "image-name" : "layer-airbrush.png",
+          "name" : "layer-airbrush",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -259.2398964312197,
+              106.45679197597815
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "blend-mode-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : "multiply"
+            }
+          ],
+          "fill-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : "none"
+            }
+          ],
+          "glass" : true,
+          "image-name" : "grok-image-4f974f30-90de-4e9e-9355-83dc116ade60.jpg",
+          "name" : "grok-image-4f974f30-90de-4e9e-9355-83dc116ade60",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              0
             ]
           }
         }

@@ -966,329 +966,480 @@ export const mixboxMultiBlend = (colorWeights: { hex: string; weight: number }[]
   return filtered[0].hex;
 };
 
+/** Professional beaker hides pigments below this percent. */
+export const PROFESSIONAL_RATIO_THRESHOLD = 0.5;
+/** Mixbox inverse beaker shows smaller residual pigments. */
+export const MIXBOX_INVERSE_RATIO_THRESHOLD = 0.3;
+
+const emptyPaletteWeights = (useExtendedPalette: boolean): number[] =>
+  useExtendedPalette ? [0, 0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+
+const rgbHueDegrees = (r: number, g: number, b: number): number => {
+  const rNorm = r / 255;
+  const gNorm = g / 255;
+  const bNorm = b / 255;
+  const max = Math.max(rNorm, gNorm, bNorm);
+  const min = Math.min(rNorm, gNorm, bNorm);
+  const delta = max - min;
+  if (delta === 0) return 0;
+  if (max === rNorm) {
+    return ((gNorm - bNorm) / delta + (gNorm < bNorm ? 6 : 0)) * 60;
+  }
+  if (max === gNorm) {
+    return ((bNorm - rNorm) / delta + 2) * 60;
+  }
+  return ((rNorm - gNorm) / delta + 4) * 60;
+};
+
+const normalizeSimplex = (weights: number[]): number[] => {
+  const values = weights.map(weight => Math.max(0, Number.isFinite(weight) ? weight : 0));
+  const sum = values.reduce((total, weight) => total + weight, 0);
+  if (sum <= 1e-12) {
+    return values.map(() => 1 / Math.max(1, values.length));
+  }
+  return values.map(weight => weight / sum);
+};
+
+const loadBaseLatents = (palette: PaintBrand[]): number[][] | null => {
+  const latents = palette.map(color => {
+    const rgb = hexToRgb(color.hex);
+    return mixbox.rgbToLatent(rgb.r, rgb.g, rgb.b);
+  });
+  if (latents.some(latent => !latent)) return null;
+  return latents as number[][];
+};
+
+const mixLatents = (baseLatents: number[][], weights: number[]): number[] => {
+  const mixed = [0, 0, 0, 0, 0, 0, 0];
+  const normalized = normalizeSimplex(weights);
+  for (let i = 0; i < normalized.length; i++) {
+    if (normalized[i] <= 0) continue;
+    for (let j = 0; j < 7; j++) {
+      mixed[j] += baseLatents[i][j] * normalized[i];
+    }
+  }
+  return mixed;
+};
+
+const latentMse = (left: number[], right: number[]): number => {
+  let error = 0;
+  for (let i = 0; i < 7; i++) {
+    const diff = left[i] - right[i];
+    error += diff * diff;
+  }
+  return error;
+};
+
+const refineWeightsToLatent = (
+  weights: number[],
+  baseLatents: number[][],
+  targetLatent: number[],
+  iterations = 80
+): number[] => {
+  let current = normalizeSimplex(weights);
+  let learningRate = 0.15;
+  for (let iter = 0; iter < iterations; iter++) {
+    const mixed = mixLatents(baseLatents, current);
+    const error = latentMse(mixed, targetLatent);
+    if (error < 1e-8) break;
+
+    const gradient = new Array(current.length).fill(0);
+    for (let j = 0; j < 7; j++) {
+      const diff = mixed[j] - targetLatent[j];
+      for (let i = 0; i < current.length; i++) {
+        gradient[i] += 2 * diff * baseLatents[i][j];
+      }
+    }
+
+    for (let i = 0; i < current.length; i++) {
+      current[i] = Math.max(0, current[i] - learningRate * gradient[i]);
+    }
+    current = normalizeSimplex(current);
+    if (iter > 20) {
+      learningRate = Math.max(0.01, learningRate * 0.96);
+    }
+  }
+  return current;
+};
+
+const linearizeSrgb = (value: number): number => (
+  value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4)
+);
+
+const rgb01ToOkLab = (r: number, g: number, b: number): { l: number; a: number; b: number } => {
+  const lr = linearizeSrgb(r);
+  const lg = linearizeSrgb(g);
+  const lb = linearizeSrgb(b);
+  const l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
+  const m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
+  const s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
+  const lRoot = Math.cbrt(l);
+  const mRoot = Math.cbrt(m);
+  const sRoot = Math.cbrt(s);
+  return {
+    l: 0.2104542553 * lRoot + 0.7936177850 * mRoot - 0.0040720468 * sRoot,
+    a: 1.9779984951 * lRoot - 2.4285922050 * mRoot + 0.4505937099 * sRoot,
+    b: 0.0259040371 * lRoot + 0.7827717662 * mRoot - 0.8086757660 * sRoot,
+  };
+};
+
+const mixboxForwardRgb01 = (
+  baseLatents: number[][],
+  weights: number[]
+): { r: number; g: number; b: number } | null => {
+  const rgb = mixbox.latentToFloatRgb(mixLatents(baseLatents, weights));
+  if (!rgb || rgb.length < 3) return null;
+  return { r: rgb[0], g: rgb[1], b: rgb[2] };
+};
+
+const inverseObjective = (
+  weights: number[],
+  baseLatents: number[][],
+  targetRgb01: { r: number; g: number; b: number },
+  targetLab: { l: number; a: number; b: number }
+): number => {
+  const mixed = mixboxForwardRgb01(baseLatents, weights);
+  if (!mixed) return Number.POSITIVE_INFINITY;
+  const lab = rgb01ToOkLab(mixed.r, mixed.g, mixed.b);
+  const dL = lab.l - targetLab.l;
+  const dA = lab.a - targetLab.a;
+  const dB = lab.b - targetLab.b;
+  const dr = mixed.r - targetRgb01.r;
+  const dg = mixed.g - targetRgb01.g;
+  const db = mixed.b - targetRgb01.b;
+  return (dL * dL + dA * dA + dB * dB) + 0.025 * (dr * dr + dg * dg + db * db);
+};
+
+const pairwiseCoordinateDescent = (
+  start: number[],
+  baseLatents: number[][],
+  targetRgb01: { r: number; g: number; b: number },
+  targetLab: { l: number; a: number; b: number }
+): number[] => {
+  let weights = normalizeSimplex(start);
+  let currentError = inverseObjective(weights, baseLatents, targetRgb01, targetLab);
+  let step = 0.25;
+  while (step >= 1 / 4096) {
+    for (let inner = 0; inner < 24; inner++) {
+      let bestTrial: number[] | null = null;
+      let bestError = currentError;
+      for (let donor = 0; donor < weights.length; donor++) {
+        if (weights[donor] <= 0) continue;
+        const amount = Math.min(step, weights[donor]);
+        if (amount <= 0) continue;
+        for (let receiver = 0; receiver < weights.length; receiver++) {
+          if (receiver === donor) continue;
+          const trial = weights.slice();
+          trial[donor] -= amount;
+          trial[receiver] += amount;
+          const error = inverseObjective(trial, baseLatents, targetRgb01, targetLab);
+          if (error + 1e-14 < bestError) {
+            bestTrial = trial;
+            bestError = error;
+          }
+        }
+      }
+      if (!bestTrial) break;
+      weights = bestTrial;
+      currentError = bestError;
+    }
+    step *= 0.5;
+  }
+  return normalizeSimplex(weights);
+};
+
+const extendedChromaInit = (hue: number): number[] => {
+  // [red, magenta, blue, cyan, yellow, orange]
+  if (hue >= 345 || hue < 15) return [0.9, 0.05, 0.0, 0.0, 0.0, 0.05];
+  if (hue >= 15 && hue < 30) return [0.6, 0.0, 0.0, 0.0, 0.0, 0.4];
+  if (hue >= 30 && hue < 45) return [0.3, 0.0, 0.0, 0.0, 0.0, 0.7];
+  if (hue >= 45 && hue < 60) return [0.0, 0.0, 0.0, 0.0, 0.9, 0.1];
+  if (hue >= 60 && hue < 75) return [0.0, 0.0, 0.0, 0.0, 0.95, 0.05];
+  if (hue >= 75 && hue < 120) return [0.0, 0.0, 0.0, 0.3, 0.7, 0.0];
+  if (hue >= 120 && hue < 165) return [0.0, 0.0, 0.0, 0.6, 0.4, 0.0];
+  if (hue >= 165 && hue < 195) return [0.0, 0.0, 0.0, 0.9, 0.1, 0.0];
+  if (hue >= 195 && hue < 210) return [0.0, 0.0, 0.7, 0.3, 0.0, 0.0];
+  if (hue >= 210 && hue < 225) return [0.0, 0.05, 0.7, 0.25, 0.0, 0.0];
+  if (hue >= 225 && hue < 250) return [0.0, 0.05, 0.85, 0.10, 0.0, 0.0];
+  if (hue >= 250 && hue < 255) return [0.0, 0.0, 0.9, 0.1, 0.0, 0.0];
+  if (hue >= 255 && hue < 285) return [0.0, 0.6, 0.4, 0.0, 0.0, 0.0];
+  if (hue >= 285 && hue < 315) return [0.0, 0.9, 0.1, 0.0, 0.0, 0.0];
+  return [0.5, 0.5, 0.0, 0.0, 0.0, 0.0];
+};
+
+const extendedLowSatChroma = (hue: number): number[] => {
+  if (hue >= 345 || hue < 22.5) return [1, 0, 0, 0, 0, 0];
+  if (hue >= 22.5 && hue < 45) return [0, 0, 0, 0, 0, 1];
+  if (hue >= 45 && hue < 75) return [0, 0, 0, 0, 1, 0];
+  if (hue >= 75 && hue < 150) return [0, 0, 0, 0.3, 1, 0];
+  if (hue >= 150 && hue < 195) return [0, 0, 0, 1, 0, 0];
+  if (hue >= 195 && hue < 210) return [0, 0, 1, 0, 0, 0];
+  if (hue >= 210 && hue < 240) return [0, 0.05, 1, 0, 0, 0];
+  if (hue >= 240 && hue < 300) return [0, 1, 0.3, 0, 0, 0];
+  return [0.5, 1, 0, 0, 0, 0];
+};
+
+const desaturatedChromaticTarget = (targetRgb: RGB, minChannel: number, hue: number): RGB => {
+  const chromaR = targetRgb.r - minChannel;
+  const chromaG = targetRgb.g - minChannel;
+  const chromaB = targetRgb.b - minChannel;
+  const chromaMax = Math.max(chromaR, chromaG, chromaB);
+  if (chromaMax <= 0) {
+    return hsbToRgb(hue, 100, 100);
+  }
+  const scale = 255 / chromaMax;
+  return {
+    r: Math.round(chromaR * scale),
+    g: Math.round(chromaG * scale),
+    b: Math.round(chromaB * scale),
+  };
+};
+
+const EXTENDED_RATIO_LABELS = [
+  '白色 (Gaia 001)',
+  '黑色 (Gaia 002)',
+  '红色 (Gaia 003)',
+  '品红 (Gaia 006)',
+  '蓝色 (Gaia 004)',
+  '青色 (Gaia 007)',
+  '黄色 (Gaia 005)',
+  '橙色 (Gaia 008)',
+] as const;
+
+const percentagesToExtendedRatios = (
+  percentages: number[],
+  minPercent = PROFESSIONAL_RATIO_THRESHOLD
+): { color: string; percentage: number }[] => (
+  percentages
+    .map((percentage, index) => ({
+      color: EXTENDED_RATIO_LABELS[index] ?? `色 ${index}`,
+      percentage: Math.round(percentage * 10) / 10,
+    }))
+    .filter(item => item.percentage >= minPercent)
+);
+
+const chromaticSummary = (ratios: { color: string; percentage: number }[]): string => {
+  const chromatic = ratios.filter(item => !item.color.includes('白色') && !item.color.includes('黑色'));
+  if (chromatic.length === 0) return '无';
+  return chromatic
+    .map(item => `${item.color.split(' ')[0]}${item.percentage.toFixed(1)}%`)
+    .join(' + ');
+};
+
 /**
- * Calculate optimal mixing ratios using Mixbox algorithm (Inverse Problem)
- * This solves: "Given a target color, what ratio of base colors produces it?"
- * 
- * Algorithm: Two-step HSB-based approach
- * Step 1: Find pure hue (chromatic colors only, no white/black)
- * Step 2: Add white/black based on saturation and brightness
- * 
- * @param targetHex Target color hex string
- * @param colorSpace Source color space (default: 'srgb')
- * @param useExtendedPalette Use 8-color palette for better accuracy (default: false)
- * @returns Array of weights [white, black, ...chromatic colors]
+ * Professional / HSB Mixbox ratios (scheme A).
+ * Two-step HSB initialization, then 8-weight latent refinement against the real target.
+ *
+ * @returns Array of weights [white, black, ...chromatic colors] as percentages
  */
 export const calculateMixboxRatios = (
   targetHex: string, 
   colorSpace: ColorSpace = 'srgb',
   useExtendedPalette: boolean = false
 ): number[] => {
+  const zeros = emptyPaletteWeights(useExtendedPalette);
   let targetRgb = hexToRgb(targetHex);
-  
-  // Convert to sRGB if needed (Mixbox works in sRGB space)
+
   if (colorSpace !== 'srgb') {
     targetRgb = convertToWorkingSpace(targetRgb, colorSpace);
   }
-  
+
   const targetLatent = mixbox.rgbToLatent(targetRgb.r, targetRgb.g, targetRgb.b);
-  
-  if (!targetLatent) {
-    return useExtendedPalette ? [0, 0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-  }
-  
-  // Choose color palette
+  if (!targetLatent) return zeros;
+
   const palette = useExtendedPalette ? EXTENDED_MIXING_COLORS : BASE_MIXING_COLORS;
-  
-  // Get latent representations of base colors
-  const baseLatents = palette.map(color => {
-    const rgb = hexToRgb(color.hex);
-    return mixbox.rgbToLatent(rgb.r, rgb.g, rgb.b);
-  }).filter(latent => latent !== undefined) as number[][];
-  
-  if (baseLatents.length !== palette.length) {
-    return useExtendedPalette ? [0, 0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-  }
-  
-  // Calculate HSB values
+  const baseLatents = loadBaseLatents(palette);
+  if (!baseLatents) return zeros;
+
   const hsb = rgbToHsb(targetRgb.r, targetRgb.g, targetRgb.b);
-  
-  // Check if color is grayscale (no saturation)
+  const hue = rgbHueDegrees(targetRgb.r, targetRgb.g, targetRgb.b);
   const maxChannel = Math.max(targetRgb.r, targetRgb.g, targetRgb.b);
   const minChannel = Math.min(targetRgb.r, targetRgb.g, targetRgb.b);
   const saturation = maxChannel === 0 ? 0 : (maxChannel - minChannel) / maxChannel;
-  
-  // For extremely low saturation colors (pure gray), skip mixbox optimization
-  if (saturation < 0.05) {
-    // Pure grayscale (< 5%): Only use black + white
-    // Use HSB brightness (not ITU luminance) for grayscale to match visual appearance
-    const whitePercent = hsb.b;
-    const blackPercent = 100 - hsb.b;
-    return [whitePercent, blackPercent, 0, 0, 0];
-  }
-  
-  // For very low saturation colors (5-12%), use simplified formula
-  // These colors are perceptible but subtle, avoid complex 3-color mixing
-  if (saturation < 0.12) {
-    // Determine dominant hue direction
-    const hue = hsb.h;
-    
-    // Simplified formula: gray base + small amount of dominant color
-    // Use HSB brightness for consistency
-    const whitePercent = hsb.b * (1 - saturation);
-    const blackPercent = (100 - hsb.b) * (1 - saturation);
-    const colorPercent = saturation * 100;
-    
-    if (useExtendedPalette) {
-      // 8-color palette: [white, black, red, magenta, blue, cyan, yellow, orange]
-      let colorWeights = [0, 0, 0, 0, 0, 0]; // chromatic colors
-      
-      if (hue >= 345 || hue < 22.5) {
-        colorWeights = [1, 0, 0, 0, 0, 0]; // red
-      } else if (hue >= 22.5 && hue < 45) {
-        colorWeights = [0, 0, 0, 0, 0, 1]; // orange
-      } else if (hue >= 45 && hue < 75) {
-        colorWeights = [0, 0, 0, 0, 1, 0]; // yellow
-      } else if (hue >= 75 && hue < 150) {
-        colorWeights = [0, 0, 0, 0.3, 1, 0]; // yellow-dominant green
-      } else if (hue >= 150 && hue < 195) {
-        colorWeights = [0, 0, 0, 1, 0, 0]; // cyan
-      } else if (hue >= 195 && hue < 240) {
-        colorWeights = [0, 0, 1, 0, 0, 0]; // blue
-      } else if (hue >= 240 && hue < 300) {
-        colorWeights = [0, 1, 0.3, 0, 0, 0]; // magenta-blue
-      } else {
-        colorWeights = [0.5, 1, 0, 0, 0, 0]; // magenta-red
-      }
-      
-      return [
-        whitePercent,
-        blackPercent,
-        ...colorWeights.map(w => w * colorPercent)
-      ];
-    } else {
-      // 5-color palette: [white, black, red, blue, yellow]
-      let dominantColor: 'red' | 'blue' | 'yellow';
-      
-      if (hue >= 15 && hue < 75) {
-        dominantColor = 'yellow';
-      } else if (hue >= 165 && hue < 285) {
-        dominantColor = 'blue';
-      } else if (hue >= 75 && hue < 165) {
-        dominantColor = 'yellow';
-      } else {
-        dominantColor = 'red';
-      }
-      
-      if (dominantColor === 'red') {
-        return [whitePercent, blackPercent, colorPercent, 0, 0];
-      } else if (dominantColor === 'blue') {
-        return [whitePercent, blackPercent, 0, colorPercent, 0];
-      } else {
-        return [whitePercent, blackPercent, 0, 0, colorPercent];
-      }
-    }
-  }
-  
-  // === STEP 1: Find chromatic color target for mixbox ===
-  // For medium saturation (12-40%), remove gray and use actual desaturated color
-  // For high saturation (>40%), use pure hue for better accuracy
-  let chromaticTargetRgb: RGB;
-  let useMediumSaturationMode = false;
-  
-  if (saturation >= 0.12 && saturation < 0.40) {
-    // Medium saturation: Remove gray component to get actual chromatic color
-    // This preserves subtle hue shifts (like purple tints) better than pure hue
-    useMediumSaturationMode = true;
-    
-    // Calculate gray amount (minimum channel value represents gray)
-    const grayAmount = minChannel;
-    
-    // Remove gray to get chromatic component
-    const chromaR = targetRgb.r - grayAmount;
-    const chromaG = targetRgb.g - grayAmount;
-    const chromaB = targetRgb.b - grayAmount;
-    
-    // Scale up to use full range for better mixbox accuracy
-    const chromaMax = Math.max(chromaR, chromaG, chromaB);
-    if (chromaMax > 0) {
-      const scale = 255 / chromaMax;
-      chromaticTargetRgb = {
-        r: Math.round(chromaR * scale),
-        g: Math.round(chromaG * scale),
-        b: Math.round(chromaB * scale)
-      };
-    } else {
-      // Fallback if no chroma (shouldn't happen due to saturation check)
-      chromaticTargetRgb = hsbToRgb(hsb.h, 100, 100);
-    }
-  } else {
-    // High saturation (>40%): Use pure hue (maximum saturation)
-    chromaticTargetRgb = hsbToRgb(hsb.h, 100, 100);
-  }
-  
-  const pureHueLatent = mixbox.rgbToLatent(chromaticTargetRgb.r, chromaticTargetRgb.g, chromaticTargetRgb.b);
-  
-  if (!pureHueLatent) {
-    return useExtendedPalette ? [0, 0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-  }
-  
-  // Determine number of chromatic colors to optimize
-  const numChromatic = useExtendedPalette ? 6 : 3;
-  const chromaStartIdx = 2; // Start after white(0) and black(1)
-  
-  // Initialize chromatic weights
-  let chromaWeights = new Array(numChromatic).fill(0);
-  
-  // Smart initialization based on hue
-  const hue = hsb.h;
-  
-  if (useExtendedPalette) {
-    // 8-color palette: [white, black, red, magenta, blue, cyan, yellow, orange]
-    // Indices: 0=white, 1=black, 2=red, 3=magenta, 4=blue, 5=cyan, 6=yellow, 7=orange
-    if (hue >= 345 || hue < 15) {
-      chromaWeights = [0.9, 0.05, 0.0, 0.0, 0.0, 0.05]; // Pure red
-    } else if (hue >= 15 && hue < 30) {
-      chromaWeights = [0.6, 0.0, 0.0, 0.0, 0.0, 0.4]; // Red-Orange
-    } else if (hue >= 30 && hue < 45) {
-      chromaWeights = [0.3, 0.0, 0.0, 0.0, 0.0, 0.7]; // Orange
-    } else if (hue >= 45 && hue < 60) {
-      chromaWeights = [0.0, 0.0, 0.0, 0.0, 0.9, 0.1]; // Yellow-Orange
-    } else if (hue >= 60 && hue < 75) {
-      chromaWeights = [0.0, 0.0, 0.0, 0.0, 0.95, 0.05]; // Pure Yellow
-    } else if (hue >= 75 && hue < 120) {
-      chromaWeights = [0.0, 0.0, 0.0, 0.3, 0.7, 0.0]; // Yellow-Green
-    } else if (hue >= 120 && hue < 165) {
-      chromaWeights = [0.0, 0.0, 0.0, 0.6, 0.4, 0.0]; // Green (Cyan+Yellow)
-    } else if (hue >= 165 && hue < 195) {
-      chromaWeights = [0.0, 0.0, 0.0, 0.9, 0.1, 0.0]; // Pure Cyan
-    } else if (hue >= 195 && hue < 225) {
-      chromaWeights = [0.0, 0.0, 0.7, 0.3, 0.0, 0.0]; // Cyan-Blue
-    } else if (hue >= 225 && hue < 255) {
-      chromaWeights = [0.0, 0.0, 0.9, 0.1, 0.0, 0.0]; // Pure Blue
-    } else if (hue >= 255 && hue < 285) {
-      chromaWeights = [0.0, 0.6, 0.4, 0.0, 0.0, 0.0]; // Blue-Magenta
-    } else if (hue >= 285 && hue < 315) {
-      chromaWeights = [0.0, 0.9, 0.1, 0.0, 0.0, 0.0]; // Pure Magenta
-    } else {
-      chromaWeights = [0.5, 0.5, 0.0, 0.0, 0.0, 0.0]; // Magenta-Red
-    }
-  } else {
-    // 5-color palette: [white, black, red, blue, yellow]
-    if (hue >= 345 || hue < 15) {
-      chromaWeights = [0.8, 0.1, 0.1]; // Red
-    } else if (hue >= 15 && hue < 45) {
-      chromaWeights = [0.5, 0.0, 0.5]; // Orange (Red + Yellow)
-    } else if (hue >= 45 && hue < 75) {
-      chromaWeights = [0.1, 0.1, 0.8]; // Yellow
-    } else if (hue >= 75 && hue < 165) {
-      chromaWeights = [0.0, 0.5, 0.5]; // Green (Yellow + Blue)
-    } else if (hue >= 165 && hue < 220) {
-      chromaWeights = [0.0, 0.6, 0.4]; // Cyan (Blue + Yellow for green tint)
-    } else if (hue >= 220 && hue < 260) {
-      chromaWeights = [0.1, 0.8, 0.1]; // Pure Blue
-    } else if (hue >= 260 && hue < 300) {
-      chromaWeights = [0.4, 0.6, 0.0]; // Blue-Purple
-    } else {
-      chromaWeights = [0.55, 0.45, 0.0]; // Purple-Red
-    }
-  }
-  
-  // Normalize
-  const normalizeChroma = (w: number[]) => {
-    const sum = w.reduce((a, b) => a + b, 0);
-    if (sum > 0.001) {
-      return w.map(x => x / sum);
-    }
-    return new Array(w.length).fill(1 / w.length);
+
+  const toPercentages = (weights: number[]): number[] => {
+    const padded = weights.length >= zeros.length
+      ? weights.slice(0, zeros.length)
+      : [...weights, ...zeros.slice(weights.length)];
+    return padded.map(weight => weight * 100);
   };
-  
-  chromaWeights = normalizeChroma(chromaWeights);
-  
-  // Gradient descent for pure hue (chromatic colors only)
-  let learningRate = 0.2;
-  const iterations = 100;
-  const minLearningRate = 0.01;
-  
-  for (let iter = 0; iter < iterations; iter++) {
-    // Compute current mixed latent (chromatic only)
-    const mixedLatent = [0, 0, 0, 0, 0, 0, 0];
-    for (let i = 0; i < numChromatic; i++) {
-      const baseIdx = chromaStartIdx + i;
-      for (let j = 0; j < 7; j++) {
-        mixedLatent[j] += baseLatents[baseIdx][j] * chromaWeights[i];
-      }
-    }
-    
-    // Compute error
-    let error = 0;
-    const gradient = new Array(numChromatic).fill(0);
-    
-    for (let j = 0; j < 7; j++) {
-      const diff = mixedLatent[j] - pureHueLatent[j];
-      error += diff * diff;
-      
-      for (let i = 0; i < numChromatic; i++) {
-        const baseIdx = chromaStartIdx + i;
-        gradient[i] += 2 * diff * baseLatents[baseIdx][j];
-      }
-    }
-    
-    // Early stopping
-    if (error < 0.0001) break;
-    
-    // Update weights
-    for (let i = 0; i < numChromatic; i++) {
-      chromaWeights[i] -= learningRate * gradient[i];
-      chromaWeights[i] = Math.max(0, chromaWeights[i]);
-    }
-    
-    chromaWeights = normalizeChroma(chromaWeights);
-    
-    // Adaptive learning rate
-    if (iter > 20) {
-      learningRate = Math.max(minLearningRate, learningRate * 0.95);
-    }
+
+  if (saturation < 0.05) {
+    const white = hsb.b / 100;
+    return toPercentages([white, 1 - white, ...new Array(palette.length - 2).fill(0)]);
   }
-  
-  // === STEP 2: Add white/black based on saturation and brightness ===
-  let finalWeights: number[];
-  
-  if (useMediumSaturationMode) {
-    // Medium saturation mode: Gray was already removed, so calculate directly from RGB
-    // Gray amount = minimum channel value
-    const grayAmount = minChannel / 255; // Normalized to 0-1
-    
-    // Distribute gray between white and black based on brightness
-    const whiteRatio = grayAmount * (hsb.b / 100);
-    const blackRatio = grayAmount * (1 - hsb.b / 100);
-    
-    // Chromatic ratio = how much non-gray color we have
-    const chromaRatio = 1 - grayAmount;
-    
-    finalWeights = [
-      whiteRatio,                      // White
-      blackRatio,                      // Black
-      ...chromaWeights.map(w => w * chromaRatio)  // Chromatic colors
-    ];
+
+  let weights: number[];
+
+  if (saturation < 0.12) {
+    const whiteRatio = (hsb.b / 100) * (1 - saturation);
+    const blackRatio = (1 - hsb.b / 100) * (1 - saturation);
+    const colorRatio = saturation;
+
+    if (useExtendedPalette) {
+      const chroma = normalizeSimplex(extendedLowSatChroma(hue));
+      weights = [whiteRatio, blackRatio, ...chroma.map(weight => weight * colorRatio)];
+    } else {
+      let red = 0;
+      let blue = 0;
+      let yellow = 0;
+      if (hue >= 15 && hue < 75) {
+        yellow = colorRatio;
+      } else if (hue >= 165 && hue < 285) {
+        blue = colorRatio;
+      } else if (hue >= 75 && hue < 165) {
+        yellow = colorRatio;
+      } else {
+        red = colorRatio;
+      }
+      weights = [whiteRatio, blackRatio, red, blue, yellow];
+    }
   } else {
-    // High saturation mode: Use HSB saturation directly
-    const chromaRatio = hsb.s / 100; // How much of the pure hue
-    const grayRatio = 1 - chromaRatio; // How much gray (white + black)
-    
-    // Distribute gray between white and black based on brightness
-    const whiteRatio = grayRatio * (hsb.b / 100);
-    const blackRatio = grayRatio * (1 - hsb.b / 100);
-    
-    finalWeights = [
-      whiteRatio,                      // White
-      blackRatio,                      // Black
-      ...chromaWeights.map(w => w * chromaRatio)  // Chromatic colors
+    const chromaticTargetRgb = desaturatedChromaticTarget(targetRgb, minChannel, hue);
+    const pureHueLatent = mixbox.rgbToLatent(
+      chromaticTargetRgb.r,
+      chromaticTargetRgb.g,
+      chromaticTargetRgb.b
+    );
+    if (!pureHueLatent) return zeros;
+
+    const numChromatic = useExtendedPalette ? 6 : 3;
+    const chromaStartIdx = 2;
+    let chromaWeights = useExtendedPalette
+      ? extendedChromaInit(hue)
+      : (hue >= 345 || hue < 15)
+        ? [0.8, 0.1, 0.1]
+        : hue < 45
+          ? [0.5, 0.0, 0.5]
+          : hue < 75
+            ? [0.1, 0.1, 0.8]
+            : hue < 165
+              ? [0.0, 0.5, 0.5]
+              : hue < 220
+                ? [0.0, 0.6, 0.4]
+                : hue < 260
+                  ? [0.1, 0.8, 0.1]
+                  : hue < 300
+                    ? [0.4, 0.6, 0.0]
+                    : [0.55, 0.45, 0.0];
+
+    chromaWeights = normalizeSimplex(chromaWeights);
+
+    let learningRate = 0.2;
+    for (let iter = 0; iter < 100; iter++) {
+      const mixedLatent = [0, 0, 0, 0, 0, 0, 0];
+      for (let i = 0; i < numChromatic; i++) {
+        for (let j = 0; j < 7; j++) {
+          mixedLatent[j] += baseLatents[chromaStartIdx + i][j] * chromaWeights[i];
+        }
+      }
+
+      let error = 0;
+      const gradient = new Array(numChromatic).fill(0);
+      for (let j = 0; j < 7; j++) {
+        const diff = mixedLatent[j] - pureHueLatent[j];
+        error += diff * diff;
+        for (let i = 0; i < numChromatic; i++) {
+          gradient[i] += 2 * diff * baseLatents[chromaStartIdx + i][j];
+        }
+      }
+      if (error < 0.0001) break;
+
+      for (let i = 0; i < numChromatic; i++) {
+        chromaWeights[i] = Math.max(0, chromaWeights[i] - learningRate * gradient[i]);
+      }
+      chromaWeights = normalizeSimplex(chromaWeights);
+      if (iter > 20) {
+        learningRate = Math.max(0.01, learningRate * 0.95);
+      }
+    }
+
+    const grayAmount = minChannel / 255;
+    const chromaRatio = 1 - grayAmount;
+    weights = [
+      grayAmount * (hsb.b / 100),
+      grayAmount * (1 - hsb.b / 100),
+      ...chromaWeights.map(weight => weight * chromaRatio),
     ];
   }
-  
-  // Return as percentages
-  return finalWeights.map(w => w * 100);
+
+  return toPercentages(refineWeightsToLatent(weights, baseLatents, targetLatent));
+};
+
+/**
+ * True Mixbox inverse (scheme B): simplex search matching Mixbox forward OKLab.
+ * Does not use HSB hue buckets. Returns percentages for the chosen palette.
+ */
+export const calculateMixboxInverseRatios = (
+  targetHex: string,
+  colorSpace: ColorSpace = 'srgb',
+  useExtendedPalette: boolean = true
+): number[] => {
+  const zeros = emptyPaletteWeights(useExtendedPalette);
+  let targetRgb = hexToRgb(targetHex);
+  if (colorSpace !== 'srgb') {
+    targetRgb = convertToWorkingSpace(targetRgb, colorSpace);
+  }
+
+  const palette = useExtendedPalette ? EXTENDED_MIXING_COLORS : BASE_MIXING_COLORS;
+  const baseLatents = loadBaseLatents(palette);
+  if (!baseLatents) return zeros;
+
+  const exactIndex = palette.findIndex(color => color.hex.toUpperCase() === targetHex.toUpperCase());
+  if (exactIndex >= 0) {
+    const oneHot = zeros.slice();
+    oneHot[exactIndex] = 100;
+    return oneHot;
+  }
+
+  const targetRgb01 = {
+    r: targetRgb.r / 255,
+    g: targetRgb.g / 255,
+    b: targetRgb.b / 255,
+  };
+  const maxChannel = Math.max(targetRgb.r, targetRgb.g, targetRgb.b);
+  const minChannel = Math.min(targetRgb.r, targetRgb.g, targetRgb.b);
+  const saturation = maxChannel === 0 ? 0 : (maxChannel - minChannel) / maxChannel;
+  if (saturation < 0.05) {
+    return calculateMixboxRatios(targetHex, colorSpace, useExtendedPalette);
+  }
+  const targetLab = rgb01ToOkLab(targetRgb01.r, targetRgb01.g, targetRgb01.b);
+  const count = palette.length;
+
+  const nearest = palette.reduce((best, color, index) => {
+    const rgb = hexToRgb(color.hex);
+    const dist =
+      (rgb.r - targetRgb.r) ** 2 +
+      (rgb.g - targetRgb.g) ** 2 +
+      (rgb.b - targetRgb.b) ** 2;
+    return dist < best.dist ? { index, dist } : best;
+  }, { index: 0, dist: Number.POSITIVE_INFINITY }).index;
+
+  const oneHot = zeros.map((_, index) => (index === nearest ? 1 : 0));
+  const luminance = 0.2126 * targetRgb01.r + 0.7152 * targetRgb01.g + 0.0722 * targetRgb01.b;
+  const grayscale = zeros.map((_, index) => (
+    index === 0 ? luminance : index === 1 ? 1 - luminance : 0
+  ));
+  const warmStart = calculateMixboxRatios(targetHex, colorSpace, useExtendedPalette)
+    .map(percent => percent / 100);
+
+  const starts = [warmStart, oneHot, grayscale];
+  let bestWeights = normalizeSimplex(warmStart);
+  let bestError = inverseObjective(bestWeights, baseLatents, targetRgb01, targetLab);
+
+  for (const start of starts) {
+    const candidate = pairwiseCoordinateDescent(start, baseLatents, targetRgb01, targetLab);
+    const error = inverseObjective(candidate, baseLatents, targetRgb01, targetLab);
+    if (error < bestError) {
+      bestWeights = candidate;
+      bestError = error;
+    }
+  }
+
+  const padded = bestWeights.length >= count
+    ? bestWeights.slice(0, count)
+    : [...bestWeights, ...new Array(count - bestWeights.length).fill(0)];
+  return padded.map(weight => weight * 100);
 };
 
 /**
@@ -1296,9 +1447,9 @@ export const calculateMixboxRatios = (
  * Based on real-world spray painting experience
  * 
  * Workflow:
- * - High Brightness (B > 70%): Mix hue first, then add to white base
- * - Mid Brightness (30% < B ≤ 70%): Standard mixing with all 5 colors
- * - Low Brightness (B ≤ 30%): Black base + hue adjustment
+ * - High Brightness (B > 70%): White-base spray workflow, 8-color scheme A ratios
+ * - Mid Brightness (30% < B ≤ 70%): Standard mixing with all 8 colors
+ * - Low Brightness (B ≤ 30%): Black-base workflow, 8-color scheme A ratios
  * 
  * @param targetHex Target color hex string
  * @returns Mixing recipe with HSB/LAB analysis and step-by-step instructions
@@ -1349,106 +1500,46 @@ export const calculateProfessionalRecipe = (targetHex: string): {
     return { hsb, lab, strategy, steps, ratios };
   }
 
+  const mixboxRatios = calculateMixboxRatios(targetHex, 'srgb', true);
+  ratios = percentagesToExtendedRatios(mixboxRatios);
+  const whiteAmount = mixboxRatios[0] ?? 0;
+  const blackAmount = mixboxRatios[1] ?? 0;
+  const chromaText = chromaticSummary(ratios);
+
   if (hsb.b > 70) {
-    // High brightness: White base + hue
     strategy = 'high-brightness';
-    
-    // Calculate hue-only color (maximum saturation at current hue)
-    const pureHue = hsbToRgb(hsb.h, 100, 100);
-    const pureHueHex = rgbToHex(pureHue.r, pureHue.g, pureHue.b);
-    
-    // Get Mixbox ratios for pure hue color (excluding white to get concentrated color)
-    const hueRatios = calculateMixboxRatios(pureHueHex);
-    const [, black, red, blue, yellow] = hueRatios;
-    
-    // Normalize non-white colors
-    const totalColor = black + red + blue + yellow;
-    const normalizedRed = totalColor > 0 ? (red / totalColor) * hsb.s : 0;
-    const normalizedBlue = totalColor > 0 ? (blue / totalColor) * hsb.s : 0;
-    const normalizedYellow = totalColor > 0 ? (yellow / totalColor) * hsb.s : 0;
-    const normalizedBlack = totalColor > 0 ? (black / totalColor) * hsb.s : 0;
-    
-    const whiteAmount = 100 - hsb.s;
-    
-    ratios = [
-      { color: '白色 (Gaia 001)', percentage: Math.round(whiteAmount * 10) / 10 },
-      { color: '红色 (Gaia 003)', percentage: Math.round(normalizedRed * 10) / 10 },
-      { color: '蓝色 (Gaia 004)', percentage: Math.round(normalizedBlue * 10) / 10 },
-      { color: '黄色 (Gaia 005)', percentage: Math.round(normalizedYellow * 10) / 10 },
-      { color: '黑色 (Gaia 002)', percentage: Math.round(normalizedBlack * 10) / 10 }
-    ].filter(r => r.percentage > 0);
-    
     steps = [
       `1. 明度分析: B=${hsb.b}% (高明度) → 采用"白底调色"策略`,
       `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
-      `3. 饱和度分析: S=${hsb.s}% → 白色占比 ${whiteAmount.toFixed(1)}%`,
+      `3. 饱和度分析: S=${hsb.s}% → 八色联合微调后白色约 ${whiteAmount.toFixed(1)}%`,
       `4. 调色步骤:`,
       `   a) 准备白色底漆 ${whiteAmount.toFixed(1)}%`,
-      `   b) 混合色相颜料: 红${normalizedRed.toFixed(1)}% + 蓝${normalizedBlue.toFixed(1)}% + 黄${normalizedYellow.toFixed(1)}%`,
+      `   b) 混合色相颜料: ${chromaText}`,
       `   c) 将色相颜料逐步加入白色底漆中,边加边测试`,
       `5. LAB 校准: L*=${lab.l.toFixed(1)} (目标明度), a*=${lab.a.toFixed(1)}, b*=${lab.b.toFixed(1)}`
     ];
-    
   } else if (hsb.b > 30) {
-    // Mid brightness: Standard Mixbox blending
     strategy = 'mid-brightness';
-    
-    const mixboxRatios = calculateMixboxRatios(targetHex);
-    const [white, black, red, blue, yellow] = mixboxRatios;
-    
-    ratios = [
-      { color: '白色 (Gaia 001)', percentage: Math.round(white * 10) / 10 },
-      { color: '黑色 (Gaia 002)', percentage: Math.round(black * 10) / 10 },
-      { color: '红色 (Gaia 003)', percentage: Math.round(red * 10) / 10 },
-      { color: '蓝色 (Gaia 004)', percentage: Math.round(blue * 10) / 10 },
-      { color: '黄色 (Gaia 005)', percentage: Math.round(yellow * 10) / 10 }
-    ].filter(r => r.percentage > 0);
-    
     steps = [
       `1. 明度分析: B=${hsb.b}% (中等明度) → 采用"标准混合"策略`,
       `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
-      `3. Mixbox 物理混色算法计算得出五色比例`,
+      `3. HSB 初始化 + Mixbox 潜空间八色联合微调`,
       `4. 调色步骤:`,
-      `   a) 按比例准备五种基础色`,
+      `   a) 按比例准备八种基础色`,
       `   b) 先混合主色相 (占比最大的颜色)`,
       `   c) 逐步加入其他颜色,充分搅拌`,
       `   d) 使用分光光度计或色卡进行对比校准`,
       `5. LAB 校准: L*=${lab.l.toFixed(1)}, a*=${lab.a.toFixed(1)}, b*=${lab.b.toFixed(1)}`
     ];
-    
   } else {
-    // Low brightness: Black base + hue adjustment
     strategy = 'low-brightness';
-    
-    // For dark colors, use black as base and add hue colors
-    const mixboxRatios = calculateMixboxRatios(targetHex);
-    const [white, black, red, blue, yellow] = mixboxRatios;
-    
-    // Emphasize black and reduce white
-    const totalColor = red + blue + yellow;
-    const adjustedBlack = Math.max(black, 60); // Minimum 60% black for dark colors
-    const adjustedWhite = Math.max(white - (adjustedBlack - black), 0);
-    const colorRatio = 100 - adjustedBlack - adjustedWhite;
-    
-    const adjustedRed = totalColor > 0 ? (red / totalColor) * colorRatio : 0;
-    const adjustedBlue = totalColor > 0 ? (blue / totalColor) * colorRatio : 0;
-    const adjustedYellow = totalColor > 0 ? (yellow / totalColor) * colorRatio : 0;
-    
-    ratios = [
-      { color: '黑色 (Gaia 002)', percentage: Math.round(adjustedBlack * 10) / 10 },
-      { color: '红色 (Gaia 003)', percentage: Math.round(adjustedRed * 10) / 10 },
-      { color: '蓝色 (Gaia 004)', percentage: Math.round(adjustedBlue * 10) / 10 },
-      { color: '黄色 (Gaia 005)', percentage: Math.round(adjustedYellow * 10) / 10 },
-      { color: '白色 (Gaia 001)', percentage: Math.round(adjustedWhite * 10) / 10 }
-    ].filter(r => r.percentage > 0);
-    
     steps = [
       `1. 明度分析: B=${hsb.b}% (低明度) → 采用"黑底提亮"策略`,
       `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
-      `3. 深色调色注意: 需要黑色底漆至少 ${adjustedBlack.toFixed(1)}%`,
+      `3. 深色调色注意: 黑色底漆约 ${blackAmount.toFixed(1)}%`,
       `4. 调色步骤:`,
-      `   a) 准备黑色底漆 ${adjustedBlack.toFixed(1)}%`,
-      `   b) 混合色相颜料: 红${adjustedRed.toFixed(1)}% + 蓝${adjustedBlue.toFixed(1)}% + 黄${adjustedYellow.toFixed(1)}%`,
+      `   a) 准备黑色底漆 ${blackAmount.toFixed(1)}%`,
+      `   b) 混合色相颜料: ${chromaText}`,
       `   c) 将色相颜料少量多次加入黑色底漆`,
       `   d) 深色容易过深,建议预留5-10%用于微调`,
       `5. LAB 校准: L*=${lab.l.toFixed(1)} (低明度), a*=${lab.a.toFixed(1)}, b*=${lab.b.toFixed(1)}`

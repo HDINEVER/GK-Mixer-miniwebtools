@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { ColorData, Language, RALColor } from '../types';
 import { translations } from '../utils/translations';
-import { findNearestRAL, calculateMixboxRatios, EXTENDED_MIXING_COLORS, getContrastColor } from '../utils/colorUtils';
+import { findNearestRAL, calculateMixboxInverseRatios, EXTENDED_MIXING_COLORS, getContrastColor, MIXBOX_INVERSE_RATIO_THRESHOLD } from '../utils/colorUtils';
 import html2canvas from 'html2canvas';
 
 // 8色扩展调色板的颜色名称映射
@@ -16,7 +16,7 @@ const GAIA_CODES = ['001', '002', '003', '004', '005', '006', '007', '008'];
 
 // 生成 Mixbox 配方文字描述（使用 Gaia 编号格式）
 const getMixboxRecipeText = (hex: string, lang: Language): string => {
-  const ratios = calculateMixboxRatios(hex, 'srgb', true);
+  const ratios = calculateMixboxInverseRatios(hex, 'srgb', true);
   const names = COLOR_NAMES_8[lang];
   
   // 筛选出比例大于1%的颜色，并按比例排序
@@ -27,7 +27,7 @@ const getMixboxRecipeText = (hex: string, lang: Language): string => {
       name: names[index],
       code: GAIA_CODES[index]
     }))
-    .filter(item => item.ratio > 1)
+    .filter(item => item.ratio > MIXBOX_INVERSE_RATIO_THRESHOLD)
     .sort((a, b) => b.ratio - a.ratio);
   
   if (validColors.length === 0) return '-';
@@ -41,12 +41,12 @@ const getMixboxRecipeText = (hex: string, lang: Language): string => {
 
 // 生成简短配方（用于紧凑显示）
 const getShortRecipeText = (hex: string, lang: Language): string => {
-  const ratios = calculateMixboxRatios(hex, 'srgb', true);
+  const ratios = calculateMixboxInverseRatios(hex, 'srgb', true);
   const names = COLOR_NAMES_8[lang];
   
   const validColors = ratios
     .map((ratio, index) => ({ ratio, index, name: names[index], code: GAIA_CODES[index] }))
-    .filter(item => item.ratio > 1)
+    .filter(item => item.ratio > MIXBOX_INVERSE_RATIO_THRESHOLD)
     .sort((a, b) => b.ratio - a.ratio);
   
   if (validColors.length === 0) return '-';

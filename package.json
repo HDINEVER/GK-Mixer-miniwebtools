@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:ios-algorithms": "esbuild native/ios-bridge.ts --bundle --format=iife --platform=browser --target=safari16 --minify --outfile=../GK-Mixer/GK-Mixer/Resources/gk-color-algorithms.js",
     "verify:dual-unmix": "node scripts/verify-dual-unmix.mjs",
+    "verify:drop-ratio": "node --experimental-strip-types scripts/verify-drop-ratio.mjs",
     "preview": "vite preview",
     "cf:dev": "wrangler pages dev dist"
   },

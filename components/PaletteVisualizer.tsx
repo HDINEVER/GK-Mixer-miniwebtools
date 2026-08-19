@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { ColorData, Language, RALColor } from '../types';
 import { translations } from '../utils/translations';
 import { findNearestRAL, calculateMixboxInverseRatios, EXTENDED_MIXING_COLORS, getContrastColor, MIXBOX_INVERSE_RATIO_THRESHOLD } from '../utils/colorUtils';
+import { formatDropRatioLine, toDropRatio } from '../utils/dropRatio';
 import html2canvas from 'html2canvas';
 
 // 8色扩展调色板的颜色名称映射
@@ -11,51 +12,24 @@ const COLOR_NAMES_8 = {
   ja: ['白', '黒', '赤', 'マゼンタ', '青', 'シアン', '黄', 'オレンジ']
 };
 
-// Gaia 色号映射
-const GAIA_CODES = ['001', '002', '003', '004', '005', '006', '007', '008'];
-
-// 生成 Mixbox 配方文字描述（使用 Gaia 编号格式）
+// 生成 Mixbox 配方文字描述（使用滴数比，方便按瓶滴调）
 const getMixboxRecipeText = (hex: string, lang: Language): string => {
   const ratios = calculateMixboxInverseRatios(hex, 'srgb', true);
   const names = COLOR_NAMES_8[lang];
   
-  // 筛选出比例大于1%的颜色，并按比例排序
   const validColors = ratios
     .map((ratio, index) => ({ 
       ratio, 
-      index, 
       name: names[index],
-      code: GAIA_CODES[index]
     }))
     .filter(item => item.ratio > MIXBOX_INVERSE_RATIO_THRESHOLD)
     .sort((a, b) => b.ratio - a.ratio);
   
   if (validColors.length === 0) return '-';
-  
-  // 格式化输出：显示前3个主要颜色
-  return validColors
-    .slice(0, 3)
-    .map(item => `${item.code}${item.name} ${Math.round(item.ratio)}%`)
-    .join(' + ');
-};
-
-// 生成简短配方（用于紧凑显示）
-const getShortRecipeText = (hex: string, lang: Language): string => {
-  const ratios = calculateMixboxInverseRatios(hex, 'srgb', true);
-  const names = COLOR_NAMES_8[lang];
-  
-  const validColors = ratios
-    .map((ratio, index) => ({ ratio, index, name: names[index], code: GAIA_CODES[index] }))
-    .filter(item => item.ratio > MIXBOX_INVERSE_RATIO_THRESHOLD)
-    .sort((a, b) => b.ratio - a.ratio);
-  
-  if (validColors.length === 0) return '-';
-  
-  // 更简短的格式：只显示编号和比例
-  return validColors
-    .slice(0, 3)
-    .map(item => `${item.code}:${Math.round(item.ratio)}%`)
-    .join(' ');
+  const drops = toDropRatio(validColors.map(item => item.ratio));
+  return formatDropRatioLine(
+    validColors.map((item, index) => ({ name: item.name, drops: drops[index] ?? 0 }))
+  );
 };
 
 // 获取 RAL 色号和名称

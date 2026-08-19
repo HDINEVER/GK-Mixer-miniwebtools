@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { ColorData, PaintBrand, RALColor, Language, ColorSpace, MixerResultCache, MixingMode } from '../types';
 import { findNearestPaints, findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, calculateMixboxInverseRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS, EXTENDED_MIXING_COLORS, PROFESSIONAL_RATIO_THRESHOLD, MIXBOX_INVERSE_RATIO_THRESHOLD } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
+import { formatDropRatioLine, toDropRatio } from '../utils/dropRatio';
+import DropRatioBar from './DropRatioBar';
 import * as mixbox from '../utils/mixbox';
 
 // Helper: Calculate relative luminance (perceived brightness)
@@ -101,6 +103,20 @@ interface Layer {
     isBase?: boolean;
 }
 
+const PIGMENT_SHORT_NAME: Record<string, Record<Language, string>> = {
+  '#FFFFFF': { zh: '白', en: 'White', ja: '白' },
+  '#000000': { zh: '黑', en: 'Black', ja: '黒' },
+  '#FF0000': { zh: '红', en: 'Red', ja: '赤' },
+  '#FF00FF': { zh: '品红', en: 'Magenta', ja: 'マゼンタ' },
+  '#0000FF': { zh: '蓝', en: 'Blue', ja: '青' },
+  '#00FFFF': { zh: '青', en: 'Cyan', ja: 'シアン' },
+  '#FFFF00': { zh: '黄', en: 'Yellow', ja: '黄' },
+  '#FF8000': { zh: '橙', en: 'Orange', ja: 'オレンジ' },
+};
+
+const shortLayerName = (layer: Layer, lang: Language): string =>
+  PIGMENT_SHORT_NAME[layer.color.toUpperCase()]?.[lang] ?? layer.label;
+
 const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'srgb', onAddColor, cache, onCacheUpdate }) => {
   const [nearest, setNearest] = useState<PaintBrand[]>([]);
   const [ralMatch, setRalMatch] = useState<RALColor | null>(null);
@@ -110,6 +126,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
   const [selectedBasePaint, setSelectedBasePaint] = useState<PaintBrand | null>(null);
   const [professionalRecipe, setProfessionalRecipe] = useState<ReturnType<typeof calculateProfessionalRecipe> | null>(null);
   const [addedToPalette, setAddedToPalette] = useState(false);
+  const [dropMultiplier, setDropMultiplier] = useState(1);
   
   const t = translations[lang];
   const bottleRef = useRef<HTMLDivElement>(null);
@@ -142,6 +159,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
     if (color) {
       setProfessionalRecipe(null);
       setAddedToPalette(false); // Reset added state when color changes
+      setDropMultiplier(1);
       
       const found = findNearestPaints(color.hex);
       setNearest(found);
@@ -302,6 +320,17 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
 
       return layers.reverse();
   }, [color, selectedBasePaint, bottleVolume, mixingMode, colorSpace]);
+
+  const legendLayers = useMemo(() => mixLayers.slice().reverse(), [mixLayers]);
+
+  const dropParts = useMemo(() => {
+    const counts = toDropRatio(legendLayers.map(layer => layer.volume));
+    return legendLayers.map((layer, index) => ({
+      color: layer.color,
+      name: shortLayerName(layer, lang),
+      drops: counts[index] ?? 0,
+    }));
+  }, [legendLayers, lang]);
 
   useEffect(() => {
     if (bottleRef.current && color) {
@@ -529,11 +558,18 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                 </div>
 
                 {/* Legend / List */}
-                <div className="w-full sm:flex-1 h-auto sm:h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                <div className="w-full sm:flex-1 h-auto sm:max-h-[22rem] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 border-b border-slate-200 dark:border-slate-700 pb-1 mb-2">
                         <span>{t.totalVolume}: {bottleVolume}ml</span>
                         <span className="text-macaron-purple">{selectedBasePaint ? 'BASE MODE' : 'PURE MODE'}</span>
                      </div>
+
+                     <DropRatioBar
+                        parts={dropParts}
+                        lang={lang}
+                        multiplier={dropMultiplier}
+                        onMultiplierChange={setDropMultiplier}
+                     />
                      
                      {/* Color Analysis Section */}
                      {mixLayers.length > 1 && (() => {
@@ -680,7 +716,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                          );
                      })()}
                      
-                     {mixLayers.slice().reverse().map((layer, i) => ( 
+                     {legendLayers.map((layer, i) => ( 
                          <div key={i} className="flex justify-between items-center text-xs group p-1 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors">
                              <div className="flex items-center gap-2">
                                  <div className="w-3 h-3 rounded-full border border-slate-200 shadow-sm" style={{backgroundColor: layer.color}}></div>
@@ -689,7 +725,12 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                                     {layer.label}
                                  </span>
                              </div>
-                             <span className="font-bold font-mono text-slate-700 dark:text-slate-200">{layer.volume.toFixed(1)}ml</span>
+                             <span className="font-bold font-mono text-slate-700 dark:text-slate-200">
+                                {dropParts[i]?.drops
+                                  ? `${dropParts[i].drops * dropMultiplier}${t.dropUnit} · `
+                                  : ''}
+                                {layer.volume.toFixed(1)}ml
+                             </span>
                          </div>
                      ))}
                 </div>
@@ -845,6 +886,20 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                     {/* Ratios Summary */}
                     <div className="p-3 bg-purple-100/50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
                       <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mb-2">⚖️ 配比总结</div>
+                      {(() => {
+                        const dropCounts = toDropRatio(professionalRecipe.ratios.map(item => item.percentage));
+                        const line = formatDropRatioLine(
+                          professionalRecipe.ratios.map((ratio, idx) => ({
+                            name: ratio.color.split(' ')[0],
+                            drops: dropCounts[idx] ?? 0,
+                          }))
+                        );
+                        return line ? (
+                          <div className="mb-2 font-mono text-xs font-bold text-purple-700 dark:text-purple-300">
+                            {line}
+                          </div>
+                        ) : null;
+                      })()}
                       <div className="space-y-1">
                         {professionalRecipe.ratios.map((ratio, idx) => (
                           <div key={idx} className="flex justify-between items-center text-[10px]">

@@ -1,6 +1,8 @@
+import { ColorSpace } from '../types';
 import {
   EXTENDED_MIXING_COLORS,
   calculateMixboxRatios,
+  calculateMixboxInverseRatios,
   getRALByNumber,
   hexToRAL,
 } from '../utils/colorUtils';
@@ -22,6 +24,7 @@ const BASIC_COLORS = [
 type Request =
   | { method: 'bundleVersion'; payload?: undefined }
   | { method: 'decompose8'; payload: { hex: string; colorSpace?: 'srgb' | 'p3' | 'adobe-rgb' } }
+  | { method: 'decomposeMixboxInverse'; payload: { hex: string; colorSpace?: 'srgb' | 'p3' | 'adobe-rgb' } }
   | { method: 'mixBasic'; payload: { weights: number[] } }
   | { method: 'mixMulti'; payload: { colors: { hex: string; weight: number }[] } }
   | { method: 'findNearestRAL'; payload: { hex: string } };
@@ -32,11 +35,7 @@ const assertHex = (hex: string) => {
   }
 };
 
-const decompose8 = (hex: string, colorSpace: 'srgb' | 'p3' | 'adobe-rgb' = 'srgb') => {
-  assertHex(hex);
-  const raw = calculateMixboxRatios(hex, colorSpace, true);
-  // The legacy web grayscale branch accidentally returned five values.
-  // Native callers require a stable eight-component recipe.
+const mapExtendedWeights = (raw: number[]) => {
   const weights = [...raw, ...new Array(Math.max(0, 8 - raw.length)).fill(0)].slice(0, 8);
   return EXTENDED_MIXING_COLORS.map((color, index) => ({
     id: `legacy-${color.code}`,
@@ -44,6 +43,23 @@ const decompose8 = (hex: string, colorSpace: 'srgb' | 'p3' | 'adobe-rgb' = 'srgb
     hex: color.hex.toUpperCase(),
     weight: Math.max(0, Number(weights[index] ?? 0)) / 100,
   }));
+};
+
+const toColorSpace = (
+  colorSpace: 'srgb' | 'p3' | 'adobe-rgb' = 'srgb'
+): ColorSpace => (colorSpace === 'p3' ? 'display-p3' : colorSpace);
+
+const decompose8 = (hex: string, colorSpace: 'srgb' | 'p3' | 'adobe-rgb' = 'srgb') => {
+  assertHex(hex);
+  return mapExtendedWeights(calculateMixboxRatios(hex, toColorSpace(colorSpace), true));
+};
+
+const decomposeMixboxInverse = (
+  hex: string,
+  colorSpace: 'srgb' | 'p3' | 'adobe-rgb' = 'srgb'
+) => {
+  assertHex(hex);
+  return mapExtendedWeights(calculateMixboxInverseRatios(hex, toColorSpace(colorSpace), true));
 };
 
 const mixBasic = (weights: number[]) => {
@@ -148,6 +164,9 @@ const invoke = (requestJSON: string): string => {
         break;
       case 'decompose8':
         value = decompose8(request.payload.hex, request.payload.colorSpace);
+        break;
+      case 'decomposeMixboxInverse':
+        value = decomposeMixboxInverse(request.payload.hex, request.payload.colorSpace);
         break;
       case 'mixBasic':
         value = mixBasic(request.payload.weights);

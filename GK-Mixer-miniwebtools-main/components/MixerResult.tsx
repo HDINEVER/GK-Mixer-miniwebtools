@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { ColorData, PaintBrand, RALColor, Language, ColorSpace, MixerResultCache, MixingMode } from '../types';
-import { findNearestPaints, findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS, EXTENDED_MIXING_COLORS } from '../utils/colorUtils';
+import { findNearestPaints, findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, calculateMixboxInverseRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS, EXTENDED_MIXING_COLORS, PROFESSIONAL_RATIO_THRESHOLD, MIXBOX_INVERSE_RATIO_THRESHOLD } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
 import * as mixbox from '../utils/mixbox';
 
@@ -16,6 +16,18 @@ const getLuminance = (rgb: { r: number; g: number; b: number }): number => {
   const bLinear = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
   // Perceptual luminance (0.0 - 1.0)
   return 0.2126 * rLinear + 0.7152 * gLinear + 0.0722 * bLinear;
+};
+
+const recipeLabelToHex = (label: string): string => {
+  if (label.includes('品红') || /magenta/i.test(label)) return '#FF00FF';
+  if (label.includes('青') || /cyan/i.test(label)) return '#00FFFF';
+  if (label.includes('橙') || /orange/i.test(label)) return '#FF8000';
+  if (label.includes('白') || /white/i.test(label)) return '#FFFFFF';
+  if (label.includes('黑') || /black/i.test(label)) return '#000000';
+  if (label.includes('红') || /red/i.test(label)) return '#FF0000';
+  if (label.includes('蓝') || /blue/i.test(label)) return '#0000FF';
+  if (label.includes('黄') || /yellow/i.test(label)) return '#FFFF00';
+  return '#808080';
 };
 
 // Helper: RGB to HSB conversion
@@ -167,7 +179,12 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
         // Use Mixbox to calculate how to mix from selected base paint to target
         
         const baseRgb = hexToRgb(selectedBasePaint.hex);
-        const ratios = calculateMixboxRatios(color.hex, colorSpace, true); // Use 8-color extended palette
+        const ratios = mixingMode === 'mixbox'
+          ? calculateMixboxInverseRatios(color.hex, colorSpace, true)
+          : calculateMixboxRatios(color.hex, colorSpace, true);
+        const visibleThreshold = mixingMode === 'mixbox'
+          ? MIXBOX_INVERSE_RATIO_THRESHOLD
+          : PROFESSIONAL_RATIO_THRESHOLD;
         
         // Find which base color index matches our selected paint best
         let basePaintIndex = 0;
@@ -206,7 +223,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
 
         // Add other base colors if needed
         otherRatios.forEach((ratio, index) => {
-          if (ratio > 1) {
+          if (ratio > visibleThreshold) {
             const baseColor = baseColors[index];
             layers.push({
               color: baseColor.hex,
@@ -232,14 +249,8 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
           
           recipe.ratios.forEach(item => {
             const weight = item.percentage;
-            if (weight > 1) {
-              // Parse color from label
-              let hex = '#808080';
-              if (item.color.includes('白') || item.color.includes('White')) hex = '#FFFFFF';
-              else if (item.color.includes('黑') || item.color.includes('Black')) hex = '#000000';
-              else if (item.color.includes('红') || item.color.includes('Red')) hex = '#FF0000';
-              else if (item.color.includes('蓝') || item.color.includes('Blue')) hex = '#0000FF';
-              else if (item.color.includes('黄') || item.color.includes('Yellow')) hex = '#FFFF00';
+            if (weight > PROFESSIONAL_RATIO_THRESHOLD) {
+              const hex = recipeLabelToHex(item.color);
               
               layers.push({
                 color: hex,
@@ -254,7 +265,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
           
         } else {
           // Mixbox, CMY-Pigment, CMY-Solid modes use Mixbox inverse algorithm with 8-color palette
-          const weights = calculateMixboxRatios(color.hex, colorSpace, true); // Use 8-color extended palette
+          const weights = calculateMixboxInverseRatios(color.hex, colorSpace, true);
           const totalWeight = weights.reduce((a, b) => a + b, 0);
           
           if (totalWeight < 0.1) {
@@ -271,7 +282,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
             const getH = (weight: number) => (weight / totalWeight) * 100;
             
             weights.forEach((weight, index) => {
-              if (weight > 1 && index < baseColors.length) {
+              if (weight > MIXBOX_INVERSE_RATIO_THRESHOLD && index < baseColors.length) {
                 const baseColor = baseColors[index];
                 const isWhite = baseColor.hex === '#FFFFFF';
                 
@@ -290,7 +301,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
       }
 
       return layers.reverse();
-  }, [color, selectedBasePaint, bottleVolume, mixingMode]);
+  }, [color, selectedBasePaint, bottleVolume, mixingMode, colorSpace]);
 
   useEffect(() => {
     if (bottleRef.current && color) {

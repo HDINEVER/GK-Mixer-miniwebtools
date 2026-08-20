@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ColorData, Language, RadialMixerCache, SliderState } from '../types';
 import { hexToRgb, mixboxMultiBlend } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
+import { toDropRatio } from '../utils/dropRatio';
+import DropRatioBar from './DropRatioBar';
 import * as mixbox from '../utils/mixbox';
 
 declare var anime: any;
@@ -52,6 +54,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   const [mixedColor, setMixedColor] = useState<string>('');
   const [targetVolume, setTargetVolume] = useState<number>(cache?.targetVolume ?? 20);
   const [canvasSize, setCanvasSize] = useState(getCanvasSize());
+  const [dropMultiplier, setDropMultiplier] = useState(1);
   const knobSizes = useRef<number[]>(cache?.sliders ? new Array(cache.sliders.length).fill(20) : []); // For anime.js dynamic sizing
   const requestRef = useRef<number>(0); // For animation loop
   const animatingSliders = useRef<boolean>(false);
@@ -726,6 +729,12 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   };
   
   const volumes = calculateVolumes();
+  const dropCounts = toDropRatio(volumes.map(vol => vol.volume || vol.percentage));
+  const dropParts = volumes.map((vol, index) => ({
+    color: vol.hex,
+    name: availableColors.find(color => color.hex.toUpperCase() === vol.hex.toUpperCase())?.hex.replace('#', '') ?? vol.hex.replace('#', ''),
+    drops: dropCounts[index] ?? 0,
+  }));
   
   return (
     <div className="w-full h-full flex flex-col items-center justify-start p-3 space-y-2 overflow-y-auto">
@@ -930,6 +939,12 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
             <h4 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1.5">
               {lang === 'zh' ? '📊 混合配方' : lang === 'ja' ? '📊 レシピ' : '📊 RECIPE'}
             </h4>
+            <DropRatioBar
+              parts={dropParts}
+              lang={lang}
+              multiplier={dropMultiplier}
+              onMultiplierChange={setDropMultiplier}
+            />
             <div className="space-y-1 max-h-32 overflow-y-auto">
               {volumes.map((vol, i) => (
                 <div key={i} className="flex items-center justify-between text-[10px] bg-white dark:bg-slate-700 p-1.5 rounded border border-slate-200 dark:border-slate-600">
@@ -941,6 +956,11 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                     <span className="font-mono text-slate-700 dark:text-slate-300">{vol.hex}</span>
                   </div>
                   <div className="flex items-center space-x-3">
+                    {dropCounts[i] ? (
+                      <span className="font-bold text-slate-700 dark:text-slate-200">
+                        {dropCounts[i] * dropMultiplier}{t.dropUnit}
+                      </span>
+                    ) : null}
                     <span className="font-bold text-macaron-blue dark:text-macaron-pink">
                       {vol.percentage.toFixed(1)}%
                     </span>

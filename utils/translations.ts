@@ -59,7 +59,14 @@ export const translations = {
     addCmyColors: '+ Add CMY Colors',
     cmyColorsAdded: '✓ CMY Added',
     addBwColors: '+ Add Black & White',
-    bwColorsAdded: '✓ B&W Added'
+    bwColorsAdded: '✓ B&W Added',
+    dropRatio: 'DROP RATIO',
+    dropRatioHint: 'Squeeze matching drops from each bottle. Multiply the ratio to mix a larger batch.',
+    dropMultiplier: '× batch',
+    dropUnit: 'drops',
+    dropPure: 'Single pigment — no mixing needed',
+    dropPureHint: 'Use this paint as-is.',
+    dropApprox: 'Integer drops approximate the exact millilitre recipe.'
   },
   zh: {
     title: 'GK_混色模拟器.exe',
@@ -119,7 +126,14 @@ export const translations = {
     addCmyColors: '+ 添加 CMY 三原色',
     cmyColorsAdded: '✓ 已添加 CMY',
     addBwColors: '+ 添加黑白色',
-    bwColorsAdded: '✓ 已添加黑白'
+    bwColorsAdded: '✓ 已添加黑白',
+    dropRatio: '滴数比',
+    dropRatioHint: '按油漆瓶滴入对应份数即可。调大倍数可以一次多调一些，比例不变。',
+    dropMultiplier: '倍数',
+    dropUnit: '滴',
+    dropPure: '纯色，无需混合',
+    dropPureHint: '直接使用这种颜料。',
+    dropApprox: '滴数是方便调配的整数比，精确用量见毫升。'
   },
   ja: {
     title: 'GK_調色シミュレーター.exe',
@@ -179,6 +193,13 @@ export const translations = {
     addCmyColors: '+ CMY 三原色を追加',
     cmyColorsAdded: '✓ CMY 追加済み',
     addBwColors: '+ 白黒色を追加',
-    bwColorsAdded: '✓ 白黒追加済み'
+    bwColorsAdded: '✓ 白黒追加済み',
+    dropRatio: '滴下比',
+    dropRatioHint: '各ボトルからこの滴数で混ぜます。倍率を上げると量だけ増えます。',
+    dropMultiplier: '倍率',
+    dropUnit: '滴',
+    dropPure: '単色のため混合不要',
+    dropPureHint: 'この塗料をそのまま使えます。',
+    dropApprox: '滴数は使いやすい整数比です。正確な量はミリリットルを参照。'
   }
 };

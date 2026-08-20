@@ -1,6 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Language, BasicMixerCache, BaseColor } from '../types';
 import { lerp, rgbToLatent, latentToRgb } from '../utils/mixbox';
+import { toDropRatio } from '../utils/dropRatio';
+import DropRatioBar from './DropRatioBar';
+import { translations as uiText } from '../utils/translations';
 
 // 声明 anime
 declare var anime: any;
@@ -58,6 +61,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
   const [finalColor, setFinalColor] = useState<string>('');
   const [totalVolume, setTotalVolume] = useState<number>(cache?.totalVolume ?? 20);
   const [canvasSize, setCanvasSize] = useState(getCanvasSize());
+  const [dropMultiplier, setDropMultiplier] = useState(1);
   
   // 拖动状态
   const draggedIndexRef = useRef<number>(-1);
@@ -715,28 +719,50 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
           <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">{t.formula}</h3>
           <div className="space-y-1 min-h-[60px]">
             {finalColor ? (
-              baseColors.map((color, i) => {
+              (() => {
                 const totalRatio = mixRatios.reduce((a, b) => a + b, 0);
-                const percentage = totalRatio > 0 ? (mixRatios[i] / totalRatio * 100) : 0;
-                const ml = (percentage * totalVolume / 100).toFixed(1);
-                
-                if (percentage < 0.1) return null;
-                
+                const items = baseColors
+                  .map((color, i) => {
+                    const percentage = totalRatio > 0 ? (mixRatios[i] / totalRatio * 100) : 0;
+                    return { color, percentage, ml: (percentage * totalVolume) / 100 };
+                  })
+                  .filter(item => item.percentage >= 0.1);
+                const dropCounts = toDropRatio(items.map(item => item.percentage));
+                const dropParts = items.map((item, index) => ({
+                  color: item.color.hex,
+                  name: item.color.name.replace(/^光泽/, ''),
+                  drops: dropCounts[index] ?? 0,
+                }));
                 return (
-                  <div key={color.id} className="flex items-center gap-1.5 text-xs">
-                    <div
-                      className="w-3.5 h-3.5 rounded border-2 border-white dark:border-slate-600"
-                      style={{ backgroundColor: color.hex }}
+                  <>
+                    <DropRatioBar
+                      parts={dropParts}
+                      lang={lang}
+                      multiplier={dropMultiplier}
+                      onMultiplierChange={setDropMultiplier}
                     />
-                    <span className="font-mono text-slate-600 dark:text-slate-400">
-                      {color.brand} {color.code}
-                    </span>
-                    <span className="flex-1 text-slate-500 dark:text-slate-500">{color.name}</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{ml}ml</span>
-                    <span className="text-slate-500 dark:text-slate-500">({percentage.toFixed(1)}%)</span>
-                  </div>
+                    {items.map((item, index) => (
+                      <div key={item.color.id} className="flex items-center gap-1.5 text-xs">
+                        <div
+                          className="w-3.5 h-3.5 rounded border-2 border-white dark:border-slate-600"
+                          style={{ backgroundColor: item.color.hex }}
+                        />
+                        <span className="font-mono text-slate-600 dark:text-slate-400">
+                          {item.color.brand} {item.color.code}
+                        </span>
+                        <span className="flex-1 text-slate-500 dark:text-slate-500">{item.color.name}</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          {dropCounts[index]
+                            ? `${dropCounts[index] * dropMultiplier}${uiText[lang].dropUnit} · `
+                            : ''}
+                          {item.ml.toFixed(1)}ml
+                        </span>
+                        <span className="text-slate-500 dark:text-slate-500">({item.percentage.toFixed(1)}%)</span>
+                      </div>
+                    ))}
+                  </>
                 );
-              })
+              })()
             ) : (
               <div className="flex items-center justify-center h-[60px]">
                 <p className="text-xs text-slate-400 dark:text-slate-500">{t.noMix}</p>

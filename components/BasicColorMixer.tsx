@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Language, BasicMixerCache, BaseColor } from '../types';
 import { lerp, rgbToLatent, latentToRgb } from '../utils/mixbox';
-import { toDropRatio } from '../utils/dropRatio';
+import { toDripRatio } from '../utils/dropRatio';
 import DropRatioBar from './DropRatioBar';
 import { translations as uiText } from '../utils/translations';
 
@@ -727,7 +727,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
                     return { color, percentage, ml: (percentage * totalVolume) / 100 };
                   })
                   .filter(item => item.percentage >= 0.1);
-                const dropCounts = toDropRatio(items.map(item => item.percentage));
+                const dropCounts = toDripRatio(items.map(item => item.percentage));
                 const dropParts = items.map((item, index) => ({
                   color: item.color.hex,
                   name: item.color.name.replace(/^光泽/, ''),

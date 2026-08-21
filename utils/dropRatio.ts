@@ -4,6 +4,8 @@
  */
 
 export const DROP_RATIO_MAX_TOTAL = 16;
+/** Ignore pigments below this share in the drip display — one drop would overshoot. */
+export const DROP_RATIO_MIN_SHARE = 0.06;
 const COMPLEXITY_WEIGHT = 0.01;
 
 const gcd = (left: number, right: number): number => {
@@ -103,6 +105,33 @@ export const toDropRatio = (
     return activeIndex >= 0 ? reduced[activeIndex] : 0;
   });
 };
+
+/**
+ * Zero out trace pigments that a paint-bottle drop cannot dose accurately.
+ * The largest component is always kept. Display-only — do not use for beaker ml.
+ */
+export const maskDrippableAmounts = (
+  amounts: number[],
+  minShare: number = DROP_RATIO_MIN_SHARE
+): number[] => {
+  const sanitized = amounts.map(amount => (
+    Number.isFinite(amount) && amount > 0 ? amount : 0
+  ));
+  const sum = sanitized.reduce((total, amount) => total + amount, 0);
+  if (sum <= 0) return sanitized;
+  const peak = Math.max(...sanitized);
+  return sanitized.map(amount => {
+    if (amount <= 0) return 0;
+    if (amount >= peak - 1e-12) return amount;
+    return amount / sum >= minShare ? amount : 0;
+  });
+};
+
+/** Integer drop ratio for the on-screen 几比几 module (trace pigments omitted). */
+export const toDripRatio = (
+  amounts: number[],
+  maxTotal: number = DROP_RATIO_MAX_TOTAL
+): number[] => toDropRatio(maskDrippableAmounts(amounts), maxTotal);
 
 export const formatDropRatioLine = (
   parts: { name: string; drops: number }[],

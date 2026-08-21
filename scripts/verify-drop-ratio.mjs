@@ -1,4 +1,4 @@
-import { toDropRatio, formatDropRatioLine } from '../utils/dropRatio.ts';
+import { toDropRatio, toDripRatio, formatDropRatioLine } from '../utils/dropRatio.ts';
 
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -19,6 +19,11 @@ assert(same(three, [4, 3, 2]), '47/31/22 becomes 4:3:2');
 
 const gray = toDropRatio([50.2, 49.8]);
 assert(same(gray, [1, 1]), 'near-even gray is 1:1');
+
+assert(same(toDripRatio([94, 4, 2]), [1, 0, 0]), 'trace tints under 6% are omitted from drip ratio');
+assert(same(toDripRatio([90, 8, 2]), toDropRatio([90, 8, 0])), '2% is omitted, 8% stays drippable');
+assert(same(toDripRatio([0.47, 0.31, 0.22]), [4, 3, 2]), 'major three-way mix is unchanged');
+assert(same(toDripRatio([0.9, 0.1]), [9, 1]), '10% tint stays as 9:1');
 
 assert(
   formatDropRatioLine([

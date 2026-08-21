@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { ColorData, Language, RALColor } from '../types';
 import { translations } from '../utils/translations';
 import { findNearestRAL, calculateMixboxInverseRatios, EXTENDED_MIXING_COLORS, getContrastColor, MIXBOX_INVERSE_RATIO_THRESHOLD } from '../utils/colorUtils';
-import { formatDropRatioLine, toDropRatio } from '../utils/dropRatio';
+import { formatDropRatioLine, toDripRatio } from '../utils/dropRatio';
 import html2canvas from 'html2canvas';
 
 // 8色扩展调色板的颜色名称映射
@@ -26,7 +26,7 @@ const getMixboxRecipeText = (hex: string, lang: Language): string => {
     .sort((a, b) => b.ratio - a.ratio);
   
   if (validColors.length === 0) return '-';
-  const drops = toDropRatio(validColors.map(item => item.ratio));
+  const drops = toDripRatio(validColors.map(item => item.ratio));
   return formatDropRatioLine(
     validColors.map((item, index) => ({ name: item.name, drops: drops[index] ?? 0 }))
   );

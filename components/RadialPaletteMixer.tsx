@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ColorData, Language, RadialMixerCache, SliderState } from '../types';
 import { hexToRgb, mixboxMultiBlend } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
-import { toDropRatio } from '../utils/dropRatio';
+import { toDripRatio } from '../utils/dropRatio';
 import DropRatioBar from './DropRatioBar';
 import * as mixbox from '../utils/mixbox';
 
@@ -729,7 +729,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   };
   
   const volumes = calculateVolumes();
-  const dropCounts = toDropRatio(volumes.map(vol => vol.volume || vol.percentage));
+  const dropCounts = toDripRatio(volumes.map(vol => vol.volume || vol.percentage));
   const dropParts = volumes.map((vol, index) => ({
     color: vol.hex,
     name: availableColors.find(color => color.hex.toUpperCase() === vol.hex.toUpperCase())?.hex.replace('#', '') ?? vol.hex.replace('#', ''),

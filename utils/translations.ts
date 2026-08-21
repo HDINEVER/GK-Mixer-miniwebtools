@@ -66,7 +66,7 @@ export const translations = {
     dropUnit: 'drops',
     dropPure: 'Single pigment — no mixing needed',
     dropPureHint: 'Use this paint as-is.',
-    dropApprox: 'Integer drops approximate the exact millilitre recipe.'
+    dropApprox: 'Drops keep only bottle-controllable pigments. Trace tints stay in the millilitre recipe.'
   },
   zh: {
     title: 'GK_混色模拟器.exe',
@@ -133,7 +133,7 @@ export const translations = {
     dropUnit: '滴',
     dropPure: '纯色，无需混合',
     dropPureHint: '直接使用这种颜料。',
-    dropApprox: '滴数是方便调配的整数比，精确用量见毫升。'
+    dropApprox: '滴数只保留能稳定控制的主要颜料，微量色仍以毫升配方为准。'
   },
   ja: {
     title: 'GK_調色シミュレーター.exe',
@@ -200,6 +200,6 @@ export const translations = {
     dropUnit: '滴',
     dropPure: '単色のため混合不要',
     dropPureHint: 'この塗料をそのまま使えます。',
-    dropApprox: '滴数は使いやすい整数比です。正確な量はミリリットルを参照。'
+    dropApprox: '滴数は安定して量れる主顔料のみ。微量はミリリットルを参照。'
   }
 };

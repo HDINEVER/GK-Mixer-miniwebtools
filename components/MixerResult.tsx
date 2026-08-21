@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { ColorData, PaintBrand, RALColor, Language, ColorSpace, MixerResultCache, MixingMode } from '../types';
 import { findNearestPaints, findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, calculateMixboxInverseRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS, EXTENDED_MIXING_COLORS, PROFESSIONAL_RATIO_THRESHOLD, MIXBOX_INVERSE_RATIO_THRESHOLD } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
-import { formatDropRatioLine, toDropRatio } from '../utils/dropRatio';
+import { formatDropRatioLine, toDripRatio } from '../utils/dropRatio';
 import DropRatioBar from './DropRatioBar';
 import * as mixbox from '../utils/mixbox';
 
@@ -324,7 +324,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
   const legendLayers = useMemo(() => mixLayers.slice().reverse(), [mixLayers]);
 
   const dropParts = useMemo(() => {
-    const counts = toDropRatio(legendLayers.map(layer => layer.volume));
+    const counts = toDripRatio(legendLayers.map(layer => layer.volume));
     return legendLayers.map((layer, index) => ({
       color: layer.color,
       name: shortLayerName(layer, lang),
@@ -563,13 +563,6 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                         <span>{t.totalVolume}: {bottleVolume}ml</span>
                         <span className="text-macaron-purple">{selectedBasePaint ? 'BASE MODE' : 'PURE MODE'}</span>
                      </div>
-
-                     <DropRatioBar
-                        parts={dropParts}
-                        lang={lang}
-                        multiplier={dropMultiplier}
-                        onMultiplierChange={setDropMultiplier}
-                     />
                      
                      {/* Color Analysis Section */}
                      {mixLayers.length > 1 && (() => {
@@ -781,6 +774,13 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                 )}
             </div>
 
+            <DropRatioBar
+                parts={dropParts}
+                lang={lang}
+                multiplier={dropMultiplier}
+                onMultiplierChange={setDropMultiplier}
+            />
+
             {/* RAL Color Match */}
             {ralMatch && (
                 <div>
@@ -887,7 +887,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
                     <div className="p-3 bg-purple-100/50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
                       <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mb-2">⚖️ 配比总结</div>
                       {(() => {
-                        const dropCounts = toDropRatio(professionalRecipe.ratios.map(item => item.percentage));
+                        const dropCounts = toDripRatio(professionalRecipe.ratios.map(item => item.percentage));
                         const line = formatDropRatioLine(
                           professionalRecipe.ratios.map((ratio, idx) => ({
                             name: ratio.color.split(' ')[0],

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { ColorData, PaintBrand, RALColor, Language, ColorSpace, MixerResultCache, MixingMode } from '../types';
-import { findNearestPaints, findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, calculateMixboxInverseRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS, EXTENDED_MIXING_COLORS, PROFESSIONAL_RATIO_THRESHOLD, MIXBOX_INVERSE_RATIO_THRESHOLD } from '../utils/colorUtils';
+import { ColorData, PaintBrand, RALColor, Language, ColorSpace, MixerResultCache, MixingMode, CatalogPaint } from '../types';
+import { findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, calculateMixboxInverseRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS, EXTENDED_MIXING_COLORS, PROFESSIONAL_RATIO_THRESHOLD, MIXBOX_INVERSE_RATIO_THRESHOLD } from '../utils/colorUtils';
+import BrandMatchPanel from './BrandMatchPanel';
 import { translations } from '../utils/translations';
 import { formatDropRatioLine, toDropRatio } from '../utils/dropRatio';
 import DropRatioBar from './DropRatioBar';
@@ -92,6 +93,7 @@ interface MixerResultProps {
   onAddColor?: (hex: string) => void;
   cache?: MixerResultCache;
   onCacheUpdate?: (cache: MixerResultCache) => void;
+  onAssignCatalogPaint?: (paint: CatalogPaint) => void;
 }
 
 interface Layer {
@@ -117,8 +119,9 @@ const PIGMENT_SHORT_NAME: Record<string, Record<Language, string>> = {
 const shortLayerName = (layer: Layer, lang: Language): string =>
   PIGMENT_SHORT_NAME[layer.color.toUpperCase()]?.[lang] ?? layer.label;
 
-const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'srgb', onAddColor, cache, onCacheUpdate }) => {
-  const [nearest, setNearest] = useState<PaintBrand[]>([]);
+const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colorSpaceProp, onAddColor, cache, onCacheUpdate, onAssignCatalogPaint }) => {
+  const colorSpace: ColorSpace =
+    colorSpaceProp === 'display-p3' || colorSpaceProp === 'adobe-rgb' ? colorSpaceProp : 'srgb';
   const [ralMatch, setRalMatch] = useState<RALColor | null>(null);
   // Use cache values if available, otherwise use defaults
   const [bottleVolume, setBottleVolume] = useState<number>(cache?.bottleVolume ?? 20);
@@ -161,10 +164,6 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
       setAddedToPalette(false); // Reset added state when color changes
       setDropMultiplier(1);
       
-      const found = findNearestPaints(color.hex);
-      setNearest(found);
-      
-      // Find nearest RAL color
       const ral = findNearestRAL(color.rgb);
       setRalMatch(ral);
       
@@ -260,8 +259,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
         if (mixingMode === 'professional') {
           // Professional mode uses HSB analysis
           const recipe = calculateProfessionalRecipe(color.hex);
-          setProfessionalRecipe(recipe);
-          
+
           // Use ratios from professional recipe
           const totalWeight = recipe.ratios.reduce((sum, r) => sum + r.percentage, 0);
           
@@ -740,46 +738,16 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace = 'sr
         {/* Right: Selection & AI */}
         <div className="flex-1 flex flex-col gap-6">
             
-            {/* Nearest Paints Selection */}
-            <div>
-                <h3 className="text-xs font-bold text-macaron-purple tracking-wider mb-2 flex items-center gap-2">
-                  {t.closestMatches}
-                  <span className="text-[10px] font-normal bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded">
-                    {lang === 'zh' ? '推荐' : lang === 'ja' ? '推奨' : 'Recommended'}
-                  </span>
-                </h3>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-3">
-                  {lang === 'zh' ? '点击选择作为底漆，或直接使用纯混合模式' : lang === 'ja' ? 'ベースペイントとして選択、または純粋な混合モードを使用' : 'Click to use as base paint, or use pure mixing mode'}
-                </div>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                  {nearest.map((paint) => (
-                    <button 
-                        key={paint.id} 
-                        onClick={() => handleBasePaintToggle(paint)}
-                        className={`w-full flex items-center gap-3 p-2 rounded-md transition-all border ${selectedBasePaint?.id === paint.id ? 'bg-macaron-purple/10 border-macaron-purple ring-1 ring-macaron-purple' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                    >
-                      <div className="w-8 h-8 rounded-md border border-slate-200 dark:border-slate-600 shadow-sm flex-shrink-0" style={{ backgroundColor: paint.hex }}></div>
-                      <div className="flex-1 text-left">
-                        <div className="flex justify-between items-center">
-                            <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-200">[{paint.brand}] {paint.code}</span>
-                            {selectedBasePaint?.id === paint.id && (
-                                <span className="text-[10px] bg-macaron-purple text-white px-1 rounded flex items-center gap-1">
-                                    ✓ <span className="hidden sm:inline">ACTIVE</span>
-                                </span>
-                            )}
-                        </div>
-                        <span className="font-mono text-[10px] text-slate-500 dark:text-slate-500 truncate block">{paint.name}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                {/* Deselect Hint */}
-                {selectedBasePaint && (
-                    <div className="text-[10px] text-slate-400 text-center mt-2 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300" onClick={() => setSelectedBasePaint(null)}>
-                        {t.tapToDeselect}
-                    </div>
-                )}
-            </div>
+            <BrandMatchPanel
+              hex={color.hex}
+              lang={lang}
+              selectable
+              selectedId={selectedBasePaint?.id}
+              assignedId={color.assignedPaint?.id}
+              hasSamplePoint={typeof color.sampleX === "number" && typeof color.sampleY === "number"}
+              onSelect={handleBasePaintToggle}
+              onAssignCatalog={onAssignCatalogPaint}
+            />
 
             {/* RAL Color Match */}
             {ralMatch && (

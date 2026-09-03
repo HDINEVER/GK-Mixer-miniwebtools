@@ -1,15 +1,19 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import DropZone from './components/DropZone';
 import ColorPalette from './components/ColorPalette';
 import MixerResult from './components/MixerResult';
 import PaletteVisualizer from './components/PaletteVisualizer';
 import RadialPaletteMixer from './components/RadialPaletteMixer';
 import BasicColorMixer from './components/BasicColorMixer';
+import PaintCatalogBrowser from './components/PaintCatalogBrowser';
+import ColorLoupe, { sampleCanvasAtClient } from './components/ColorLoupe';
+import ExtractMarkerOverlay from './components/ExtractMarkerOverlay';
 import Loader from './components/Loader';
-import { ColorData, AppMode, RGB, Language, Theme, ColorSpace, MixerResultCache, RadialMixerCache, BasicMixerCache, MixingMode, SliderState, BaseColor } from './types';
+import { ColorData, AppMode, RGB, Language, Theme, ColorSpace, MixerResultCache, RadialMixerCache, BasicMixerCache, MixingMode, SliderState, BaseColor, CatalogPaint } from './types';
 import { extractProminentColors, generateId, rgbToCmyk, rgbToHex, hexToRgb, rgbToHsb, rgbToLab } from './utils/colorUtils';
 import { convertToWorkingSpace, isInGamut } from './utils/colorSpaceConverter';
 import { translations } from './utils/translations';
+import { colorsToMarkers, exportAnnotatedImage } from './utils/exportAnnotatedImage';
 
 // Default base colors for BasicColorMixer
 const DEFAULT_BASE_COLORS: BaseColor[] = [
@@ -31,7 +35,7 @@ const App: React.FC = () => {
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [colors, setColors] = useState<ColorData[]>([]);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
-  const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer' | 'radial' | 'basic'>('mixer');
+  const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer' | 'radial' | 'basic' | 'catalog'>('mixer');
   
   // === Cache states for preserving component states across tab switches ===
   // MixerResult cache
@@ -61,6 +65,8 @@ const App: React.FC = () => {
   const [isPicking, setIsPicking] = useState(false);
   const [isContinuousPicking, setIsContinuousPicking] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [loupe, setLoupe] = useState<{ x: number; y: number; hex: string } | null>(null);
+  const pinchStart = useRef<{ distance: number; scale: number } | null>(null);
 
   // Zoom State
   const [scale, setScale] = useState(1);
@@ -71,9 +77,33 @@ const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const transformRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
+  const changeImageInputRef = useRef<HTMLInputElement>(null);
+  const [canvasBox, setCanvasBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
+  const [isExporting, setIsExporting] = useState(false);
 
   const selectedColor = colors.find(c => c.id === selectedColorId) || null;
   const t = translations[lang];
+  const extractMarkers = useMemo(() => colorsToMarkers(colors), [colors]);
+
+  const syncCanvasBox = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    setCanvasBox({
+      left: canvas.offsetLeft,
+      top: canvas.offsetTop,
+      width: canvas.offsetWidth,
+      height: canvas.offsetHeight,
+    });
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !sourceImage) return;
+    syncCanvasBox();
+    const observer = new ResizeObserver(syncCanvasBox);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [sourceImage, scale, syncCanvasBox]);
 
   // Dark Mode Effect
   useEffect(() => {
@@ -98,6 +128,8 @@ const App: React.FC = () => {
       if (extracted.length > 0) {
         setSelectedColorId(extracted[0].id);
       }
+      setIsPicking(true);
+      setIsContinuousPicking(true);
     } finally {
       setIsExtracting(false);
     }
@@ -182,56 +214,55 @@ const App: React.FC = () => {
     }
   };
 
+  const commitSampledRgb = (rgbInput: RGB, sample?: { nx: number; ny: number }) => {
+    let rgb = rgbInput;
+    if (colorSpace === 'adobe-rgb') {
+      rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
+    }
+    const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+    const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
+    const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
+    const newColor: ColorData = {
+      id: generateId(),
+      hex,
+      rgb,
+      cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
+      hsb,
+      lab,
+      source: 'manual',
+      colorSpace: colorSpace,
+      sampleX: sample?.nx,
+      sampleY: sample?.ny,
+    };
+    setColors(prev => [newColor, ...prev]);
+    setSelectedColorId(newColor.id);
+    setRightPanelTab('mixer');
+    if (!isContinuousPicking) {
+      setIsPicking(false);
+      setLoupe(null);
+    }
+  };
+
+  const previewAtClient = (clientX: number, clientY: number) => {
+    if (!canvasRef.current) return;
+    const rgb = sampleCanvasAtClient(canvasRef.current, clientX, clientY);
+    if (!rgb) {
+      setLoupe(null);
+      return;
+    }
+    setLoupe({ x: clientX, y: clientY, hex: rgbToHex(rgb.r, rgb.g, rgb.b) });
+  };
+
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isPicking || !canvasRef.current) return;
-    
-    const x = e.nativeEvent.offsetX;
-    const y = e.nativeEvent.offsetY;
+    const rgb = sampleCanvasAtClient(canvasRef.current, e.clientX, e.clientY);
+    if (!rgb) return;
+    commitSampledRgb(rgb, { nx: rgb.nx, ny: rgb.ny });
+  };
 
-    // Use user-selected colorspace for color extraction
-    const ctx = canvasRef.current.getContext('2d', { 
-      colorSpace: colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace, // Adobe RGB fallback to sRGB in canvas
-      willReadFrequently: true 
-    });
-    if (ctx) {
-        const scaleX = canvasRef.current.width / canvasRef.current.offsetWidth;
-        const scaleY = canvasRef.current.height / canvasRef.current.offsetHeight;
-        
-        const pixelX = Math.floor(x * scaleX);
-        const pixelY = Math.floor(y * scaleY);
-
-        const pixel = ctx.getImageData(pixelX, pixelY, 1, 1).data;
-        let rgb: RGB = { r: pixel[0], g: pixel[1], b: pixel[2] };
-        
-        // 如果是Adobe RGB模式,需要转换到工作空间(sRGB)
-        if (colorSpace === 'adobe-rgb') {
-          rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
-        }
-        
-        const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-        
-        // 计算 HSB 和 LAB 色彩空间
-        const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
-        const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
-        
-        const newColor: ColorData = {
-            id: generateId(),
-            hex,
-            rgb,
-            cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
-            hsb,
-            lab,
-            source: 'manual',
-            colorSpace: colorSpace
-        };
-
-        setColors(prev => [newColor, ...prev]);
-        setSelectedColorId(newColor.id);
-        // 如果不是连续取色模式,点击后关闭取色
-        if (!isContinuousPicking) {
-          setIsPicking(false);
-        }
-    }
+  const handleCanvasPointerMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isPicking) return;
+    previewAtClient(e.clientX, e.clientY);
   };
 
   // Zoom Handlers
@@ -239,11 +270,100 @@ const App: React.FC = () => {
     if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = -e.deltaY * 0.001;
-        setScale(s => Math.min(Math.max(1, s + delta), 5));
+        setScale(s => Math.min(Math.max(1, s + delta), 8));
     }
   };
 
-  const handleZoomIn = () => setScale(s => Math.min(s + 0.5, 5));
+  const hasSamplePoint = (color: ColorData) =>
+    Number.isFinite(color.sampleX) && Number.isFinite(color.sampleY);
+
+  const defaultCardPos = (nx: number, ny: number) => ({
+    labelNx: nx > 0.55 ? Math.max(0.02, nx - 0.22) : Math.min(0.78, nx + 0.05),
+    labelNy: Math.min(0.88, Math.max(0.02, ny - 0.06)),
+  });
+
+  const handleUnassignPaint = (colorId: string) => {
+    setColors((prev) =>
+      prev.map((color) =>
+        color.id === colorId
+          ? { ...color, assignedPaint: undefined, labelNx: undefined, labelNy: undefined }
+          : color
+      )
+    );
+  };
+
+  const handleAssignCatalogPaint = (paint: CatalogPaint) => {
+    let targetId: string | null = null;
+    setColors((prev) => {
+      const selected = prev.find((color) => color.id === selectedColorId);
+      const target =
+        selected && hasSamplePoint(selected)
+          ? selected
+          : prev.find(hasSamplePoint) ?? selected;
+      if (!target) return prev;
+      targetId = target.id;
+      const place =
+        hasSamplePoint(target) && target.labelNx == null && target.labelNy == null
+          ? defaultCardPos(target.sampleX!, target.sampleY!)
+          : {};
+      return prev.map((color) =>
+        color.id === target.id ? { ...color, assignedPaint: paint, ...place } : color
+      );
+    });
+    if (targetId) {
+      setSelectedColorId(targetId);
+      setRightPanelTab("mixer");
+    }
+  };
+
+  const handleMoveLabel = useCallback((id: string, labelNx: number, labelNy: number) => {
+    setColors((prev) =>
+      prev.map((color) =>
+        color.id === id ? { ...color, labelNx, labelNy } : color
+      )
+    );
+  }, []);
+
+  const handleExportAnnotated = async () => {
+    const canvas = canvasRef.current;
+    const assigned = extractMarkers.filter((marker) => marker.paint);
+    if (!canvas || !assigned.length) return;
+    setIsExporting(true);
+    try {
+      await exportAnnotatedImage(canvas, extractMarkers);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const assignedMarkers = extractMarkers.filter((marker) => marker.paint);
+
+  const handleCopyAssignments = async () => {
+    const text = assignedMarkers
+      .map((marker) => {
+        const paint = marker.paint!;
+        return `${paint.brand} ${paint.code} ${paint.name} ${paint.hex}`;
+      })
+      .join("\n");
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleClearAssignments = () => {
+    setColors((prev) =>
+      prev.map((color) =>
+        color.assignedPaint
+          ? { ...color, assignedPaint: undefined, labelNx: undefined, labelNy: undefined }
+          : color
+      )
+    );
+  };
+
+  const handleZoomIn = () => setScale(s => Math.min(s + 0.5, 8));
   const handleZoomOut = () => setScale(s => Math.max(1, s - 0.5));
   const handleReset = () => { setScale(1); setOffset({x:0, y:0}); };
 
@@ -293,6 +413,13 @@ const App: React.FC = () => {
 
   // Touch Handlers for Mobile - Optimized
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      pinchStart.current = { distance, scale };
+      setIsDragging(false);
+      return;
+    }
     if (!isPicking && scale > 1 && e.touches.length === 1) {
       setIsDragging(true);
       const touch = e.touches[0];
@@ -302,6 +429,13 @@ const App: React.FC = () => {
   }, [isPicking, scale, offset]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchStart.current) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const next = pinchStart.current.scale * (distance / pinchStart.current.distance);
+      setScale(Math.min(Math.max(1, next), 8));
+      return;
+    }
     if (isDragging && e.touches.length === 1) {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
@@ -314,10 +448,14 @@ const App: React.FC = () => {
         };
         updateTransform();
       });
+    } else if (isPicking && e.touches.length === 1 && canvasRef.current) {
+      const touch = e.touches[0];
+      previewAtClient(touch.clientX, touch.clientY);
     }
-  }, [isDragging, updateTransform]);
+  }, [isDragging, updateTransform, isPicking, scale]);
 
   const handleTouchEnd = useCallback(() => {
+    pinchStart.current = null;
     if (isDragging) {
       setOffset({ ...currentOffset.current });
     }
@@ -344,9 +482,10 @@ const App: React.FC = () => {
              canvas.width = img.naturalWidth;
              canvas.height = img.naturalHeight;
              ctx.drawImage(img, 0, 0);
+             requestAnimationFrame(syncCanvasBox);
         }
     }
-  }, [sourceImage, colorSpace]); // Re-render canvas when colorSpace changes
+  }, [sourceImage, colorSpace, syncCanvasBox]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 flex flex-col">
@@ -443,10 +582,30 @@ const App: React.FC = () => {
                 <div className="flex flex-col gap-4">
                     {/* Toolbar */}
                     <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded-lg">
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <button onClick={handleZoomIn} className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue">{t.zoomIn}</button>
                             <button onClick={handleZoomOut} className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue">{t.zoomOut}</button>
                             <button onClick={handleReset} className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue">{t.reset}</button>
+                            <button
+                                onClick={() => changeImageInputRef.current?.click()}
+                                className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue"
+                            >
+                                {t.changeImage}
+                            </button>
+                            <input
+                                ref={changeImageInputRef}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                className="hidden"
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  if (!file) return;
+                                  const img = new Image();
+                                  img.onload = () => handleImageLoaded(file, img);
+                                  img.src = URL.createObjectURL(file);
+                                  event.target.value = '';
+                                }}
+                            />
                         </div>
                         <button 
                             onClick={() => {
@@ -466,12 +625,15 @@ const App: React.FC = () => {
                     {/* Viewport */}
                     <div 
                         ref={containerRef}
-                        className="relative h-80 w-full overflow-hidden rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-move touch-none"
+                        className="relative h-[28rem] w-full overflow-hidden rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-move touch-none"
                         onWheel={handleWheel}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
+                        onMouseLeave={() => {
+                          handleMouseUp();
+                          setLoupe(null);
+                        }}
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
@@ -486,6 +648,7 @@ const App: React.FC = () => {
                                 canvas.width = img.naturalWidth;
                                 canvas.height = img.naturalHeight;
                                 ctx.drawImage(img, 0, 0);
+                                requestAnimationFrame(syncCanvasBox);
                             }
                         }}/>
 
@@ -503,24 +666,135 @@ const App: React.FC = () => {
                                 willChange: isDragging ? 'transform' : 'auto'
                             }}
                         >
+                            <div className="relative flex h-full w-full items-center justify-center">
                             <canvas 
                                 ref={canvasRef}
                                 onClick={handleCanvasClick}
-                                className={`max-w-none max-h-full shadow-lg ${isPicking ? 'cursor-crosshair ring-2 ring-macaron-green' : ''}`}
+                                onMouseMove={handleCanvasPointerMove}
+                                onMouseLeave={() => setLoupe(null)}
+                                className={`block max-h-full max-w-full shadow-lg ${isPicking ? 'cursor-crosshair ring-2 ring-macaron-green' : ''}`}
                                 style={{
-                                    // Prevent canvas from stretching, keep native aspect ratio if possible or fit contain
                                     maxWidth: '100%',
                                     maxHeight: '100%',
                                     objectFit: 'contain'
                                 }}
                             />
+                            {canvasBox.width > 0 && (
+                              <div
+                                className="pointer-events-none absolute overflow-visible"
+                                style={{
+                                  left: canvasBox.left,
+                                  top: canvasBox.top,
+                                  width: canvasBox.width,
+                                  height: canvasBox.height,
+                                  zIndex: 5,
+                                }}
+                              >
+                                <ExtractMarkerOverlay
+                                    markers={extractMarkers}
+                                    selectedId={selectedColorId}
+                                    viewScale={scale}
+                                    onSelect={setSelectedColorId}
+                                    onRemove={handleUnassignPaint}
+                                    onMoveLabel={handleMoveLabel}
+                                />
+                              </div>
+                            )}
+                            </div>
                         </div>
 
                         {isPicking && (
-                            <div className="absolute top-4 left-4 bg-black/70 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm animate-pulse pointer-events-none z-10">
+                            <div className="absolute top-4 left-4 bg-black/70 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm pointer-events-none z-10">
                                 {t.clickToPick}
                             </div>
                         )}
+                        <div className="absolute top-3 right-3 z-20 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleExportAnnotated}
+                            disabled={!extractMarkers.some((marker) => marker.paint) || isExporting}
+                            className="flex items-center gap-1.5 rounded-lg bg-slate-900/80 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg backdrop-blur-sm hover:bg-slate-900 disabled:opacity-40"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-3.5 w-3.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            {isExporting ? t.exporting : t.exportAnnotated}
+                          </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {assignedMarkers.length > 0 && (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                            {lang === "zh" ? "油漆标注" : lang === "ja" ? "塗料割り当て" : "Paint Assignments"}
+                            <span className="ml-1 font-normal text-slate-400">
+                                · {assignedMarkers.length} {lang === "zh" ? "个色卡" : "markers"}
+                            </span>
+                        </span>
+                        <div className="flex gap-3 text-[11px] font-bold">
+                            <button type="button" onClick={handleCopyAssignments} className="text-sky-600 hover:underline">
+                                {lang === "zh" ? "复制" : "Copy"}
+                            </button>
+                            <button type="button" onClick={handleClearAssignments} className="text-red-500 hover:underline">
+                                {lang === "zh" ? "全部清除" : "Clear all"}
+                            </button>
+                        </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        {assignedMarkers.map((marker) => {
+                            const paint = marker.paint!;
+                            return (
+                                <div
+                                    key={marker.id}
+                                    className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 ${
+                                        marker.id === selectedColorId
+                                            ? "border-sky-300 bg-sky-50 dark:border-sky-700 dark:bg-sky-950/40"
+                                            : "border-slate-100 dark:border-slate-800"
+                                    }`}
+                                >
+                                    <button
+                                        type="button"
+                                        className="h-7 w-7 flex-shrink-0 rounded-md border border-slate-200"
+                                        style={{ backgroundColor: paint.hex }}
+                                        onClick={() => setSelectedColorId(marker.id)}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="min-w-0 flex-1 text-left"
+                                        onClick={() => {
+                                            setSelectedColorId(marker.id);
+                                            setRightPanelTab("mixer");
+                                        }}
+                                    >
+                                        <div className="truncate text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                            {paint.brand} {paint.code} {paint.name}
+                                        </div>
+                                        <div className="font-mono text-[10px] text-slate-400">{paint.hex}</div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedColorId(marker.id);
+                                            setRightPanelTab("mixer");
+                                        }}
+                                        className="flex-shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700"
+                                    >
+                                        {lang === "zh" ? "混色" : "Mix"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleUnassignPaint(marker.id)}
+                                        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-[10px] text-white"
+                                        aria-label="Remove"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -592,6 +866,12 @@ const App: React.FC = () => {
                         >
                             {t.tabVisualizer}
                         </button>
+                        <button 
+                            onClick={() => setRightPanelTab('catalog')}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'catalog' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            {lang === 'zh' ? '数据库' : lang === 'ja' ? '色庫' : 'CATALOG'}
+                        </button>
                     </div>
                     
                     {rightPanelTab === 'mixer' && (
@@ -611,6 +891,7 @@ const App: React.FC = () => {
                         onAddColor={handleAddColor}
                         cache={mixerResultCache}
                         onCacheUpdate={setMixerResultCache}
+                        onAssignCatalogPaint={handleAssignCatalogPaint}
                     />
                 ) : rightPanelTab === 'radial' ? (
                     <RadialPaletteMixer
@@ -620,6 +901,7 @@ const App: React.FC = () => {
                         onAddColors={handleAddColors}
                         cache={radialMixerCache}
                         onCacheUpdate={setRadialMixerCache}
+                        onAssignCatalogPaint={handleAssignCatalogPaint}
                     />
                 ) : rightPanelTab === 'basic' ? (
                     <BasicColorMixer 
@@ -627,11 +909,20 @@ const App: React.FC = () => {
                         cache={basicMixerCache}
                         onCacheUpdate={setBasicMixerCache}
                     />
+                ) : rightPanelTab === 'catalog' ? (
+                    <PaintCatalogBrowser
+                        lang={lang}
+                        onPickHex={handleAddColor}
+                    />
                 ) : (
                     <PaletteVisualizer 
                         sourceImage={sourceImage}
                         colors={colors}
                         lang={lang}
+                        selectedColorId={selectedColorId}
+                        onSelectColor={setSelectedColorId}
+                        onUnassignPaint={handleUnassignPaint}
+                        onMoveLabel={handleMoveLabel}
                     />
                 )}
            </div>
@@ -723,12 +1014,23 @@ const App: React.FC = () => {
                 <span>{lang === 'zh' ? '特别鸣谢' : lang === 'ja' ? '特別感謝' : 'Special Thanks'}: スミレ</span>
               </div>
               <div className="mt-0.5 text-[8px] opacity-60">
-                {lang === 'zh' ? '引用: Mixbox 2.0 · RAL 色库' : lang === 'ja' ? '引用: Mixbox 2.0 · RAL カラーライブラリ' : 'Powered by: Mixbox 2.0 · RAL Color Library'}
+                {lang === 'zh'
+                  ? '引用: Mixbox 2.0 · RAL · miniature-paints · ModKit Swatch'
+                  : lang === 'ja'
+                    ? '引用: Mixbox 2.0 · RAL · miniature-paints · ModKit Swatch'
+                    : 'Powered by: Mixbox 2.0 · RAL · miniature-paints · ModKit Swatch'}
               </div>
             </div>
           </div>
         </div>
       </footer>
+      <ColorLoupe
+        visible={!!loupe && isPicking}
+        clientX={loupe?.x ?? 0}
+        clientY={loupe?.y ?? 0}
+        hex={loupe?.hex ?? '#000000'}
+        canvas={canvasRef.current}
+      />
     </div>
   );
 };

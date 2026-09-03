@@ -36,17 +36,47 @@ export interface ColorData {
   lab: LAB;   // 新增：LAB 色彩空间
   source: 'auto' | 'manual';
   colorSpace?: ColorSpace;
+  sampleX?: number;
+  sampleY?: number;
+  labelNx?: number;
+  labelNy?: number;
+  assignedPaint?: CatalogPaint;
 }
 
 export type PaintType = 'hobby' | 'ral' | 'pantone';
 
 export interface PaintBrand {
   id: string;
-  brand: 'Mr.Hobby' | 'Gaia' | 'Jumpwind' | 'Gunze';
+  brand: string;
   code: string;
   name: string;
   hex: string;
   type?: PaintType; // 漆料类型标识
+}
+
+export type PaintFinish = 'standard' | 'metallic' | 'wash' | 'ink' | 'other';
+
+export interface CatalogPaint {
+  id: string;
+  brand: string;
+  code: string;
+  name: string;
+  hex: string;
+  set: string;
+  finish: string;
+  source: string;
+  approx: boolean;
+  lab: [number, number, number];
+}
+
+export interface PaintMatch {
+  paint: CatalogPaint;
+  deltaE: number;
+}
+
+export interface PaintBrandGroup {
+  brand: string;
+  matches: PaintMatch[];
 }
 
 // RAL 工业标准色卡

@@ -1,43 +1,22 @@
 {
   "color-space-for-untagged-svg-colors" : "display-p3",
-  "fill" : "system-dark",
-  "groups" : [
-    {
-      "layers" : [
-        {
-          "blend-mode" : "darken",
-          "fill" : "automatic",
-          "glass-specializations" : [
-            {
-              "value" : false
-            },
-            {
-              "idiom" : "square",
-              "value" : true
-            }
-          ],
-          "hidden" : true,
-          "image-name" : "apple-touch-icon.png",
-          "name" : "apple-touch-icon",
-          "opacity" : 1,
-          "position" : {
-            "scale" : 5.8,
-            "translation-in-points" : [
-              10,
-              10
-            ]
-          }
-        }
-      ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+  "fill" : {
+    "linear-gradient" : [
+      "display-p3:0.83742,0.83742,0.83742,1.00000",
+      "display-p3:0.99756,0.99756,0.99756,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 0.5,
+        "y" : 1
       },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
+      "stop" : {
+        "x" : 0.5,
+        "y" : 0.3
       }
-    },
+    }
+  },
+  "groups" : [
     {
       "layers" : [
         {
@@ -48,11 +27,10 @@
             },
             {
               "appearance" : "dark",
-              "value" : {
-                "solid" : "extended-gray:0.75000,1.00000"
-              }
+              "value" : "none"
             }
           ],
+          "hidden" : false,
           "image-name" : "layer-pill-bottle.png",
           "name" : "layer-pill-bottle",
           "position" : {
@@ -112,11 +90,10 @@
           "fill-specializations" : [
             {
               "appearance" : "dark",
-              "value" : {
-                "solid" : "extended-gray:0.75000,1.00000"
-              }
+              "value" : "automatic"
             }
           ],
+          "hidden" : false,
           "image-name" : "layer-airbrush.png",
           "name" : "layer-airbrush",
           "position" : {
@@ -140,28 +117,9 @@
     {
       "layers" : [
         {
-          "blend-mode-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : "multiply"
-            }
-          ],
-          "fill-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : "none"
-            }
-          ],
-          "glass" : true,
-          "image-name" : "grok-image-4f974f30-90de-4e9e-9355-83dc116ade60.jpg",
-          "name" : "grok-image-4f974f30-90de-4e9e-9355-83dc116ade60",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
+          "blend-mode" : "lighten",
+          "image-name" : "grok-image-4f974f30-90de-4e9e-9355-83dc116ade60.png",
+          "name" : "grok-image-4f974f30-90de-4e9e-9355-83dc116ade60"
         }
       ],
       "shadow" : {

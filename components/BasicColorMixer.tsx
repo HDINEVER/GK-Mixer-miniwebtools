@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Language, BasicMixerCache, BaseColor } from '../types';
 import { lerp, rgbToLatent, latentToRgb } from '../utils/mixbox';
-import { toDripRatio } from '../utils/dropRatio';
+import { toDropRatio } from '../utils/dropRatio';
 import DropRatioBar from './DropRatioBar';
+import BrandMatchPanel from './BrandMatchPanel';
 import { translations as uiText } from '../utils/translations';
 
 // 声明 anime
@@ -727,7 +728,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
                     return { color, percentage, ml: (percentage * totalVolume) / 100 };
                   })
                   .filter(item => item.percentage >= 0.1);
-                const dropCounts = toDripRatio(items.map(item => item.percentage));
+                const dropCounts = toDropRatio(items.map(item => item.percentage));
                 const dropParts = items.map((item, index) => ({
                   color: item.color.hex,
                   name: item.color.name.replace(/^光泽/, ''),
@@ -778,6 +779,11 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
                 style={{ backgroundColor: finalColor }}
               />
               <span className="font-mono text-xs text-slate-600 dark:text-slate-400">{finalColor.toUpperCase()}</span>
+            </div>
+          )}
+          {finalColor && (
+            <div className="mt-3">
+              <BrandMatchPanel hex={finalColor} lang={lang} compact />
             </div>
           )}
         </div>

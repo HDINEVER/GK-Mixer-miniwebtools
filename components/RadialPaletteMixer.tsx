@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ColorData, Language, RadialMixerCache, SliderState } from '../types';
+import { CatalogPaint, ColorData, Language, RadialMixerCache, SliderState } from '../types';
 import { hexToRgb, mixboxMultiBlend } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
-import { toDripRatio } from '../utils/dropRatio';
+import { toDropRatio } from '../utils/dropRatio';
 import DropRatioBar from './DropRatioBar';
+import BrandMatchPanel from './BrandMatchPanel';
 import * as mixbox from '../utils/mixbox';
 
 declare var anime: any;
@@ -15,6 +16,7 @@ interface RadialPaletteMixerProps {
   onAddColors?: (colors: string[]) => void;
   cache?: RadialMixerCache;
   onCacheUpdate?: (cache: RadialMixerCache) => void;
+  onAssignCatalogPaint?: (paint: CatalogPaint) => void;
 }
 
 // Canvas 基础常量
@@ -42,7 +44,8 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   lang,
   onAddColors,
   cache,
-  onCacheUpdate
+  onCacheUpdate,
+  onAssignCatalogPaint,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Use cache values if available, otherwise use defaults
@@ -729,7 +732,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   };
   
   const volumes = calculateVolumes();
-  const dropCounts = toDripRatio(volumes.map(vol => vol.volume || vol.percentage));
+  const dropCounts = toDropRatio(volumes.map(vol => vol.volume || vol.percentage));
   const dropParts = volumes.map((vol, index) => ({
     color: vol.hex,
     name: availableColors.find(color => color.hex.toUpperCase() === vol.hex.toUpperCase())?.hex.replace('#', '') ?? vol.hex.replace('#', ''),
@@ -983,6 +986,19 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         )}
       </div>
       
+      {mixedColor && (
+        <div className="mt-4 w-full max-w-md">
+          <BrandMatchPanel
+            hex={mixedColor}
+            lang={lang}
+            compact
+            assignedId={targetColor?.assignedPaint?.id}
+            hasSamplePoint={typeof targetColor?.sampleX === "number" && typeof targetColor?.sampleY === "number"}
+            onAssignCatalog={onAssignCatalogPaint}
+          />
+        </div>
+      )}
+
       <div className="text-[10px] text-slate-500 dark:text-slate-400 text-center max-w-md leading-tight">
         {lang === 'zh' 
           ? '💡 提示: 外围=0%, 中心=100%。拖动时实时计算混合比例和所需体积。' 

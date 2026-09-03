@@ -3,6 +3,7 @@ import { Language, BasicMixerCache, BaseColor } from '../types';
 import { lerp, rgbToLatent, latentToRgb } from '../utils/mixbox';
 import { toDropRatio } from '../utils/dropRatio';
 import DropRatioBar from './DropRatioBar';
+import BrandMatchPanel from './BrandMatchPanel';
 import { translations as uiText } from '../utils/translations';
 
 // 声明 anime
@@ -778,6 +779,11 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
                 style={{ backgroundColor: finalColor }}
               />
               <span className="font-mono text-xs text-slate-600 dark:text-slate-400">{finalColor.toUpperCase()}</span>
+            </div>
+          )}
+          {finalColor && (
+            <div className="mt-3">
+              <BrandMatchPanel hex={finalColor} lang={lang} compact />
             </div>
           )}
         </div>

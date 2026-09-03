@@ -20,13 +20,13 @@ export const translations = {
     howItWorks: 'HOW IT WORKS',
     howItWorksList: [
       'Uses Kubelka-Munk theory (via Mixbox) for realistic pigment mixing (Blue + Yellow = Green).',
-      'Matches colors to Mr. Hobby, Gaia, and Jumpwind databases using Euclidean distance.',
+      'Matches colors to a 10,000+ paint catalog with CIEDE2000 (Gaia, Jumpwind, Mr.Hobby, Tamiya, Vallejo, and more).',
       'Generates human-readable recipes with Gemini 2.5 Flash AI assistant.'
     ],
     mixingBottle: 'MIXING BOTTLE SIMULATOR',
     totalVolume: 'TARGET VOL',
     addAmount: 'RECIPE',
-    clickToPick: 'Click anywhere to pick color',
+    clickToPick: 'Hover to loupe, click to sample. Pinch or Ctrl+wheel to zoom.',
     zoomIn: 'ZOOM +',
     zoomOut: 'ZOOM -',
     reset: 'RESET',
@@ -40,7 +40,7 @@ export const translations = {
     tabMixer: 'Mixer',
     tabVisualizer: 'Visualizer',
     visualizerTitle: 'PALETTE VISUALIZER',
-    visualizerDesc: 'Choose a visualization mode to showcase your extracted color palette',
+    visualizerDesc: 'Annotated reference with original swatch cards. Export PNG from this tab.',
     colorSpace: 'COLOR SPACE',
     colorSpaceSrgb: 'sRGB (Standard)',
     colorSpaceP3: 'Display P3 (Wide Gamut)',
@@ -66,7 +66,11 @@ export const translations = {
     dropUnit: 'drops',
     dropPure: 'Single pigment — no mixing needed',
     dropPureHint: 'Use this paint as-is.',
-    dropApprox: 'Integer drops approximate the exact millilitre recipe.'
+    dropApprox: 'Integer drops approximate the exact millilitre recipe.',
+    exportAnnotated: 'EXPORT',
+    changeImage: 'CHANGE',
+    exporting: 'Exporting…',
+    exportNeedMarkers: 'Pick colors on the image first'
   },
   zh: {
     title: 'GK_混色模拟器.exe',
@@ -87,13 +91,13 @@ export const translations = {
     howItWorks: '工作原理',
     howItWorksList: [
       '使用 Kubelka-Munk 理论（通过 Mixbox）实现真实颜料混合（蓝+黄=绿）。',
-      '通过欧氏距离匹配 Mr. Hobby、Gaia、Jumpwind 品牌涂料数据库。',
+      '通过 CIEDE2000 匹配 1 万+ 色号库（盖亚、匠域、郡士、田宫、Vallejo 等）。',
       '利用 Gemini 2.5 Flash AI 助手生成人类可读的调色配方。'
     ],
     mixingBottle: '调漆瓶模拟器',
     totalVolume: '目标容量',
     addAmount: '调配清单',
-    clickToPick: '点击任意位置拾取颜色',
+    clickToPick: '悬停放大镜，点击取样。双指或 Ctrl+滚轮缩放。',
     zoomIn: '放大 +',
     zoomOut: '缩小 -',
     reset: '重置',
@@ -107,7 +111,7 @@ export const translations = {
     tabMixer: '混色台',
     tabVisualizer: '调色板展示',
     visualizerTitle: '调色板可视化',
-    visualizerDesc: '选择一种可视化模式来展示您提取的颜色调色板',
+    visualizerDesc: '把取色点叠在原图上，色卡沿用原来的导出样式。在此页导出 PNG。',
     colorSpace: '色彩空间',
     colorSpaceSrgb: 'sRGB (标准)',
     colorSpaceP3: 'Display P3 (广色域)',
@@ -133,7 +137,11 @@ export const translations = {
     dropUnit: '滴',
     dropPure: '纯色，无需混合',
     dropPureHint: '直接使用这种颜料。',
-    dropApprox: '滴数是方便调配的整数比，精确用量见毫升。'
+    dropApprox: '滴数是方便调配的整数比，精确用量见毫升。',
+    exportAnnotated: '导出标注',
+    changeImage: '换图',
+    exporting: '导出中…',
+    exportNeedMarkers: '请先在图上取色'
   },
   ja: {
     title: 'GK_調色シミュレーター.exe',
@@ -154,13 +162,13 @@ export const translations = {
     howItWorks: '仕組み',
     howItWorksList: [
       'Kubelka-Munk 理論（Mixbox 経由）で現実的な顔料混合を実現（青+黄=緑）。',
-      'ユークリッド距離で Mr. Hobby、Gaia、Jumpwind データベースと色をマッチング。',
+      'CIEDE2000 で 1万色以上の塗料カタログ（Gaia、Jumpwind、Mr.Hobby、Tamiya など）とマッチング。',
       'Gemini 2.5 Flash AI アシスタントで人間が読めるレシピを生成。'
     ],
     mixingBottle: '調色ボトルシミュレーター',
     totalVolume: '目標容量',
     addAmount: '調合リスト',
-    clickToPick: 'クリックして色を選択',
+    clickToPick: 'ホバーでルーペ、クリックでサンプリング。ピンチまたは Ctrl+ホイールで拡大。',
     zoomIn: '拡大 +',
     zoomOut: '縮小 -',
     reset: 'リセット',
@@ -174,7 +182,7 @@ export const translations = {
     tabMixer: 'ミキサー',
     tabVisualizer: 'ビジュアライザー',
     visualizerTitle: 'パレットビジュアライザー',
-    visualizerDesc: '抽出されたカラーパレットを展示するビジュアライゼーションモードを選択します',
+    visualizerDesc: '採取した色を元画像に重ね、従来のスウォッチ様式で PNG 書き出しします。',
     colorSpace: '色空間',
     colorSpaceSrgb: 'sRGB (標準)',
     colorSpaceP3: 'Display P3 (広色域)',
@@ -200,6 +208,10 @@ export const translations = {
     dropUnit: '滴',
     dropPure: '単色のため混合不要',
     dropPureHint: 'この塗料をそのまま使えます。',
-    dropApprox: '滴数は使いやすい整数比です。正確な量はミリリットルを参照。'
+    dropApprox: '滴数は使いやすい整数比です。正確な量はミリリットルを参照。',
+    exportAnnotated: '書き出し',
+    changeImage: '画像変更',
+    exporting: '書き出し中…',
+    exportNeedMarkers: '先に画像上で色を採取してください'
   }
 };

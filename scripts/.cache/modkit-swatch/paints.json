@@ -1,0 +1,7094 @@
+[
+  {
+    "brand": "Gaianotes",
+    "code": "001",
+    "name": "ピュアホワイト",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "002",
+    "name": "Pure Black",
+    "hex": "#0d0d0d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "003",
+    "name": "ブライトレッド",
+    "hex": "#ff0000",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "004",
+    "name": "ウルトラブルー",
+    "hex": "#144ea2",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "005",
+    "name": "サンシャインイエロー",
+    "hex": "#ffff00",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "006",
+    "name": "フラットベース",
+    "hex": "#e0e0e0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "009",
+    "name": "ブライトシルバー",
+    "hex": "#727a7d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "010",
+    "name": "Bright Gold",
+    "hex": "#9b6322",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "011",
+    "name": "フラットホワイト",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "012",
+    "name": "Fluorescent Green",
+    "hex": "#30e050",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "013",
+    "name": "ビリジアングリーン",
+    "hex": "#007a65",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "014",
+    "name": "ナチュラルブラウン",
+    "hex": "#9e1f0c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "015",
+    "name": "ピュアオレンジ",
+    "hex": "#ff3300",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "016",
+    "name": "ブリリアントピンク",
+    "hex": "#f75f86",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "017",
+    "name": "パープルヴァイオレット",
+    "hex": "#4b45bf",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "018",
+    "name": "エメラルドグリーン",
+    "hex": "#69e795",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "019",
+    "name": "ラベンダー",
+    "hex": "#d8ccf4",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "020",
+    "name": "ガンメタル",
+    "hex": "#0c0c0c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "021",
+    "name": "セミグロスホワイト",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "022",
+    "name": "セミグロスブラック",
+    "hex": "#4e4d52",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "023",
+    "name": "スカーレット",
+    "hex": "#eb3729",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "024",
+    "name": "コバルトブルー",
+    "hex": "#356bf1",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "025",
+    "name": "橙黄色\n        (とうこうしょく)",
+    "hex": "#fe8a01",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "026",
+    "name": "ライトグリーン",
+    "hex": "#93a267",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "027",
+    "name": "ダークグリーン",
+    "hex": "#202a1f",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "028",
+    "name": "ストーングリーン",
+    "hex": "#01b6ad",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "031",
+    "name": "アルティメットホワイト",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "032",
+    "name": "German Gray",
+    "hex": "#3a3a3a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "033",
+    "name": "純色シアン",
+    "hex": "#0411ad",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "034",
+    "name": "純色マゼンタ",
+    "hex": "#4d0c10",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "035",
+    "name": "純色イエロー",
+    "hex": "#f9b605",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "036",
+    "name": "純色グリーン",
+    "hex": "#2e5c58",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "037",
+    "name": "純色バイオレット",
+    "hex": "#403960",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "038",
+    "name": "プライマリーメタリックレッド",
+    "hex": "#a41c1a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "039",
+    "name": "プライマリーメタリックブルー",
+    "hex": "#004dac",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "040",
+    "name": "プライマリーメタリックイエロー",
+    "hex": "#b79901",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "041",
+    "name": "クリアーレッド",
+    "hex": "#be2531",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "042",
+    "name": "クリアーオレンジ",
+    "hex": "#d12f12",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "043",
+    "name": "クリアーブラック",
+    "hex": "#3d403b",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "044",
+    "name": "クリアーブルー",
+    "hex": "#0243c3",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "045",
+    "name": "クリアーイエロー",
+    "hex": "#fff003",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "046",
+    "name": "クリアーブラウン",
+    "hex": "#6c2a2b",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "047",
+    "name": "クリアーパープル",
+    "hex": "#6d2edd",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "048",
+    "name": "クリアーグリーン",
+    "hex": "#00b60a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "049",
+    "name": "クリアーピンク",
+    "hex": "#ff329c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "050",
+    "name": "クリアーホワイト",
+    "hex": "#f3f3f3",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "051",
+    "name": "ノーツフレッシュ",
+    "hex": "#f7e5cf",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "052",
+    "name": "ノーツフレッシュ ホワイト",
+    "hex": "#eaded2",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "053",
+    "name": "ノーツフレッシュ ピンク",
+    "hex": "#f3a69c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "054",
+    "name": "ノーツフレッシュ オレンジ",
+    "hex": "#e7b78f",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "059",
+    "name": "サフレスフレッシュピンク",
+    "hex": "#fea29c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "060",
+    "name": "サフレスフレッシュオレンジ",
+    "hex": "#ffe879",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "061",
+    "name": "ミッドナイトブルー",
+    "hex": "#222129",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "062",
+    "name": "ミディアムブルー",
+    "hex": "#41637f",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "063",
+    "name": "ブルーグレー",
+    "hex": "#446a6d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "071",
+    "name": "ニュートラルグレーI",
+    "hex": "#cecece",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "072",
+    "name": "ニュートラルグレーII",
+    "hex": "#b4b4b4",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "073",
+    "name": "ニュートラルグレーIII",
+    "hex": "#8e8e8e",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "074",
+    "name": "ニュートラルグレーIV",
+    "hex": "#6c6c6c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "075",
+    "name": "ニュートラルグレーV",
+    "hex": "#4e4e4e",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "101",
+    "name": "蛍光ブルー",
+    "hex": "#002ac9",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "102",
+    "name": "蛍光ピンク",
+    "hex": "#fd0154",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "103",
+    "name": "蛍光レッド",
+    "hex": "#fd0c15",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "104",
+    "name": "蛍光グリーン",
+    "hex": "#00d34d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "105",
+    "name": "蛍光イエロー",
+    "hex": "#ebff24",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "106",
+    "name": "蛍光オレンジ",
+    "hex": "#fe2f07",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "107",
+    "name": "蛍光イエローグリーン",
+    "hex": "#00fe07",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "108",
+    "name": "蛍光ブルーグリーン",
+    "hex": "#04afb7",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "121",
+    "name": "スターブライトシルバー",
+    "hex": "#bbbbbb",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "122",
+    "name": "スターブライトゴールド",
+    "hex": "#b48334",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "123",
+    "name": "スターブライトジュラルミン",
+    "hex": "#67675f",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "124",
+    "name": "スターブライトブラス",
+    "hex": "#a5850a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "125",
+    "name": "スターブライトアイアン",
+    "hex": "#5f5f5f",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "131",
+    "name": "パールシルバー",
+    "hex": "#e2dfda",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "132",
+    "name": "パールゴールド",
+    "hex": "#c47c34",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "133",
+    "name": "パールカッパー",
+    "hex": "#be6f44",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "134",
+    "name": "プリズム パープルグリーン",
+    "hex": "#b0c09c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "135",
+    "name": "プリズム ブルーグリーン",
+    "hex": "#c4d9d4",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "136",
+    "name": "プリズム マゼンタゴールド",
+    "hex": "#cd541b",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "137",
+    "name": "プリズム パステル ターコイズブルーイエロー",
+    "hex": "#00b1c5",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "138",
+    "name": "プリズム パステル チェリーピンクブルー",
+    "hex": "#db519d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "139",
+    "name": "プリズム パステル ミントグリーンブルー",
+    "hex": "#02c0b3",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "201",
+    "name": "ダークイエロー1\n        (ドゥンケルゲルプ1)",
+    "hex": "#b69d4c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "202",
+    "name": "オリーブグリーン\n        (オリーフグリュン)",
+    "hex": "#485f42",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "203",
+    "name": "レッドブラウン\n        (ロートブラウン)",
+    "hex": "#3a2123",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "204",
+    "name": "ダークイエロー2\n        (ドゥンケルゲルプ2)",
+    "hex": "#c1ac7a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "205",
+    "name": "ゲルプブラウン\n        (イエローブラウン)",
+    "hex": "#ac8642",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "206",
+    "name": "グラウグリュン\n        (グレーグリーン)",
+    "hex": "#8b693b",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "207",
+    "name": "ブラウン",
+    "hex": "#cd9d69",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "208",
+    "name": "グラウ\n        (グレー)",
+    "hex": "#cab793",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "211",
+    "name": "灰緑色(かいりょくしょく)",
+    "hex": "#c4c392",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "212",
+    "name": "緑色(みどりいろ)",
+    "hex": "#324134",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "213",
+    "name": "灰緑色(かいりょくしょく)",
+    "hex": "#cdcfb4",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "214",
+    "name": "暗緑色(あんりょくしょく)",
+    "hex": "#1f5539",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "215",
+    "name": "215 FS34079 ダークグリーン",
+    "hex": "#3e3d21",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "216",
+    "name": "216 FS34102 グリーン",
+    "hex": "#484e10",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "217",
+    "name": "217 FS30219 タン",
+    "hex": "#876d48",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "218",
+    "name": "218 FS36622 グレー",
+    "hex": "#bebb9c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "219",
+    "name": "219 FS36440 ライトガルグレー",
+    "hex": "#999884",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "221",
+    "name": "ジャーマングレー\n        (ドゥンケルグラウ)",
+    "hex": "#29282c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "222",
+    "name": "オキサイドレッド\n        (サビ止め用プライマー色)",
+    "hex": "#9a3e31",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "223",
+    "name": "インテリアカラー\n        (戦車車内色)",
+    "hex": "#ecdebd",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1000",
+    "name": "ステンレスシルバー",
+    "hex": "#dddbd7",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1001",
+    "name": "ライトステンレスシルバー",
+    "hex": "#c5c5c5",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1002",
+    "name": "ダークステンレスシルバー",
+    "hex": "#9e9da2",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1003",
+    "name": "青15号",
+    "hex": "#3a4559",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1004",
+    "name": "ぶどう色2号",
+    "hex": "#362825",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1005",
+    "name": "ねずみ色1号",
+    "hex": "#9e9b92",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1006",
+    "name": "灰色9号",
+    "hex": "#bebbaf",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1007",
+    "name": "ダークグレー",
+    "hex": "#595a55",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1008",
+    "name": "クリーム1号",
+    "hex": "#fffcd8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1009",
+    "name": "ローズピンク",
+    "hex": "#c02823",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1010",
+    "name": "ぶどう色1号",
+    "hex": "#0d0d0b",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1012",
+    "name": "赤サビ",
+    "hex": "#9c4b47",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1013",
+    "name": "黄サビ",
+    "hex": "#f26434",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1021",
+    "name": "コンテナブルー",
+    "hex": "#3a96ab",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1022",
+    "name": "コンテナレッド",
+    "hex": "#4c0b21",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1023",
+    "name": "名鉄スカーレット",
+    "hex": "#930710",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1024",
+    "name": "西武101系イエロー",
+    "hex": "#e4b559",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1025",
+    "name": "西武2000系イエロー",
+    "hex": "#e8b542",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1026",
+    "name": "西武ベージュ",
+    "hex": "#bfa276",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "1027",
+    "name": "西武レッド",
+    "hex": "#932a31",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "Ex-01",
+    "name": "Ex-ホワイト",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "Ex-02",
+    "name": "Ex-Black",
+    "hex": "#080808",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "Ex-05",
+    "name": "Ex-フラットホワイト",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "Ex-06",
+    "name": "Ex-Green",
+    "hex": "#28a038",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "Ex-07",
+    "name": "Ex-シルバー",
+    "hex": "#cccccc",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "Ex-08",
+    "name": "Ex-ゴールド",
+    "hex": "#e3ab47",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-01",
+    "name": "ホワイト",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-03",
+    "name": "シアン",
+    "hex": "#002cc3",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-04",
+    "name": "マゼンタ",
+    "hex": "#a70000",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-05",
+    "name": "イエロー",
+    "hex": "#fcc333",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-06",
+    "name": "蛍光ブルー",
+    "hex": "#079ae7",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-07",
+    "name": "蛍光レッド",
+    "hex": "#fb4a21",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-08",
+    "name": "蛍光イエロー",
+    "hex": "#e9fe0d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-09",
+    "name": "蛍光ピンク",
+    "hex": "#fc4c8d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-10",
+    "name": "蛍光グリーン",
+    "hex": "#00ef00",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-51",
+    "name": "赤サビ",
+    "hex": "#701f0a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-52",
+    "name": "黄サビ",
+    "hex": "#b52c02",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-53",
+    "name": "煤（すす）",
+    "hex": "#050706",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-54",
+    "name": "オイル",
+    "hex": "#5a492b",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GE-55",
+    "name": "埃（ほこり）",
+    "hex": "#a09575",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GP-01",
+    "name": "ウルトラマリンブルー",
+    "hex": "#1844d5",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GP-02",
+    "name": "プレミアムレッド",
+    "hex": "#f50100",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GP-03",
+    "name": "ウルトラマリンブルー2",
+    "hex": "#055dd9",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GP-04",
+    "name": "プレミアムガラスパール",
+    "hex": "#f4fbfb",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GP-05",
+    "name": "ウルトラマリンブルー",
+    "hex": "#016ad3",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GP-06",
+    "name": "クリアーウルトラマリンブルー",
+    "hex": "#0031ec",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GP-07",
+    "name": "プレミアムメッキシルバー",
+    "hex": "#bab9c1",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GP-08",
+    "name": "プレミアムミラークローム",
+    "hex": "#bab9c1",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "GP-09",
+    "name": "プリズムブルーブラック",
+    "hex": "#23375a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "TL-001",
+    "name": "NATOグリーン",
+    "hex": "#45543e",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "TL-002",
+    "name": "NATOブラウン",
+    "hex": "#544437",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "TL-003",
+    "name": "NATOブラック",
+    "hex": "#2f3335",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "TL-004",
+    "name": "ライトグレーFS36251",
+    "hex": "#838882",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Gaianotes",
+    "code": "TL-005",
+    "name": "ダークグレーFS36176",
+    "hex": "#7a8894",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-001",
+    "name": "Glossy White",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-002",
+    "name": "Glossy Black",
+    "hex": "#1a1a1a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-003",
+    "name": "Glossy Red",
+    "hex": "#cc2233",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-004",
+    "name": "Glossy Orange",
+    "hex": "#e86020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-005",
+    "name": "Glossy Blue",
+    "hex": "#1a50a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-006",
+    "name": "Glossy Green",
+    "hex": "#2e8b40",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-007",
+    "name": "Glossy Yellow",
+    "hex": "#f0c030",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-008",
+    "name": "Glossy Purple",
+    "hex": "#5b3a8a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-009",
+    "name": "Glossy Rose Red",
+    "hex": "#c43060",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-013",
+    "name": "Glossy Pink",
+    "hex": "#e87aa0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-014",
+    "name": "Glossy Azure",
+    "hex": "#5689ba",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-015",
+    "name": "Glossy Wine Red",
+    "hex": "#624462",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-051",
+    "name": "Mecha White",
+    "hex": "#e8e8e8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-052",
+    "name": "Mecha Black",
+    "hex": "#2a2a2a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-053",
+    "name": "Flaming Red",
+    "hex": "#d03020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-054",
+    "name": "Mecha Orange",
+    "hex": "#d18449",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-055",
+    "name": "Cobalt Blue",
+    "hex": "#21498d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-056",
+    "name": "Mecha LightGreen",
+    "hex": "#6ab060",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-057",
+    "name": "Mecha Dark Green",
+    "hex": "#2a5030",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-058",
+    "name": "Mecha Wine Red",
+    "hex": "#87445e",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-059",
+    "name": "Mecha Pink",
+    "hex": "#e878a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-060",
+    "name": "Mecha Blue",
+    "hex": "#385c90",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-071",
+    "name": "Light Gray",
+    "hex": "#7a7e8f",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-072",
+    "name": "Medium Gray",
+    "hex": "#64697c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-073",
+    "name": "Derk Gray",
+    "hex": "#46495b",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-101",
+    "name": "Red Gold",
+    "hex": "#b87333",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-102",
+    "name": "Green Gold",
+    "hex": "#8b8000",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-103",
+    "name": "Deep Steel",
+    "hex": "#3a3a3a",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-104",
+    "name": "Mirror Silver",
+    "hex": "#c0c0c0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-105",
+    "name": "Detail Metal",
+    "hex": "#888888",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-106",
+    "name": "Knight Gold",
+    "hex": "#cfb53b",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-107",
+    "name": "Champagne Gold",
+    "hex": "#d4c5a9",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-108",
+    "name": "L Champagne Gold",
+    "hex": "#e8dcc8",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-109",
+    "name": "Titanium Gold",
+    "hex": "#b8a090",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-110",
+    "name": "Rose Gold",
+    "hex": "#b76e79",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-111",
+    "name": "Tungsten Steel",
+    "hex": "#5a5a5a",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-112",
+    "name": "Duralumin",
+    "hex": "#a8a8a0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-113",
+    "name": "White Aluminium",
+    "hex": "#d0d0d0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-114",
+    "name": "Dark Iron",
+    "hex": "#2a2a2a",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-115",
+    "name": "Light Steel",
+    "hex": "#a0a8b0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-183",
+    "name": "Premium Red",
+    "hex": "#d43230",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-184",
+    "name": "Premium Blue",
+    "hex": "#3068b3",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-301",
+    "name": "Metal Violet",
+    "hex": "#7b4f8a",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-302",
+    "name": "Metal Black",
+    "hex": "#1a1a1a",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Hobby Mio",
+    "code": "HM-303",
+    "name": "Metal Yellow",
+    "hex": "#d4a830",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-001",
+    "name": "White",
+    "hex": "#e2e2e2",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-002",
+    "name": "Black",
+    "hex": "#474747",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-003",
+    "name": "Red",
+    "hex": "#e53341",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-004",
+    "name": "Yellow",
+    "hex": "#f5d62d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-005",
+    "name": "Blue",
+    "hex": "#3367b9",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-006",
+    "name": "Green",
+    "hex": "#389163",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-007",
+    "name": "Orange",
+    "hex": "#ef6329",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-008",
+    "name": "Purple",
+    "hex": "#6851d2",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-009",
+    "name": "Brown",
+    "hex": "#c5573c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-017",
+    "name": "Pink",
+    "hex": "#e35898",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-018",
+    "name": "Orange Yellow",
+    "hex": "#f6aa17",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-019",
+    "name": "Sky Blue",
+    "hex": "#35a2df",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-020",
+    "name": "Neutral Gray",
+    "hex": "#808589",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-021",
+    "name": "Semi-Gloss White",
+    "hex": "#f1f1f1",
+    "finish": "semi-gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-022",
+    "name": "Semi-Gloss Black",
+    "hex": "#424243",
+    "finish": "semi-gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-023",
+    "name": "Shine Red",
+    "hex": "#e42330",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-024",
+    "name": "Cobalt Blue",
+    "hex": "#3a5bec",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-025",
+    "name": "Cobalt Purple",
+    "hex": "#5462c6",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-026",
+    "name": "Orange Red",
+    "hex": "#f35332",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-027",
+    "name": "Grass Green",
+    "hex": "#37c662",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-028",
+    "name": "Lavender",
+    "hex": "#ada1e8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-029",
+    "name": "Wood Brown",
+    "hex": "#956f57",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-030",
+    "name": "Snow Gray",
+    "hex": "#828e9a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-031",
+    "name": "Matt White",
+    "hex": "#f5f5f5",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-032",
+    "name": "Matt Black",
+    "hex": "#2a2a2a",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-033",
+    "name": "Hull Red",
+    "hex": "#624044",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-034",
+    "name": "Navy Blue",
+    "hex": "#41464c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-035",
+    "name": "Sandy Yellow",
+    "hex": "#bdab5e",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-036",
+    "name": "Dark Green",
+    "hex": "#2f4c3d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-037",
+    "name": "Mahogany",
+    "hex": "#5e4f4e",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-038",
+    "name": "Sandy Brown",
+    "hex": "#caa872",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-039",
+    "name": "Gull Gray",
+    "hex": "#a9afa8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-040",
+    "name": "German Gray",
+    "hex": "#4d5156",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A01",
+    "name": "White",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A02",
+    "name": "Black",
+    "hex": "#0d0d0d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A03",
+    "name": "Red",
+    "hex": "#c82020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A04",
+    "name": "Yellow",
+    "hex": "#e8d020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A05",
+    "name": "Blue",
+    "hex": "#1848a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A06",
+    "name": "Green",
+    "hex": "#28a038",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A07",
+    "name": "Orange",
+    "hex": "#e86820",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A08",
+    "name": "Purple",
+    "hex": "#682898",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A09",
+    "name": "Pink",
+    "hex": "#e870a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A10",
+    "name": "Brown",
+    "hex": "#6a3820",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A11",
+    "name": "Light Gray",
+    "hex": "#b0b0b0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A12",
+    "name": "Dark Gray",
+    "hex": "#484848",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A13",
+    "name": "Gold",
+    "hex": "#c8a830",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A14",
+    "name": "Silver",
+    "hex": "#c0c0c0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A15",
+    "name": "Gun Metal",
+    "hex": "#505050",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A16",
+    "name": "Copper",
+    "hex": "#b07038",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A17",
+    "name": "Flesh",
+    "hex": "#e0b898",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A18",
+    "name": "Sky Blue",
+    "hex": "#68a8d8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A19",
+    "name": "Dark Blue",
+    "hex": "#183060",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A20",
+    "name": "Olive Green",
+    "hex": "#505828",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A21",
+    "name": "Khaki",
+    "hex": "#a09060",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A22",
+    "name": "Rust",
+    "hex": "#904020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A23",
+    "name": "Sand Yellow",
+    "hex": "#c8a858",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "JW-A24",
+    "name": "Dark Red",
+    "hex": "#801820",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC51",
+    "name": "Cool White",
+    "hex": "#d4dee2",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC52",
+    "name": "Bright Red",
+    "hex": "#d43032",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC53",
+    "name": "Bright Y ellow",
+    "hex": "#ecc03e",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC54",
+    "name": "Bright Blue",
+    "hex": "#213e9f",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC55",
+    "name": "Trick Green",
+    "hex": "#0f5f66",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC56",
+    "name": "HibiscusPurple",
+    "hex": "#a990d8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC57",
+    "name": "Malmstone Red",
+    "hex": "#dc7571",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC58",
+    "name": "Bordeaux Red",
+    "hex": "#762b3b",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC59",
+    "name": "Phantom Gray",
+    "hex": "#353b41",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC60",
+    "name": "Stone Green",
+    "hex": "#48a7b0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC61",
+    "name": "Sandy White",
+    "hex": "#dcd8ca",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC62",
+    "name": "Olive Green",
+    "hex": "#8fa692",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC63",
+    "name": "DeepOliveGreen",
+    "hex": "#52665d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC64",
+    "name": "Night Blue",
+    "hex": "#374769",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC65",
+    "name": "Shine Blue",
+    "hex": "#3b6ae4",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC66",
+    "name": "Madder Red",
+    "hex": "#c62734",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC67",
+    "name": "Ice Cobalt",
+    "hex": "#4f9ff7",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC68",
+    "name": "Emerald Green",
+    "hex": "#4ae8cb",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC69",
+    "name": "Coral Orange",
+    "hex": "#fd8d41",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC70",
+    "name": "Coral Pink",
+    "hex": "#fc8987",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC71",
+    "name": "Scarlet Red",
+    "hex": "#f54c37",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC72",
+    "name": "LightUltramari",
+    "hex": "#80aefa",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC73",
+    "name": "Kerria Orange",
+    "hex": "#fda822",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC74",
+    "name": "Mint Green",
+    "hex": "#6de8f6",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC75",
+    "name": "Sakura Pink",
+    "hex": "#fba6a4",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC76",
+    "name": "Wine Red",
+    "hex": "#882632",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC77",
+    "name": "Chestnut Red",
+    "hex": "#a53437",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC78",
+    "name": "Storm Blue",
+    "hex": "#2c5a96",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC79",
+    "name": "Storm Purple",
+    "hex": "#69628e",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC80",
+    "name": "Storm Gray",
+    "hex": "#565f68",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC81",
+    "name": "Ghost White",
+    "hex": "#bcc0d3",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC82",
+    "name": "Flame Red",
+    "hex": "#d7261b",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC83",
+    "name": "Light Orange",
+    "hex": "#f79669",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC84",
+    "name": "Aqua Blue",
+    "hex": "#8dbee4",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC85",
+    "name": "Khaki",
+    "hex": "#a4845b",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC86",
+    "name": "Berry Red",
+    "hex": "#e25258",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC87",
+    "name": "Berry Purple",
+    "hex": "#463245",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC88",
+    "name": "Primrose Yellow",
+    "hex": "#f3c66a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC89",
+    "name": "Volcanic Ash",
+    "hex": "#a7a8a4",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC90",
+    "name": "Fern Green",
+    "hex": "#2b4b36",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC91",
+    "name": "Device White",
+    "hex": "#c3d7cf",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC92",
+    "name": "Device Yellow",
+    "hex": "#d9cb99",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC93",
+    "name": "Device Gray",
+    "hex": "#9b9c95",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC94",
+    "name": "Device Blue",
+    "hex": "#a1cccc",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC95",
+    "name": "Structure Gray",
+    "hex": "#353734",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC96",
+    "name": "Space White",
+    "hex": "#d4d0ca",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC97",
+    "name": "制空蓝",
+    "hex": "#74a3b1",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC98",
+    "name": "Haze Blue",
+    "hex": "#3a5d84",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Jumpwind",
+    "code": "MC99",
+    "name": "DarkNightPurple",
+    "hex": "#393957",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C1",
+    "name": "White",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C2",
+    "name": "Black",
+    "hex": "#0d0d0d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C3",
+    "name": "Red",
+    "hex": "#c82828",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C4",
+    "name": "Yellow",
+    "hex": "#e8d020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C5",
+    "name": "Blue",
+    "hex": "#1848a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C6",
+    "name": "Green",
+    "hex": "#2d8c3c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C7",
+    "name": "Brown",
+    "hex": "#6e3c20",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C8",
+    "name": "Silver",
+    "hex": "#c0c0c0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C9",
+    "name": "Gold",
+    "hex": "#c8a030",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C10",
+    "name": "Copper",
+    "hex": "#b87040",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C11",
+    "name": "Light Gull Gray",
+    "hex": "#afb0a9",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C13",
+    "name": "Neutral Gray",
+    "hex": "#888888",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C14",
+    "name": "Navy Blue",
+    "hex": "#1e3050",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C15",
+    "name": "IJN Green",
+    "hex": "#3a4030",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C16",
+    "name": "IJA Green",
+    "hex": "#4a5838",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C17",
+    "name": "RLM71 Dark Green",
+    "hex": "#485840",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C18",
+    "name": "RLM70 Black Green",
+    "hex": "#2e3028",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C19",
+    "name": "Sandy Brown",
+    "hex": "#c8a870",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C20",
+    "name": "Light Blue",
+    "hex": "#80b8d8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C21",
+    "name": "Middle Stone",
+    "hex": "#c0a870",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C22",
+    "name": "Dark Earth",
+    "hex": "#6a5038",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C23",
+    "name": "Dark Green 2",
+    "hex": "#284028",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C24",
+    "name": "Orange Yellow",
+    "hex": "#e8a820",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C25",
+    "name": "Dark Seagray",
+    "hex": "#586860",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C26",
+    "name": "Duck Egg Green",
+    "hex": "#b0c8b0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C27",
+    "name": "Interior Green",
+    "hex": "#88a870",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C28",
+    "name": "Steel",
+    "hex": "#686868",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C29",
+    "name": "Hull Red",
+    "hex": "#682020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C31",
+    "name": "Dark Gull Gray",
+    "hex": "#585858",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C32",
+    "name": "Dark Gray",
+    "hex": "#484848",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C33",
+    "name": "Flat Black",
+    "hex": "#1a1a1a",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C34",
+    "name": "Sky Blue",
+    "hex": "#70a8d0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C35",
+    "name": "IJN Gray",
+    "hex": "#888880",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C36",
+    "name": "RLM74 Gray Green",
+    "hex": "#505848",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C37",
+    "name": "RLM75 Gray Violet",
+    "hex": "#586068",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C38",
+    "name": "Olive Drab 2",
+    "hex": "#50583a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C39",
+    "name": "Dark Yellow",
+    "hex": "#c8a840",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C40",
+    "name": "German Gray",
+    "hex": "#383838",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C41",
+    "name": "Red Brown",
+    "hex": "#883828",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C42",
+    "name": "Mahogany",
+    "hex": "#5a2018",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C43",
+    "name": "Wood Brown",
+    "hex": "#a08050",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C44",
+    "name": "Tan",
+    "hex": "#c8a870",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C45",
+    "name": "Sail Color",
+    "hex": "#e8d8c0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C47",
+    "name": "Clear Red",
+    "hex": "#d02020",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C48",
+    "name": "Clear Yellow",
+    "hex": "#e8d020",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C49",
+    "name": "Clear Orange",
+    "hex": "#e07020",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C50",
+    "name": "Clear Blue",
+    "hex": "#2050c0",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C51",
+    "name": "Flesh",
+    "hex": "#e0b898",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C54",
+    "name": "Khaki Green",
+    "hex": "#687848",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C55",
+    "name": "Khaki",
+    "hex": "#a09060",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C56",
+    "name": "IJN Gray",
+    "hex": "#7a7a70",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C57",
+    "name": "Metallic Blue Green",
+    "hex": "#308888",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C58",
+    "name": "Orange Yellow",
+    "hex": "#e8a020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C59",
+    "name": "Orange",
+    "hex": "#e06020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C60",
+    "name": "RLM02 Gray",
+    "hex": "#989890",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C62",
+    "name": "Flat White",
+    "hex": "#f0f0f0",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C63",
+    "name": "Pink",
+    "hex": "#e080a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C64",
+    "name": "Light Gray",
+    "hex": "#b0b0b0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C65",
+    "name": "Bright Blue",
+    "hex": "#2868c8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C66",
+    "name": "Bright Green",
+    "hex": "#009946",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C68",
+    "name": "Red Madder",
+    "hex": "#a02038",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C69",
+    "name": "Off White",
+    "hex": "#e8e0d0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C70",
+    "name": "Dark Green",
+    "hex": "#284020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C71",
+    "name": "Midnight Blue",
+    "hex": "#182040",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C72",
+    "name": "Medium Blue",
+    "hex": "#3868a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C73",
+    "name": "Aircraft Gray",
+    "hex": "#8898a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C74",
+    "name": "Air Superiority Blue",
+    "hex": "#7090b0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C75",
+    "name": "Metallic Red",
+    "hex": "#a82028",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C76",
+    "name": "Metallic Blue",
+    "hex": "#2848a0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C77",
+    "name": "Metallic Black",
+    "hex": "#282828",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C78",
+    "name": "Metal Black",
+    "hex": "#202020",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C79",
+    "name": "Shine Red",
+    "hex": "#d01828",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C80",
+    "name": "Cobalt Blue",
+    "hex": "#1838a8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C81",
+    "name": "Russet",
+    "hex": "#884830",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C82",
+    "name": "Dark Gray 2",
+    "hex": "#404040",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C83",
+    "name": "Woodgrain",
+    "hex": "#886838",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C84",
+    "name": "Mahogany",
+    "hex": "#582018",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C85",
+    "name": "Sail Color",
+    "hex": "#e8dcc0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C90",
+    "name": "Shine Silver",
+    "hex": "#d0d0d0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C92",
+    "name": "Black Semi-Gloss",
+    "hex": "#181818",
+    "finish": "semi-gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C97",
+    "name": "Gray FS16440",
+    "hex": "#8c8c88",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C101",
+    "name": "Smoke Gray",
+    "hex": "#606060",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C102",
+    "name": "Pearl White",
+    "hex": "#f0ece8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C103",
+    "name": "Gun Chrome",
+    "hex": "#505050",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C104",
+    "name": "Gun Chrome 2",
+    "hex": "#484848",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C107",
+    "name": "Character White",
+    "hex": "#f8f8f0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C108",
+    "name": "Character Red",
+    "hex": "#d02020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C109",
+    "name": "Character Yellow",
+    "hex": "#e8c820",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C110",
+    "name": "Character Blue",
+    "hex": "#2050a8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C111",
+    "name": "Character Flesh",
+    "hex": "#e8c0a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C112",
+    "name": "Character Green",
+    "hex": "#28a048",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C113",
+    "name": "Rusty Orange",
+    "hex": "#c86830",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C114",
+    "name": "RLM23 Red",
+    "hex": "#b82828",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C115",
+    "name": "RLM65 Light Blue",
+    "hex": "#80a8c0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C116",
+    "name": "RLM66 Dark Gray",
+    "hex": "#484850",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C117",
+    "name": "RLM76 Light Blue",
+    "hex": "#90a8b8",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C118",
+    "name": "RLM78 Light Blue",
+    "hex": "#a0b8c0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C119",
+    "name": "RLM79 Sand Yellow",
+    "hex": "#c0a060",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C121",
+    "name": "Burnt Iron",
+    "hex": "#383030",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C122",
+    "name": "Pail Green",
+    "hex": "#b8c8a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C123",
+    "name": "IJA Dark Green",
+    "hex": "#384830",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C124",
+    "name": "Dark Green RAF",
+    "hex": "#284028",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C125",
+    "name": "Cowling Color",
+    "hex": "#504830",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C126",
+    "name": "Cockpit Color",
+    "hex": "#708060",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C127",
+    "name": "Tire Black",
+    "hex": "#282828",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C128",
+    "name": "Gray Green",
+    "hex": "#687868",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C129",
+    "name": "Dark Cherry",
+    "hex": "#601828",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C131",
+    "name": "Red Brown 2",
+    "hex": "#783020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C134",
+    "name": "Field Green",
+    "hex": "#406838",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C135",
+    "name": "Russian Green 1",
+    "hex": "#3a5030",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C136",
+    "name": "Russian Green 2",
+    "hex": "#485838",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C137",
+    "name": "Tire Black",
+    "hex": "#252525",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C304",
+    "name": "Olive Drab FS34087",
+    "hex": "#506040",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C305",
+    "name": "Gray FS36118",
+    "hex": "#585858",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C306",
+    "name": "Gray FS36270",
+    "hex": "#787878",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C307",
+    "name": "Gray FS36320",
+    "hex": "#8a8a8a",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C308",
+    "name": "Gray FS36375",
+    "hex": "#747474",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C311",
+    "name": "Gray FS36622",
+    "hex": "#828282",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C312",
+    "name": "Green FS34227",
+    "hex": "#486830",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C313",
+    "name": "Yellow FS33531",
+    "hex": "#c8a838",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C314",
+    "name": "Blue FS35164",
+    "hex": "#2858a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C315",
+    "name": "Gray FS16440",
+    "hex": "#8c8c88",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C316",
+    "name": "White FS17875",
+    "hex": "#f0f0f0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C317",
+    "name": "Gray FS36231",
+    "hex": "#686868",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C318",
+    "name": "Dark Gull Gray FS36231",
+    "hex": "#5c5c5c",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C333",
+    "name": "Extra Dark Seagray BS381C",
+    "hex": "#384038",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C334",
+    "name": "Barley Gray BS4800",
+    "hex": "#909890",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C335",
+    "name": "Medium Seagray BS381C",
+    "hex": "#788080",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C338",
+    "name": "Light Gray FS36495",
+    "hex": "#a0a0a0",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Mr. Color",
+    "code": "C339",
+    "name": "Engine Gray FS16081",
+    "hex": "#404040",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC03",
+    "name": "Stainless Steel",
+    "hex": "#b5b8bd",
+    "finish": "metallic",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC34",
+    "name": "Basic White",
+    "hex": "#f5f5f3",
+    "finish": "gloss",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC42",
+    "name": "Sky Blue",
+    "hex": "#78b7e5",
+    "finish": "gloss",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC48",
+    "name": "Dark Blue",
+    "hex": "#203a73",
+    "finish": "gloss",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC69",
+    "name": "Wolf Green",
+    "hex": "#556b3d",
+    "finish": "gloss",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC76",
+    "name": "Steel White",
+    "hex": "#d8dadd",
+    "finish": "metallic",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC79",
+    "name": "Wood Brown",
+    "hex": "#7a4d2b",
+    "finish": "gloss",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC84",
+    "name": "Mecha Blue",
+    "hex": "#1e5db8",
+    "finish": "gloss",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC87",
+    "name": "Mecha Orange",
+    "hex": "#f06c1d",
+    "finish": "gloss",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC97",
+    "name": "Clear Rust Yellow",
+    "hex": "#d8a336",
+    "finish": "clear",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "QNC",
+    "code": "QNC122",
+    "name": "Fluorescent Orange",
+    "hex": "#ff6c00",
+    "finish": "gloss",
+    "type": "water-based acrylic",
+    "suitableFor": {
+      "airbrush": false,
+      "handPainting": true
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "001A",
+    "name": "Clear Pink",
+    "hex": "#e970a3",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "009",
+    "name": "Silver",
+    "hex": "#c0c0c0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "010",
+    "name": "Gold",
+    "hex": "#cfb53b",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "020",
+    "name": "Gun Metallic",
+    "hex": "#505050",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "041",
+    "name": "Clear Red",
+    "hex": "#d73535",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "042",
+    "name": "Clear Orange",
+    "hex": "#e77a28",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "047",
+    "name": "Clear Violet",
+    "hex": "#7c4cc6",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "048",
+    "name": "Clear Green",
+    "hex": "#33a95b",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "059",
+    "name": "Clear Flesh Pink",
+    "hex": "#e8b09f",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "060",
+    "name": "Clear Flesh Orange",
+    "hex": "#e4a06b",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "081",
+    "name": "Clear Olivine / Yellow Green",
+    "hex": "#b6c438",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "082",
+    "name": "Clear Tyrany Gold / Yellow Gold",
+    "hex": "#caa331",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "083",
+    "name": "Clear Purple Blue",
+    "hex": "#4b56c8",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "084",
+    "name": "Clear Yan Purple",
+    "hex": "#7c3fb2",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "101",
+    "name": "Clear Blue (Fluorescent)",
+    "hex": "#2f8cff",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "102",
+    "name": "Clear Pink (Fluorescent)",
+    "hex": "#ff5fb2",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "103",
+    "name": "Clear Red (Fluorescent)",
+    "hex": "#ff3b30",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "104",
+    "name": "Clear Green (Fluorescent)",
+    "hex": "#2ee66b",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "105",
+    "name": "Clear Yellow (Fluorescent)",
+    "hex": "#ffe600",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "106",
+    "name": "Clear Orange (Fluorescent)",
+    "hex": "#ff7a00",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "107",
+    "name": "Clear Yellow Green (Fluorescent)",
+    "hex": "#c8ff00",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "108",
+    "name": "Clear Blue Green (Fluorescent)",
+    "hex": "#00d9c0",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "121",
+    "name": "Star Light Silver",
+    "hex": "#d0d0d0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "122",
+    "name": "Star Light Gold",
+    "hex": "#d4b840",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "123",
+    "name": "Star Light Aluminium",
+    "hex": "#b8b8b8",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "124",
+    "name": "Noble Gold",
+    "hex": "#c8a030",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "125",
+    "name": "Star Bright Iron",
+    "hex": "#606060",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "J57",
+    "name": "Metallic Blue",
+    "hex": "#3050a0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "J75",
+    "name": "Metallic Red",
+    "hex": "#a02030",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "J76",
+    "name": "Metallic Blue",
+    "hex": "#2040b0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "J77",
+    "name": "Metallic Green",
+    "hex": "#208040",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Sunin7",
+    "code": "J78",
+    "name": "Metallic Black",
+    "hex": "#1a1a1a",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-1",
+    "name": "Black",
+    "hex": "#0d0d0d",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-2",
+    "name": "White",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-3",
+    "name": "Flat Black",
+    "hex": "#1a1a1a",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-4",
+    "name": "Flat White",
+    "hex": "#f0f0f0",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-5",
+    "name": "Semi Gloss Black",
+    "hex": "#181818",
+    "finish": "semi-gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-6",
+    "name": "Pure Orange",
+    "hex": "#e86020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-7",
+    "name": "Pure Red",
+    "hex": "#d02020",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-8",
+    "name": "Pure Yellow",
+    "hex": "#e8d018",
+    "finish": "gloss",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-9",
+    "name": "Clear Yellow",
+    "hex": "#e8d020",
+    "finish": "clear",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-11",
+    "name": "Silver",
+    "hex": "#c0c0c0",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-12",
+    "name": "IJN Grey Kure Arsenal",
+    "hex": "#787870",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-13",
+    "name": "IJN Grey Sasebo Arsenal",
+    "hex": "#687068",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-14",
+    "name": "IJN Grey Maizuru Arsenal",
+    "hex": "#808078",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-19",
+    "name": "Gun Metal",
+    "hex": "#505050",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-20",
+    "name": "Light Gun Metal",
+    "hex": "#686868",
+    "finish": "metallic",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-36",
+    "name": "Dark Ghost Grey",
+    "hex": "#5c6068",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "LP-37",
+    "name": "Light Ghost Grey",
+    "hex": "#a0a8b0",
+    "finish": "flat",
+    "type": "lacquer",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-1",
+    "name": "Black",
+    "hex": "#0d0d0d",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-2",
+    "name": "White",
+    "hex": "#ffffff",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-3",
+    "name": "Royal Blue",
+    "hex": "#1830a0",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-4",
+    "name": "Blue",
+    "hex": "#2048b0",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-5",
+    "name": "Green",
+    "hex": "#287830",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-6",
+    "name": "Orange",
+    "hex": "#e86820",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-7",
+    "name": "Red",
+    "hex": "#c82020",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-8",
+    "name": "Lemon Yellow",
+    "hex": "#e8d818",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-10",
+    "name": "Gun Metal",
+    "hex": "#505050",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-11",
+    "name": "Chrome Silver",
+    "hex": "#c8c8c8",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-12",
+    "name": "Gold Leaf",
+    "hex": "#c8a830",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-13",
+    "name": "Metallic Blue",
+    "hex": "#2050b0",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-14",
+    "name": "Sky Blue",
+    "hex": "#68a8d8",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-15",
+    "name": "Light Green",
+    "hex": "#78c848",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-16",
+    "name": "Purple",
+    "hex": "#682898",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-17",
+    "name": "Pink",
+    "hex": "#e870a0",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-18",
+    "name": "Semi Gloss Black",
+    "hex": "#181818",
+    "finish": "semi-gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-19",
+    "name": "Smoke",
+    "hex": "#484848",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-23",
+    "name": "Clear Blue",
+    "hex": "#2050c0",
+    "finish": "clear",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-24",
+    "name": "Clear Yellow",
+    "hex": "#e8d020",
+    "finish": "clear",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-25",
+    "name": "Clear Green",
+    "hex": "#20a838",
+    "finish": "clear",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-26",
+    "name": "Clear Orange",
+    "hex": "#e07020",
+    "finish": "clear",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-27",
+    "name": "Clear Red",
+    "hex": "#d02020",
+    "finish": "clear",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-28",
+    "name": "Park Green",
+    "hex": "#188830",
+    "finish": "gloss",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-30",
+    "name": "Titanium Silver",
+    "hex": "#b0b0a8",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-31",
+    "name": "Titanium Gold",
+    "hex": "#b09838",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-32",
+    "name": "Titanium Silver",
+    "hex": "#a8a8a0",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-33",
+    "name": "Bronze",
+    "hex": "#907040",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "X-34",
+    "name": "Metallic Brown",
+    "hex": "#684828",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-1",
+    "name": "Flat Black",
+    "hex": "#1a1a1a",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-2",
+    "name": "Flat White",
+    "hex": "#f0f0f0",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-3",
+    "name": "Flat Yellow",
+    "hex": "#e0c020",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-4",
+    "name": "Yellow Green",
+    "hex": "#88a030",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-5",
+    "name": "Flat Green",
+    "hex": "#306828",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-6",
+    "name": "Copper",
+    "hex": "#b07038",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-7",
+    "name": "Flat Red",
+    "hex": "#c02828",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-8",
+    "name": "Flat Blue",
+    "hex": "#1840a0",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-9",
+    "name": "Hull Red",
+    "hex": "#682020",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-10",
+    "name": "Flat Brown",
+    "hex": "#6a3820",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-11",
+    "name": "JN Green",
+    "hex": "#384828",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-12",
+    "name": "JN Grey",
+    "hex": "#787870",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-13",
+    "name": "JA Green",
+    "hex": "#485830",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-14",
+    "name": "JA Grey",
+    "hex": "#888878",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-15",
+    "name": "Flat Flesh",
+    "hex": "#e0b898",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-16",
+    "name": "Flat Aluminum",
+    "hex": "#a8a8a0",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-17",
+    "name": "Sea Blue",
+    "hex": "#183058",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-18",
+    "name": "Medium Blue",
+    "hex": "#3868a0",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-19",
+    "name": "Sky Grey",
+    "hex": "#a8b0a8",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-20",
+    "name": "Medium Grey",
+    "hex": "#888888",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-21",
+    "name": "Sky",
+    "hex": "#c0c8b8",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-22",
+    "name": "RLM Grey",
+    "hex": "#909088",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-23",
+    "name": "Light Blue",
+    "hex": "#80a8c8",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-24",
+    "name": "Dark Grey",
+    "hex": "#484848",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-25",
+    "name": "Light Sea Grey",
+    "hex": "#a0a8a0",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-26",
+    "name": "Deep Green",
+    "hex": "#184020",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-27",
+    "name": "Black Green",
+    "hex": "#283828",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-28",
+    "name": "Dark Copper",
+    "hex": "#885830",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-49",
+    "name": "Khaki",
+    "hex": "#a09060",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-50",
+    "name": "Field Blue",
+    "hex": "#486898",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-51",
+    "name": "Khaki Drab",
+    "hex": "#807050",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-52",
+    "name": "Flat Earth",
+    "hex": "#907848",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-53",
+    "name": "Neutral Grey",
+    "hex": "#909090",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-54",
+    "name": "Dark Sea Grey",
+    "hex": "#707870",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-55",
+    "name": "Deck Tan",
+    "hex": "#c0a880",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-56",
+    "name": "Metallic Grey",
+    "hex": "#707070",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-57",
+    "name": "Buff",
+    "hex": "#c8b888",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-58",
+    "name": "Olive Green",
+    "hex": "#505828",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-59",
+    "name": "Desert Yellow",
+    "hex": "#c8a050",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-60",
+    "name": "Dark Yellow",
+    "hex": "#b89838",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-61",
+    "name": "Dark Green",
+    "hex": "#284828",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-62",
+    "name": "Olive Drab",
+    "hex": "#505838",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-63",
+    "name": "German Grey",
+    "hex": "#383838",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-64",
+    "name": "Red Brown",
+    "hex": "#783828",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-65",
+    "name": "Field Grey",
+    "hex": "#687060",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-66",
+    "name": "Light Grey",
+    "hex": "#b0b0a8",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-67",
+    "name": "NATO Green",
+    "hex": "#405830",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-68",
+    "name": "NATO Brown",
+    "hex": "#604828",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-69",
+    "name": "NATO Black",
+    "hex": "#282828",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-70",
+    "name": "Dark Green 2",
+    "hex": "#2a4a28",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-71",
+    "name": "Cockpit Green",
+    "hex": "#587850",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-72",
+    "name": "Brown JGSDF",
+    "hex": "#685038",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-73",
+    "name": "Dark Green JGSDF",
+    "hex": "#385028",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-74",
+    "name": "OD JGSDF",
+    "hex": "#506038",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-75",
+    "name": "IJN Gray Kure",
+    "hex": "#787870",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-76",
+    "name": "Gray Green IJN",
+    "hex": "#708070",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-77",
+    "name": "IJN Gray Sasebo",
+    "hex": "#687068",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-78",
+    "name": "Wooden Deck Tan",
+    "hex": "#b89868",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-79",
+    "name": "Linoleum Deck Brown",
+    "hex": "#584830",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-80",
+    "name": "Royal Light Gray",
+    "hex": "#a8a8a0",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-81",
+    "name": "Dark Green 2 RAF",
+    "hex": "#2a4028",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-82",
+    "name": "Ocean Gray 2 RAF",
+    "hex": "#607060",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-83",
+    "name": "Medium Sea Gray 2 RAF",
+    "hex": "#889088",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-84",
+    "name": "Dark Iron",
+    "hex": "#383028",
+    "finish": "metallic",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  },
+  {
+    "brand": "Tamiya",
+    "code": "XF-85",
+    "name": "Rubber Black",
+    "hex": "#282820",
+    "finish": "flat",
+    "type": "acrylic",
+    "suitableFor": {
+      "airbrush": true,
+      "handPainting": false
+    }
+  }
+]

@@ -1,0 +1,10 @@
+# Binaries & build artifacts
+main
+*.o
+*.dylib
+*.out
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride

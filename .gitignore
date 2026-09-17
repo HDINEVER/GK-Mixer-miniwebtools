@@ -3,6 +3,21 @@ main
 *.o
 *.dylib
 *.out
+build/
+build_sim/
+DerivedData/
+
+# Python
+__pycache__/
+*.pyc
+
+# Goldie & Preview generated artifacts
+goldie/out/
+goldie-studio/
+promo_preview/
+
+# Nested independent repos
+privacy-policy-repo/
 
 # macOS
 .DS_Store

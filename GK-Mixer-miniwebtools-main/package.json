@@ -10,9 +10,14 @@
     "verify:dual-unmix": "node scripts/verify-dual-unmix.mjs",
     "verify:drop-ratio": "node --experimental-strip-types scripts/verify-drop-ratio.mjs",
     "preview": "vite preview",
-    "cf:dev": "wrangler pages dev dist"
+    "cf:dev": "wrangler pages dev dist",
+    "cap:sync": "cap sync android",
+    "cap:open": "cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "@google/genai": "^1.30.0",
     "html2canvas": "^1.4.1",
     "motion": "^12.23.26",

@@ -33,14 +33,13 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+          cache: 'gradle'
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install NPM Dependencies
         run: npm install
@@ -48,17 +47,11 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
+      - name: Copy Web Assets to Android
+        run: npx cap copy android
+
       - name: Set up Gradlew Permissions
         run: chmod +x ./android/gradlew
-
-      - name: Sync Web Assets to Android Platform
-        env:
-          CI: 'true'
-          CAPACITOR_NO_TELEMETRY: '1'
-        run: |
-          npx cap telemetry off || true
-          npx cap copy android
-          npx cap update android || true
 
       - name: Build Android APK with Gradle
         run: |

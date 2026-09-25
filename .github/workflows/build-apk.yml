@@ -47,11 +47,13 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
-      - name: Prepare Android Assets Directory
-        run: mkdir -p android/app/src/main/assets/public
-
-      - name: Copy Web Assets to Android
-        run: npm run cap:copy
+      - name: Copy Web Assets into Android
+        run: |
+          mkdir -p android/app/src/main/assets/public
+          cp -r dist/* android/app/src/main/assets/public/
+          cp capacitor.config.json android/app/src/main/assets/capacitor.config.json
+          echo "[]" > android/app/src/main/assets/capacitor.plugins.json
+          npx cap copy android || true
 
       - name: Set up Gradlew Permissions
         run: chmod +x ./android/gradlew

@@ -45,6 +45,15 @@ const App: React.FC = () => {
   const [colors, setColors] = useState<ColorData[]>([]);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer' | 'radial' | 'basic' | 'catalog'>('mixer');
+  type MobileDockTab = 'extract' | 'mixer' | 'radial' | 'basic' | 'visualizer' | 'catalog';
+  const [mobileTab, setMobileTab] = useState<MobileDockTab>('extract');
+
+  const handleSwitchTab = useCallback((tab: MobileDockTab) => {
+    setMobileTab(tab);
+    if (tab !== 'extract') {
+      setRightPanelTab(tab);
+    }
+  }, []);
 
   // Swatch card display and leader line settings
   const [swatchSettings, setSwatchSettings] = useState<SwatchSettings>(() => {
@@ -550,20 +559,20 @@ const App: React.FC = () => {
   }, [sourceImage, colorSpace, syncCanvasBox]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 flex flex-col overflow-x-hidden">
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-macaron-gray dark:border-slate-700 sticky top-0 z-50 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-4 flex flex-wrap justify-between items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-macaron-pink"></div>
-            <div className="w-4 h-4 rounded-full bg-macaron-blue"></div>
-            <div className="w-4 h-4 rounded-full bg-macaron-green"></div>
-            <h1 className="ml-3 font-bold text-slate-700 dark:text-slate-200 tracking-tight text-lg">
+            <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-macaron-pink"></div>
+            <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-macaron-blue"></div>
+            <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-macaron-green"></div>
+            <h1 className="ml-1.5 sm:ml-3 font-bold text-slate-700 dark:text-slate-200 tracking-tight text-base sm:text-lg">
                 {t.title}
             </h1>
           </div>
           
-          <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex flex-wrap gap-2 sm:gap-4 items-center">
              {/* Color Space Selector */}
              <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
                 <button 
@@ -621,11 +630,11 @@ const App: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 max-w-[1920px] mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8">
+      <main className="flex-1 max-w-[1920px] mx-auto w-full p-4 md:p-6 pb-28 lg:pb-6 grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8">
         
         {/* Left Column: Image & Palette */}
         {(!isWideVisualizer || rightPanelTab !== 'visualizer') && (
-          <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
+          <div className={`flex flex-col gap-6 lg:col-span-5 xl:col-span-4 ${mobileTab === 'extract' ? 'block' : 'hidden lg:block'}`}>
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors duration-300">
               <h2 className="text-xs font-bold text-slate-400 mb-4 tracking-widest">{t.sourceInput}</h2>
             
@@ -844,7 +853,7 @@ const App: React.FC = () => {
                                         className="min-w-0 flex-1 text-left"
                                         onClick={() => {
                                             setSelectedColorId(marker.id);
-                                            setRightPanelTab("mixer");
+                                            handleSwitchTab("mixer");
                                         }}
                                     >
                                         <div className="truncate text-[11px] font-bold text-slate-700 dark:text-slate-200">
@@ -856,7 +865,7 @@ const App: React.FC = () => {
                                         type="button"
                                         onClick={() => {
                                             setSelectedColorId(marker.id);
-                                            setRightPanelTab("mixer");
+                                            handleSwitchTab("mixer");
                                         }}
                                         className="flex-shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700"
                                     >
@@ -912,41 +921,91 @@ const App: React.FC = () => {
                     />
                 </div>
             )}
+
+            {/* Mobile Floating Action: Go to Mixer when color is selected */}
+            {selectedColor && (
+              <div className="lg:hidden sticky bottom-20 z-20 mt-4 flex justify-center px-1">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchTab('mixer')}
+                  className="w-full max-w-sm flex items-center justify-between gap-2.5 px-4 py-3 rounded-2xl shadow-xl border border-sky-400/40 dark:border-sky-500/40 bg-gradient-to-r from-sky-500 to-indigo-600 text-white text-xs font-bold active:scale-95 transition-all"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span 
+                      className="w-4 h-4 rounded-full border border-white/60 shadow-inner flex-shrink-0" 
+                      style={{ backgroundColor: selectedColor.hex }} 
+                    />
+                    <span className="font-mono text-white/95 truncate">{selectedColor.hex}</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <span>{lang === 'zh' ? '前往混色台查看配方' : lang === 'ja' ? '調色台で配合を見る' : 'View in Mixer'}</span>
+                    <span className="text-sm">→</span>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         </div>
         )}
 
         {/* Right Column: Mixer & Output */}
-        <div className={isWideVisualizer && rightPanelTab === 'visualizer' ? "col-span-12" : "lg:col-span-7 xl:col-span-8"}>
-           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full transition-colors duration-300 flex flex-col">
+        <div className={`${isWideVisualizer && rightPanelTab === 'visualizer' ? "col-span-12" : "lg:col-span-7 xl:col-span-8"} ${mobileTab !== 'extract' ? 'block' : 'hidden lg:block'}`}>
+           <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full transition-colors duration-300 flex flex-col">
+                {/* Mobile Quick Color Switcher (switch active color directly inside tools without leaving view) */}
+                {colors.length > 0 && (
+                  <div className="lg:hidden mb-4 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                    <span className="text-[10px] font-bold text-slate-400 flex-shrink-0">
+                      {lang === 'zh' ? '已提取颜色:' : lang === 'ja' ? '色:' : 'Colors:'}
+                    </span>
+                    {colors.map((c) => {
+                      const isSel = c.id === selectedColorId;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setSelectedColorId(c.id)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all flex-shrink-0 ${
+                            isSel
+                              ? 'bg-sky-100 dark:bg-sky-950/80 border border-sky-400 dark:border-sky-600 text-sky-800 dark:text-sky-200 font-bold shadow-sm'
+                              : 'bg-slate-100 dark:bg-slate-800 border border-transparent text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full border border-black/10 flex-shrink-0" style={{ backgroundColor: c.hex }} />
+                          <span className="font-mono text-[10px]">{c.hex}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center mb-6">
-                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                    <div className="hidden lg:flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
                         <button 
-                            onClick={() => setRightPanelTab('mixer')}
+                            onClick={() => handleSwitchTab('mixer')}
                             className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'mixer' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
                         >
                             {t.tabMixer}
                         </button>
                         <button 
-                            onClick={() => setRightPanelTab('radial')}
+                            onClick={() => handleSwitchTab('radial')}
                             className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'radial' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
                         >
                             {lang === 'zh' ? '自选颜色混合' : lang === 'ja' ? 'カスタム混合' : 'CUSTOM MIX'}
                         </button>
                         <button 
-                            onClick={() => setRightPanelTab('basic')}
+                            onClick={() => handleSwitchTab('basic')}
                             className={`px-2 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'basic' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
                         >
                             {lang === 'zh' ? '基础色' : lang === 'ja' ? 'ベース' : 'BASIC'}
                         </button>
                         <button 
-                            onClick={() => setRightPanelTab('visualizer')}
+                            onClick={() => handleSwitchTab('visualizer')}
                             className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'visualizer' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
                         >
                             {t.tabVisualizer}
                         </button>
                         <button 
-                            onClick={() => setRightPanelTab('catalog')}
+                            onClick={() => handleSwitchTab('catalog')}
                             className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${rightPanelTab === 'catalog' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
                         >
                             {lang === 'zh' ? '数据库' : lang === 'ja' ? '色庫' : 'CATALOG'}
@@ -970,6 +1029,7 @@ const App: React.FC = () => {
                         cache={mixerResultCache}
                         onCacheUpdate={setMixerResultCache}
                         onAssignCatalogPaint={handleAssignCatalogPaint}
+                        onNavigateToExtract={() => handleSwitchTab('extract')}
                     />
                 ) : rightPanelTab === 'radial' ? (
                     <RadialPaletteMixer
@@ -1009,6 +1069,7 @@ const App: React.FC = () => {
                         onMoveLabel={handleMoveLabel}
                         isWideMode={isWideVisualizer}
                         onToggleWideMode={() => setIsWideVisualizer((prev) => !prev)}
+                        onNavigateToExtract={() => handleSwitchTab('extract')}
                     />
                 )}
            </div>
@@ -1110,6 +1171,147 @@ const App: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Mobile Bottom Dock Bar (iOS/Mobile App style fixed navigation) */}
+      <nav 
+        aria-label="Mobile Navigation Dock"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border-t border-slate-200/70 dark:border-slate-800/80 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] select-none"
+        style={{ paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom, 0.375rem))' }}
+      >
+        <div className="grid grid-cols-6 w-full max-w-lg mx-auto px-0.5 pt-1 pb-0.5">
+          {/* 1. 取色 (Extract / Picker) */}
+          <button
+            type="button"
+            onClick={() => handleSwitchTab('extract')}
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+              mobileTab === 'extract'
+                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
+                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+            }`}
+          >
+            <div className="relative flex items-center justify-center">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 4.5l-4-4a2.121 2.121 0 00-3 0L3 10l-1 5 5-1 9.5-9.5a2.121 2.121 0 000-3z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 6l4 4" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 21l3-3" />
+              </svg>
+              {colors.length > 0 && (
+                <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 bg-sky-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none shadow-sm">
+                  {colors.length}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockExtract}</span>
+          </button>
+
+          {/* 2. 混色台 (Mixer) */}
+          <button
+            type="button"
+            onClick={() => handleSwitchTab('mixer')}
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+              mobileTab === 'mixer'
+                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
+                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+            }`}
+          >
+            <div className="relative flex items-center justify-center">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              </svg>
+              {selectedColor && (
+                <span 
+                  className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full border border-white dark:border-slate-900 shadow-sm"
+                  style={{ backgroundColor: selectedColor.hex }}
+                />
+              )}
+            </div>
+            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockMixer}</span>
+          </button>
+
+          {/* 3. 自选混合 (Radial Custom Mix) */}
+          <button
+            type="button"
+            onClick={() => handleSwitchTab('radial')}
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+              mobileTab === 'radial'
+                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
+                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+            }`}
+          >
+            <div className="relative flex items-center justify-center">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="4" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v5m0 8v5M3 12h5m8 0h5" />
+              </svg>
+            </div>
+            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockCustom}</span>
+          </button>
+
+          {/* 4. 基础色 (Basic) */}
+          <button
+            type="button"
+            onClick={() => handleSwitchTab('basic')}
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+              mobileTab === 'basic'
+                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
+                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+            }`}
+          >
+            <div className="relative flex items-center justify-center">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="7" r="4" />
+                <circle cx="7" cy="16" r="4" />
+                <circle cx="17" cy="16" r="4" />
+              </svg>
+            </div>
+            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockBasic}</span>
+          </button>
+
+          {/* 5. 调色板 (Visualizer Swatches) */}
+          <button
+            type="button"
+            onClick={() => handleSwitchTab('visualizer')}
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+              mobileTab === 'visualizer'
+                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
+                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+            }`}
+          >
+            <div className="relative flex items-center justify-center">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9h18M9 21V9" />
+              </svg>
+              {assignedMarkers.length > 0 && (
+                <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 bg-emerald-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none shadow-sm">
+                  {assignedMarkers.length}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockPalette}</span>
+          </button>
+
+          {/* 6. 数据库 (Catalog) */}
+          <button
+            type="button"
+            onClick={() => handleSwitchTab('catalog')}
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+              mobileTab === 'catalog'
+                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
+                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+            }`}
+          >
+            <div className="relative flex items-center justify-center">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm0 6a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm0 6a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" />
+              </svg>
+            </div>
+            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockCatalog}</span>
+          </button>
+        </div>
+      </nav>
+
       <ColorLoupe
         visible={!!loupe && isPicking}
         clientX={loupe?.x ?? 0}

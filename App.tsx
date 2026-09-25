@@ -47,6 +47,7 @@ const App: React.FC = () => {
   const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer' | 'radial' | 'basic' | 'catalog'>('mixer');
   type MobileDockTab = 'extract' | 'mixer' | 'radial' | 'basic' | 'visualizer' | 'catalog';
   const [mobileTab, setMobileTab] = useState<MobileDockTab>('extract');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleSwitchTab = useCallback((tab: MobileDockTab) => {
     setMobileTab(tab);
@@ -561,18 +562,20 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 flex flex-col overflow-x-hidden">
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-macaron-gray dark:border-slate-700 sticky top-0 z-50 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-4 flex flex-wrap justify-between items-center gap-2 sm:gap-4">
+      <header className="bg-white dark:bg-slate-900 border-b border-macaron-gray dark:border-slate-700 sticky top-0 z-40 transition-colors duration-300">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-2.5 sm:py-3.5 flex justify-between items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-macaron-pink"></div>
             <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-macaron-blue"></div>
             <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-macaron-green"></div>
-            <h1 className="ml-1.5 sm:ml-3 font-bold text-slate-700 dark:text-slate-200 tracking-tight text-base sm:text-lg">
-                {t.title}
+            <h1 className="ml-1 sm:ml-2 font-bold text-slate-800 dark:text-slate-100 tracking-tight text-base sm:text-lg">
+              <span className="lg:hidden">Gk-mixer</span>
+              <span className="hidden lg:inline">{t.title}</span>
             </h1>
           </div>
           
-          <div className="flex flex-wrap gap-2 sm:gap-4 items-center">
+          {/* Desktop Controls (hidden on mobile) */}
+          <div className="hidden lg:flex gap-4 items-center">
              {/* Color Space Selector */}
              <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
                 <button 
@@ -608,10 +611,24 @@ const App: React.FC = () => {
              <button 
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
                 className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-yellow-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                title="Toggle Theme"
              >
                 {theme === 'light' ? '🌙' : '☀️'}
              </button>
           </div>
+
+          {/* Mobile Hamburger Settings Button (三条横杠) */}
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            className="lg:hidden p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all"
+            aria-label="Settings"
+            title="Settings"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -1172,28 +1189,222 @@ const App: React.FC = () => {
         </div>
       </footer>
 
-      {/* Mobile Bottom Dock Bar (iOS/Mobile App style fixed navigation) */}
+      {/* Mobile Settings Modal Popup (三条横杠设置弹窗) */}
+      {isSettingsOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-[#1c1c1e] text-slate-800 dark:text-slate-100 w-full sm:max-w-md rounded-t-[28px] sm:rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 p-5 max-h-[85vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-macaron-pink"></div>
+                <div className="w-3 h-3 rounded-full bg-macaron-blue"></div>
+                <div className="w-3 h-3 rounded-full bg-macaron-green"></div>
+                <h3 className="font-bold text-base tracking-tight ml-1">
+                  {lang === 'zh' ? '软件设置' : lang === 'ja' ? '設定' : 'Settings'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSettingsOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 flex items-center justify-center text-slate-500 dark:text-slate-300 transition-colors"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="py-4 space-y-5">
+              {/* 1. 色彩空间 / Color Space */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                  🎨 {t.colorSpace}
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setColorSpace('srgb')}
+                    className={`py-2 px-2.5 text-xs rounded-xl font-medium border transition-all text-center ${
+                      colorSpace === 'srgb'
+                        ? 'bg-sky-500 text-white border-sky-500 shadow-sm font-bold'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:border-sky-300'
+                    }`}
+                  >
+                    <div>sRGB</div>
+                    <div className="text-[10px] opacity-75 mt-0.5">标准显示</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setColorSpace('display-p3')}
+                    className={`py-2 px-2.5 text-xs rounded-xl font-medium border transition-all text-center ${
+                      colorSpace === 'display-p3'
+                        ? 'bg-sky-500 text-white border-sky-500 shadow-sm font-bold'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:border-sky-300'
+                    }`}
+                  >
+                    <div>Display P3</div>
+                    <div className="text-[10px] opacity-75 mt-0.5">Apple 广色域</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setColorSpace('adobe-rgb')}
+                    className={`py-2 px-2.5 text-xs rounded-xl font-medium border transition-all text-center ${
+                      colorSpace === 'adobe-rgb'
+                        ? 'bg-sky-500 text-white border-sky-500 shadow-sm font-bold'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:border-sky-300'
+                    }`}
+                  >
+                    <div>Adobe RGB</div>
+                    <div className="text-[10px] opacity-75 mt-0.5">印刷设计</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. 语言 / Language */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                  🌐 {lang === 'zh' ? '界面语言' : lang === 'ja' ? '言語' : 'Language'}
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLang('zh')}
+                    className={`py-2 px-3 text-xs rounded-xl font-medium border transition-all ${
+                      lang === 'zh'
+                        ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm font-bold'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    简体中文
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLang('en')}
+                    className={`py-2 px-3 text-xs rounded-xl font-medium border transition-all ${
+                      lang === 'en'
+                        ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm font-bold'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    English
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLang('ja')}
+                    className={`py-2 px-3 text-xs rounded-xl font-medium border transition-all ${
+                      lang === 'ja'
+                        ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm font-bold'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    日本語
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. 外观主题 / Appearance */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                  🌓 {lang === 'zh' ? '外观主题' : lang === 'ja' ? '外観テーマ' : 'Appearance'}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTheme('light')}
+                    className={`py-2 px-3 text-xs rounded-xl font-medium border flex items-center justify-center gap-2 transition-all ${
+                      theme === 'light'
+                        ? 'bg-amber-500 text-white border-amber-500 shadow-sm font-bold'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <span>☀️</span>
+                    <span>{lang === 'zh' ? '浅色模式' : lang === 'ja' ? 'ライト' : 'Light Mode'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('dark')}
+                    className={`py-2 px-3 text-xs rounded-xl font-medium border flex items-center justify-center gap-2 transition-all ${
+                      theme === 'dark'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm font-bold'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <span>🌙</span>
+                    <span>{lang === 'zh' ? '深色模式' : lang === 'ja' ? 'ダーク' : 'Dark Mode'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. 关于与社群 / Links */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs space-y-2">
+                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                  <span>GK-Mixer Web v2.0</span>
+                  <span>Mixbox 2.0 · RAL · miniature-paints</span>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <a
+                    href="https://space.bilibili.com/26458514"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-sky-500"
+                  >
+                    Bilibili
+                  </a>
+                  <a
+                    href="https://x.com/kroos_h"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-sky-500"
+                  >
+                    Twitter / X
+                  </a>
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    QQ群: 701691238
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Confirm Button */}
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(false)}
+              className="w-full mt-2 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm active:scale-[0.99] transition-transform"
+            >
+              {lang === 'zh' ? '完成' : lang === 'ja' ? '完了' : 'Done'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating iOS Dock Bar (模仿 iOS 底部浮动胶囊 Dock 栏) */}
       <nav 
         aria-label="Mobile Navigation Dock"
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border-t border-slate-200/70 dark:border-slate-800/80 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] select-none"
-        style={{ paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom, 0.375rem))' }}
+        className="lg:hidden fixed left-2 right-2 max-w-lg mx-auto z-40 bg-white/94 dark:bg-[#1c1c1e]/94 backdrop-blur-2xl rounded-full border border-black/[0.08] dark:border-white/10 shadow-[0_12px_36px_rgba(0,0,0,0.14),0_1px_3px_rgba(0,0,0,0.06)] select-none px-1 py-1"
+        style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom, 0.75rem))' }}
       >
-        <div className="grid grid-cols-6 w-full max-w-lg mx-auto px-0.5 pt-1 pb-0.5">
+        <div className="grid grid-cols-6 w-full items-center gap-0.5">
           {/* 1. 取色 (Extract / Picker) */}
           <button
             type="button"
             onClick={() => handleSwitchTab('extract')}
-            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-0.5 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
               mobileTab === 'extract'
-                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                ? 'bg-black/[0.06] dark:bg-white/[0.12] text-[#FF9500] font-bold'
+                : 'text-slate-900 dark:text-slate-100 font-medium hover:text-[#FF9500]'
             }`}
           >
-            <div className="relative flex items-center justify-center">
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 4.5l-4-4a2.121 2.121 0 00-3 0L3 10l-1 5 5-1 9.5-9.5a2.121 2.121 0 000-3z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 6l4 4" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 21l3-3" />
+            <div className="relative flex items-center justify-center mb-0.5">
+              {/* Centered iOS solid Eyedropper */}
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.4 4.6a2.5 2.5 0 0 0-3.54 0l-1.3 1.3 3.54 3.54 1.3-1.3a2.5 2.5 0 0 0 0-3.54z"/>
+                <path d="M13.15 7.32L7.3 13.17a2.2 2.2 0 0 0-.64 1.55V17.2a.8.8 0 0 0 .8.8h2.48a2.2 2.2 0 0 0 1.55-.64l5.85-5.85-4.19-4.19z"/>
+                <circle cx="4.5" cy="19.5" r="1.5"/>
               </svg>
               {colors.length > 0 && (
                 <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 bg-sky-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none shadow-sm">
@@ -1201,22 +1412,23 @@ const App: React.FC = () => {
                 </span>
               )}
             </div>
-            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockExtract}</span>
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">{t.dockExtract}</span>
           </button>
 
           {/* 2. 混色台 (Mixer) */}
           <button
             type="button"
             onClick={() => handleSwitchTab('mixer')}
-            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-0.5 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
               mobileTab === 'mixer'
-                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                ? 'bg-black/[0.06] dark:bg-white/[0.12] text-[#FF9500] font-bold'
+                : 'text-slate-900 dark:text-slate-100 font-medium hover:text-[#FF9500]'
             }`}
           >
-            <div className="relative flex items-center justify-center">
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            <div className="relative flex items-center justify-center mb-0.5">
+              {/* iOS Erlenmeyer Flask with measuring notches */}
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path fillRule="evenodd" clipRule="evenodd" d="M9 2.5a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 .75.75V4h.5a.75.75 0 0 1 0 1.5h-.5v3.4l4.63 7.87A2.5 2.5 0 0 1 17.44 21H6.56a2.5 2.5 0 0 1-2.14-3.73L9 9.4V5.5H8.5a.75.75 0 0 1 0-1.5H9V2.5zM11.25 11.5a.75.75 0 0 1 .75-.75h1a.75.75 0 0 1 0 1.5h-1a.75.75 0 0 1-.75-.75zm-.75 2.75a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75zm-.75 2.75a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75z"/>
               </svg>
               {selectedColor && (
                 <span 
@@ -1225,63 +1437,68 @@ const App: React.FC = () => {
                 />
               )}
             </div>
-            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockMixer}</span>
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">{t.dockMixer}</span>
           </button>
 
-          {/* 3. 自选混合 (Radial Custom Mix) */}
+          {/* 3. 调色 (Radial Custom Mix - 4 dots in diamond) */}
           <button
             type="button"
             onClick={() => handleSwitchTab('radial')}
-            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-0.5 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
               mobileTab === 'radial'
-                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                ? 'bg-black/[0.06] dark:bg-white/[0.12] text-[#FF9500] font-bold'
+                : 'text-slate-900 dark:text-slate-100 font-medium hover:text-[#FF9500]'
             }`}
           >
-            <div className="relative flex items-center justify-center">
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="9" />
-                <circle cx="12" cy="12" r="4" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v5m0 8v5M3 12h5m8 0h5" />
+            <div className="relative flex items-center justify-center mb-0.5">
+              {/* iOS 4 dots diamond SF Symbol */}
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5.2" r="3.2" />
+                <circle cx="12" cy="18.8" r="3.2" />
+                <circle cx="5.2" cy="12" r="3.2" />
+                <circle cx="18.8" cy="12" r="3.2" />
               </svg>
             </div>
-            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockCustom}</span>
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">{t.dockCustom}</span>
           </button>
 
-          {/* 4. 基础色 (Basic) */}
+          {/* 4. 基础色 (Basic - 3 dots triad) */}
           <button
             type="button"
             onClick={() => handleSwitchTab('basic')}
-            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-0.5 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
               mobileTab === 'basic'
-                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                ? 'bg-black/[0.06] dark:bg-white/[0.12] text-[#FF9500] font-bold'
+                : 'text-slate-900 dark:text-slate-100 font-medium hover:text-[#FF9500]'
             }`}
           >
-            <div className="relative flex items-center justify-center">
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="7" r="4" />
-                <circle cx="7" cy="16" r="4" />
-                <circle cx="17" cy="16" r="4" />
+            <div className="relative flex items-center justify-center mb-0.5">
+              {/* 3 primary color dots */}
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="6" r="3.4" />
+                <circle cx="6.5" cy="16.5" r="3.4" />
+                <circle cx="17.5" cy="16.5" r="3.4" />
               </svg>
             </div>
-            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockBasic}</span>
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">{t.dockBasic}</span>
           </button>
 
-          {/* 5. 调色板 (Visualizer Swatches) */}
+          {/* 5. 调色板 (Visualizer Swatches - Swatch palette fan deck) */}
           <button
             type="button"
             onClick={() => handleSwitchTab('visualizer')}
-            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-0.5 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
               mobileTab === 'visualizer'
-                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                ? 'bg-black/[0.06] dark:bg-white/[0.12] text-[#FF9500] font-bold'
+                : 'text-slate-900 dark:text-slate-100 font-medium hover:text-[#FF9500]'
             }`}
           >
-            <div className="relative flex items-center justify-center">
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9h18M9 21V9" />
+            <div className="relative flex items-center justify-center mb-0.5">
+              {/* iOS Swatch deck */}
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path fillRule="evenodd" clipRule="evenodd" d="M5 3.5A1.5 1.5 0 0 1 6.5 2H10a1.5 1.5 0 0 1 1.5 1.5v17A1.5 1.5 0 0 1 10 22H6.5A1.5 1.5 0 0 1 5 20.5V3.5zM6.75 4v3.5h3.25V4H6.75zm0 5v4.5h3.25V9H6.75zm0 6V20h3.25v-5H6.75z" />
+                <path d="M13.2 4.6a1.5 1.5 0 0 1 1.8-.4l3.8 2a1.5 1.5 0 0 1 .7 1.9l-4.5 11.5a1.5 1.5 0 0 1-1.9.7l-1.4-.7 1.5-15z" />
+                <path d="M16.5 8.5l2.8 2.2a1.5 1.5 0 0 1 .3 2.1l-6 8a1.5 1.5 0 0 1-2.1.3l-.6-.5 5.6-12.1z" opacity="0.9" />
               </svg>
               {assignedMarkers.length > 0 && (
                 <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 bg-emerald-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none shadow-sm">
@@ -1289,25 +1506,28 @@ const App: React.FC = () => {
                 </span>
               )}
             </div>
-            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockPalette}</span>
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">{t.dockPalette}</span>
           </button>
 
-          {/* 6. 数据库 (Catalog) */}
+          {/* 6. 数据库 (Catalog - Cylinders) */}
           <button
             type="button"
             onClick={() => handleSwitchTab('catalog')}
-            className={`min-w-0 relative flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all active:scale-95 ${
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-0.5 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
               mobileTab === 'catalog'
-                ? 'text-sky-600 dark:text-sky-400 font-bold bg-sky-50/70 dark:bg-sky-950/40'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                ? 'bg-black/[0.06] dark:bg-white/[0.12] text-[#FF9500] font-bold'
+                : 'text-slate-900 dark:text-slate-100 font-medium hover:text-[#FF9500]'
             }`}
           >
-            <div className="relative flex items-center justify-center">
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm0 6a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm0 6a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" />
+            <div className="relative flex items-center justify-center mb-0.5">
+              {/* iOS Database Cylinder */}
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <ellipse cx="12" cy="5.5" rx="7.5" ry="2.8" />
+                <path d="M4.5 5.5v4.2c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V5.5c0 1.5-3.4 2.8-7.5 2.8s-7.5-1.3-7.5-2.8z"/>
+                <path d="M4.5 14v4.2c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V14c0 1.5-3.4 2.8-7.5 2.8s-7.5-1.3-7.5-2.8z"/>
               </svg>
             </div>
-            <span className="text-[10px] mt-0.5 tracking-tight truncate w-full text-center">{t.dockCatalog}</span>
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">{t.dockCatalog}</span>
           </button>
         </div>
       </nav>

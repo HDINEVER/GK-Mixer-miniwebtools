@@ -11,6 +11,7 @@
     "verify:drop-ratio": "node --experimental-strip-types scripts/verify-drop-ratio.mjs",
     "preview": "vite preview",
     "cf:dev": "wrangler pages dev dist",
+    "cap:copy": "cap copy android",
     "cap:sync": "cap sync android",
     "cap:open": "cap open android"
   },

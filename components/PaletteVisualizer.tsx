@@ -22,6 +22,7 @@ interface PaletteVisualizerProps {
   onMoveLabel?: (id: string, labelNx: number, labelNy: number) => void;
   isWideMode?: boolean;
   onToggleWideMode?: () => void;
+  onNavigateToExtract?: () => void;
 }
 
 const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
@@ -40,6 +41,7 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
   onMoveLabel,
   isWideMode = false,
   onToggleWideMode,
+  onNavigateToExtract,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [imgBox, setImgBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
@@ -150,12 +152,38 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
           className="viz-stage relative flex flex-1 min-w-0 min-h-[380px] lg:min-h-0 flex-col overflow-hidden rounded-xl bg-slate-950 shadow-inner"
         >
           {!sourceImage ? (
-            <div className="flex flex-1 items-center justify-center px-6 text-center font-mono text-[11px] text-slate-500">
-              {lang === 'zh'
-                ? '先在左侧放入参考图并取色，再回到这里导出标注图。'
-                : lang === 'ja'
-                ? '左で画像を読み込み、色を採取してから書き出します。'
-                : 'Load a reference on the left and pick colors, then export here.'}
+            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 mb-4 shadow-sm">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+              </div>
+              <p className="text-sm font-bold text-slate-300 mb-2">
+                {lang === 'zh'
+                  ? '未加载参考图片'
+                  : lang === 'ja'
+                  ? '参考画像がありません'
+                  : 'No Reference Image'}
+              </p>
+              <p className="font-mono text-xs text-slate-500 mb-5 max-w-xs">
+                {lang === 'zh'
+                  ? '请先在【取色】页面放入参考图并提取颜色，再回到这里调整色卡排列与导出标注图。'
+                  : lang === 'ja'
+                  ? '【抽出】画面で画像を読み込み、色を採取してからここへ戻って調整・書き出しを行います。'
+                  : 'Load a reference in the Pick tab first, then adjust swatches and export here.'}
+              </p>
+              {onNavigateToExtract && (
+                <button
+                  type="button"
+                  onClick={onNavigateToExtract}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-macaron-pink to-macaron-blue text-white text-xs font-bold shadow-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>{lang === 'zh' ? '前往取色页面' : lang === 'ja' ? '色抽出へ' : 'Go to Pick Image'}</span>
+                </button>
+              )}
             </div>
           ) : (
             <div ref={frameRef} className="relative flex min-h-0 flex-1 items-center justify-center p-2">

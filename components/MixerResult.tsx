@@ -82,6 +82,7 @@ interface MixerResultProps {
   cache?: MixerResultCache;
   onCacheUpdate?: (cache: MixerResultCache) => void;
   onAssignCatalogPaint?: (paint: CatalogPaint) => void;
+  onNavigateToExtract?: () => void;
 }
 
 interface Layer {
@@ -107,7 +108,7 @@ const PIGMENT_SHORT_NAME: Record<string, Record<Language, string>> = {
 const shortLayerName = (layer: Layer, lang: Language): string =>
   PIGMENT_SHORT_NAME[layer.color.toUpperCase()]?.[lang] ?? layer.label;
 
-const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colorSpaceProp, onAddColor, cache, onCacheUpdate, onAssignCatalogPaint }) => {
+const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colorSpaceProp, onAddColor, cache, onCacheUpdate, onAssignCatalogPaint, onNavigateToExtract }) => {
   const colorSpace: ColorSpace =
     colorSpaceProp === 'display-p3' || colorSpaceProp === 'adobe-rgb' ? colorSpaceProp : 'srgb';
   const [ralMatch, setRalMatch] = useState<RALColor | null>(null);
@@ -323,8 +324,34 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
 
   if (!color) {
     return (
-      <div className="h-full flex items-center justify-center text-slate-300 dark:text-slate-600 font-mono text-sm border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl p-10">
-        {t.noColor}
+      <div className="h-full min-h-[320px] flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="w-14 h-14 rounded-2xl bg-macaron-blue/10 flex items-center justify-center text-macaron-blue mb-4 shadow-sm">
+          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 11.25l1.5-1.5a3.182 3.182 0 10-4.5-4.5l-1.5 1.5m-3.75 6.75l7.5-7.5M9.75 14.25L4.5 19.5v.75h.75l5.25-5.25m-2.25-2.25l1.5 1.5" />
+          </svg>
+        </div>
+        <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+          {t.noColor}
+        </p>
+        <p className="text-xs text-slate-400 mb-5 max-w-xs">
+          {lang === 'zh'
+            ? '请先在取色页面上传参考图并选取颜色，混色台将自动计算真实颜料配方与品牌色号。'
+            : lang === 'ja'
+            ? 'まずは抽出画面で画像を読み込んで色を選択してください。'
+            : 'Please pick a color from the extraction page to calculate mixing recipes.'}
+        </p>
+        {onNavigateToExtract && (
+          <button
+            type="button"
+            onClick={onNavigateToExtract}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-macaron-pink to-macaron-blue text-white text-xs font-bold shadow-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>{lang === 'zh' ? '前往取色页面' : lang === 'ja' ? '色抽出へ' : 'Go to Pick Color'}</span>
+          </button>
+        )}
       </div>
     );
   }

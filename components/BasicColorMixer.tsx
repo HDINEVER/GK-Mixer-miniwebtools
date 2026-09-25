@@ -55,7 +55,6 @@ const getCanvasSize = (containerWidth?: number) => {
 const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheUpdate }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameRef = useRef<number>();
   // Use cache values if available, otherwise use defaults
   const [baseColors, setBaseColors] = useState<BaseColor[]>(cache?.baseColors ?? DEFAULT_BASE_COLORS);
   const [mixRatios, setMixRatios] = useState<number[]>(cache?.mixRatios ?? DEFAULT_BASE_COLORS.map(() => 0));
@@ -64,6 +63,12 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
   const [canvasSize, setCanvasSize] = useState(getCanvasSize());
   const [dropMultiplier, setDropMultiplier] = useState(1);
   
+  // Refs to prevent closure lag and frame drops during dragging
+  const mixRatiosRef = useRef<number[]>(cache?.mixRatios ?? DEFAULT_BASE_COLORS.map(() => 0));
+  mixRatiosRef.current = mixRatios;
+  const finalColorRef = useRef<string>('');
+  finalColorRef.current = finalColor;
+
   // 拖动状态
   const draggedIndexRef = useRef<number>(-1);
   const lastMoveTimeRef = useRef<number>(0); // 触控节流
@@ -74,16 +79,16 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
   const centersInside = useRef<Array<{x: number, y: number}>>([]);
   const slidersPos = useRef<Array<{x: number, y: number}>>([]);
   
-  // Update cache when state changes
+  // Update cache when state changes outside of active dragging
   useEffect(() => {
-    if (onCacheUpdate) {
+    if (onCacheUpdate && draggedIndexRef.current === -1) {
       onCacheUpdate({
         baseColors,
         mixRatios,
         totalVolume
       });
     }
-  }, [baseColors, mixRatios, totalVolume, onCacheUpdate]);
+  }, [baseColors, totalVolume, onCacheUpdate]);
   
   // 计算混合颜色的辅助函数
   const calculateMixedColor = (ratios: number[]): string => {
@@ -121,44 +126,37 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
       const color = calculateMixedColor(cache.mixRatios);
       if (color) {
         setFinalColor(color);
+        finalColorRef.current = color;
       }
     }
   }, []); // 只在组件挂载时执行一次
 
-  // 响应式调整画布尺寸
+  // 响应式调整画布尺寸 - 监听 window resize，避免 ResizeObserver 产生布局抖动循环
   useEffect(() => {
     const updateSize = () => {
       const width = containerRef.current?.offsetWidth;
       const newSize = getCanvasSize(width);
       setCanvasSize(newSize);
       initializePositions(newSize.scale);
-      // After initializing positions, update slider positions based on current mixRatios
-      updateSliderPositionsFromRatios();
+      updateSliderPositions(mixRatiosRef.current);
     };
 
     updateSize();
-    const resizeObserver = new ResizeObserver(() => updateSize());
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-    const handleWindowResize = () => updateSize();
-    window.addEventListener('resize', handleWindowResize);
+    window.addEventListener('resize', updateSize);
 
     return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', handleWindowResize);
+      window.removeEventListener('resize', updateSize);
     };
   }, []);
   
   // 当baseColors改变时重新初始化位置
   useEffect(() => {
     initializePositions(canvasSize.scale);
-    // After initializing, restore slider positions from mixRatios
-    updateSliderPositionsFromRatios();
+    updateSliderPositions(mixRatiosRef.current);
   }, [baseColors.length, canvasSize.scale]);
   
-  // 根据 mixRatios 更新滑块位置（用于从缓存恢复）
-  const updateSliderPositionsFromRatios = () => {
+  // 根据 mixRatios 更新滑块位置
+  const updateSliderPositions = (ratios: number[] = mixRatiosRef.current) => {
     const WIDTH = BASE_WIDTH;
     const HEIGHT = BASE_HEIGHT;
     const CENTER_X = WIDTH / 2;
@@ -171,31 +169,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
 
     for (let i = 0; i < numColors; i++) {
       const angle = i * step;
-      const t = mixRatios[i];
-      const distance = OUTER_RADIUS - t * (OUTER_RADIUS - INNER_RADIUS);
-      slidersPos.current[i] = {
-        x: CENTER_X + Math.sin(angle) * distance,
-        y: CENTER_Y - Math.cos(angle) * distance
-      };
-    }
-  };
-
-  // 根据mixRatios更新滑块位置
-  const updateSliderPositions = () => {
-    const WIDTH = BASE_WIDTH;
-    const HEIGHT = BASE_HEIGHT;
-    const CENTER_X = WIDTH / 2;
-    const CENTER_Y = HEIGHT / 2;
-    const OUTER_RADIUS = 215;
-    const INNER_RADIUS = 70;
-    
-    const numColors = baseColors.length;
-    const step = (Math.PI * 2) / numColors;
-
-    for (let i = 0; i < numColors; i++) {
-      const angle = i * step;
-      // t值就是mixRatios[i]，从0(外圈)到1(内圈)
-      const t = mixRatios[i];
+      const t = ratios[i] ?? 0;
       const distance = OUTER_RADIUS - t * (OUTER_RADIUS - INNER_RADIUS);
       slidersPos.current[i] = {
         x: CENTER_X + Math.sin(angle) * distance,
@@ -220,7 +194,9 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
     centersOutside.current = [];
     centersInside.current = [];
     slidersPos.current = [];
-    knobSizesRef.current = [BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS, BASE_KNOB_RADIUS];
+    if (draggedIndexRef.current === -1) {
+      knobSizesRef.current = new Array(numColors).fill(BASE_KNOB_RADIUS);
+    }
 
     for (let i = 0; i < numColors; i++) {
       const angle = i * step;
@@ -341,13 +317,14 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
 
     // 4. 绘制数据标签（最后绘制，确保在最上层）
     for (let i = 0; i < baseColors.length; i++) {
-      // 如果有配比，显示数据标签
-      if (mixRatios[i] > 0.001 || draggedIndexRef.current === i) {
+      const r = mixRatiosRef.current[i] ?? 0;
+      if (r > 0.001 || draggedIndexRef.current === i) {
         const pos = slidersPos.current[i];
-        const currentRadius = knobSizesRef.current[i];
+        if (!pos) continue;
+        const currentRadius = knobSizesRef.current[i] ?? BASE_KNOB_RADIUS;
         const hex = baseColors[i].hex;
-        const totalRatio = mixRatios.reduce((a, b) => a + b, 0);
-        const percentage = totalRatio > 0 ? (mixRatios[i] / totalRatio * 100).toFixed(1) : '0.0';
+        const totalRatio = mixRatiosRef.current.reduce((a, b) => a + b, 0);
+        const percentage = totalRatio > 0 ? (r / totalRatio * 100).toFixed(1) : '0.0';
         const ml = (parseFloat(percentage) * totalVolume / 100).toFixed(1);
 
         // 标签位置（旋钮外侧）
@@ -399,8 +376,6 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
         ctx.fillText(text2, tx, ty + 7);
       }
     }
-
-    animationFrameRef.current = requestAnimationFrame(draw);
   };
 
   // 绘制马赛克（空状态）
@@ -470,19 +445,18 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
     const WIDTH = BASE_WIDTH;
     const HEIGHT = BASE_HEIGHT;
     const ACTIVE_KNOB_RADIUS = 32;
-    // 使用逻辑坐标系统 - 基于BASE_WIDTH/HEIGHT而非显示尺寸
-    // 关键修复: 使用canvasSize.width/height作为转换基准
-    const x = (clientX - rect.left) * (WIDTH / canvasSize.width);
-    const y = (clientY - rect.top) * (HEIGHT / canvasSize.height);
+    const x = (clientX - rect.left) * (WIDTH / rect.width);
+    const y = (clientY - rect.top) * (HEIGHT / rect.height);
 
     // 检测点击了哪个旋钮
     for (let i = 0; i < baseColors.length; i++) {
       const pos = slidersPos.current[i];
-      const radius = knobSizesRef.current[i];
+      if (!pos) continue;
+      const radius = knobSizesRef.current[i] ?? 22;
       const dx = x - pos.x;
       const dy = y - pos.y;
       
-      if (Math.sqrt(dx * dx + dy * dy) < radius) {
+      if (Math.sqrt(dx * dx + dy * dy) < radius + 12) {
         draggedIndexRef.current = i;
         
         // 放大动画
@@ -505,11 +479,6 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
   const handleMove = (clientX: number, clientY: number) => {
     if (draggedIndexRef.current === -1) return;
 
-    // 移动端触控节流优化 - 限制更新频率
-    const now = Date.now();
-    if (now - lastMoveTimeRef.current < 16) return; // ~60fps
-    lastMoveTimeRef.current = now;
-
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -520,25 +489,43 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
     const CENTER_Y = HEIGHT / 2;
     const OUTER_RADIUS = 215;
     const INNER_RADIUS = 70;
-    // 使用逻辑坐标系统 - 修复移动设备模式下的坐标转换
-    const x = (clientX - rect.left) * (WIDTH / canvasSize.width);
-    const y = (clientY - rect.top) * (HEIGHT / canvasSize.height);
+
+    const x = (clientX - rect.left) * (WIDTH / rect.width);
+    const y = (clientY - rect.top) * (HEIGHT / rect.height);
 
     const i = draggedIndexRef.current;
     const outerPos = centersOutside.current[i];
     const innerPos = centersInside.current[i];
+    if (!outerPos || !innerPos) return;
 
     // 计算t值：从外圈(t=0)到内圈(t=1)
     const t = getT(outerPos.x, outerPos.y, innerPos.x, innerPos.y, x, y);
 
-    // 只更新配比，滑块位置会通过useEffect自动同步
-    const newRatios = [...mixRatios];
-    newRatios[i] = t;
-    setMixRatios(newRatios);
+    // 1. 立即计算并写入滑块位置，保证 Canvas 无延迟渲染，彻底杜绝闪烁和抽搐
+    const step = (Math.PI * 2) / baseColors.length;
+    const angle = i * step;
+    const distance = OUTER_RADIUS - t * (OUTER_RADIUS - INNER_RADIUS);
+    slidersPos.current[i] = {
+      x: CENTER_X + Math.sin(angle) * distance,
+      y: CENTER_Y - Math.cos(angle) * distance
+    };
 
-    // 计算混合颜色
+    // 2. 更新 Ref 中的数据
+    const newRatios = [...mixRatiosRef.current];
+    newRatios[i] = t;
+    mixRatiosRef.current = newRatios;
+
+    // 3. 计算混合颜色
     const color = calculateMixedColor(newRatios);
-    setFinalColor(color);
+    finalColorRef.current = color;
+
+    // 4. 节流同步到 React 状态更新配方和 UI（~60fps）
+    const now = Date.now();
+    if (now - lastMoveTimeRef.current >= 16) {
+      lastMoveTimeRef.current = now;
+      setMixRatios(newRatios);
+      setFinalColor(color);
+    }
   };
 
   const handleEnd = () => {
@@ -563,9 +550,25 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
     }
 
     draggedIndexRef.current = -1;
+
+    // 拖拽结束时提交最终状态
+    const finalRatios = [...mixRatiosRef.current];
+    setMixRatios(finalRatios);
+    const color = calculateMixedColor(finalRatios);
+    setFinalColor(color);
+    finalColorRef.current = color;
+
+    // 仅在拖拽完成时更新父级缓存，避免高频触发整个应用大树重新渲染
+    if (onCacheUpdate) {
+      onCacheUpdate({
+        baseColors,
+        mixRatios: finalRatios,
+        totalVolume
+      });
+    }
   };
 
-  // 事件绑定
+  // 事件绑定 - 仅在画布尺寸更新时绑定一次，避免在拖动过程中销毁和重复注册
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -579,13 +582,11 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
 
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length > 0) {
-        // 设备模拟模式需要 preventDefault 才能正确触发
         e.preventDefault();
         handleStart(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
     const handleTouchMove = (e: TouchEvent) => {
-      // 只在拖动时阻止滚动
       if (draggedIndexRef.current !== -1) {
         e.preventDefault();
       }
@@ -613,30 +614,36 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
       canvas.removeEventListener('touchmove', handleTouchMove);
       canvas.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [mixRatios, canvasSize]);
+  }, [canvasSize]);
 
-  // 同步滑块位置到mixRatios
+  // 持续流畅的绘制循环 (60fps)
   useEffect(() => {
-    updateSliderPositions();
-  }, [mixRatios]);
-
-  // 启动绘制循环
-  useEffect(() => {
-    draw();
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+    let animId: number;
+    const loop = () => {
+      draw();
+      animId = requestAnimationFrame(loop);
     };
-  }, [mixRatios, finalColor, canvasSize]);
-
-
+    animId = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(animId);
+    };
+  }, [canvasSize]);
 
   // 重置功能
   const handleReset = () => {
-    setMixRatios([0, 0, 0, 0, 0, 0, 0, 0]);
+    const zeroRatios = baseColors.map(() => 0);
+    mixRatiosRef.current = zeroRatios;
+    setMixRatios(zeroRatios);
     setFinalColor('');
-    // 滑块位置会通过useEffect自动重置到外圈
+    finalColorRef.current = '';
+    updateSliderPositions(zeroRatios);
+    if (onCacheUpdate) {
+      onCacheUpdate({
+        baseColors,
+        mixRatios: zeroRatios,
+        totalVolume
+      });
+    }
   };
 
   const translations = {
@@ -672,7 +679,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
   const t = translations[lang];
 
   return (
-    <div ref={containerRef} className="grid gap-2 h-full">
+    <div ref={containerRef} className="flex flex-col gap-3">
       {/* Header */}
       <div>
         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{t.title}</h2>

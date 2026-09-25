@@ -7,19 +7,7 @@ import { formatDropRatioLine, toDropRatio } from '../utils/dropRatio';
 import DropRatioBar from './DropRatioBar';
 import * as mixbox from '../utils/mixbox';
 
-// Helper: Calculate relative luminance (perceived brightness)
-// Uses ITU-R BT.709 coefficients for perceptual brightness
-const getLuminance = (rgb: { r: number; g: number; b: number }): number => {
-  const r = rgb.r / 255;
-  const g = rgb.g / 255;
-  const b = rgb.b / 255;
-  // sRGB to linear conversion
-  const rLinear = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
-  const gLinear = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
-  const bLinear = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
-  // Perceptual luminance (0.0 - 1.0)
-  return 0.2126 * rLinear + 0.7152 * gLinear + 0.0722 * bLinear;
-};
+
 
 const recipeLabelToHex = (label: string): string => {
   if (label.includes('品红') || /magenta/i.test(label)) return '#FF00FF';
@@ -133,30 +121,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
   
   const t = translations[lang];
   const bottleRef = useRef<HTMLDivElement>(null);
-  const cmykRefs = useRef<(HTMLDivElement | null)[]>([]);
-  
-  // Update cache when state changes
-  useEffect(() => {
-    if (onCacheUpdate) {
-      onCacheUpdate({
-        mixingMode,
-        bottleVolume
-      });
-    }
-  }, [mixingMode, bottleVolume, onCacheUpdate]);
 
-  // Update CMYK Bars Animation
-  useEffect(() => {
-    if (color && cmykRefs.current.length === 4) {
-        anime({
-            targets: cmykRefs.current,
-            width: (el: HTMLElement) => el.dataset.width,
-            duration: 1000,
-            easing: 'easeOutQuart',
-            delay: anime.stagger(100)
-        });
-    }
-  }, [color]);
 
   useEffect(() => {
     if (color) {
@@ -332,18 +297,27 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
 
   useEffect(() => {
     if (bottleRef.current && color) {
-       // Stop existing animations
-       anime.remove(bottleRef.current.children);
-       
-       // Animate height from 0 or current
-       anime({
-         targets: bottleRef.current.children,
-         height: (el: HTMLElement) => el.dataset.targetHeight,
-         opacity: [0, 1],
-         duration: 800,
-         easing: 'easeOutElastic(1, .8)',
-         delay: anime.stagger(50)
-       });
+      const animeInstance = typeof anime === 'undefined' ? null : anime;
+      if (animeInstance) {
+        // Stop existing animations
+        animeInstance.remove(bottleRef.current.children);
+        
+        // Animate height from 0 or current
+        animeInstance({
+          targets: bottleRef.current.children,
+          height: (el: HTMLElement) => el.dataset.targetHeight,
+          opacity: [0, 1],
+          duration: 800,
+          easing: 'easeOutElastic(1, .8)',
+          delay: animeInstance.stagger(50)
+        });
+      } else {
+        Array.from(bottleRef.current.children).forEach((child) => {
+          const el = child as HTMLElement;
+          if (el.dataset.targetHeight) el.style.height = el.dataset.targetHeight;
+          el.style.opacity = '1';
+        });
+      }
     }
   }, [mixLayers]);
 
@@ -358,68 +332,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-macaron-blue/30 dark:border-slate-700 shadow-sm p-4 md:p-6 overflow-hidden transition-colors duration-300">
       
-      {/* Top Section: Color Info & CMYK Dashboard */}
-      <div className="flex flex-col md:flex-row gap-6 border-b border-slate-100 dark:border-slate-800 pb-6 mb-6">
-        {/* Swatch & Hex */}
-        <div className="flex items-center gap-4 min-w-[200px]">
-            <div 
-                className="w-20 h-20 rounded-2xl shadow-inner border-2 border-slate-100 dark:border-slate-700"
-                style={{ backgroundColor: color.hex }}
-            />
-            <div>
-                <div className="text-3xl font-bold text-slate-700 dark:text-slate-200 font-mono tracking-tighter">{color.hex}</div>
-                <div className="text-xs font-mono text-slate-400 mt-1">
-                    RGB: {color.rgb.r}, {color.rgb.g}, {color.rgb.b}
-                </div>
-                {selectedBasePaint && (
-                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 text-[10px]">
-                        <div className="text-slate-500 dark:text-slate-400 mb-1">Mixbox Preview:</div>
-                        <div 
-                            className="w-12 h-8 rounded border border-slate-300 dark:border-slate-600 shadow-sm"
-                            style={{ backgroundColor: mixboxBlend(selectedBasePaint.hex, color.hex, 0.5) }}
-                            title="50% base + 50% target (Physical blend)"
-                        />
-                    </div>
-                )}
-            </div>
-        </div>
 
-        {/* CMYK Bars */}
-        <div className="flex-1 grid grid-cols-1 gap-2">
-            <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-2">
-              <span>{lang === 'zh' ? '色源分解' : lang === 'ja' ? '色源分解' : 'Color Source Decomposition'}</span>
-              <span className="opacity-60">| CMYK (印刷四色)</span>
-            </div>
-            {(() => {
-                // 计算底漆需求：使用亮度算法
-                const luminance = getLuminance(color.rgb);
-                const primerPercent = Math.round(Math.max(0, (0.5 - luminance) * 100));
-                
-                return [
-                    { l: 'C', v: color.cmyk.c, hex: '#00B7EB', name: lang === 'zh' ? '印刷青' : lang === 'ja' ? 'シアン' : 'Cyan' },
-                    { l: 'M', v: color.cmyk.m, hex: '#FF0090', name: lang === 'zh' ? '印刷品红' : lang === 'ja' ? 'マゼンタ' : 'Magenta' },
-                    { l: 'Y', v: color.cmyk.y, hex: '#FFEF00', name: lang === 'zh' ? '印刷黄' : lang === 'ja' ? 'イエロー' : 'Yellow' },
-                    { l: 'K', v: primerPercent, hex: '#808080', name: lang === 'zh' ? '底漆' : lang === 'ja' ? 'プライマー' : 'Primer' }
-                ].map((item, i) => (
-                    <div key={item.l} className="flex items-center gap-3">
-                        <span className="font-mono font-bold w-4 text-slate-700 dark:text-slate-300" title={item.name}>{item.l}</span>
-                        <div className="flex-1 h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                            <div 
-                                ref={el => cmykRefs.current[i] = el}
-                                data-width={`${item.v}%`}
-                                className="h-full rounded-full opacity-80"
-                                style={{ 
-                                    width: '0%', 
-                                    backgroundColor: item.hex
-                                }} 
-                            />
-                        </div>
-                        <span className="font-mono text-xs w-8 text-right text-slate-400">{item.v}%</span>
-                    </div>
-                ));
-            })()}
-        </div>
-      </div>
 
       {/* Mixing Mode Selector */}
       <div className="border-b border-slate-100 dark:border-slate-800 pb-6 mb-6">

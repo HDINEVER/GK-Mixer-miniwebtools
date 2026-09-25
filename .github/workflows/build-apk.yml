@@ -34,6 +34,9 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -45,20 +48,26 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
-      - name: Sync Web Assets to Android Platform
-        run: npx cap sync android
-
       - name: Set up Gradlew Permissions
         run: chmod +x ./android/gradlew
+
+      - name: Sync Web Assets to Android Platform
+        env:
+          CI: 'true'
+          CAPACITOR_NO_TELEMETRY: '1'
+        run: |
+          npx cap telemetry off || true
+          npx cap copy android
+          npx cap update android || true
 
       - name: Build Android APK with Gradle
         run: |
           cd android
           if [ "${{ github.event.inputs.buildType }}" = "release" ]; then
-            ./gradlew assembleRelease --no-daemon
+            ./gradlew assembleRelease --no-daemon --stacktrace
             cp app/build/outputs/apk/release/*-unsigned.apk ../GK-Mixer-release-unsigned.apk || cp app/build/outputs/apk/release/*.apk ../GK-Mixer-release.apk
           else
-            ./gradlew assembleDebug --no-daemon
+            ./gradlew assembleDebug --no-daemon --stacktrace
             cp app/build/outputs/apk/debug/app-debug.apk ../GK-Mixer.apk
           fi
 

@@ -8,12 +8,21 @@ import BasicColorMixer from './components/BasicColorMixer';
 import PaintCatalogBrowser from './components/PaintCatalogBrowser';
 import ColorLoupe, { sampleCanvasAtClient } from './components/ColorLoupe';
 import ExtractMarkerOverlay from './components/ExtractMarkerOverlay';
+import SwatchStudioControls from './components/SwatchStudioControls';
 import Loader from './components/Loader';
 import { ColorData, AppMode, RGB, Language, Theme, ColorSpace, MixerResultCache, RadialMixerCache, BasicMixerCache, MixingMode, SliderState, BaseColor, CatalogPaint } from './types';
 import { extractProminentColors, generateId, rgbToCmyk, rgbToHex, hexToRgb, rgbToHsb, rgbToLab } from './utils/colorUtils';
 import { convertToWorkingSpace, isInGamut } from './utils/colorSpaceConverter';
 import { translations } from './utils/translations';
 import { colorsToMarkers, exportAnnotatedImage } from './utils/exportAnnotatedImage';
+import {
+  SwatchSettings,
+  DEFAULT_SWATCH_SETTINGS,
+  autoArrangeLeftRight,
+  autoArrangeTopBottom,
+  alignMarkers,
+  resetMarkerPositions,
+} from './utils/swatchLayout';
 
 // Default base colors for BasicColorMixer
 const DEFAULT_BASE_COLORS: BaseColor[] = [
@@ -36,6 +45,21 @@ const App: React.FC = () => {
   const [colors, setColors] = useState<ColorData[]>([]);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<'mixer' | 'visualizer' | 'radial' | 'basic' | 'catalog'>('mixer');
+
+  // Swatch card display and leader line settings
+  const [swatchSettings, setSwatchSettings] = useState<SwatchSettings>(() => {
+    try {
+      const saved = localStorage.getItem('gkmixer_swatch_settings');
+      if (saved) return { ...DEFAULT_SWATCH_SETTINGS, ...JSON.parse(saved) };
+    } catch {}
+    return DEFAULT_SWATCH_SETTINGS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gkmixer_swatch_settings', JSON.stringify(swatchSettings));
+    } catch {}
+  }, [swatchSettings]);
   
   // === Cache states for preserving component states across tab switches ===
   // MixerResult cache
@@ -80,6 +104,7 @@ const App: React.FC = () => {
   const changeImageInputRef = useRef<HTMLInputElement>(null);
   const [canvasBox, setCanvasBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
   const [isExporting, setIsExporting] = useState(false);
+  const [isWideVisualizer, setIsWideVisualizer] = useState(false);
 
   const selectedColor = colors.find(c => c.id === selectedColorId) || null;
   const t = translations[lang];
@@ -324,13 +349,50 @@ const App: React.FC = () => {
     );
   }, []);
 
+  const handleBatchMoveLabels = useCallback((positions: { [id: string]: { nx: number; ny: number } }) => {
+    setColors((prev) =>
+      prev.map((color) => {
+        const pos = positions[color.id];
+        return pos ? { ...color, labelNx: pos.nx, labelNy: pos.ny } : color;
+      })
+    );
+  }, []);
+
+  const handleAutoArrangeLR = useCallback(() => {
+    const w = canvasBox.width || 800;
+    const h = canvasBox.height || 600;
+    const newPositions = autoArrangeLeftRight(extractMarkers, w, h, swatchSettings.cardScale);
+    handleBatchMoveLabels(newPositions);
+  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, handleBatchMoveLabels]);
+
+  const handleAutoArrangeTB = useCallback(() => {
+    const w = canvasBox.width || 800;
+    const h = canvasBox.height || 600;
+    const newPositions = autoArrangeTopBottom(extractMarkers, w, h, swatchSettings.cardScale);
+    handleBatchMoveLabels(newPositions);
+  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, handleBatchMoveLabels]);
+
+  const handleAlign = useCallback((alignment: 'left' | 'right' | 'top' | 'bottom' | 'autoH' | 'autoV') => {
+    const w = canvasBox.width || 800;
+    const h = canvasBox.height || 600;
+    const newPositions = alignMarkers(extractMarkers, alignment, w, h, swatchSettings.cardScale, selectedColorId ?? undefined);
+    handleBatchMoveLabels(newPositions);
+  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, selectedColorId, handleBatchMoveLabels]);
+
+  const handleResetPositions = useCallback(() => {
+    const w = canvasBox.width || 800;
+    const h = canvasBox.height || 600;
+    const newPositions = resetMarkerPositions(extractMarkers, w, h, swatchSettings.cardScale, selectedColorId ?? undefined);
+    handleBatchMoveLabels(newPositions);
+  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, selectedColorId, handleBatchMoveLabels]);
+
   const handleExportAnnotated = async () => {
     const canvas = canvasRef.current;
     const assigned = extractMarkers.filter((marker) => marker.paint);
     if (!canvas || !assigned.length) return;
     setIsExporting(true);
     try {
-      await exportAnnotatedImage(canvas, extractMarkers);
+      await exportAnnotatedImage(canvas, extractMarkers, swatchSettings);
     } finally {
       setIsExporting(false);
     }
@@ -562,9 +624,10 @@ const App: React.FC = () => {
       <main className="flex-1 max-w-[1920px] mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8">
         
         {/* Left Column: Image & Palette */}
-        <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors duration-300">
-            <h2 className="text-xs font-bold text-slate-400 mb-4 tracking-widest">{t.sourceInput}</h2>
+        {(!isWideVisualizer || rightPanelTab !== 'visualizer') && (
+          <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors duration-300">
+              <h2 className="text-xs font-bold text-slate-400 mb-4 tracking-widest">{t.sourceInput}</h2>
             
             {!sourceImage ? (
                 <div className="relative">
@@ -694,6 +757,7 @@ const App: React.FC = () => {
                                     markers={extractMarkers}
                                     selectedId={selectedColorId}
                                     viewScale={scale}
+                                    settings={swatchSettings}
                                     onSelect={setSelectedColorId}
                                     onRemove={handleUnassignPaint}
                                     onMoveLabel={handleMoveLabel}
@@ -723,6 +787,20 @@ const App: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {assignedMarkers.length > 0 && rightPanelTab !== 'visualizer' && (
+                <SwatchStudioControls
+                  settings={swatchSettings}
+                  onChangeSettings={setSwatchSettings}
+                  onAutoArrangeLR={handleAutoArrangeLR}
+                  onAutoArrangeTB={handleAutoArrangeTB}
+                  onAlign={handleAlign}
+                  onResetPositions={handleResetPositions}
+                  lang={lang}
+                  assignedCount={assignedMarkers.length}
+                  className="mt-3"
+                />
             )}
 
             {assignedMarkers.length > 0 && (
@@ -836,9 +914,10 @@ const App: React.FC = () => {
             )}
           </div>
         </div>
+        )}
 
         {/* Right Column: Mixer & Output */}
-        <div className="lg:col-span-7 xl:col-span-8">
+        <div className={isWideVisualizer && rightPanelTab === 'visualizer' ? "col-span-12" : "lg:col-span-7 xl:col-span-8"}>
            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full transition-colors duration-300 flex flex-col">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
@@ -876,7 +955,6 @@ const App: React.FC = () => {
                     
                     {rightPanelTab === 'mixer' && (
                         <div className="hidden md:flex gap-2">
-                            <div className="px-2 py-1 bg-macaron-blue/20 text-macaron-blue text-[10px] rounded font-mono font-bold">CMYK</div>
                             <div className="px-2 py-1 bg-macaron-pink/20 text-macaron-pink text-[10px] rounded font-mono font-bold">MR.HOBBY</div>
                             <div className="px-2 py-1 bg-macaron-purple/20 text-macaron-purple text-[10px] rounded font-mono font-bold">GAIA</div>
                         </div>
@@ -920,9 +998,17 @@ const App: React.FC = () => {
                         colors={colors}
                         lang={lang}
                         selectedColorId={selectedColorId}
+                        swatchSettings={swatchSettings}
+                        onChangeSwatchSettings={setSwatchSettings}
+                        onAutoArrangeLR={handleAutoArrangeLR}
+                        onAutoArrangeTB={handleAutoArrangeTB}
+                        onAlign={handleAlign}
+                        onResetPositions={handleResetPositions}
                         onSelectColor={setSelectedColorId}
                         onUnassignPaint={handleUnassignPaint}
                         onMoveLabel={handleMoveLabel}
+                        isWideMode={isWideVisualizer}
+                        onToggleWideMode={() => setIsWideVisualizer((prev) => !prev)}
                     />
                 )}
            </div>

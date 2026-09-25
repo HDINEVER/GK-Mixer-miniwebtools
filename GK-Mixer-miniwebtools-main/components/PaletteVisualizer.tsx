@@ -76,6 +76,21 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
     return () => observer.disconnect();
   }, [sourceImage]);
 
+  // Guard visualizer canvas stage against viewport scrolling & pull-to-refresh on touch devices
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const preventStageTouch = (e: TouchEvent) => {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    };
+    stage.addEventListener('touchmove', preventStageTouch, { passive: false });
+    return () => {
+      stage.removeEventListener('touchmove', preventStageTouch);
+    };
+  }, [sourceImage]);
+
   const handleExportImage = async () => {
     const image = imageRef.current;
     if (!image || !markers.some((marker) => marker.paint)) return;

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GK-Mixer</string>
+    <string name="title_activity_main">GK-Mixer</string>
+    <string name="package_name">com.hdinever.gkmixer</string>
+    <string name="custom_url_scheme">com.hdinever.gkmixer</string>
+</resources>

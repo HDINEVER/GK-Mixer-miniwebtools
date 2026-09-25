@@ -55,12 +55,15 @@ jobs:
           echo "[]" > android/app/src/main/assets/capacitor.plugins.json
           npx cap copy android || true
 
-      - name: Set up Gradlew Permissions
-        run: chmod +x ./android/gradlew
+      - name: Set up Gradlew and Android SDK Config
+        run: |
+          chmod +x ./android/gradlew
+          echo "sdk.dir=$ANDROID_HOME" > ./android/local.properties
 
       - name: Build Android APK with Gradle
         run: |
           cd android
+          ./gradlew --version
           if [ "${{ github.event.inputs.buildType }}" = "release" ]; then
             ./gradlew assembleRelease --no-daemon --stacktrace
             cp app/build/outputs/apk/release/*-unsigned.apk ../GK-Mixer-release-unsigned.apk || cp app/build/outputs/apk/release/*.apk ../GK-Mixer-release.apk

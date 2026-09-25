@@ -1,0 +1,8 @@
+{
+  "background": "#FFFFFF",
+  "frame": "17-pro-blue",
+  "fontFamily": "\"DM Sans\", system-ui, sans-serif",
+  "template": "editorial",
+  "layout": "hero",
+  "screenOnly": false
+}

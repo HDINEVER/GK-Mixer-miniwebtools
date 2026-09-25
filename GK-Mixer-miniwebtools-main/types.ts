@@ -40,6 +40,7 @@ export interface ColorData {
   sampleY?: number;
   labelNx?: number;
   labelNy?: number;
+  labelScale?: number;
   assignedPaint?: CatalogPaint;
 }
 

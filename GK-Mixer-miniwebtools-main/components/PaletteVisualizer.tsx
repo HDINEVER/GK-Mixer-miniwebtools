@@ -1,121 +1,27 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ColorData, Language } from '../types';
 import { translations } from '../utils/translations';
-import {
-  findNearestRAL,
-  calculateMixboxInverseRatios,
-  getContrastColor,
-  MIXBOX_INVERSE_RATIO_THRESHOLD,
-} from '../utils/colorUtils';
-import { formatDropRatioLine, toDropRatio } from '../utils/dropRatio';
 import { colorsToMarkers, exportAnnotatedImage } from '../utils/exportAnnotatedImage';
+import { DEFAULT_SWATCH_SETTINGS, SwatchSettings } from '../utils/swatchLayout';
 import ExtractMarkerOverlay from './ExtractMarkerOverlay';
-
-const COLOR_NAMES_8 = {
-  en: ['White', 'Black', 'Red', 'Magenta', 'Blue', 'Cyan', 'Yellow', 'Orange'],
-  zh: ['白', '黑', '红', '品红', '蓝', '青', '黄', '橙'],
-  ja: ['白', '黒', '赤', 'マゼンタ', '青', 'シアン', '黄', 'オレンジ']
-};
-
-export const getMixboxRecipeText = (hex: string, lang: Language): string => {
-  const ratios = calculateMixboxInverseRatios(hex, 'srgb', true);
-  const names = COLOR_NAMES_8[lang];
-  const validColors = ratios
-    .map((ratio, index) => ({ ratio, name: names[index] }))
-    .filter(item => item.ratio > MIXBOX_INVERSE_RATIO_THRESHOLD)
-    .sort((a, b) => b.ratio - a.ratio);
-  if (validColors.length === 0) return '-';
-  const drops = toDropRatio(validColors.map(item => item.ratio));
-  return formatDropRatioLine(
-    validColors.map((item, index) => ({ name: item.name, drops: drops[index] ?? 0 }))
-  );
-};
-
-export const getRALInfo = (rgb: { r: number; g: number; b: number }): { number: string; name: string } | null => {
-  const ral = findNearestRAL(rgb);
-  if (!ral) return null;
-  return { number: `RAL ${ral.ral}`, name: ral.name };
-};
-
-const SWATCH_CSS = `
-  .viz-stage .stripe-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    text-align: center;
-    padding: 8px 6px;
-    opacity: 1;
-  }
-  .viz-stage .stripe-hex {
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 1px;
-  }
-  .viz-stage .stripe-recipe {
-    font-size: 8px;
-    font-weight: 500;
-    opacity: 0.85;
-    line-height: 1.3;
-    max-width: 92px;
-    word-wrap: break-word;
-  }
-  .viz-stage .stripe-ral {
-    font-size: 8px;
-    font-weight: 600;
-    opacity: 0.9;
-    padding: 2px 4px;
-    background: rgba(0,0,0,0.15);
-    border-radius: 3px;
-  }
-  .viz-stage .viz-callout {
-    display: flex;
-    overflow: hidden;
-    border-radius: 1em;
-    background: #fff;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.18);
-    min-width: 7.5rem;
-    max-width: 11.5rem;
-  }
-  .viz-stage .viz-callout-color {
-    flex: 1;
-    min-height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-  }
-  .viz-stage .viz-strip {
-    display: flex;
-    height: 72px;
-    width: 100%;
-    border-radius: 1em;
-    overflow: hidden;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.12);
-    background: #fff;
-  }
-  .viz-stage .viz-strip .color {
-    height: 100%;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-  }
-`;
+import SwatchStudioControls from './SwatchStudioControls';
 
 interface PaletteVisualizerProps {
   sourceImage: string | null;
   colors: ColorData[];
   lang: Language;
   selectedColorId?: string | null;
+  swatchSettings?: SwatchSettings;
+  onChangeSwatchSettings?: (updater: (prev: SwatchSettings) => SwatchSettings) => void;
+  onAutoArrangeLR?: () => void;
+  onAutoArrangeTB?: () => void;
+  onAlign?: (alignment: 'left' | 'right' | 'top' | 'bottom' | 'autoH' | 'autoV') => void;
+  onResetPositions?: () => void;
   onSelectColor?: (id: string) => void;
   onUnassignPaint?: (id: string) => void;
   onMoveLabel?: (id: string, labelNx: number, labelNy: number) => void;
+  isWideMode?: boolean;
+  onToggleWideMode?: () => void;
 }
 
 const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
@@ -123,9 +29,17 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
   colors,
   lang,
   selectedColorId,
+  swatchSettings = DEFAULT_SWATCH_SETTINGS,
+  onChangeSwatchSettings,
+  onAutoArrangeLR,
+  onAutoArrangeTB,
+  onAlign,
+  onResetPositions,
   onSelectColor,
   onUnassignPaint,
   onMoveLabel,
+  isWideMode = false,
+  onToggleWideMode,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [imgBox, setImgBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
@@ -134,6 +48,7 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
   const frameRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const markers = useMemo(() => colorsToMarkers(colors), [colors]);
+  const assignedCount = useMemo(() => markers.filter((m) => !!m.paint).length, [markers]);
 
   const syncBox = () => {
     const frame = frameRef.current;
@@ -164,46 +79,86 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
     if (!image || !markers.some((marker) => marker.paint)) return;
     setIsExporting(true);
     try {
-      await exportAnnotatedImage(image, markers);
-    } catch (error) {
-      console.error('Export failed:', error);
+      await exportAnnotatedImage(image, markers, swatchSettings);
     } finally {
       setIsExporting(false);
     }
   };
 
   return (
-    <div className="flex h-full min-h-[32rem] flex-col">
-      <style>{SWATCH_CSS}</style>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-xs font-bold tracking-wider text-macaron-purple">
-          <span className="h-2 w-2 rounded-full bg-macaron-purple" />
-          {t.visualizerTitle}
-        </h3>
-        <button
-          type="button"
-          onClick={handleExportImage}
-          disabled={!sourceImage || isExporting || !markers.some((marker) => marker.paint)}
-          className="flex items-center justify-center gap-1 rounded border border-macaron-green/50 bg-macaron-green/20 px-3 py-1.5 text-[10px] font-bold text-macaron-green transition-colors hover:bg-macaron-green hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-3 w-3">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33A3 3 0 0116.5 19.5H6.75Z" />
-          </svg>
-          {isExporting ? t.exporting : t.exportAnnotated}
-        </button>
+    <div className="flex h-full flex-col">
+      {/* Header bar */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h3 className="flex items-center gap-2 text-xs font-bold tracking-wider text-macaron-purple">
+            <span className="h-2 w-2 rounded-full bg-macaron-purple" />
+            {t.visualizerTitle}
+          </h3>
+          {assignedCount > 0 && (
+            <span className="rounded-full bg-macaron-purple/10 px-2 py-0.5 text-[10px] font-bold text-macaron-purple">
+              {assignedCount} {lang === 'zh' ? '个色卡' : 'swatches'}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {onToggleWideMode && (
+            <button
+              type="button"
+              onClick={onToggleWideMode}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all ${
+                isWideMode
+                  ? 'border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-300 shadow-sm'
+                  : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              }`}
+              title={isWideMode ? (lang === 'zh' ? '切换回双栏标准布局' : 'Standard 2-column view') : (lang === 'zh' ? '展开为全宽工作台' : 'Wide canvas studio')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-3.5 w-3.5">
+                {isWideMode ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                )}
+              </svg>
+              <span>
+                {isWideMode
+                  ? (lang === 'zh' ? '标准双栏' : lang === 'ja' ? '標準表示' : 'Standard View')
+                  : (lang === 'zh' ? '宽屏全景' : lang === 'ja' ? 'ワイド表示' : 'Wide Studio')}
+              </span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleExportImage}
+            disabled={!sourceImage || isExporting || assignedCount === 0}
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-macaron-green/50 bg-macaron-green/20 px-3.5 py-1.5 text-xs font-bold text-macaron-green transition-all hover:bg-macaron-green hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-3.5 w-3.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33A3 3 0 0116.5 19.5H6.75Z" />
+            </svg>
+            {isExporting ? t.exporting : t.exportAnnotated}
+          </button>
+        </div>
       </div>
 
-      <div
-        ref={stageRef}
-        className="viz-stage relative flex min-h-[28rem] flex-1 flex-col overflow-hidden rounded-xl bg-slate-950"
-      >
-        {!sourceImage ? (
-          <div className="flex flex-1 items-center justify-center px-6 text-center font-mono text-[11px] text-slate-500">
-            {lang === 'zh' ? '先在左侧放入参考图并取色，再回到这里导出标注图。' : lang === 'ja' ? '左で画像を読み込み、色を採取してから書き出します。' : 'Load a reference on the left and pick colors, then export here.'}
-          </div>
-        ) : (
-          <>
-            <div ref={frameRef} className="relative flex min-h-0 flex-1 items-center justify-center">
+      {/* Main Workspace: Side-by-side split view for preview stage and adjustment controls */}
+      <div className="flex flex-1 flex-col lg:flex-row gap-4 min-h-[460px] lg:h-[calc(100vh-14rem)] lg:min-h-[500px] lg:max-h-[720px]">
+        {/* Left/Center: Visualizer Preview Canvas Stage */}
+        <div
+          ref={stageRef}
+          className="viz-stage relative flex flex-1 min-w-0 min-h-[380px] lg:min-h-0 flex-col overflow-hidden rounded-xl bg-slate-950 shadow-inner"
+        >
+          {!sourceImage ? (
+            <div className="flex flex-1 items-center justify-center px-6 text-center font-mono text-[11px] text-slate-500">
+              {lang === 'zh'
+                ? '先在左侧放入参考图并取色，再回到这里导出标注图。'
+                : lang === 'ja'
+                ? '左で画像を読み込み、色を採取してから書き出します。'
+                : 'Load a reference on the left and pick colors, then export here.'}
+            </div>
+          ) : (
+            <div ref={frameRef} className="relative flex min-h-0 flex-1 items-center justify-center p-2">
               <img
                 ref={imageRef}
                 src={sourceImage}
@@ -227,6 +182,7 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
                     markers={markers}
                     selectedId={selectedColorId ?? null}
                     viewScale={1}
+                    settings={swatchSettings}
                     onSelect={(id) => onSelectColor?.(id)}
                     onRemove={(id) => onUnassignPaint?.(id)}
                     onMoveLabel={onMoveLabel}
@@ -238,8 +194,8 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
                 <button
                   type="button"
                   onClick={handleExportImage}
-                  disabled={isExporting || !markers.some((marker) => marker.paint)}
-                  className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg backdrop-blur-sm transition-transform hover:bg-slate-900 active:scale-[0.96]"
+                  disabled={isExporting || assignedCount === 0}
+                  className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg backdrop-blur-sm transition-transform hover:bg-slate-900 active:scale-[0.96] disabled:opacity-40"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-3.5 w-3.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -248,37 +204,33 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
                 </button>
               </div>
             </div>
-            {colors.length > 0 && (
-              <div className="p-3">
-                <div className="viz-strip">
-                  {colors.slice(0, 8).map((col) => {
-                    const ralInfo = getRALInfo(col.rgb);
-                    const mixRecipe = getMixboxRecipeText(col.hex, lang);
-                    const textColor = getContrastColor(col.hex);
-                    const paint = col.assignedPaint;
-                    return (
-                      <div key={col.id} className="color" style={{ backgroundColor: col.hex }}>
-                        <div className="stripe-info" style={{ color: textColor }}>
-                          <span className="stripe-hex">{(paint ? `${paint.code}` : col.hex).replace('#', '')}</span>
-                          <span className="stripe-recipe">{paint ? `${paint.brand} ${paint.name}` : mixRecipe}</span>
-                          {ralInfo && <span className="stripe-ral">{ralInfo.number}</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </>
+          )}
+        </div>
+
+        {/* Right: Swatch Studio Adjustment Controls Sidebar */}
+        {sourceImage && assignedCount > 0 && onChangeSwatchSettings && onAutoArrangeLR && onAutoArrangeTB && onAlign && onResetPositions && (
+          <div className="w-full lg:w-[310px] xl:w-[330px] flex-shrink-0 flex flex-col overflow-y-auto max-h-full pr-0.5">
+            <SwatchStudioControls
+              settings={swatchSettings}
+              onChangeSettings={onChangeSwatchSettings}
+              onAutoArrangeLR={onAutoArrangeLR}
+              onAutoArrangeTB={onAutoArrangeTB}
+              onAlign={onAlign}
+              onResetPositions={onResetPositions}
+              lang={lang}
+              assignedCount={assignedCount}
+              variant="sidebar"
+            />
+          </div>
         )}
       </div>
 
-      <p className="mt-3 text-center font-mono text-[10px] text-slate-400">
+      <p className="mt-2.5 text-center font-mono text-[10px] text-slate-400">
         {lang === 'zh'
-          ? '左侧图上取色后，在混色台点「使用」会出现可拖拽色卡。导出 PNG 会把色卡画进原图。'
+          ? '右侧可切换连接线种类、粗细、色卡大小及一键自动排版；拖拽画面中色卡可微调位置。'
           : lang === 'ja'
-            ? '左で採取した色が画像に重なります。書き出しは元のスウォッチ様式です。'
-            : 'Picks from the left image appear as swatch cards on the photo. Export keeps the original card CSS.'}
+          ? '右パネルで引き出し線の種類、太さ、カードサイズ、自動整列を調整できます。'
+          : 'Adjust leader line style, card size, and layout on the right; drag cards to fine-tune.'}
       </p>
     </div>
   );

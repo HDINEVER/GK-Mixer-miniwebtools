@@ -47,8 +47,11 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
+      - name: Prepare Android Assets Directory
+        run: mkdir -p android/app/src/main/assets/public
+
       - name: Copy Web Assets to Android
-        run: npx cap copy android
+        run: npm run cap:copy
 
       - name: Set up Gradlew Permissions
         run: chmod +x ./android/gradlew

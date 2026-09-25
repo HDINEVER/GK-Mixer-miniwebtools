@@ -28,17 +28,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Java JDK 17
-        uses: actions/setup-java@v4
+      - name: Setup Java JDK 21
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
           cache: 'gradle'
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install NPM Dependencies
@@ -47,19 +47,16 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
-      - name: Copy Web Assets into Android
+      - name: Sync Web Assets & Capacitor Plugins
         run: |
-          mkdir -p android/app/src/main/assets/public
-          cp -r dist/* android/app/src/main/assets/public/
-          cp capacitor.config.json android/app/src/main/assets/capacitor.config.json
-          echo "[]" > android/app/src/main/assets/capacitor.plugins.json
-          npx cap copy android || true
+          npx cap sync android
 
       - name: Set up Gradlew and Android SDK Config
         run: |
           chmod +x ./android/gradlew
           echo "sdk.dir=$ANDROID_HOME" > ./android/local.properties
           yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
 
       - name: Build Android APK with Gradle
         run: |

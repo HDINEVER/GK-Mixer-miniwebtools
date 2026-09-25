@@ -59,18 +59,19 @@ jobs:
         run: |
           chmod +x ./android/gradlew
           echo "sdk.dir=$ANDROID_HOME" > ./android/local.properties
+          yes | sdkmanager --licenses || true
 
       - name: Build Android APK with Gradle
         run: |
           cd android
-          ./gradlew --version
-          if [ "${{ github.event.inputs.buildType }}" = "release" ]; then
-            ./gradlew assembleRelease --no-daemon --stacktrace
-            cp app/build/outputs/apk/release/*-unsigned.apk ../GK-Mixer-release-unsigned.apk || cp app/build/outputs/apk/release/*.apk ../GK-Mixer-release.apk
-          else
-            ./gradlew assembleDebug --no-daemon --stacktrace
-            cp app/build/outputs/apk/debug/app-debug.apk ../GK-Mixer.apk
-          fi
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../gradle.log || {
+            echo "### Gradle Build Error" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 80 ../gradle.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
+          cp app/build/outputs/apk/debug/app-debug.apk ../GK-Mixer.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4

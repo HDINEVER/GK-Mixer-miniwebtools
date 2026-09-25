@@ -502,6 +502,7 @@ const App: React.FC = () => {
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2 && pinchStart.current) {
+      if (e.cancelable) e.preventDefault();
       const [a, b] = [e.touches[0], e.touches[1]];
       const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
       const next = pinchStart.current.scale * (distance / pinchStart.current.distance);
@@ -509,6 +510,7 @@ const App: React.FC = () => {
       return;
     }
     if (isDragging && e.touches.length === 1) {
+      if (e.cancelable) e.preventDefault();
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
       }
@@ -521,6 +523,7 @@ const App: React.FC = () => {
         updateTransform();
       });
     } else if (isPicking && e.touches.length === 1 && canvasRef.current) {
+      if (e.cancelable) e.preventDefault();
       const touch = e.touches[0];
       previewAtClient(touch.clientX, touch.clientY);
     }

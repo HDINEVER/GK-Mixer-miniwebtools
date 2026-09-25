@@ -2,9 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Fix overscroll background color issue on mobile (iOS Safari bounce effect) */
+/* Fix overscroll background color issue on mobile (iOS Safari bounce effect) and prevent pull-to-refresh / swipe back conflicts */
 html {
   background-color: #f8fafc; /* slate-50 for light mode */
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: none;
 }
 
 html.dark {
@@ -17,6 +19,8 @@ body {
   background-color: #f8fafc; /* slate-50 */
   min-height: 100vh;
   min-height: 100dvh; /* Use dynamic viewport height for mobile */
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: none;
 }
 
 .dark body,

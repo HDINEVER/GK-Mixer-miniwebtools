@@ -160,11 +160,15 @@ const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
       grabX: point.nx - left,
       grabY: point.ny - top,
     };
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    try {
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {}
   };
 
   const onCardPointerMove = (event: React.PointerEvent) => {
     if (!dragRef.current || !onMoveLabel) return;
+    event.preventDefault();
+    event.stopPropagation();
     const { w, h } = overlaySize();
     const point = clientToNorm(event.clientX, event.clientY);
     const cardWn = effectiveCardW / Math.max(w, 1);
@@ -174,14 +178,23 @@ const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
     onMoveLabel(dragRef.current.id, nx, ny);
   };
 
-  const onCardPointerUp = () => {
+  const onCardPointerUp = (event?: React.PointerEvent) => {
+    if (dragRef.current && event?.currentTarget) {
+      try {
+        (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+      } catch {}
+    }
     dragRef.current = null;
   };
 
   const pinSize = Math.max(10, Math.round(14 * visualScale));
 
   return (
-    <div ref={rootRef} className="pointer-events-none relative z-10 h-full w-full">
+    <div 
+      ref={rootRef} 
+      className="pointer-events-none relative z-10 h-full w-full touch-none select-none overscroll-none"
+      style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+    >
       <svg className="absolute inset-0 h-full w-full overflow-visible pointer-events-none">
         {positions.map(({ marker, left, top }) => {
           if (!marker.paint || overlayBox.w < 2 || overlayBox.h < 2) return null;
@@ -239,7 +252,7 @@ const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
             {/* Sample point pin */}
             <button
               type="button"
-              className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform hover:scale-125"
+              className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform hover:scale-125 touch-none"
               style={{
                 left: `${marker.nx * 100}%`,
                 top: `${marker.ny * 100}%`,
@@ -251,6 +264,7 @@ const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
                 boxShadow: matchColor
                   ? "0 0 0 1.5px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.35)"
                   : "0 0 0 1.5px rgba(0,0,0,0.35)",
+                touchAction: 'none',
               }}
               onClick={(event) => {
                 event.stopPropagation();
@@ -259,20 +273,32 @@ const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
               title={paint ? `${paint.brand} ${paint.code} (${marker.hex})` : marker.hex}
             />
 
-            {/* Draggable Swatch Card */}
+            {/* Draggable Swatch Card - Optimized for touch screens */}
             {paint && (
               <div
-                className="pointer-events-auto absolute cursor-grab active:cursor-grabbing select-none"
+                className="pointer-events-auto absolute cursor-grab active:cursor-grabbing select-none touch-none overscroll-none"
                 style={{
                   left: `${left * 100}%`,
                   top: `${top * 100}%`,
                   width: effectiveCardW,
                   height: effectiveCardH,
+                  touchAction: 'none',
+                  overscrollBehavior: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none',
                 }}
                 onPointerDown={(event) => onCardPointerDown(event, marker.id, left, top)}
                 onPointerMove={onCardPointerMove}
                 onPointerUp={onCardPointerUp}
                 onPointerCancel={onCardPointerUp}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                }}
+                onTouchMove={(e) => {
+                  if (e.cancelable) e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
                 <div
                   style={{
@@ -280,6 +306,8 @@ const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
                     height: BASE_CARD_H,
                     transform: `scale(${visualScale})`,
                     transformOrigin: "top left",
+                    touchAction: 'none',
+                    userSelect: 'none',
                   }}
                 >
                   <SwatchCard

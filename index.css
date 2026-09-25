@@ -23,6 +23,17 @@ body {
   overscroll-behavior-x: none;
 }
 
+/* Touch and gesture conflict guards for stage and canvas draggable areas */
+.touch-none,
+.viz-stage,
+.canvas-stage {
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
 .dark body,
 body:has(.dark) {
   background-color: #020617; /* slate-950 */

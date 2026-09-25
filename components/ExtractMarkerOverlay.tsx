@@ -145,47 +145,104 @@ const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
     };
   };
 
-  const onCardPointerDown = (
-    event: React.PointerEvent,
+  const cleanEndDrag = () => {
+    dragRef.current = null;
+    document.body.style.overscrollBehavior = '';
+    document.documentElement.style.overscrollBehavior = '';
+    document.body.style.touchAction = '';
+    document.body.style.userSelect = '';
+  };
+
+  const moveCardAtClient = (clientX: number, clientY: number) => {
+    const currentDrag = dragRef.current;
+    const moveFn = onMoveLabelRef.current;
+    if (!currentDrag || !moveFn) return;
+
+    const { rect, w, h } = overlaySize();
+    if (!rect || w < 1 || h < 1) return;
+
+    const point = {
+      nx: (clientX - rect.left) / w,
+      ny: (clientY - rect.top) / h,
+    };
+
+    const cardWn = effectiveCardW / Math.max(w, 1);
+    const cardHn = effectiveCardH / Math.max(h, 1);
+    const nx = Math.min(1 - cardWn, Math.max(0, point.nx - currentDrag.grabX));
+    const ny = Math.min(1 - cardHn, Math.max(0, point.ny - currentDrag.grabY));
+
+    moveFn(currentDrag.id, nx, ny);
+  };
+
+  const startDrag = (
     id: string,
     left: number,
-    top: number
+    top: number,
+    clientX: number,
+    clientY: number
   ) => {
-    event.preventDefault();
-    event.stopPropagation();
     onSelect(id);
-    const point = clientToNorm(event.clientX, event.clientY);
+    const point = clientToNorm(clientX, clientY);
     dragRef.current = {
       id,
       grabX: point.nx - left,
       grabY: point.ny - top,
     };
-    try {
-      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    } catch {}
+
+    // Lock page overscroll & touch-action globally during active swatch drag
+    document.body.style.overscrollBehavior = 'none';
+    document.documentElement.style.overscrollBehavior = 'none';
+    document.body.style.touchAction = 'none';
+    document.body.style.userSelect = 'none';
   };
 
-  const onCardPointerMove = (event: React.PointerEvent) => {
-    if (!dragRef.current || !onMoveLabel) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const { w, h } = overlaySize();
-    const point = clientToNorm(event.clientX, event.clientY);
-    const cardWn = effectiveCardW / Math.max(w, 1);
-    const cardHn = effectiveCardH / Math.max(h, 1);
-    const nx = Math.min(1 - cardWn, Math.max(0, point.nx - dragRef.current.grabX));
-    const ny = Math.min(1 - cardHn, Math.max(0, point.ny - dragRef.current.grabY));
-    onMoveLabel(dragRef.current.id, nx, ny);
-  };
+  // Window-level native non-passive listeners guarantee zero viewport scrolling / pull-to-refresh
+  useEffect(() => {
+    const onWindowTouchMove = (e: TouchEvent) => {
+      if (!dragRef.current) return;
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      if (e.touches.length > 0) {
+        moveCardAtClient(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
 
-  const onCardPointerUp = (event?: React.PointerEvent) => {
-    if (dragRef.current && event?.currentTarget) {
-      try {
-        (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
-      } catch {}
-    }
-    dragRef.current = null;
-  };
+    const onWindowTouchEnd = () => {
+      if (dragRef.current) {
+        cleanEndDrag();
+      }
+    };
+
+    const onWindowPointerMove = (e: PointerEvent) => {
+      if (!dragRef.current) return;
+      e.preventDefault();
+      moveCardAtClient(e.clientX, e.clientY);
+    };
+
+    const onWindowPointerEnd = () => {
+      if (dragRef.current) {
+        cleanEndDrag();
+      }
+    };
+
+    window.addEventListener('touchmove', onWindowTouchMove, { passive: false });
+    window.addEventListener('touchend', onWindowTouchEnd, { passive: false });
+    window.addEventListener('touchcancel', onWindowTouchEnd, { passive: false });
+    window.addEventListener('pointermove', onWindowPointerMove, { passive: false });
+    window.addEventListener('pointerup', onWindowPointerEnd, { passive: false });
+    window.addEventListener('pointercancel', onWindowPointerEnd, { passive: false });
+
+    return () => {
+      window.removeEventListener('touchmove', onWindowTouchMove);
+      window.removeEventListener('touchend', onWindowTouchEnd);
+      window.removeEventListener('touchcancel', onWindowTouchEnd);
+      window.removeEventListener('pointermove', onWindowPointerMove);
+      window.removeEventListener('pointerup', onWindowPointerEnd);
+      window.removeEventListener('pointercancel', onWindowPointerEnd);
+      cleanEndDrag();
+    };
+  }, [effectiveCardW, effectiveCardH]);
 
   const pinSize = Math.max(10, Math.round(14 * visualScale));
 
@@ -288,16 +345,24 @@ const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
                   WebkitUserSelect: 'none',
                   userSelect: 'none',
                 }}
-                onPointerDown={(event) => onCardPointerDown(event, marker.id, left, top)}
-                onPointerMove={onCardPointerMove}
-                onPointerUp={onCardPointerUp}
-                onPointerCancel={onCardPointerUp}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
+                onPointerDown={(event) => {
+                  if ((event.target as HTMLElement)?.closest('button')) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  startDrag(marker.id, left, top, event.clientX, event.clientY);
+                  try {
+                    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                  } catch {}
                 }}
-                onTouchMove={(e) => {
-                  if (e.cancelable) e.preventDefault();
-                  e.stopPropagation();
+                onTouchStart={(event) => {
+                  if ((event.target as HTMLElement)?.closest('button')) return;
+                  if (event.cancelable) {
+                    event.preventDefault();
+                  }
+                  event.stopPropagation();
+                  if (event.touches.length > 0) {
+                    startDrag(marker.id, left, top, event.touches[0].clientX, event.touches[0].clientY);
+                  }
                 }}
               >
                 <div

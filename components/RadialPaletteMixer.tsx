@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CatalogPaint, ColorData, Language, RadialMixerCache, SliderState } from '../types';
 import { hexToRgb, mixboxMultiBlend } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
@@ -19,24 +19,22 @@ interface RadialPaletteMixerProps {
   onAssignCatalogPaint?: (paint: CatalogPaint) => void;
 }
 
-// Canvas 基础常量
+// Canvas 基础常量 (标准逻辑坐标空间 450x450)
 const BASE_WIDTH = 450;
 const BASE_HEIGHT = 450;
+const WIDTH = BASE_WIDTH;
+const HEIGHT = BASE_HEIGHT;
+const CENTER_X = WIDTH / 2; // 225
+const CENTER_Y = HEIGHT / 2; // 225
 
-// 计算响应式尺寸 - 纯粹基于可用宽度,不区分设备类型
-const getCanvasSize = () => {
-  // 根据视口宽度自动计算可用空间
-  // 窄屏(如手机):留40px边距
-  // 宽屏(如PC):使用基础宽度或留40px边距,取较小值
-  const viewportWidth = window.innerWidth;
-  const availableWidth = Math.min(viewportWidth - 40, BASE_WIDTH);
-  const scale = availableWidth / BASE_WIDTH;
-  return {
-    width: BASE_WIDTH * scale,
-    height: BASE_HEIGHT * scale,
-    scale: scale
-  };
-};
+// 精确计算的安全几何半径：
+// 外轨半径设为 182，最大滑块半径为 26，最大边缘距离为 225 + 182 + 26 = 433px < 450px
+// 留出 17px 全局缓冲，保证任何角度的滑块与外圈阴影绝不被画布边缘裁切
+const OUTER_RADIUS = 182;
+const INNER_RADIUS = 60;
+const CENTER_RADIUS = 54;
+const BASE_KNOB_RADIUS = 18;
+const ACTIVE_KNOB_RADIUS = 26;
 
 const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({ 
   targetColor, 
@@ -48,6 +46,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   onAssignCatalogPaint,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   // Use cache values if available, otherwise use defaults
   const [sliders, setSliders] = useState<SliderState[]>(cache?.sliders ?? []);
   const [cmyAdded, setCmyAdded] = useState(cache?.cmyAdded ?? false);
@@ -56,9 +55,17 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   const [hoverIndex, setHoverIndex] = useState<number>(-1);
   const [mixedColor, setMixedColor] = useState<string>('');
   const [targetVolume, setTargetVolume] = useState<number>(cache?.targetVolume ?? 20);
-  const [canvasSize, setCanvasSize] = useState(getCanvasSize());
+  const [canvasSize, setCanvasSize] = useState(() => {
+    if (typeof window === 'undefined') return { width: BASE_WIDTH, height: BASE_HEIGHT, scale: 1 };
+    const initialAvailable = Math.max(220, Math.min(window.innerWidth - 32, BASE_WIDTH));
+    return {
+      width: initialAvailable,
+      height: initialAvailable,
+      scale: initialAvailable / BASE_WIDTH
+    };
+  });
   const [dropMultiplier, setDropMultiplier] = useState(1);
-  const knobSizes = useRef<number[]>(cache?.sliders ? new Array(cache.sliders.length).fill(20) : []); // For anime.js dynamic sizing
+  const knobSizes = useRef<number[]>(cache?.sliders ? new Array(cache.sliders.length).fill(BASE_KNOB_RADIUS) : []); // For anime.js dynamic sizing
   const requestRef = useRef<number>(0); // For animation loop
   const animatingSliders = useRef<boolean>(false);
   const lastMoveTimeRef = useRef<number>(0); // 触控节流
@@ -67,17 +74,6 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   
   const t = translations[lang];
   
-  // Canvas dimensions
-  const WIDTH = BASE_WIDTH;
-  const HEIGHT = BASE_HEIGHT;
-  const CENTER_X = WIDTH / 2;
-  const CENTER_Y = HEIGHT / 2;
-  const OUTER_RADIUS = 200;
-  const INNER_RADIUS = 65;
-  const BASE_KNOB_RADIUS = 20;
-  const ACTIVE_KNOB_RADIUS = 30;
-  const CENTER_RADIUS = INNER_RADIUS - 5;
-  
   // Initialize knobSizes if restored from cache
   useEffect(() => {
     if (sliders.length > 0 && knobSizes.current.length !== sliders.length) {
@@ -85,17 +81,49 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     }
   }, [sliders.length]);
   
-  // 响应式调整画布尺寸
-  useEffect(() => {
-    const handleResize = () => {
-      const newSize = getCanvasSize();
-      setCanvasSize(newSize);
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+  // 严格基于容器实际可用宽度的响应式尺寸计算，避免任何横向滚动与截断
+  const updateCanvasSize = useCallback(() => {
+    const container = canvasContainerRef.current;
+    if (!container) return;
+    
+    // 获取容器当前的真实渲染宽度（已扣除外层所有 padding）
+    const containerWidth = container.clientWidth;
+    if (containerWidth <= 0) return;
+    
+    // 留出 2px 微小边距，确保即使在极窄屏幕上也不会产生 1px 的多余滚动
+    const availableWidth = Math.max(220, Math.min(containerWidth - 2, BASE_WIDTH));
+    const scale = availableWidth / BASE_WIDTH;
+    
+    setCanvasSize(prev => {
+      if (Math.abs(prev.width - availableWidth) < 0.5) return prev;
+      return {
+        width: availableWidth,
+        height: availableWidth,
+        scale: scale
+      };
+    });
   }, []);
+
+  // 使用 ResizeObserver 实时监听容器宽度变化（旋转屏幕、侧边栏切换、窗口缩放）
+  useEffect(() => {
+    updateCanvasSize();
+    const container = canvasContainerRef.current;
+    if (!container) return;
+
+    const ro = new ResizeObserver(() => {
+      updateCanvasSize();
+    });
+    ro.observe(container);
+
+    window.addEventListener('resize', updateCanvasSize);
+    window.addEventListener('orientationchange', updateCanvasSize);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateCanvasSize);
+      window.removeEventListener('orientationchange', updateCanvasSize);
+    };
+  }, [updateCanvasSize]);
   
   // 移动端: 在拖动时阻止页面滚动
   useEffect(() => {
@@ -404,25 +432,26 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        // Position text - always outward to avoid overlapping with center
-        const textDist = t > 0.6 ? 60 : 50;
+        // 智能定位：滑块靠外(t < 0.35)向内偏移(-38)，靠内(t >= 0.35)向外偏移(+38)，
+        // 无论滑块在哪个位置，标签绝不超出 450x450 画布边缘，也绝不遮挡中心混合色
+        const textDist = t < 0.35 ? -38 : 38;
         const tx = kx + sinA * textDist;
         const ty = ky + cosA * textDist;
         
         // Background label
         const metrics = ctx.measureText(`${ml}ml`);
-        const w = Math.max(metrics.width, 40) + 10;
-        const h = 30;
+        const w = Math.max(metrics.width, 38) + 10;
+        const h = 28;
         
         // 绘制阴影
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-        ctx.shadowBlur = 8;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+        ctx.shadowBlur = 6;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 2;
         
         ctx.beginPath();
         ctx.roundRect(tx - w/2, ty - h/2, w, h, 6);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.98)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
         ctx.fill();
         
         // 清除阴影设置以免影响文字
@@ -436,7 +465,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         
         ctx.font = '10px "JetBrains Mono", monospace';
         ctx.fillStyle = '#64748b';
-        ctx.fillText(`${pct}%`, tx, ty + 7);
+        ctx.fillText(`${pct}%`, tx, ty + 6);
         
         ctx.restore();
       }
@@ -740,7 +769,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   }));
   
   return (
-    <div className="w-full h-full flex flex-col items-center justify-start p-3 space-y-2 overflow-y-auto">
+    <div className="w-full max-w-full h-full flex flex-col items-center justify-start px-1 sm:px-3 py-2 space-y-2 overflow-x-hidden overflow-y-auto">
       <div className="text-center">
         <h2 className="text-lg font-bold text-macaron-blue dark:text-macaron-pink mb-1">
           {lang === 'zh' ? '径向调色盘' : lang === 'ja' ? 'ラジアルミキサー' : 'Radial Mixer'}
@@ -761,79 +790,91 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         )}
       </div>
       
-      <canvas
-        ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onTouchStart={(e) => {
-          if (e.touches.length > 0) {
-            const touch = e.touches[0];
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-            
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = (touch.clientX - rect.left) * (WIDTH / rect.width);
-            const mouseY = (touch.clientY - rect.top) * (HEIGHT / rect.height);
-            
-            // 检查是否点击在滑块上
-            let touchingSlider = false;
-            for (let i = 0; i < sliders.length; i++) {
-              const slider = sliders[i];
-              const t = slider.position;
-              const angle = slider.angle;
-              const sinA = Math.sin(angle);
-              const cosA = Math.cos(angle);
+      <div 
+        ref={canvasContainerRef}
+        className="w-full max-w-[450px] flex items-center justify-center overflow-hidden my-1 select-none"
+        style={{ touchAction: 'none' }}
+      >
+        <canvas
+          ref={canvasRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          onTouchStart={(e) => {
+            if (e.touches.length > 0) {
+              const touch = e.touches[0];
+              const canvas = canvasRef.current;
+              if (!canvas) return;
               
-              const outerX = CENTER_X + sinA * OUTER_RADIUS;
-              const outerY = CENTER_Y + cosA * OUTER_RADIUS;
+              const rect = canvas.getBoundingClientRect();
+              const mouseX = (touch.clientX - rect.left) * (WIDTH / rect.width);
+              const mouseY = (touch.clientY - rect.top) * (HEIGHT / rect.height);
               
-              const kx = outerX - sinA * t * (OUTER_RADIUS - INNER_RADIUS);
-              const ky = outerY - cosA * t * (OUTER_RADIUS - INNER_RADIUS);
-              
-              const dist = Math.sqrt(Math.pow(mouseX - kx, 2) + Math.pow(mouseY - ky, 2));
-              
-              if (dist < 40) {
-                touchingSlider = true;
-                break;
+              // 检查是否点击在滑块上
+              let touchingSlider = false;
+              for (let i = 0; i < sliders.length; i++) {
+                const slider = sliders[i];
+                const t = slider.position;
+                const angle = slider.angle;
+                const sinA = Math.sin(angle);
+                const cosA = Math.cos(angle);
+                
+                const outerX = CENTER_X + sinA * OUTER_RADIUS;
+                const outerY = CENTER_Y + cosA * OUTER_RADIUS;
+                
+                const kx = outerX - sinA * t * (OUTER_RADIUS - INNER_RADIUS);
+                const ky = outerY - cosA * t * (OUTER_RADIUS - INNER_RADIUS);
+                
+                const dist = Math.sqrt(Math.pow(mouseX - kx, 2) + Math.pow(mouseY - ky, 2));
+                
+                if (dist < 40) {
+                  touchingSlider = true;
+                  break;
+                }
               }
+              
+              // 如果触摸到滑块,阻止默认行为(防止滚动和前进后退手势)
+              if (touchingSlider) {
+                e.preventDefault();
+              }
+              
+              handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY } as any);
             }
-            
-            // 如果触摸到滑块,阻止默认行为(防止滚动)
-            if (touchingSlider) {
+          }}
+          onTouchMove={(e) => {
+            // 在canvas区域内触摸移动时,总是阻止默认行为以防止滚动
+            if (e.cancelable) {
               e.preventDefault();
             }
             
-            handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY } as any);
-          }
-        }}
-        onTouchMove={(e) => {
-          // 在canvas区域内触摸移动时,总是阻止默认行为以防止滚动
-          e.preventDefault();
-          
-          // 节流优化
-          const now = Date.now();
-          if (now - lastMoveTimeRef.current < 16) return; // ~60fps
-          lastMoveTimeRef.current = now;
-          
-          if (e.touches.length > 0) {
-            handleMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as any);
-          }
-        }}
-        onTouchEnd={(e) => {
-          handleMouseUp();
-        }}
-        className="rounded-lg cursor-crosshair"
-        style={{ 
-          touchAction: 'none', // 完全禁止默认触摸行为(防止滚动/缩放)
-          display: 'block',
-          margin: '0 auto'
-        }}
-      />
+            // 节流优化
+            const now = Date.now();
+            if (now - lastMoveTimeRef.current < 16) return; // ~60fps
+            lastMoveTimeRef.current = now;
+            
+            if (e.touches.length > 0) {
+              handleMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as any);
+            }
+          }}
+          onTouchEnd={(e) => {
+            handleMouseUp();
+          }}
+          className="rounded-xl cursor-crosshair shadow-sm"
+          style={{ 
+            touchAction: 'none', // 完全禁止默认触摸行为(防止滚动/缩放/翻页)
+            display: 'block',
+            margin: '0 auto',
+            width: `${canvasSize.width}px`,
+            height: `${canvasSize.height}px`,
+            maxWidth: '100%',
+            aspectRatio: '1 / 1'
+          }}
+        />
+      </div>
       
       {/* Readout Panel (like RadialMixer) */}
-      <div className="mt-2 flex flex-wrap gap-3 p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
+      <div className="w-full max-w-md flex flex-wrap items-center justify-between sm:justify-start gap-2 sm:gap-3 p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
         <div className="flex items-center gap-2">
           <div className="flex flex-col items-end">
             <span className="text-[9px] font-bold text-slate-400 uppercase">
@@ -844,7 +885,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
             </span>
           </div>
           <div 
-            className="w-9 h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner" 
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner flex-shrink-0" 
             style={{
               backgroundColor: mixedColor || 'transparent',
               backgroundImage: mixedColor === '' ? 'repeating-conic-gradient(#E0E0E0 0% 25%, #FFFFFF 0% 50%)' : 'none',
@@ -853,11 +894,11 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
           />
         </div>
         
-        <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
+        <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
         
         <div className="flex items-center gap-2">
           <div 
-            className="w-9 h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner" 
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner flex-shrink-0" 
             style={{backgroundColor: targetColor?.hex || 'transparent'}}
           />
           <div className="flex flex-col">
@@ -870,7 +911,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
           </div>
         </div>
         
-        <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
+        <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
         
         <div className="flex items-center gap-2">
           <div className="flex flex-col">
@@ -883,7 +924,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               max="100"
               value={targetVolume}
               onChange={(e) => setTargetVolume(Math.max(1, parseInt(e.target.value) || 20))}
-              className="w-16 px-1.5 py-0.5 text-center font-mono text-xs font-bold border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
+              className="w-14 sm:w-16 px-1.5 py-0.5 text-center font-mono text-xs font-bold border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
             />
           </div>
           <button
@@ -896,45 +937,47 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         
         {onAddColors && (
           <>
-            <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
+            <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
             
-            <button
-              onClick={() => {
-                onAddColors(['#00B7EB', '#FF0090', '#FFEF00']);
-                setCmyAdded(true);
-                setTimeout(() => setCmyAdded(false), 2000);
-              }}
-              disabled={cmyAdded}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-500 shadow-sm relative overflow-hidden ${
-                cmyAdded
-                  ? 'bg-green-500 text-white cursor-default'
-                  : 'bg-purple-500 text-white before:absolute before:w-8 before:h-8 before:content-[\'\'] before:right-0 before:top-0 before:z-0 before:bg-[#00B7EB] before:rounded-full before:blur-md before:transition-all before:duration-500 after:absolute after:w-10 after:h-10 after:content-[\'\'] after:bg-[#FF0090] after:right-4 after:top-1 after:z-0 after:rounded-full after:blur-md after:transition-all after:duration-500 hover:before:right-8 hover:before:-bottom-4 hover:before:blur-lg hover:after:-right-6 hover:after:blur-lg'
-              }`}
-            >
-              <span className="relative z-10">{cmyAdded ? t.cmyColorsAdded : t.addCmyColors}</span>
-            </button>
-            
-            <button
-              onClick={() => {
-                onAddColors(['#FFFFFF', '#000000']);
-                setBwAdded(true);
-                setTimeout(() => setBwAdded(false), 2000);
-              }}
-              disabled={bwAdded}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm ${
-                bwAdded
-                  ? 'bg-green-500 text-white cursor-default'
-                  : 'bg-slate-600 hover:bg-slate-700 text-white'
-              }`}
-            >
-              {bwAdded ? t.bwColorsAdded : t.addBwColors}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  onAddColors(['#00B7EB', '#FF0090', '#FFEF00']);
+                  setCmyAdded(true);
+                  setTimeout(() => setCmyAdded(false), 2000);
+                }}
+                disabled={cmyAdded}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-500 shadow-sm relative overflow-hidden ${
+                  cmyAdded
+                    ? 'bg-green-500 text-white cursor-default'
+                    : 'bg-purple-500 text-white hover:bg-purple-600'
+                }`}
+              >
+                <span className="relative z-10">{cmyAdded ? t.cmyColorsAdded : t.addCmyColors}</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  onAddColors(['#FFFFFF', '#000000']);
+                  setBwAdded(true);
+                  setTimeout(() => setBwAdded(false), 2000);
+                }}
+                disabled={bwAdded}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm ${
+                  bwAdded
+                    ? 'bg-green-500 text-white cursor-default'
+                    : 'bg-slate-600 hover:bg-slate-700 text-white'
+                }`}
+              >
+                {bwAdded ? t.bwColorsAdded : t.addBwColors}
+              </button>
+            </div>
           </>
         )}
       </div>
       
       {/* Control Panel */}
-      <div className="w-full max-w-xl bg-slate-50 dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 mt-2">
+      <div className="w-full max-w-md bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 mt-1">
         
         {/* Volume Recipe Display */}
         {volumes.length > 0 && (

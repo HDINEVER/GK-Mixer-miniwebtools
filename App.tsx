@@ -650,7 +650,7 @@ const App: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 max-w-[1920px] mx-auto w-full p-4 md:p-6 pb-28 lg:pb-6 grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8">
+      <main className="flex-1 max-w-[1920px] mx-auto w-full p-2.5 sm:p-4 md:p-6 pb-28 lg:pb-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 xl:gap-8 overflow-x-hidden">
         
         {/* Left Column: Image & Palette */}
         {(!isWideVisualizer || rightPanelTab !== 'visualizer') && (
@@ -969,8 +969,8 @@ const App: React.FC = () => {
         )}
 
         {/* Right Column: Mixer & Output */}
-        <div className={`${isWideVisualizer && rightPanelTab === 'visualizer' ? "col-span-12" : "lg:col-span-7 xl:col-span-8"} ${mobileTab !== 'extract' ? 'block' : 'hidden lg:block'}`}>
-           <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full transition-colors duration-300 flex flex-col">
+        <div className={`${isWideVisualizer && rightPanelTab === 'visualizer' ? "col-span-12" : "lg:col-span-7 xl:col-span-8"} ${mobileTab !== 'extract' ? 'block' : 'hidden lg:block'} w-full max-w-full overflow-x-hidden`}>
+           <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full transition-colors duration-300 flex flex-col w-full max-w-full overflow-x-hidden">
                 {/* Mobile Quick Color Switcher (switch active color directly inside tools without leaving view) */}
                 {colors.length > 0 && (
                   <div className="lg:hidden mb-4 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar">

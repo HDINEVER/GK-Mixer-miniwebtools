@@ -1,4 +1,6 @@
 const HOSTS = [
+  "/paints",
+  "https://gkcolor-mixer.pages.dev/paints",
   "https://modkitswatch.afifzafri.com/paints",
   "https://cdn.jsdelivr.net/gh/afzafri/modkit-swatch@main/public/paints",
 ];
@@ -8,6 +10,7 @@ const BRAND_SLUG: Record<string, string> = {
   Gaianotes: "gaianotes",
   Jumpwind: "jumpwind",
   "Hobby Mio": "hobby-mio",
+  "Night Works": "nightworks",
   Sunin7: "sunin7",
   "Mr.Hobby": "mr-color",
   "Mr Color": "mr-color",

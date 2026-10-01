@@ -25,3 +25,6 @@ privacy-policy-repo/
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Extraction scratch
+NightWorks_Output/

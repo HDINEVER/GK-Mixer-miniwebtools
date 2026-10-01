@@ -5,6 +5,7 @@ export const FEATURED_BRANDS = [
   "Gaia",
   "Jumpwind",
   "Hobby Mio",
+  "Night Works",
   "Sunin7",
   "QNC",
   "Gunze",
@@ -23,9 +24,11 @@ export const localizedBrand = (brand: string, lang: "en" | "zh" | "ja") => {
     case "Jumpwind":
       return "匠域";
     case "Hobby Mio":
-      return "星影";
+      return "喵匠";
+    case "Night Works":
+      return "夜之工坊";
     case "Sunin7":
-      return "七色";
+      return "星影";
     case "Gunze":
       return "郡士水性";
     case "Mr.Hobby":
@@ -59,7 +62,25 @@ export const matchQualityLabel = (deltaE: number, lang: "en" | "zh" | "ja") => {
 
 const OTHER_PREFIX = "其他";
 
+export const NIGHTWORKS_CATEGORY_ORDER = [
+  "薄涂漆",
+  "底涂漆",
+  "对比漆",
+  "笔涂金属漆",
+  "预调喷涂金属漆",
+  "预调喷涂消光色",
+  "阴影洗漆",
+  "滤镜罩染漆",
+  "笔涂荧光色",
+  "预调喷涂荧光色",
+  "战棋水补土",
+  "特效漆",
+];
+
 export const paintPrefix = (paint: CatalogPaint): string => {
+  if (paint.brand === "Night Works") {
+    return paint.set.trim() || OTHER_PREFIX;
+  }
   const code = paint.code.trim();
   const set = paint.set.trim();
   const dot = code.indexOf(".");
@@ -120,6 +141,13 @@ export const prefixGroups = (
   const prefixes = [...bucket.keys()].sort((a, b) => {
     if (a === OTHER_PREFIX) return 1;
     if (b === OTHER_PREFIX) return -1;
+    if (brand === "Night Works") {
+      const li = NIGHTWORKS_CATEGORY_ORDER.indexOf(a);
+      const ri = NIGHTWORKS_CATEGORY_ORDER.indexOf(b);
+      const left = li === -1 ? Number.MAX_SAFE_INTEGER : li;
+      const right = ri === -1 ? Number.MAX_SAFE_INTEGER : ri;
+      if (left !== right) return left - right;
+    }
     return a.localeCompare(b, undefined, { numeric: true });
   });
   const groups = prefixes

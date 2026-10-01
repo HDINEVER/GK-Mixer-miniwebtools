@@ -144,19 +144,42 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({ lang, onPickH
                       hex={paint.hex}
                       className="block w-full min-w-0"
                     >
-                      <button
-                        type="button"
-                        onClick={() => onPickHex?.(paint.hex)}
-                        className="w-full overflow-hidden rounded-lg border border-slate-100 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800"
-                      >
-                        <div className="h-11 w-full" style={{ backgroundColor: paint.hex }} />
+                      <div className="w-full overflow-hidden rounded-lg border border-slate-100 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800">
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => onPickHex?.(paint.hex)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') onPickHex?.(paint.hex); }}
+                          className="h-11 w-full cursor-pointer transition-opacity hover:opacity-95"
+                          style={{ backgroundColor: paint.hex }}
+                        />
                         <div className="px-1.5 py-1">
-                          <div className="truncate font-mono text-[9px] text-slate-400">{paint.hex}</div>
-                          <div className="truncate text-[10px] font-bold leading-tight text-slate-700 dark:text-slate-200">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="truncate font-mono text-[9px] text-slate-400">{paint.hex}</span>
+                            {paint.shopUrl && (
+                              <a
+                                href={paint.shopUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="shrink-0 rounded px-1 text-[9px] font-bold text-amber-600 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40"
+                                title={lang === "zh" ? "前往官方店铺购买" : "Official store"}
+                              >
+                                {lang === "zh" ? "购买 ↗" : "Buy ↗"}
+                              </a>
+                            )}
+                          </div>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => onPickHex?.(paint.hex)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') onPickHex?.(paint.hex); }}
+                            className="cursor-pointer truncate text-[10px] font-bold leading-tight text-slate-700 dark:text-slate-200"
+                          >
                             {paint.code} {paint.name}
                           </div>
                         </div>
-                      </button>
+                      </div>
                     </PaintBottleHover>
                   ))}
                 </div>

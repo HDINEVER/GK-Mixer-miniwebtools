@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { CatalogPaint, Language } from "../types";
 import PaintBottleHover from "./PaintBottleHover";
+import IOSSearchBar from "./IOSSearchBar";
+import {
+  CheckIcon,
+  CaretDownIcon,
+  PlusIcon,
+  MinusIcon,
+  ArrowUpRightIcon,
+} from "@phosphor-icons/react";
 import {
   FEATURED_BRANDS,
   loadPaintCatalog,
@@ -61,7 +69,8 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({ lang, onPickH
         </span>
       </div>
 
-      <div className="-mx-1 flex gap-1 overflow-x-auto pb-1">
+      {/* Konsta/iOS-style Horizontal Scrollable Brand Tabs (min 44px touch target) */}
+      <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar scroll-smooth">
         {brands.map((item) => (
           <button
             key={item}
@@ -70,10 +79,10 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({ lang, onPickH
               setBrand(item);
               setPrefix(null);
             }}
-            className={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-bold ${
+            className={`whitespace-nowrap rounded-full px-4 min-h-[44px] flex items-center justify-center text-[12px] font-bold transition-all duration-150 active:scale-[0.97] touch-manipulation cursor-pointer flex-shrink-0 ${
               brand === item
-                ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900"
-                : "bg-slate-100 text-slate-500 dark:bg-slate-800"
+                ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
+                : "bg-slate-100 text-slate-600 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
           >
             {localizedBrand(item, lang)}
@@ -81,33 +90,50 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({ lang, onPickH
         ))}
       </div>
 
+      {/* iOS-Style Search & Filter Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={lang === "zh" ? "搜索色号 / 名称 / HEX" : "Search code / name / HEX"}
-          className="min-w-[12rem] flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
-        />
-        <label className="flex items-center gap-1 text-[10px] text-slate-500">
-          <input
-            type="checkbox"
-            checked={solidsOnly}
-            onChange={(event) => setSolidsOnly(event.target.checked)}
+        <div className="min-w-[13rem] flex-1">
+          <IOSSearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder={lang === "zh" ? "搜索色号 / 名称 / HEX" : "Search code / name / HEX"}
           />
-          {lang === "zh" ? "仅实色" : "Solids"}
-        </label>
-        <select
-          value={prefix ?? ""}
-          onChange={(event) => setPrefix(event.target.value || null)}
-          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setSolidsOnly(!solidsOnly)}
+          className={`h-10 sm:h-11 px-3 rounded-xl sm:rounded-2xl border text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active:scale-[0.96] shrink-0 cursor-pointer ${
+            solidsOnly
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
+              : 'bg-slate-100/90 dark:bg-slate-800/90 text-slate-600 dark:text-slate-400 border-slate-200/50 dark:border-slate-700/50 hover:bg-slate-200/60'
+          }`}
         >
-          <option value="">{lang === "zh" ? "全部系列" : "All series"}</option>
-          {prefixes.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
+          <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] border transition-colors ${
+            solidsOnly ? 'bg-sky-500 border-sky-500 text-white' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700'
+          }`}>
+            {solidsOnly && <CheckIcon className="w-2.5 h-2.5" weight="bold" />}
+          </span>
+          <span>{lang === "zh" ? "仅实色" : "Solids"}</span>
+        </button>
+
+        <div className="relative shrink-0">
+          <select
+            value={prefix ?? ""}
+            onChange={(event) => setPrefix(event.target.value || null)}
+            className="h-10 sm:h-11 pl-3.5 pr-8 rounded-xl sm:rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-slate-100/90 dark:bg-slate-800/90 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500/20 appearance-none cursor-pointer active:scale-[0.97] transition-all"
+          >
+            <option value="">{lang === "zh" ? "全部系列" : "All series"}</option>
+            {prefixes.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
+            <CaretDownIcon className="w-2.5 h-2.5" weight="bold" />
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto pr-1">
@@ -131,7 +157,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({ lang, onPickH
                   {group.prefix}
                   <span className="ml-2 font-normal text-slate-400">{group.paints.length}</span>
                 </span>
-                <span>{isCollapsed ? "+" : "–"}</span>
+                <span>{isCollapsed ? <PlusIcon className="w-3 h-3" weight="bold" /> : <MinusIcon className="w-3 h-3" weight="bold" />}</span>
               </button>
               {!isCollapsed && (
                 <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
@@ -144,7 +170,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({ lang, onPickH
                       hex={paint.hex}
                       className="block w-full min-w-0"
                     >
-                      <div className="w-full overflow-hidden rounded-lg border border-slate-100 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800">
+                      <div className="w-full overflow-hidden rounded-lg border border-slate-100 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800 transition-transform duration-100 active:scale-[0.97] cursor-pointer">
                         <div
                           role="button"
                           tabIndex={0}
@@ -162,10 +188,11 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({ lang, onPickH
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="shrink-0 rounded px-1 text-[9px] font-bold text-amber-600 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40"
+                                className="shrink-0 rounded px-1 text-[9px] font-bold text-amber-600 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40 inline-flex items-center gap-0.5"
                                 title={lang === "zh" ? "前往官方店铺购买" : "Official store"}
                               >
-                                {lang === "zh" ? "购买 ↗" : "Buy ↗"}
+                                <span>{lang === "zh" ? "购买" : "Buy"}</span>
+                                <ArrowUpRightIcon className="w-2.5 h-2.5" weight="bold" />
                               </a>
                             )}
                           </div>

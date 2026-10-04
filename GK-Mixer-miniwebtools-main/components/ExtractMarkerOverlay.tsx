@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { XIcon } from "@phosphor-icons/react";
 import { ExtractMarker } from "../utils/exportAnnotatedImage";
 import {
   BASE_CARD_H,
@@ -488,7 +489,7 @@ const SwatchCard: React.FC<{
       {showRemove && (
         <button
           type="button"
-          className="absolute -right-2 -top-2 z-30 flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-[11px] leading-none text-white opacity-0 shadow-md pointer-events-none hover:bg-red-500 group-hover:pointer-events-auto group-hover:opacity-100 transition-opacity"
+          className="absolute -right-2 -top-2 z-30 flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-white opacity-0 shadow-md pointer-events-none hover:bg-red-500 group-hover:pointer-events-auto group-hover:opacity-100 transition-opacity"
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();
@@ -497,7 +498,7 @@ const SwatchCard: React.FC<{
           aria-label="Remove"
           title="移除此色卡标注"
         >
-          ×
+          <XIcon className="h-3 w-3" />
         </button>
       )}
     </div>

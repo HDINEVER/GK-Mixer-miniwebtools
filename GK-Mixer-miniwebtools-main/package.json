@@ -20,11 +20,16 @@
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@google/genai": "^1.30.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@tanstack/react-virtual": "^3.14.13",
     "html2canvas": "^1.4.1",
+    "konsta": "^5.5.0",
     "motion": "^12.23.26",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "simple-color-converter": "^2.1.13"
+    "simple-color-converter": "^2.1.13",
+    "use-long-press": "^3.3.0",
+    "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

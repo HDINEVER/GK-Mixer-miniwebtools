@@ -1,9 +1,19 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
+import {
+  DropIcon,
+  SlidersHorizontalIcon,
+  CircleNotchIcon,
+  FlaskIcon,
+  ClipboardTextIcon,
+  CheckIcon,
+} from '@phosphor-icons/react';
 import { Language, BasicMixerCache, BaseColor } from '../types';
 import { lerp, rgbToLatent, latentToRgb } from '../utils/mixbox';
 import { toDropRatio } from '../utils/dropRatio';
+import { hexToRAL } from '../utils/colorUtils';
 import DropRatioBar from './DropRatioBar';
 import BrandMatchPanel from './BrandMatchPanel';
+import IOSColorSlider from './IOSColorSlider';
 import { translations as uiText } from '../utils/translations';
 
 // 声明 anime
@@ -62,6 +72,68 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
   const [totalVolume, setTotalVolume] = useState<number>(cache?.totalVolume ?? 20);
   const [canvasSize, setCanvasSize] = useState(getCanvasSize());
   const [dropMultiplier, setDropMultiplier] = useState(1);
+
+  // Check if screen is vertical / portrait
+  const [isPortrait, setIsPortrait] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.innerWidth < 768 || window.innerHeight > window.innerWidth;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      const portrait = window.innerWidth < 768 || window.innerHeight > window.innerWidth;
+      setIsPortrait(portrait);
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+
+  // View mode: 'ios' (色板滑块) or 'radial' (轮盘模式). Default 'ios' on mobile/portrait
+  const [viewMode, setViewMode] = useState<'ios' | 'radial'>('ios');
+
+  // Copied hex tooltip state
+  const [copiedHex, setCopiedHex] = useState(false);
+  const handleCopyHex = (hex: string) => {
+    if (!hex) return;
+    navigator.clipboard?.writeText(hex);
+    setCopiedHex(true);
+    setTimeout(() => setCopiedHex(false), 1500);
+  };
+
+  // RAL match calculation
+  const ralMatch = useMemo(() => (finalColor ? hexToRAL(finalColor) : null), [finalColor]);
+
+  // Volume presets matching iOS
+  const volumePresets = [10, 20, 30, 40, 50, 60];
+
+  // Handler for iOS slider changes
+  const cacheTimerRef = useRef<any>(null);
+  const handleSliderAmountChange = (index: number, val: number) => {
+    const newRatios = [...mixRatios];
+    newRatios[index] = Math.max(0, Math.min(100, val)) / 100;
+    mixRatiosRef.current = newRatios;
+    setMixRatios(newRatios);
+
+    const color = calculateMixedColor(newRatios);
+    setFinalColor(color);
+    finalColorRef.current = color;
+    updateSliderPositions(newRatios);
+
+    if (onCacheUpdate) {
+      if (cacheTimerRef.current) clearTimeout(cacheTimerRef.current);
+      cacheTimerRef.current = setTimeout(() => {
+        onCacheUpdate({
+          baseColors,
+          mixRatios: newRatios,
+          totalVolume,
+        });
+      }, 250);
+    }
+  };
   
   // Refs to prevent closure lag and frame drops during dragging
   const mixRatiosRef = useRef<number[]>(cache?.mixRatios ?? DEFAULT_BASE_COLORS.map(() => 0));
@@ -448,30 +520,38 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
     const x = (clientX - rect.left) * (WIDTH / rect.width);
     const y = (clientY - rect.top) * (HEIGHT / rect.height);
 
-    // 检测点击了哪个旋钮
+    // 检测点击了哪个旋钮（寻找距离点击点最近且在感应范围内的旋钮）
+    let closestIndex = -1;
+    let closestDist = Infinity;
+    const HIT_RADIUS = 55;
+
     for (let i = 0; i < baseColors.length; i++) {
       const pos = slidersPos.current[i];
       if (!pos) continue;
-      const radius = knobSizesRef.current[i] ?? 22;
       const dx = x - pos.x;
       const dy = y - pos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
       
-      if (Math.sqrt(dx * dx + dy * dy) < radius + 12) {
-        draggedIndexRef.current = i;
-        
-        // 放大动画
-        if (typeof anime !== 'undefined') {
-          anime({
-            targets: { radius: knobSizesRef.current[i] },
-            radius: ACTIVE_KNOB_RADIUS,
-            duration: 400,
-            easing: 'easeOutElastic(1, .6)',
-            update: (anim: any) => {
-              knobSizesRef.current[i] = anim.animatables[0].target.radius;
-            }
-          });
-        }
-        break;
+      if (dist < HIT_RADIUS && dist < closestDist) {
+        closestDist = dist;
+        closestIndex = i;
+      }
+    }
+
+    if (closestIndex !== -1) {
+      draggedIndexRef.current = closestIndex;
+      
+      // 放大动画
+      if (typeof anime !== 'undefined') {
+        anime({
+          targets: { radius: knobSizesRef.current[closestIndex] },
+          radius: ACTIVE_KNOB_RADIUS,
+          duration: 400,
+          easing: 'easeOutElastic(1, .6)',
+          update: (anim: any) => {
+            knobSizesRef.current[closestIndex] = anim.animatables[0].target.radius;
+          }
+        });
       }
     }
   };
@@ -603,21 +683,30 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
     window.addEventListener('mouseup', handleMouseUp);
     
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
       canvas.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       canvas.removeEventListener('touchstart', handleTouchStart);
-      canvas.removeEventListener('touchmove', handleTouchMove);
-      canvas.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [canvasSize]);
+  }, [canvasSize, viewMode]);
+
+  // 当切换到轮盘模式时，立即初始化位置与滑块
+  useEffect(() => {
+    if (viewMode === 'radial') {
+      initializePositions(canvasSize.scale);
+      updateSliderPositions(mixRatiosRef.current);
+    }
+  }, [viewMode, canvasSize.scale]);
 
   // 持续流畅的绘制循环 (60fps)
   useEffect(() => {
+    if (viewMode !== 'radial') return;
     let animId: number;
     const loop = () => {
       draw();
@@ -627,7 +716,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
     return () => {
       cancelAnimationFrame(animId);
     };
-  }, [canvasSize]);
+  }, [canvasSize, viewMode]);
 
   // 重置功能
   const handleReset = () => {
@@ -678,123 +767,383 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
 
   const t = translations[lang];
 
+  // Computed recipe items
+  const totalRatio = mixRatios.reduce((a, b) => a + b, 0);
+  const activeItems = baseColors
+    .map((color, i) => {
+      const percentage = totalRatio > 0 ? (mixRatios[i] / totalRatio) * 100 : 0;
+      return { color, percentage, ml: (percentage * totalVolume) / 100 };
+    })
+    .filter((item) => item.percentage >= 0.1);
+
+  const dropCounts = toDropRatio(activeItems.map((item) => item.percentage));
+  const dropParts = activeItems.map((item, index) => ({
+    color: item.color.hex,
+    name: item.color.name.replace(/^光泽/, ''),
+    drops: dropCounts[index] ?? 0,
+  }));
+
   return (
-    <div ref={containerRef} className="flex flex-col gap-3">
-      {/* Header */}
-      <div>
-        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{t.title}</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.subtitle}</p>
-      </div>
-
-      {/* 控制栏 */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.volume}:</label>
-          <input
-            type="number"
-            value={totalVolume}
-            onChange={(e) => setTotalVolume(Math.max(1, parseInt(e.target.value) || 20))}
-            className="w-16 px-1.5 py-0.5 text-xs border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
-            min="1"
-            max="100"
-          />
-          <span className="text-xs text-slate-600 dark:text-slate-400">ml</span>
+    <div ref={containerRef} className="flex flex-col gap-3.5 w-full">
+      {/* Header with Title and Mode Switcher */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+            <DropIcon className="w-5 h-5 text-sky-500 shrink-0" />
+            <span>{lang === 'zh' ? '基础混色台' : lang === 'ja' ? '基本色調色台' : 'Basic Color Mixer'}</span>
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {lang === 'zh'
+              ? '参考 iOS 色板调节模式，滑动基础颜料配比'
+              : lang === 'ja'
+              ? 'iOSスタイルのスライダーで配合調整'
+              : 'iOS-style pigment slider adjustment'}
+          </p>
         </div>
-        
-        <button
-          onClick={handleReset}
-          className="px-2.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-        >
-          {t.reset}
-        </button>
+
+        {/* View Mode Toggle: [ 色板模式 ] / [ 轮盘模式 ] */}
+        <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs">
+          <button
+            type="button"
+            onClick={() => setViewMode('ios')}
+            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+              viewMode === 'ios'
+                ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
+          >
+            <SlidersHorizontalIcon className="w-3.5 h-3.5" />
+            <span>{lang === 'zh' ? '色板模式' : lang === 'ja' ? 'スライダー' : 'Sliders'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('radial')}
+            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+              viewMode === 'radial'
+                ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
+          >
+            <CircleNotchIcon className="w-3.5 h-3.5" />
+            <span>{lang === 'zh' ? '轮盘模式' : lang === 'ja' ? 'ホイール' : 'Wheel'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Canvas - Fixed height to prevent shifting */}
-      <div className="flex items-center justify-center">
-        <canvas
-          ref={canvasRef}
-          style={{ 
-            touchAction: 'none',
-            display: 'block',
-            margin: '0 auto'
-          }}
-        />
-      </div>
+      {viewMode === 'ios' ? (
+        /* ==================== iOS 色板调节模式 (Matching raw_03) ==================== */
+        <div className="flex flex-col gap-3.5 w-full">
+          {/* 1. 混合结果卡片 */}
+          <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <FlaskIcon className="w-4 h-4 text-purple-500" />
+                <span>{lang === 'zh' ? '混合结果' : lang === 'ja' ? 'ミックス結果' : 'Mixed Result'}</span>
+              </div>
+              {finalColor && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="text-xs text-slate-400 hover:text-rose-500 transition-colors"
+                >
+                  {lang === 'zh' ? '重置' : lang === 'ja' ? 'リセット' : 'Reset'}
+                </button>
+              )}
+            </div>
 
-      {/* 配方显示 - 始终显示 */}
-      <div>
-        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">{t.formula}</h3>
-          <div className="space-y-1 min-h-[60px]">
             {finalColor ? (
-              (() => {
-                const totalRatio = mixRatios.reduce((a, b) => a + b, 0);
-                const items = baseColors
-                  .map((color, i) => {
-                    const percentage = totalRatio > 0 ? (mixRatios[i] / totalRatio * 100) : 0;
-                    return { color, percentage, ml: (percentage * totalVolume) / 100 };
-                  })
-                  .filter(item => item.percentage >= 0.1);
-                const dropCounts = toDropRatio(items.map(item => item.percentage));
-                const dropParts = items.map((item, index) => ({
-                  color: item.color.hex,
-                  name: item.color.name.replace(/^光泽/, ''),
-                  drops: dropCounts[index] ?? 0,
-                }));
-                return (
-                  <>
-                    <DropRatioBar
-                      parts={dropParts}
-                      lang={lang}
-                      multiplier={dropMultiplier}
-                      onMultiplierChange={setDropMultiplier}
-                    />
-                    {items.map((item, index) => (
-                      <div key={item.color.id} className="flex items-center gap-1.5 text-xs">
-                        <div
-                          className="w-3.5 h-3.5 rounded border-2 border-white dark:border-slate-600"
-                          style={{ backgroundColor: item.color.hex }}
-                        />
-                        <span className="font-mono text-slate-600 dark:text-slate-400">
-                          {item.color.brand} {item.color.code}
-                        </span>
-                        <span className="flex-1 text-slate-500 dark:text-slate-500">{item.color.name}</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">
-                          {dropCounts[index]
-                            ? `${dropCounts[index] * dropMultiplier}${uiText[lang].dropUnit} · `
-                            : ''}
-                          {item.ml.toFixed(1)}ml
-                        </span>
-                        <span className="text-slate-500 dark:text-slate-500">({item.percentage.toFixed(1)}%)</span>
+              <div className="space-y-3">
+                {/* 大色块展示 (即时响应，零延迟) */}
+                <div
+                  className="w-full h-24 sm:h-28 rounded-2xl relative shadow-inner border border-black/10 dark:border-white/10 overflow-hidden"
+                  style={{ backgroundColor: finalColor }}
+                >
+                  {/* 可复制 Hex 标签 */}
+                  <div className="absolute bottom-2.5 left-2.5">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyHex(finalColor)}
+                      className="bg-white/85 dark:bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-bold text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/15 shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
+                      title="点击复制 Hex 色号"
+                    >
+                      <span>{finalColor.toUpperCase()}</span>
+                      <span className="text-[10px] text-slate-400">
+                        {copiedHex ? (
+                          <span className="inline-flex items-center gap-0.5 text-emerald-500">
+                            <CheckIcon className="w-3 h-3" />已复制
+                          </span>
+                        ) : (
+                          <ClipboardTextIcon className="w-3.5 h-3.5 inline-block" />
+                        )}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* RAL 近似色 */}
+                {ralMatch && (
+                  <div className="flex items-center justify-between text-xs pt-1 px-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">
+                      {lang === 'zh' ? 'RAL 近似色' : lang === 'ja' ? 'RAL 近似色' : 'RAL Match'}
+                    </span>
+                    <div className="text-right">
+                      <div className="font-bold text-slate-800 dark:text-slate-200">
+                        RAL {ralMatch.ral} {ralMatch.name}
                       </div>
-                    ))}
-                  </>
-                );
-              })()
+                      <div className="font-mono text-[10px] text-slate-400">
+                        {ralMatch.hex.toUpperCase()} · LRV {ralMatch.lrv}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
-              <div className="flex items-center justify-center h-[60px]">
-                <p className="text-xs text-slate-400 dark:text-slate-500">{t.noMix}</p>
+              <div className="w-full h-24 sm:h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1.5 text-slate-400">
+                <DropIcon className="w-8 h-8 opacity-60 text-slate-400" />
+                <span className="text-xs">
+                  {lang === 'zh' ? '调整下方滑块开始混色' : lang === 'ja' ? 'スライダーを調整して混色' : 'Adjust sliders below to mix'}
+                </span>
               </div>
             )}
           </div>
-          
-          {finalColor && (
-            <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{t.result}:</span>
-              <div
-                className="w-6 h-6 rounded border-2 border-white dark:border-slate-600 shadow-md"
-                style={{ backgroundColor: finalColor }}
-              />
-              <span className="font-mono text-xs text-slate-600 dark:text-slate-400">{finalColor.toUpperCase()}</span>
+
+          {/* 2. 基础颜料卡片 */}
+          <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <DropIcon className="w-4 h-4 text-amber-500" />
+                <span>{lang === 'zh' ? '基础颜料' : lang === 'ja' ? '基本顔料' : 'Basic Pigments'}</span>
+              </div>
+              <span className="text-[10px] text-slate-400">
+                {lang === 'zh' ? '8色基础系统' : lang === 'ja' ? '8色ベース' : '8-Color System'}
+              </span>
             </div>
-          )}
-          {finalColor && (
-            <div className="mt-3">
-              <BrandMatchPanel hex={finalColor} lang={lang} compact />
+
+            <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
+              {baseColors.map((paint, index) => (
+                <IOSColorSlider
+                  key={paint.id}
+                  color={paint.hex}
+                  label={paint.name.replace(/^光泽/, '')}
+                  subLabel={`${paint.brand} ${paint.code}`}
+                  value={Math.round((mixRatios[index] ?? 0) * 100)}
+                  onChange={(val) => handleSliderAmountChange(index, val)}
+                />
+              ))}
             </div>
-          )}
+          </div>
+
+          {/* 3. 配方输出卡片 */}
+          <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <ClipboardTextIcon className="w-4 h-4 text-indigo-500" />
+                  <span>{lang === 'zh' ? '配方输出' : lang === 'ja' ? '配合比' : 'Formula Output'}</span>
+                </div>
+                <div className="text-[11px] font-mono text-slate-400">
+                  {totalVolume} ml
+                </div>
+              </div>
+
+              {/* 快速容量预设 - iOS/Konsta Segmented Pill Bar */}
+              <div className="p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-2xl flex items-center gap-1 shadow-inner overflow-x-auto no-scrollbar">
+                {volumePresets.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setTotalVolume(v)}
+                    className={`min-h-[38px] px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all duration-150 active:scale-[0.95] flex items-center justify-center flex-1 shrink-0 cursor-pointer ${
+                      totalVolume === v
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-orange-500/25 ring-1 ring-white/20'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                    }`}
+                  >
+                    {v}ml
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 容量输入 */}
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+              <label className="text-slate-500 dark:text-slate-400 font-medium">{t.volume}:</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  value={totalVolume}
+                  onChange={(e) => setTotalVolume(Math.max(1, parseInt(e.target.value) || 20))}
+                  className="w-16 px-2.5 py-1 text-xs text-right font-mono font-bold border border-slate-300/80 dark:border-slate-600/80 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500/30 outline-none"
+                  min="1"
+                  max="100"
+                />
+                <span className="text-xs text-slate-500">ml</span>
+              </div>
+            </div>
+
+            {/* 比例与详细明细 */}
+            {finalColor && activeItems.length > 0 ? (
+              <div className="space-y-2 pt-1">
+                <DropRatioBar
+                  parts={dropParts}
+                  lang={lang}
+                  multiplier={dropMultiplier}
+                  onMultiplierChange={setDropMultiplier}
+                />
+                <div className="space-y-1 pt-1">
+                  {activeItems.map((item, index) => (
+                    <div
+                      key={item.color.id}
+                      className="flex items-center justify-between text-xs p-1.5 rounded-lg bg-white/70 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-4 h-4 rounded-full border border-black/15 shadow-sm"
+                          style={{ backgroundColor: item.color.hex }}
+                        />
+                        <span className="font-medium text-slate-700 dark:text-slate-200">
+                          {item.color.name.replace(/^光泽/, '')}
+                        </span>
+                        <span className="font-mono text-[10px] text-slate-400">
+                          {item.color.brand} {item.color.code}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono">
+                        {dropCounts[index] ? (
+                          <span className="font-bold text-amber-600 dark:text-amber-400 text-[11px]">
+                            {dropCounts[index] * dropMultiplier}
+                            {uiText[lang].dropUnit} ·{' '}
+                          </span>
+                        ) : null}
+                        <span className="font-bold text-slate-800 dark:text-slate-100">
+                          {item.ml.toFixed(1)}ml
+                        </span>
+                        <span className="text-slate-400 text-[10px]">
+                          ({item.percentage.toFixed(1)}%)
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-2">
+                  <BrandMatchPanel hex={finalColor} lang={lang} compact />
+                </div>
+              </div>
+            ) : (
+              <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                {t.noMix}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        /* ==================== 经典 Canvas 轮盘模式 ==================== */
+        <div className="flex flex-col gap-3">
+          {/* 控制栏 */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                {t.volume}:
+              </label>
+              <input
+                type="number"
+                value={totalVolume}
+                onChange={(e) => setTotalVolume(Math.max(1, parseInt(e.target.value) || 20))}
+                className="w-16 px-1.5 py-0.5 text-xs border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                min="1"
+                max="100"
+              />
+              <span className="text-xs text-slate-600 dark:text-slate-400">ml</span>
+            </div>
+
+            <button
+              onClick={handleReset}
+              className="px-2.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+            >
+              {t.reset}
+            </button>
+          </div>
+
+          {/* Canvas */}
+          <div className="flex items-center justify-center">
+            <canvas
+              ref={canvasRef}
+              style={{
+                touchAction: 'none',
+                display: 'block',
+                margin: '0 auto',
+              }}
+            />
+          </div>
+
+          {/* 配方显示 */}
+          <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+            <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              {t.formula}
+            </h3>
+            <div className="space-y-1 min-h-[60px]">
+              {finalColor && activeItems.length > 0 ? (
+                <>
+                  <DropRatioBar
+                    parts={dropParts}
+                    lang={lang}
+                    multiplier={dropMultiplier}
+                    onMultiplierChange={setDropMultiplier}
+                  />
+                  {activeItems.map((item, index) => (
+                    <div key={item.color.id} className="flex items-center gap-1.5 text-xs">
+                      <div
+                        className="w-3.5 h-3.5 rounded border-2 border-white dark:border-slate-600"
+                        style={{ backgroundColor: item.color.hex }}
+                      />
+                      <span className="font-mono text-slate-600 dark:text-slate-400">
+                        {item.color.brand} {item.color.code}
+                      </span>
+                      <span className="flex-1 text-slate-500 dark:text-slate-500">
+                        {item.color.name}
+                      </span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        {dropCounts[index]
+                          ? `${dropCounts[index] * dropMultiplier}${uiText[lang].dropUnit} · `
+                          : ''}
+                        {item.ml.toFixed(1)}ml
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-500">
+                        ({item.percentage.toFixed(1)}%)
+                      </span>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-[60px]">
+                  <p className="text-xs text-slate-400 dark:text-slate-500">{t.noMix}</p>
+                </div>
+              )}
+            </div>
+
+            {finalColor && (
+              <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {t.result}:
+                </span>
+                <div
+                  className="w-6 h-6 rounded border-2 border-white dark:border-slate-600 shadow-md"
+                  style={{ backgroundColor: finalColor }}
+                />
+                <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                  {finalColor.toUpperCase()}
+                </span>
+              </div>
+            )}
+            {finalColor && (
+              <div className="mt-3">
+                <BrandMatchPanel hex={finalColor} lang={lang} compact />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

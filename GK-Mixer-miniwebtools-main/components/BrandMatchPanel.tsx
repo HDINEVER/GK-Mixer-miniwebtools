@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { CatalogPaint, Language, PaintBrand, PaintBrandGroup } from "../types";
 import PaintBottleHover from "./PaintBottleHover";
+import IOSSearchBar from "./IOSSearchBar";
+import { CheckIcon } from "@phosphor-icons/react";
 import {
   FEATURED_BRANDS,
   PaintMatchEngine,
@@ -86,21 +88,28 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-xs font-bold tracking-wider text-macaron-purple">
           {lang === "zh" ? "品牌近邻" : lang === "ja" ? "ブランド近似" : "BRAND MATCH"}
-          <span className="rounded bg-purple-100 px-2 py-0.5 text-[10px] font-normal text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+          <span className="rounded-full bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 text-[10px] font-semibold text-purple-600 dark:text-purple-300">
             CIEDE2000
           </span>
         </h3>
-        <label className="flex items-center gap-1 text-[10px] text-slate-500">
-          <input
-            type="checkbox"
-            checked={solidsOnly}
-            onChange={(event) => setSolidsOnly(event.target.checked)}
-          />
-          {lang === "zh" ? "仅实色" : lang === "ja" ? "ソリッドのみ" : "Solids only"}
-        </label>
+        <button
+          type="button"
+          onClick={() => {
+            if (selectedBrands.size === 0) {
+              setSelectedBrands(new Set(FEATURED_BRANDS));
+            } else {
+              setSelectedBrands(new Set());
+            }
+          }}
+          className="text-[11px] font-medium text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+        >
+          {selectedBrands.size === 0
+            ? (lang === "zh" ? "默认品牌" : "Default")
+            : (lang === "zh" ? "清空选择" : "Clear")}
+        </button>
       </div>
       {onAssignCatalog && (
         <p className="text-[10px] leading-relaxed text-slate-400">
@@ -118,63 +127,91 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
         </p>
       )}
 
-      <div className="flex flex-wrap gap-1">
-        {FEATURED_BRANDS.map((brand) => (
-          <button
-            key={brand}
-            type="button"
-            onClick={() => toggleBrand(brand)}
-            className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors ${
-              selectedBrands.has(brand)
-                ? "bg-macaron-purple text-white"
-                : "bg-slate-100 text-slate-500 dark:bg-slate-800"
-            }`}
-          >
-            {localizedBrand(brand, lang)}
-          </button>
-        ))}
+      {/* Konsta/iOS-style Horizontal Scrollable Featured Brands (min 40px touch target) */}
+      <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar scroll-smooth">
+        {FEATURED_BRANDS.map((brand) => {
+          const isSelected = selectedBrands.has(brand);
+          return (
+            <button
+              key={brand}
+              type="button"
+              onClick={() => toggleBrand(brand)}
+              className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-150 active:scale-[0.96] flex items-center justify-center shrink-0 cursor-pointer whitespace-nowrap ${
+                isSelected
+                  ? "bg-macaron-purple text-white shadow-sm shadow-purple-500/25 ring-2 ring-purple-300/40"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 border border-slate-200/50 dark:border-slate-700/50"
+              }`}
+            >
+              {localizedBrand(brand, lang)}
+            </button>
+          );
+        })}
         {extraBrands.length > 0 && (
           <button
             type="button"
             onClick={() => setShowMore((value) => !value)}
-            className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800"
+            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-150 active:scale-[0.96] flex items-center justify-center shrink-0 cursor-pointer whitespace-nowrap border ${
+              showMore
+                ? "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200/80 border-slate-200/50 dark:border-slate-700/50"
+            }`}
           >
             {showMore
-              ? lang === "zh"
-                ? "收起"
-                : "Less"
-              : lang === "zh"
-                ? `更多 ${extraBrands.length}`
-                : `More ${extraBrands.length}`}
+              ? (lang === "zh" ? "收起" : "Less")
+              : (lang === "zh" ? `更多 ${extraBrands.length}` : `More ${extraBrands.length}`)}
           </button>
         )}
       </div>
 
       {showMore && (
-        <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto">
-          {extraBrands.map((brand) => (
-            <button
-              key={brand}
-              type="button"
-              onClick={() => toggleBrand(brand)}
-              className={`rounded-full px-2 py-0.5 text-[10px] ${
-                selectedBrands.has(brand)
-                  ? "bg-slate-700 text-white"
-                  : "bg-slate-50 text-slate-500 dark:bg-slate-800"
-              }`}
-            >
-              {localizedBrand(brand, lang)}
-            </button>
-          ))}
+        <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar scroll-smooth">
+          {extraBrands.map((brand) => {
+            const isSelected = selectedBrands.has(brand);
+            return (
+              <button
+                key={brand}
+                type="button"
+                onClick={() => toggleBrand(brand)}
+                className={`min-h-[38px] px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 active:scale-[0.96] flex items-center justify-center shrink-0 cursor-pointer whitespace-nowrap ${
+                  isSelected
+                    ? "bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm"
+                    : "bg-slate-100/90 dark:bg-slate-800/90 text-slate-500 dark:text-slate-400 hover:bg-slate-200/80 border border-slate-200/40 dark:border-slate-700/40"
+                }`}
+              >
+                {localizedBrand(brand, lang)}
+              </button>
+            );
+          })}
         </div>
       )}
 
-      <input
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder={lang === "zh" ? "搜索色号 / 名称" : "Search code / name"}
-        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
-      />
+      {/* iOS-Style Search & Solids Only Toolbar */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <IOSSearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder={lang === "zh" ? "搜索色号 / 名称" : lang === "ja" ? "品番・色名で検索" : "Search code / name"}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setSolidsOnly(!solidsOnly)}
+          className={`h-10 sm:h-11 px-3 rounded-xl sm:rounded-2xl border text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active:scale-[0.96] shrink-0 cursor-pointer ${
+            solidsOnly
+              ? 'bg-purple-600 text-white dark:bg-purple-500 dark:text-white border-transparent shadow-xs'
+              : 'bg-slate-100/90 dark:bg-slate-800/90 text-slate-600 dark:text-slate-400 border-slate-200/50 dark:border-slate-700/50 hover:bg-slate-200/60'
+          }`}
+        >
+          <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] border transition-colors ${
+            solidsOnly ? 'bg-white text-purple-600 border-white' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700'
+          }`}>
+            {solidsOnly && <CheckIcon className="w-2.5 h-2.5" weight="bold" />}
+          </span>
+          <span>{lang === "zh" ? "仅实色" : lang === "ja" ? "ソリッド" : "Solids"}</span>
+        </button>
+      </div>
 
       {!paints ? (
         <div className="py-4 text-center text-[11px] text-slate-400">
@@ -218,10 +255,10 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                       hex={match.paint.hex}
                     >
                     <div
-                      className={`flex w-full items-center gap-2 rounded-md border p-2 transition-all ${
+                      className={`flex w-full items-center gap-2 rounded-xl border p-2.5 transition-all duration-150 active:scale-[0.98] ${
                         active
-                          ? "border-macaron-purple bg-macaron-purple/10 ring-1 ring-macaron-purple"
-                          : "border-transparent hover:bg-slate-50 dark:hover:bg-slate-800"
+                          ? "border-macaron-purple bg-macaron-purple/10 ring-1 ring-macaron-purple shadow-xs"
+                          : "border-slate-100 dark:border-slate-800/80 bg-white/60 dark:bg-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800"
                       }`}
                     >
                       <button
@@ -231,12 +268,12 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                           if (!selectable) return;
                           onSelect?.(catalogToPaintBrand(match.paint));
                         }}
-                        className={`flex min-w-0 flex-1 items-center gap-2 text-left ${
-                          selectable ? "" : "cursor-default"
+                        className={`flex min-w-0 flex-1 items-center gap-2.5 text-left ${
+                          selectable ? "cursor-pointer" : "cursor-default"
                         }`}
                       >
                         <div
-                          className="h-8 w-8 flex-shrink-0 rounded-md border border-slate-200 shadow-sm dark:border-slate-600"
+                          className="h-9 w-9 flex-shrink-0 rounded-lg border border-slate-200/80 shadow-xs dark:border-slate-700"
                           style={{ backgroundColor: match.paint.hex }}
                         />
                         <div className="min-w-0 flex-1">
@@ -247,7 +284,7 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                             {match.paint.hex}
                             {match.paint.set ? ` · ${match.paint.set}` : ""}
                             {match.paint.approx ? (lang === "zh" ? " · 近似" : " · approx") : ""}
-                            <span className={`ml-1 ${qualityClass}`}>
+                            <span className={`ml-1 font-semibold ${qualityClass}`}>
                               · ΔE {match.deltaE.toFixed(1)} · {matchQualityLabel(match.deltaE, lang)}
                             </span>
                           </span>
@@ -260,7 +297,7 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                             event.stopPropagation();
                             onAssignCatalog(match.paint);
                           }}
-                          className={`flex h-8 min-w-[3.25rem] flex-shrink-0 items-center justify-center rounded-full px-2.5 text-[11px] font-bold ${
+                          className={`flex h-8 min-w-[3.5rem] flex-shrink-0 items-center justify-center rounded-full px-3 text-[11px] font-bold transition-all duration-150 active:scale-95 cursor-pointer ${
                             used
                               ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300"
                               : "bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-900/30 dark:text-sky-300"

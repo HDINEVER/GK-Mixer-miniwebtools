@@ -1,4 +1,3 @@
-import konstaConfig from 'konsta/config';
 import defaultColors from 'tailwindcss/colors';
 
 // Accent families are driven by CSS variables (see utils/accentTheme.ts) so the
@@ -19,7 +18,7 @@ const themedColors = Object.fromEntries(ACCENT_FAMILIES.map((f) => [f, themedFam
 const macaronVar = (key: string, hex: string) => `rgb(var(--ac-macaron-${key}, ${hexToTriplet(hex)}) / <alpha-value>)`;
 
 /** @type {import('tailwindcss').Config} */
-export default konstaConfig({
+export default {
   content: [
     "./index.html",
     "./index.tsx",
@@ -65,4 +64,4 @@ export default konstaConfig({
     },
   },
   plugins: [],
-});
+};

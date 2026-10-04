@@ -1,12 +1,8 @@
 name: Build Android APK
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
   workflow_dispatch:
+
     inputs:
       buildType:
         description: 'Build Type (debug or release)'

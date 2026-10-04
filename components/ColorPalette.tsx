@@ -1,4 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import {
+  PlusIcon,
+  ArrowClockwiseIcon,
+  HashIcon,
+  WarningIcon,
+  XIcon,
+  ArrowElbowDownLeftIcon,
+  HandPointingIcon,
+} from '@phosphor-icons/react';
 import { ColorData, Language } from '../types';
 import { getContrastColor, hexToRgb, rgbToCmyk, rgbToHsb, rgbToLab, generateId } from '../utils/colorUtils';
 import { isInGamut, getColorSpaceName } from '../utils/colorSpaceConverter';
@@ -23,7 +32,6 @@ interface ColorPaletteProps {
 const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, selectedColorId, onAddManual, onContinuousPick, onDeleteColor, onAddColorByHex, hasImage = false, isPicking = false, isContinuousPicking = false, lang = 'en' }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const selectionIndicatorRef = useRef<HTMLDivElement>(null);
-  const particleContainerRef = useRef<HTMLDivElement>(null);
   
   // Hex input state
   const [hexInput, setHexInput] = useState('');
@@ -90,108 +98,33 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
     }
   };
 
-  // Delete animation with particle trail effect
-  const handleDeleteWithAnimation = useCallback((colorId: string, colorHex: string, event: React.MouseEvent) => {
+  // Clean and snappy delete animation
+  const handleDeleteWithAnimation = useCallback((colorId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     
-    const animeInstance = typeof anime === 'undefined' ? null : anime;
-    const target = (event.currentTarget as HTMLElement).closest('.color-card');
-    
-    if (!animeInstance || !target || !particleContainerRef.current) {
+    const target = (event.currentTarget as HTMLElement).closest('.color-card') as HTMLElement;
+    if (!target) {
       onDeleteColor(colorId);
       return;
     }
 
-    const rect = target.getBoundingClientRect();
-    const containerRect = particleContainerRef.current.getBoundingClientRect();
-    
-    // Create particle container for this delete animation
-    const particleCount = 20;
-    const particles: HTMLDivElement[] = [];
-    
-    for (let i = 0; i < particleCount; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'delete-particle';
-      particle.style.cssText = `
-        position: absolute;
-        width: ${6 + Math.random() * 8}px;
-        height: ${6 + Math.random() * 8}px;
-        background: ${colorHex};
-        border-radius: 50%;
-        left: ${rect.left - containerRect.left + rect.width / 2}px;
-        top: ${rect.top - containerRect.top + rect.height / 2}px;
-        pointer-events: none;
-        box-shadow: 0 0 ${4 + Math.random() * 6}px ${colorHex};
-        z-index: 1000;
-      `;
-      particleContainerRef.current.appendChild(particle);
-      particles.push(particle);
-    }
-
-    // Animate the card shrinking
-    animeInstance({
-      targets: target,
-      scale: [1, 0.8, 0],
-      opacity: [1, 0.8, 0],
-      rotate: [0, Math.random() > 0.5 ? 15 : -15],
-      duration: 400,
-      easing: 'easeInExpo'
-    });
-
-    // Animate particles explosion with trail
-    animeInstance({
-      targets: particles,
-      translateX: () => (Math.random() - 0.5) * 300,
-      translateY: () => (Math.random() - 0.5) * 300,
-      scale: [1, 0],
-      opacity: [1, 0],
-      duration: 800,
-      delay: animeInstance.stagger(20),
-      easing: 'easeOutExpo',
-      complete: () => {
-        // Cleanup particles
-        particles.forEach(p => p.remove());
-        // Actually delete the color
-        onDeleteColor(colorId);
-      }
-    });
-
-    // Create trailing particles
-    const trailCount = 8;
-    for (let i = 0; i < trailCount; i++) {
-      setTimeout(() => {
-        if (!particleContainerRef.current) return;
-        
-        const trail = document.createElement('div');
-        trail.className = 'trail-particle';
-        const angle = (i / trailCount) * Math.PI * 2;
-        const distance = 20 + Math.random() * 30;
-        
-        trail.style.cssText = `
-          position: absolute;
-          width: ${4 + Math.random() * 4}px;
-          height: ${4 + Math.random() * 4}px;
-          background: linear-gradient(45deg, ${colorHex}, transparent);
-          border-radius: 50%;
-          left: ${rect.left - containerRect.left + rect.width / 2 + Math.cos(angle) * distance}px;
-          top: ${rect.top - containerRect.top + rect.height / 2 + Math.sin(angle) * distance}px;
-          pointer-events: none;
-          box-shadow: 0 0 8px ${colorHex}, 0 0 12px ${colorHex}40;
-          z-index: 999;
-        `;
-        particleContainerRef.current.appendChild(trail);
-
-        animeInstance({
-          targets: trail,
-          translateX: Math.cos(angle) * 150,
-          translateY: Math.sin(angle) * 150,
-          scale: [1.5, 0],
-          opacity: [0.8, 0],
-          duration: 600,
-          easing: 'easeOutQuad',
-          complete: () => trail.remove()
-        });
-      }, i * 30);
+    const animeInstance = typeof anime === 'undefined' ? null : anime;
+    if (animeInstance) {
+      animeInstance({
+        targets: target,
+        scale: [1, 0.75],
+        opacity: [1, 0],
+        duration: 180,
+        easing: 'easeOutCubic',
+        complete: () => {
+          onDeleteColor(colorId);
+        }
+      });
+    } else {
+      target.style.transition = 'all 180ms cubic-bezier(0.16, 1, 0.3, 1)';
+      target.style.opacity = '0';
+      target.style.transform = 'scale(0.75)';
+      setTimeout(() => onDeleteColor(colorId), 180);
     }
   }, [onDeleteColor]);
 
@@ -226,9 +159,9 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
 
   // Translations
   const t = {
-    manualPick: lang === 'zh' ? '+ 手动拾取' : lang === 'ja' ? '+ 手動選択' : '+ MANUAL PICK',
-    continuous: lang === 'zh' ? '⟳ 连续取色' : lang === 'ja' ? '⟳ 連続選択' : '⟳ CONTINUOUS',
-    hexInput: lang === 'zh' ? '# HEX输入' : lang === 'ja' ? '# HEX入力' : '# HEX INPUT',
+    manualPick: lang === 'zh' ? '手动拾取' : lang === 'ja' ? '手動選択' : 'MANUAL PICK',
+    continuous: lang === 'zh' ? '连续取色' : lang === 'ja' ? '連続選択' : 'CONTINUOUS',
+    hexInput: lang === 'zh' ? 'HEX输入' : lang === 'ja' ? 'HEX入力' : 'HEX INPUT',
     addColor: lang === 'zh' ? '添加' : lang === 'ja' ? '追加' : 'ADD',
     hexPlaceholder: lang === 'zh' ? '输入颜色代码 如: FF5733' : lang === 'ja' ? 'カラーコード例: FF5733' : 'Enter hex e.g. FF5733',
     uploadFirst: lang === 'zh' ? '请先上传图片' : lang === 'ja' ? '画像をアップロード' : 'Please upload an image first',
@@ -240,8 +173,6 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
 
   return (
     <div className="w-full relative">
-      {/* Particle container for delete animations */}
-      <div ref={particleContainerRef} className="absolute inset-0 overflow-visible pointer-events-none z-50" />
       
       <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
         <h3 className="text-xs sm:text-sm font-bold text-macaron-blue tracking-wider">DETECTED PALETTE</h3>
@@ -249,19 +180,20 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
           {/* HEX Input Toggle Button */}
           <button 
               onClick={() => setShowHexInput(!showHexInput)}
-              className={`text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1 text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-all whitespace-nowrap ${
                 showHexInput
                   ? 'border-macaron-purple bg-macaron-purple text-white cursor-pointer shadow-lg'
                   : 'border-macaron-purple text-macaron-purple hover:bg-macaron-purple hover:text-white cursor-pointer'
               }`}
               title={t.hexInput}
           >
-              {t.hexInput}
+              <HashIcon className="w-3 h-3" />
+              <span>{t.hexInput}</span>
           </button>
           <button 
               onClick={onAddManual}
               disabled={!hasImage}
-              className={`text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1 text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
                 hasImage 
                   ? isPicking && !isContinuousPicking
                     ? 'border-macaron-green bg-macaron-green text-white cursor-pointer'
@@ -270,12 +202,13 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
               }`}
               title={hasImage ? t.clickToPick : t.uploadFirst}
           >
-              {t.manualPick}
+              <PlusIcon className="w-3 h-3" />
+              <span>{t.manualPick}</span>
           </button>
           <button 
               onClick={onContinuousPick}
               disabled={!hasImage}
-              className={`text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1 text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
                 hasImage 
                   ? isContinuousPicking
                     ? 'border-macaron-blue bg-macaron-blue text-white cursor-pointer'
@@ -284,7 +217,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
               }`}
               title={hasImage ? t.continuous : t.uploadFirst}
           >
-              {t.continuous}
+              <ArrowClockwiseIcon className="w-3 h-3" />
+              <span>{t.continuous}</span>
           </button>
         </div>
       </div>
@@ -333,8 +267,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
                 </span>
               )}
               {isHexInputValid && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-green-500">
-                  {t.pressEnter} ↵
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-green-500 flex items-center gap-0.5">
+                  {t.pressEnter} <ArrowElbowDownLeftIcon className="w-3 h-3" />
                 </span>
               )}
             </div>
@@ -343,16 +277,14 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
             <button
               onClick={handleAddHexColor}
               disabled={!isHexInputValid}
-              className={`px-4 py-2 sm:py-2.5 rounded-lg font-bold text-sm transition-all duration-300 flex items-center gap-2 justify-center ${
+              className={`px-4 py-2 sm:py-2.5 rounded-lg font-bold text-sm transition-all duration-300 flex items-center gap-1.5 justify-center ${
                 isHexInputValid
                   ? 'bg-gradient-to-r from-macaron-purple to-macaron-blue text-white hover:shadow-lg hover:scale-105 cursor-pointer'
                   : 'bg-slate-200 dark:bg-slate-600 text-slate-400 cursor-not-allowed'
               }`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              {t.addColor}
+              <PlusIcon className="w-4 h-4" weight="bold" />
+              <span>{t.addColor}</span>
             </button>
           </div>
           
@@ -378,9 +310,9 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
       {colors.length === 0 ? (
         <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-xs sm:text-sm">
           {showHexInput ? (
-            <p>{lang === 'zh' ? '👆 输入 HEX 颜色代码添加颜色' : lang === 'ja' ? '👆 HEXコードを入力して色を追加' : '👆 Enter a HEX code above to add a color'}</p>
+            <p className="flex items-center justify-center gap-1"><HandPointingIcon className="w-4 h-4" />{lang === 'zh' ? '输入 HEX 颜色代码添加颜色' : lang === 'ja' ? 'HEXコードを入力して色を追加' : 'Enter a HEX code above to add a color'}</p>
           ) : hasImage ? (
-            <p>{lang === 'zh' ? '👆 点击"手动拾取"从图片中选择颜色' : lang === 'ja' ? '👆「手動選択」をクリックして画像から色を選択' : '👆 Click "MANUAL PICK" to select colors from the image'}</p>
+            <p className="flex items-center justify-center gap-1"><HandPointingIcon className="w-4 h-4" />{lang === 'zh' ? '点击"手动拾取"从图片中选择颜色' : lang === 'ja' ? '「手動選択」をクリックして画像から色を選択' : 'Click "MANUAL PICK" to select colors from the image'}</p>
           ) : (
             <p>{lang === 'zh' ? '暂无颜色，上传图片或输入HEX代码' : lang === 'ja' ? '色がありません。画像をアップロードまたはHEXコードを入力' : 'No colors detected. Upload an image or enter HEX code.'}</p>
           )}
@@ -414,7 +346,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
                           {getColorSpaceName(c.colorSpace, 'en')}
                         </span>
                         {!isInGamut(c.rgb, c.colorSpace) && (
-                          <span className="text-[8px] text-amber-600 dark:text-amber-400" title="Out of gamut">⚠️</span>
+                          <span className="inline-flex text-amber-600 dark:text-amber-400" title="Out of gamut"><WarningIcon className="w-3 h-3" /></span>
                         )}
                       </div>
                     )}
@@ -438,15 +370,15 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
                 </div>
             </div>
             
-            {/* Delete Button with Trail Effect */}
+            {/* Concise Delete Button */}
             <button
-              onClick={(e) => handleDeleteWithAnimation(c.id, c.hex, e)}
-              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-500 hover:border-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:border-red-400 dark:hover:bg-red-900/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 hover:shadow-lg"
+              type="button"
+              onClick={(e) => handleDeleteWithAnimation(c.id, e)}
+              className="absolute top-2 right-2 w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-white/95 dark:bg-slate-700/95 border border-slate-200/80 dark:border-slate-600/80 text-slate-400 hover:text-red-500 hover:border-red-400 hover:bg-red-50 dark:hover:text-red-400 dark:hover:border-red-400 dark:hover:bg-red-900/30 flex items-center justify-center opacity-85 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-150 active:scale-90 shadow-xs cursor-pointer z-10"
               title={t.deleteColor}
+              aria-label={t.deleteColor}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
+              <XIcon className="w-3.5 h-3.5" weight="bold" />
             </button>
           </div>
         ))}

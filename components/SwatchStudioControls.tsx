@@ -5,6 +5,20 @@ import {
   ExtractLeaderLineStyle,
   SwatchSettings,
 } from '../utils/swatchLayout';
+import {
+  SparkleIcon,
+  ArrowLeftIcon,
+  ArrowsHorizontalIcon,
+  ArrowRightIcon,
+  ArrowUpIcon,
+  ArrowsVerticalIcon,
+  ArrowDownIcon,
+  ArrowCounterClockwiseIcon,
+  CardsIcon,
+  ColumnsIcon,
+  RowsIcon,
+  CaretDownIcon,
+} from '@phosphor-icons/react';
 
 interface SwatchStudioControlsProps {
   settings: SwatchSettings;
@@ -95,10 +109,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-tr from-sky-500 to-indigo-500 text-white shadow-sm">
-              <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="currentColor">
-                <path d="M2 4a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4zm2 0v12h12V4H4z" opacity="0.3" />
-                <path d="M6 8h8M6 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+              <CardsIcon className="h-3.5 w-3.5" weight="bold" />
             </div>
             <div>
               <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
@@ -116,9 +127,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
             className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition"
             title="重置色卡至采样点附近位置"
           >
-            <svg viewBox="0 0 20 20" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 4v5h5M16 16v-5h-5M4.5 9A7 7 0 0 1 15.5 6M15.5 11A7 7 0 0 1 4.5 14" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ArrowCounterClockwiseIcon className="h-3 w-3" weight="bold" />
             <span>{t.resetLayout || '重置'}</span>
           </button>
         </div>
@@ -135,10 +144,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
               disabled={assignedCount === 0}
               className="flex items-center justify-center gap-1.5 rounded-lg border border-sky-200/80 bg-sky-50/70 p-2 text-xs font-bold text-sky-700 transition hover:bg-sky-100 hover:shadow-sm active:scale-[0.98] disabled:opacity-40 dark:border-sky-800/80 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/60"
             >
-              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75">
-                <rect x="2" y="3" width="6" height="14" rx="1.5" />
-                <rect x="12" y="3" width="6" height="14" rx="1.5" />
-              </svg>
+              <ColumnsIcon className="h-4 w-4" weight="bold" />
               <span>{t.autoArrangeLR || '左右分列'}</span>
             </button>
 
@@ -148,10 +154,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
               disabled={assignedCount === 0}
               className="flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200/80 bg-indigo-50/70 p-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 hover:shadow-sm active:scale-[0.98] disabled:opacity-40 dark:border-indigo-800/80 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60"
             >
-              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75">
-                <rect x="3" y="2" width="14" height="6" rx="1.5" />
-                <rect x="3" y="12" width="14" height="6" rx="1.5" />
-              </svg>
+              <RowsIcon className="h-4 w-4" weight="bold" />
               <span>{t.autoArrangeTB || '上下分行'}</span>
             </button>
           </div>
@@ -283,8 +286,9 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
               ? 'border-sky-300 bg-sky-50/70 text-sky-800 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-300 shadow-sm'
               : 'border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50'
           }`}>
-            <span className="text-[11px] font-semibold">
-              ✨ {t.cardGlass || '液态玻璃质感'}
+            <span className="flex items-center gap-1 text-[11px] font-semibold">
+              <SparkleIcon className="w-3.5 h-3.5 text-sky-500" weight="fill" />
+              <span>{t.cardGlass || '液态玻璃质感'}</span>
             </span>
             <input
               type="checkbox"
@@ -311,21 +315,24 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
               onClick={() => onAlign('left')}
               className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
             >
-              ← {t.alignLeft || '靠左'}
+              <ArrowLeftIcon className="w-3 h-3" />
+              <span>{t.alignLeft || '靠左'}</span>
             </button>
             <button
               type="button"
               onClick={() => onAlign('autoH')}
               className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
             >
-              ↔ {t.alignAuto || '水平避让'}
+              <ArrowsHorizontalIcon className="w-3 h-3" />
+              <span>{t.alignAuto || '水平避让'}</span>
             </button>
             <button
               type="button"
               onClick={() => onAlign('right')}
               className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
             >
-              → {t.alignRight || '靠右'}
+              <ArrowRightIcon className="w-3 h-3" />
+              <span>{t.alignRight || '靠右'}</span>
             </button>
 
             <button
@@ -333,21 +340,24 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
               onClick={() => onAlign('top')}
               className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
             >
-              ↑ {t.alignTop || '靠顶'}
+              <ArrowUpIcon className="w-3 h-3" />
+              <span>{t.alignTop || '靠顶'}</span>
             </button>
             <button
               type="button"
               onClick={() => onAlign('autoV')}
               className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
             >
-              ↕ {t.alignAuto || '垂直避让'}
+              <ArrowsVerticalIcon className="w-3 h-3" />
+              <span>{t.alignAuto || '垂直避让'}</span>
             </button>
             <button
               type="button"
               onClick={() => onAlign('bottom')}
               className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
             >
-              ↓ {t.alignBottom || '靠底'}
+              <ArrowDownIcon className="w-3 h-3" />
+              <span>{t.alignBottom || '靠底'}</span>
             </button>
           </div>
         </div>
@@ -363,10 +373,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-2 p-3">
         <div className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-tr from-sky-500 to-indigo-500 text-white shadow-sm">
-            <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="currentColor">
-              <path d="M2 4a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4zm2 0v12h12V4H4z" opacity="0.3" />
-              <path d="M6 8h8M6 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
+            <CardsIcon className="h-3.5 w-3.5" weight="bold" />
           </div>
           <div>
             <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
@@ -387,10 +394,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
             className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-sky-600 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-sky-400"
             title="将所有色卡左右分列排列，自动垂直避让"
           >
-            <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.75">
-              <rect x="2" y="3" width="6" height="14" rx="1.5" />
-              <rect x="12" y="3" width="6" height="14" rx="1.5" />
-            </svg>
+            <ColumnsIcon className="h-3.5 w-3.5" weight="bold" />
             <span>{t.autoArrangeLR || '左右分列'}</span>
           </button>
 
@@ -401,10 +405,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
             className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-sky-600 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-sky-400"
             title="将所有色卡上下分行排列，自动水平避让"
           >
-            <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.75">
-              <rect x="3" y="2" width="14" height="6" rx="1.5" />
-              <rect x="3" y="12" width="14" height="6" rx="1.5" />
-            </svg>
+            <RowsIcon className="h-3.5 w-3.5" weight="bold" />
             <span>{t.autoArrangeTB || '上下分行'}</span>
           </button>
 
@@ -417,15 +418,10 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                 : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
             }`}
           >
-            <svg
-              viewBox="0 0 20 20"
+            <CaretDownIcon
               className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M5 8l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+              weight="bold"
+            />
             <span>{isExpanded ? (lang === 'zh' ? '收起设置' : 'Hide') : (lang === 'zh' ? '更多设置' : 'Settings')}</span>
           </button>
         </div>
@@ -564,8 +560,9 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                   }
                   className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
                 />
-                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                  ✨ {t.cardGlass || '液态玻璃效果'}
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                  <SparkleIcon className="w-3.5 h-3.5 text-sky-500" weight="fill" />
+                  <span>{t.cardGlass || '液态玻璃效果'}</span>
                 </span>
               </label>
             </div>
@@ -583,9 +580,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                 className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-sky-600 dark:hover:text-sky-400"
                 title="重置所有卡片到采样点附近默认偏移位置"
               >
-                <svg viewBox="0 0 20 20" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4v5h5M16 16v-5h-5M4.5 9A7 7 0 0 1 15.5 6M15.5 11A7 7 0 0 1 4.5 14" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ArrowCounterClockwiseIcon className="h-3 w-3" weight="bold" />
                 <span>{t.resetLayout || '重置位置'}</span>
               </button>
             </div>
@@ -596,21 +591,24 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                 onClick={() => onAlign('left')}
                 className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
               >
-                ← {t.alignLeft || '靠左'}
+                <ArrowLeftIcon className="w-3 h-3" />
+                <span>{t.alignLeft || '靠左'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => onAlign('autoH')}
                 className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
               >
-                ↔ {t.alignAuto || '水平自适应'}
+                <ArrowsHorizontalIcon className="w-3 h-3" />
+                <span>{t.alignAuto || '水平自适应'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => onAlign('right')}
                 className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
               >
-                → {t.alignRight || '靠右'}
+                <ArrowRightIcon className="w-3 h-3" />
+                <span>{t.alignRight || '靠右'}</span>
               </button>
               <span className="text-slate-300 dark:text-slate-700">|</span>
               <button
@@ -618,21 +616,24 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                 onClick={() => onAlign('top')}
                 className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
               >
-                ↑ {t.alignTop || '靠顶'}
+                <ArrowUpIcon className="w-3 h-3" />
+                <span>{t.alignTop || '靠顶'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => onAlign('autoV')}
                 className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
               >
-                ↕ {t.alignAuto || '垂直自适应'}
+                <ArrowsVerticalIcon className="w-3 h-3" />
+                <span>{t.alignAuto || '垂直自适应'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => onAlign('bottom')}
                 className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
               >
-                ↓ {t.alignBottom || '靠底'}
+                <ArrowDownIcon className="w-3 h-3" />
+                <span>{t.alignBottom || '靠底'}</span>
               </button>
             </div>
           </div>

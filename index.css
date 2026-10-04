@@ -2,6 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================================
+   Android APK & Mobile Native App Resets
+   ========================================================================== */
+
+/* 1. Disable tap highlight globally across all elements */
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 2. Disable mobile browser callout, text selection, and accidental gesture zooms */
+html, body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: none;
+}
+
+/* 3. Re-enable text selection for input, textarea, and editable content */
+input,
+textarea,
+select,
+[contenteditable="true"] {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+  touch-action: manipulation !important;
+}
+
+/* 4. Safe Area Insets for Android Display Cutout / Notch / Navigation Bar */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* 5. Physical active press feedback for mobile app texture */
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active,
+.pressable:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
 /* Fix overscroll background color issue on mobile (iOS Safari bounce effect) and prevent pull-to-refresh / swipe back conflicts */
 html {
   background-color: #f8fafc; /* slate-50 for light mode */
@@ -69,6 +126,18 @@ body:has(.dark) {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Hide scrollbar for Chrome, Safari, Opera, Edge, Firefox */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 /* Animation keyframes for HEX input */

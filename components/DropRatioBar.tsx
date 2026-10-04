@@ -1,6 +1,7 @@
 import React from 'react';
 import { Language } from '../types';
 import { translations } from '../utils/translations';
+import { PlusIcon, MinusIcon } from '@phosphor-icons/react';
 
 export interface DropRatioPart {
   color: string;
@@ -41,10 +42,10 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
               type="button"
               onClick={() => onMultiplierChange(clamped - 1)}
               disabled={clamped <= 1}
-              className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 disabled:opacity-30"
-              aria-label="−"
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 disabled:opacity-30 active:scale-95 transition-transform"
+              aria-label="减少倍率"
             >
-              −
+              <MinusIcon className="w-3.5 h-3.5" weight="bold" />
             </button>
             <span className="w-6 text-center font-mono text-xs font-bold text-slate-700 dark:text-slate-200">
               {clamped}
@@ -53,10 +54,10 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
               type="button"
               onClick={() => onMultiplierChange(clamped + 1)}
               disabled={clamped >= 8}
-              className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 disabled:opacity-30"
-              aria-label="+"
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 disabled:opacity-30 active:scale-95 transition-transform"
+              aria-label="增加倍率"
             >
-              +
+              <PlusIcon className="w-3.5 h-3.5" weight="bold" />
             </button>
           </div>
         )}

@@ -1,10 +1,24 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import {
+  SlidersHorizontalIcon,
+  CircleNotchIcon,
+  TargetIcon,
+  FlaskIcon,
+  ClipboardTextIcon,
+  CheckIcon,
+  ArrowCounterClockwiseIcon,
+  ChartBarIcon,
+  PaletteIcon,
+  PlusIcon,
+  EyedropperIcon,
+} from '@phosphor-icons/react';
 import { CatalogPaint, ColorData, Language, RadialMixerCache, SliderState } from '../types';
-import { hexToRgb, mixboxMultiBlend } from '../utils/colorUtils';
+import { hexToRgb, mixboxMultiBlend, hexToRAL, findNearestPaints } from '../utils/colorUtils';
 import { translations } from '../utils/translations';
 import { toDropRatio } from '../utils/dropRatio';
 import DropRatioBar from './DropRatioBar';
 import BrandMatchPanel from './BrandMatchPanel';
+import IOSColorSlider from './IOSColorSlider';
 import * as mixbox from '../utils/mixbox';
 
 declare var anime: any;
@@ -53,7 +67,18 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   const [bwAdded, setBwAdded] = useState(cache?.bwAdded ?? false);
   const [draggingIndex, setDraggingIndex] = useState<number>(-1);
   const [hoverIndex, setHoverIndex] = useState<number>(-1);
-  const [mixedColor, setMixedColor] = useState<string>('');
+
+  // 同步即时计算混合结果，0ms延迟
+  const mixedColor = useMemo(() => {
+    const activeSliders = sliders.filter((s) => s.weight > 0.0001);
+    if (activeSliders.length === 0) return '';
+    const colorWeights = activeSliders.map((s) => ({
+      hex: s.color,
+      weight: s.weight,
+    }));
+    return mixboxMultiBlend(colorWeights);
+  }, [sliders]);
+
   const [targetVolume, setTargetVolume] = useState<number>(cache?.targetVolume ?? 20);
   const [canvasSize, setCanvasSize] = useState(() => {
     if (typeof window === 'undefined') return { width: BASE_WIDTH, height: BASE_HEIGHT, scale: 1 };
@@ -69,8 +94,205 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   const requestRef = useRef<number>(0); // For animation loop
   const animatingSliders = useRef<boolean>(false);
   const lastMoveTimeRef = useRef<number>(0); // 触控节流
+  const cacheTimerRef = useRef<any>(null); // 防抖更新父级缓存
   // Track if sliders were initialized from colors
   const slidersInitializedRef = useRef<boolean>(cache?.sliders && cache.sliders.length > 0 ? true : false);
+
+  // Check if screen is vertical / portrait
+  const [isPortrait, setIsPortrait] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.innerWidth < 768 || window.innerHeight > window.innerWidth;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      const portrait = window.innerWidth < 768 || window.innerHeight > window.innerWidth;
+      setIsPortrait(portrait);
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+
+  // View mode: 'ios' (色板滑块) or 'radial' (轮盘模式). Default 'ios' on mobile/portrait
+  const [viewMode, setViewMode] = useState<'ios' | 'radial'>('ios');
+
+  // Copied hex tooltip state
+  const [copiedHex, setCopiedHex] = useState(false);
+  const handleCopyHex = (hex: string) => {
+    if (!hex) return;
+    navigator.clipboard?.writeText(hex);
+    setCopiedHex(true);
+    setTimeout(() => setCopiedHex(false), 1500);
+  };
+
+  // RAL match calculation
+  const ralMatch = useMemo(() => (mixedColor ? hexToRAL(mixedColor) : null), [mixedColor]);
+
+  // Volume presets matching iOS
+  const volumePresets = [10, 20, 30, 40, 50, 60];
+
+  // Hidden native color input ref
+  const colorInputRef = useRef<HTMLInputElement>(null);
+  const [pickerColor, setPickerColor] = useState<string>('#FF5500');
+
+  // 油漆名称缓存表，避免在滑块拖动的高频帧中重复执行高开销的 Delta-E 全库检索
+  const paintNameCache = useRef<Map<string, { name: string; hex: string; primary: string; sub: string }>>(new Map());
+
+  // Name helper for colors (memoized and cached)
+  const getPaintDisplayName = useCallback((hex: string): { name: string; hex: string; primary: string; sub: string } => {
+    const upper = hex.toUpperCase();
+    const cached = paintNameCache.current.get(upper);
+    if (cached) return cached;
+
+    let name = '';
+    if (upper === '#FFFFFF') name = '白';
+    else if (upper === '#000000') name = '黑';
+    else if (upper === '#E60012') name = '红';
+    else if (upper === '#004098') name = '蓝';
+    else if (upper === '#FFD900') name = '黄';
+    else if (upper === '#00B7EB') name = '色源青';
+    else if (upper === '#FF0090') name = '色源品红';
+    else if (upper === '#FFEF00') name = '色源黄';
+    else if (targetColor && targetColor.hex.toUpperCase() === upper && targetColor.assignedPaint) {
+      name = targetColor.assignedPaint.name;
+    } else {
+      const nearest = findNearestPaints(hex, 1);
+      if (nearest && nearest.length > 0) {
+        name = nearest[0].name.replace(/^光泽/, '');
+      } else {
+        name = lang === 'zh' ? '自选色' : lang === 'ja' ? 'カスタム' : 'Custom';
+      }
+    }
+
+    // 分割中英双语名称（如 "沙白 / Sand White" -> primary: "沙白", sub: "Sand White"）
+    let primary = name;
+    let sub = hex;
+    if (name.includes(' / ')) {
+      const parts = name.split(' / ');
+      primary = parts[0].trim();
+      sub = parts.slice(1).join(' / ').trim();
+    } else if (name !== '白' && name !== '黑') {
+      sub = hex;
+    }
+
+    const item = { name, hex, primary, sub };
+    paintNameCache.current.set(upper, item);
+    return item;
+  }, [targetColor, lang]);
+
+  // Add custom color from picker
+  const handleAddCustomColor = (hex: string) => {
+    if (!hex) return;
+    const normalized = hex.toUpperCase();
+    if (sliders.some((s) => s.color.toUpperCase() === normalized)) {
+      return;
+    }
+    const newSlider: SliderState = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      color: normalized,
+      angle: 0,
+      position: 0.2, // 20% default weight
+      weight: 0.2,
+      scale: 1.0,
+    };
+    const nextSliders = [...sliders, newSlider];
+    const step = (2 * Math.PI) / (nextSliders.length || 1);
+    nextSliders.forEach((s, idx) => {
+      s.angle = idx * step;
+    });
+    knobSizes.current = new Array(nextSliders.length).fill(BASE_KNOB_RADIUS);
+    setSliders(nextSliders);
+  };
+
+  // Remove a color from palette
+  const handleRemoveSlider = (id: string) => {
+    const nextSliders = sliders.filter((s) => s.id !== id);
+    const step = (2 * Math.PI) / (nextSliders.length || 1);
+    nextSliders.forEach((s, idx) => {
+      s.angle = idx * step;
+    });
+    knobSizes.current = new Array(nextSliders.length).fill(BASE_KNOB_RADIUS);
+    setSliders(nextSliders);
+  };
+
+  // Handle slider weight changes in iOS mode
+  const handleSliderWeightChange = (index: number, val: number) => {
+    const nextSliders = [...sliders];
+    const weight = Math.max(0, Math.min(100, val)) / 100;
+    nextSliders[index] = {
+      ...nextSliders[index],
+      position: weight,
+      weight: weight,
+    };
+    setSliders(nextSliders);
+  };
+
+  // Add CMY primaries
+  const handleAddCMY = () => {
+    const cmyColors = ['#00B7EB', '#FF0090', '#FFEF00'];
+    const toAdd = cmyColors.filter(
+      (c) => !sliders.some((s) => s.color.toUpperCase() === c)
+    );
+    if (toAdd.length > 0) {
+      const newSliders: SliderState[] = toAdd.map((c, i) => ({
+        id: `cmy-${Date.now()}-${i}`,
+        color: c,
+        angle: 0,
+        position: 0,
+        weight: 0,
+        scale: 1.0,
+      }));
+      const nextSliders = [...sliders, ...newSliders];
+      const step = (2 * Math.PI) / (nextSliders.length || 1);
+      nextSliders.forEach((s, idx) => {
+        s.angle = idx * step;
+      });
+      knobSizes.current = new Array(nextSliders.length).fill(BASE_KNOB_RADIUS);
+      setSliders(nextSliders);
+    }
+    setCmyAdded(true);
+    setTimeout(() => setCmyAdded(false), 2000);
+    if (onAddColors) onAddColors(cmyColors);
+  };
+
+  // Add Black and White
+  const handleAddBW = () => {
+    const bwColors = ['#000000', '#FFFFFF'];
+    const toAdd = bwColors.filter(
+      (c) => !sliders.some((s) => s.color.toUpperCase() === c)
+    );
+    if (toAdd.length > 0) {
+      const newSliders: SliderState[] = toAdd.map((c, i) => ({
+        id: `bw-${Date.now()}-${i}`,
+        color: c,
+        angle: 0,
+        position: 0,
+        weight: 0,
+        scale: 1.0,
+      }));
+      const nextSliders = [...sliders, ...newSliders];
+      const step = (2 * Math.PI) / (nextSliders.length || 1);
+      nextSliders.forEach((s, idx) => {
+        s.angle = idx * step;
+      });
+      knobSizes.current = new Array(nextSliders.length).fill(BASE_KNOB_RADIUS);
+      setSliders(nextSliders);
+    }
+    setBwAdded(true);
+    setTimeout(() => setBwAdded(false), 2000);
+    if (onAddColors) onAddColors(bwColors);
+  };
+
+  // Clear all custom colors
+  const handleClearAll = () => {
+    setSliders([]);
+    setCmyAdded(false);
+    setBwAdded(false);
+  };
   
   const t = translations[lang];
   
@@ -198,41 +420,25 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     setCmyAdded(false);
     setBwAdded(false);
     knobSizes.current = new Array(numColors).fill(BASE_KNOB_RADIUS);
-    setMixedColor('');
     slidersInitializedRef.current = true;
   }, [availableColors]);
   
-  // Update cache when state changes
+  // Update cache when state changes (防抖 250ms，避免滑块拖拽时高频触发整个应用大树重新渲染)
   useEffect(() => {
-    if (onCacheUpdate && slidersInitializedRef.current) {
+    if (!onCacheUpdate || !slidersInitializedRef.current) return;
+    if (cacheTimerRef.current) clearTimeout(cacheTimerRef.current);
+    cacheTimerRef.current = setTimeout(() => {
       onCacheUpdate({
         sliders,
         cmyAdded,
         bwAdded,
         targetVolume
       });
-    }
+    }, 250);
+    return () => {
+      if (cacheTimerRef.current) clearTimeout(cacheTimerRef.current);
+    };
   }, [sliders, cmyAdded, bwAdded, targetVolume, onCacheUpdate]);
-  
-  // Calculate mixed color and volumes whenever sliders change
-  useEffect(() => {
-    const activeSliders = sliders.filter(s => s.weight > 0.0001);
-    
-    if (activeSliders.length === 0) {
-      // Show mosaic/empty when all at 0%
-      setMixedColor('');
-      return;
-    }
-    
-    // Use mixbox to blend all active colors
-    const colorWeights = activeSliders.map(s => ({
-      hex: s.color,
-      weight: s.weight
-    }));
-    
-    const result = mixboxMultiBlend(colorWeights);
-    setMixedColor(result);
-  }, [sliders]);
   
   // Helper: Adjust color brightness
   const shadeColor = (color: string, percent: number): string => {
@@ -472,15 +678,62 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     });
   };
   
-  // Animation Loop (like RadialMixer)
+  // Animation Loop (like RadialMixer, only active in radial mode for optimal performance)
   useEffect(() => {
+    if (viewMode !== 'radial') return;
     const loop = () => {
       draw();
       requestRef.current = requestAnimationFrame(loop);
     };
     requestRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(requestRef.current!);
-  }, [sliders, mixedColor, targetColor, draggingIndex, knobSizes]);
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+  }, [sliders, mixedColor, targetColor, draggingIndex, knobSizes, viewMode]);
+
+  // Window listeners for dragging so if cursor leaves canvas it doesn't get stuck
+  useEffect(() => {
+    if (draggingIndex === -1) return;
+
+    const onWindowMouseMove = (e: MouseEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) * (WIDTH / rect.width);
+      const mouseY = (e.clientY - rect.top) * (HEIGHT / rect.height);
+      const slider = sliders[draggingIndex];
+      if (!slider) return;
+      const t = getProjectionT(mouseX, mouseY, slider.angle);
+      setSliders((prev) => {
+        const updated = [...prev];
+        const totalWeight = prev.reduce((sum, s, i) => sum + (i === draggingIndex ? t : s.position), 0);
+        const normalizedWeight = totalWeight > 0 ? t / totalWeight : 0;
+        updated[draggingIndex] = {
+          ...updated[draggingIndex],
+          position: t,
+          weight: normalizedWeight,
+        };
+        const newTotal = updated.reduce((sum, s) => sum + s.position, 0);
+        if (newTotal > 0) {
+          updated.forEach((s) => {
+            s.weight = s.position / newTotal;
+          });
+        }
+        return updated;
+      });
+    };
+
+    const onWindowMouseUp = () => {
+      handleMouseUp();
+    };
+
+    window.addEventListener('mousemove', onWindowMouseMove);
+    window.addEventListener('mouseup', onWindowMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onWindowMouseMove);
+      window.removeEventListener('mouseup', onWindowMouseUp);
+    };
+  }, [draggingIndex, sliders]);
   
   // Helper: Draw mosaic/checkerboard pattern
   const drawMosaicPattern = (ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number) => {
@@ -520,7 +773,11 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     const mouseX = (e.clientX - rect.left) * (WIDTH / rect.width);
     const mouseY = (e.clientY - rect.top) * (HEIGHT / rect.height);
     
-    // Check if clicking on any slider (direct calculation like RadialMixer)
+    // Check if clicking on any slider (寻找最近的滑块)
+    let closestIndex = -1;
+    let closestDist = Infinity;
+    const HIT_RADIUS = 55;
+
     for (let i = 0; i < sliders.length; i++) {
       const slider = sliders[i];
       const t = slider.position;
@@ -536,22 +793,26 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
       
       const dist = Math.sqrt(Math.pow(mouseX - kx, 2) + Math.pow(mouseY - ky, 2));
       
-      if (dist < 40) {
-        setDraggingIndex(i);
-        
-        // Animate slider scale up with bounce
-        if (typeof anime !== 'undefined') {
-          anime({
-            targets: { radius: knobSizes.current[i] },
-            radius: ACTIVE_KNOB_RADIUS,
-            duration: 400,
-            easing: 'easeOutElastic(1, .6)',
-            update: (anim: any) => {
-              knobSizes.current[i] = anim.animatables[0].target.radius;
-            }
-          });
-        }
-        return;
+      if (dist < HIT_RADIUS && dist < closestDist) {
+        closestDist = dist;
+        closestIndex = i;
+      }
+    }
+
+    if (closestIndex !== -1) {
+      setDraggingIndex(closestIndex);
+      
+      // Animate slider scale up with bounce
+      if (typeof anime !== 'undefined') {
+        anime({
+          targets: { radius: knobSizes.current[closestIndex] },
+          radius: ACTIVE_KNOB_RADIUS,
+          duration: 400,
+          easing: 'easeOutElastic(1, .6)',
+          update: (anim: any) => {
+            knobSizes.current[closestIndex] = anim.animatables[0].target.radius;
+          }
+        });
       }
     }
   };
@@ -769,287 +1030,685 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   }));
   
   return (
-    <div className="w-full max-w-full h-full flex flex-col items-center justify-start px-1 sm:px-3 py-2 space-y-2 overflow-x-hidden overflow-y-auto">
-      <div className="text-center">
-        <h2 className="text-lg font-bold text-macaron-blue dark:text-macaron-pink mb-1">
-          {lang === 'zh' ? '径向调色盘' : lang === 'ja' ? 'ラジアルミキサー' : 'Radial Mixer'}
-        </h2>
-        <p className="text-xs text-slate-600 dark:text-slate-400">
-          {lang === 'zh' 
-            ? '从外向内拖动滑块增加混合比例 · 使用 Mixbox 物理混色引擎' 
-            : lang === 'ja'
-            ? '外から内にドラッグして混合比率を増やす · Mixbox 物理ベース'
-            : 'Drag sliders from outer to inner to increase mixing ratio · Physical Mixbox'
-          }
-        </p>
-        {targetColor && (
-          <p className="text-xs text-macaron-pink dark:text-macaron-blue mt-0.5">
-            {lang === 'zh' ? '🎯 目标: ' : lang === 'ja' ? '🎯 ターゲット: ' : '🎯 Target: '}
-            <span className="font-mono font-bold">{targetColor.hex}</span>
+    <div className="w-full max-w-full h-full flex flex-col items-center justify-start px-1 sm:px-3 py-2 space-y-3 overflow-x-hidden overflow-y-auto">
+      {/* Hidden native color picker input */}
+      <input
+        ref={colorInputRef}
+        type="color"
+        value={pickerColor}
+        onChange={(e) => {
+          setPickerColor(e.target.value);
+          handleAddCustomColor(e.target.value);
+        }}
+        className="sr-only"
+        aria-label="拾色器"
+      />
+
+      {/* Top Header with Title and Mode Switcher */}
+      <div className="flex items-center justify-between gap-2 flex-wrap w-full pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+            <PaletteIcon className="w-5 h-5 text-amber-500 shrink-0" />
+            <span>{lang === 'zh' ? '自选调色盘' : lang === 'ja' ? 'カスタム調色盤' : 'Custom Color Mixer'}</span>
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {lang === 'zh'
+              ? '参考 iOS 色板调节模式，自由拾色并滑动配比'
+              : lang === 'ja'
+              ? 'iOSスタイルのスライダーで自由調色'
+              : 'iOS-style custom palette slider mixer'}
           </p>
-        )}
-      </div>
-      
-      <div 
-        ref={canvasContainerRef}
-        className="w-full max-w-[450px] flex items-center justify-center overflow-hidden my-1 select-none"
-        style={{ touchAction: 'none' }}
-      >
-        <canvas
-          ref={canvasRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
-          onTouchStart={(e) => {
-            if (e.touches.length > 0) {
-              const touch = e.touches[0];
-              const canvas = canvasRef.current;
-              if (!canvas) return;
-              
-              const rect = canvas.getBoundingClientRect();
-              const mouseX = (touch.clientX - rect.left) * (WIDTH / rect.width);
-              const mouseY = (touch.clientY - rect.top) * (HEIGHT / rect.height);
-              
-              // 检查是否点击在滑块上
-              let touchingSlider = false;
-              for (let i = 0; i < sliders.length; i++) {
-                const slider = sliders[i];
-                const t = slider.position;
-                const angle = slider.angle;
-                const sinA = Math.sin(angle);
-                const cosA = Math.cos(angle);
-                
-                const outerX = CENTER_X + sinA * OUTER_RADIUS;
-                const outerY = CENTER_Y + cosA * OUTER_RADIUS;
-                
-                const kx = outerX - sinA * t * (OUTER_RADIUS - INNER_RADIUS);
-                const ky = outerY - cosA * t * (OUTER_RADIUS - INNER_RADIUS);
-                
-                const dist = Math.sqrt(Math.pow(mouseX - kx, 2) + Math.pow(mouseY - ky, 2));
-                
-                if (dist < 40) {
-                  touchingSlider = true;
-                  break;
-                }
-              }
-              
-              // 如果触摸到滑块,阻止默认行为(防止滚动和前进后退手势)
-              if (touchingSlider) {
-                e.preventDefault();
-              }
-              
-              handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY } as any);
-            }
-          }}
-          onTouchMove={(e) => {
-            // 在canvas区域内触摸移动时,总是阻止默认行为以防止滚动
-            if (e.cancelable) {
-              e.preventDefault();
-            }
-            
-            // 节流优化
-            const now = Date.now();
-            if (now - lastMoveTimeRef.current < 16) return; // ~60fps
-            lastMoveTimeRef.current = now;
-            
-            if (e.touches.length > 0) {
-              handleMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as any);
-            }
-          }}
-          onTouchEnd={(e) => {
-            handleMouseUp();
-          }}
-          className="rounded-xl cursor-crosshair shadow-sm"
-          style={{ 
-            touchAction: 'none', // 完全禁止默认触摸行为(防止滚动/缩放/翻页)
-            display: 'block',
-            margin: '0 auto',
-            width: `${canvasSize.width}px`,
-            height: `${canvasSize.height}px`,
-            maxWidth: '100%',
-            aspectRatio: '1 / 1'
-          }}
-        />
-      </div>
-      
-      {/* Readout Panel (like RadialMixer) */}
-      <div className="w-full max-w-md flex flex-wrap items-center justify-between sm:justify-start gap-2 sm:gap-3 p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="flex flex-col items-end">
-            <span className="text-[9px] font-bold text-slate-400 uppercase">
-              {lang === 'zh' ? '混合结果' : lang === 'ja' ? 'ミックス結果' : 'Mixed Result'}
-            </span>
-            <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
-              {mixedColor === '' ? (lang === 'zh' ? '透明' : lang === 'ja' ? '透明' : 'TRANSPARENT') : mixedColor}
-            </span>
-          </div>
-          <div 
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner flex-shrink-0" 
-            style={{
-              backgroundColor: mixedColor || 'transparent',
-              backgroundImage: mixedColor === '' ? 'repeating-conic-gradient(#E0E0E0 0% 25%, #FFFFFF 0% 50%)' : 'none',
-              backgroundSize: '15px 15px'
-            }}
-          />
         </div>
-        
-        <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
-        
-        <div className="flex items-center gap-2">
-          <div 
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner flex-shrink-0" 
-            style={{backgroundColor: targetColor?.hex || 'transparent'}}
-          />
-          <div className="flex flex-col">
-            <span className="text-[9px] font-bold text-slate-400 uppercase">
-              {lang === 'zh' ? '目标颜色' : lang === 'ja' ? 'ターゲット' : 'Target Color'}
-            </span>
-            <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
-              {targetColor?.hex || (lang === 'zh' ? '无' : lang === 'ja' ? 'なし' : 'NONE')}
-            </span>
-          </div>
-        </div>
-        
-        <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
-        
-        <div className="flex items-center gap-2">
-          <div className="flex flex-col">
-            <span className="text-[9px] font-bold text-slate-400 uppercase">
-              {lang === 'zh' ? '目标总量' : lang === 'ja' ? '目標量' : 'Target Vol'}
-            </span>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={targetVolume}
-              onChange={(e) => setTargetVolume(Math.max(1, parseInt(e.target.value) || 20))}
-              className="w-14 sm:w-16 px-1.5 py-0.5 text-center font-mono text-xs font-bold border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
-            />
-          </div>
+
+        {/* View Mode Toggle: [ 色板模式 ] / [ 轮盘模式 ] */}
+        <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs shadow-xs">
           <button
-            onClick={handleReset}
-            className="px-2.5 py-1 bg-macaron-blue hover:bg-blue-600 text-white rounded-md text-xs font-medium transition-colors shadow-sm"
+            type="button"
+            onClick={() => setViewMode('ios')}
+            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+              viewMode === 'ios'
+                ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
           >
-            {lang === 'zh' ? '🔄 重置' : lang === 'ja' ? '🔄 リセット' : '🔄 Reset'}
+            <SlidersHorizontalIcon className="w-3.5 h-3.5" />
+            <span>{lang === 'zh' ? '色板模式' : lang === 'ja' ? 'スライダー' : 'Sliders'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('radial')}
+            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+              viewMode === 'radial'
+                ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
+          >
+            <CircleNotchIcon className="w-3.5 h-3.5" />
+            <span>{lang === 'zh' ? '轮盘模式' : lang === 'ja' ? 'ホイール' : 'Wheel'}</span>
           </button>
         </div>
-        
-        {onAddColors && (
-          <>
-            <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  onAddColors(['#00B7EB', '#FF0090', '#FFEF00']);
-                  setCmyAdded(true);
-                  setTimeout(() => setCmyAdded(false), 2000);
-                }}
-                disabled={cmyAdded}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-500 shadow-sm relative overflow-hidden ${
-                  cmyAdded
-                    ? 'bg-green-500 text-white cursor-default'
-                    : 'bg-purple-500 text-white hover:bg-purple-600'
-                }`}
-              >
-                <span className="relative z-10">{cmyAdded ? t.cmyColorsAdded : t.addCmyColors}</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  onAddColors(['#FFFFFF', '#000000']);
-                  setBwAdded(true);
-                  setTimeout(() => setBwAdded(false), 2000);
-                }}
-                disabled={bwAdded}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm ${
-                  bwAdded
-                    ? 'bg-green-500 text-white cursor-default'
-                    : 'bg-slate-600 hover:bg-slate-700 text-white'
-                }`}
-              >
-                {bwAdded ? t.bwColorsAdded : t.addBwColors}
-              </button>
-            </div>
-          </>
-        )}
       </div>
-      
-      {/* Control Panel */}
-      <div className="w-full max-w-md bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 mt-1">
-        
-        {/* Volume Recipe Display */}
-        {volumes.length > 0 && (
-          <div className="border-t border-slate-200 dark:border-slate-600 pt-2 mt-2">
-            <h4 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1.5">
-              {lang === 'zh' ? '📊 混合配方' : lang === 'ja' ? '📊 レシピ' : '📊 RECIPE'}
-            </h4>
-            <DropRatioBar
-              parts={dropParts}
-              lang={lang}
-              multiplier={dropMultiplier}
-              onMultiplierChange={setDropMultiplier}
-            />
-            <div className="space-y-1 max-h-32 overflow-y-auto">
-              {volumes.map((vol, i) => (
-                <div key={i} className="flex items-center justify-between text-[10px] bg-white dark:bg-slate-700 p-1.5 rounded border border-slate-200 dark:border-slate-600">
-                  <div className="flex items-center space-x-1.5">
-                    <div 
-                      className="w-5 h-5 rounded border border-slate-300 dark:border-slate-500"
-                      style={{ backgroundColor: vol.hex }}
-                    />
-                    <span className="font-mono text-slate-700 dark:text-slate-300">{vol.hex}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    {dropCounts[i] ? (
-                      <span className="font-bold text-slate-700 dark:text-slate-200">
-                        {dropCounts[i] * dropMultiplier}{t.dropUnit}
+
+      {viewMode === 'ios' ? (
+        /* ==================== iOS 色板调节模式 (Matching raw_04) ==================== */
+        <div className="flex flex-col gap-3.5 w-full">
+          {/* 1. 混合结果卡片 */}
+          <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <FlaskIcon className="w-4 h-4 text-purple-500" />
+                <span>{lang === 'zh' ? '混合结果' : lang === 'ja' ? 'ミックス結果' : 'Mixed Result'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {sliders.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                  >
+                    {lang === 'zh' ? '归零' : lang === 'ja' ? 'ゼロ' : 'Zero'}
+                  </button>
+                )}
+                {sliders.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    className="text-xs text-rose-500 hover:text-rose-700 transition-colors"
+                  >
+                    {lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {mixedColor ? (
+              <div className="space-y-3">
+                {/* 大色块展示 - 移除延时 transition 保证拖拽零延迟响应 */}
+                <div
+                  className="w-full h-24 sm:h-28 rounded-2xl relative shadow-inner border border-black/10 dark:border-white/10 overflow-hidden"
+                  style={{ backgroundColor: mixedColor }}
+                >
+                  {/* 可复制 Hex 标签 */}
+                  <div className="absolute bottom-2.5 left-2.5">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyHex(mixedColor)}
+                      className="bg-white/85 dark:bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-bold text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/15 shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
+                      title="点击复制 Hex 色号"
+                    >
+                      <span>{mixedColor.toUpperCase()}</span>
+                      <span className="text-[10px] text-slate-400">
+                        {copiedHex ? (
+                          <span className="inline-flex items-center gap-0.5 text-emerald-500">
+                            <CheckIcon className="w-3 h-3" />已复制
+                          </span>
+                        ) : (
+                          <ClipboardTextIcon className="w-3.5 h-3.5 inline-block" />
+                        )}
                       </span>
-                    ) : null}
-                    <span className="font-bold text-macaron-blue dark:text-macaron-pink">
-                      {vol.percentage.toFixed(1)}%
-                    </span>
-                    <span className="font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
-                      {vol.volume.toFixed(2)} ml
-                    </span>
+                    </button>
                   </div>
                 </div>
-              ))}
+
+                {/* RAL 近似色与目标色对比 */}
+                <div className="flex flex-col gap-1.5 pt-1 px-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                  {ralMatch && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">
+                        {lang === 'zh' ? 'RAL 近似色' : lang === 'ja' ? 'RAL 近似色' : 'RAL Match'}
+                      </span>
+                      <div className="text-right">
+                        <div className="font-bold text-slate-800 dark:text-slate-200">
+                          RAL {ralMatch.ral} {ralMatch.name}
+                        </div>
+                        <div className="font-mono text-[10px] text-slate-400">
+                          {ralMatch.hex.toUpperCase()} · LRV {ralMatch.lrv}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {targetColor && (
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-700/40">
+                      <span className="text-slate-400 font-medium">
+                        {lang === 'zh' ? '比对目标' : lang === 'ja' ? '目標色' : 'Target'}:
+                      </span>
+                      <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                        <span
+                          className="w-3 h-3 rounded-full border border-black/15 shadow-sm"
+                          style={{ backgroundColor: targetColor.hex }}
+                        />
+                        <span>{targetColor.hex}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="w-full h-24 sm:h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1.5 text-slate-400">
+                <PaletteIcon className="w-8 h-8 opacity-60 text-slate-400" />
+                <span className="text-xs">
+                  {sliders.length === 0
+                    ? lang === 'zh'
+                      ? '点击下方「＋ 添加」或「+ CMY」添加颜色'
+                      : 'Add colors below to start'
+                    : lang === 'zh'
+                    ? '拖动滑块设置各色用量开始混色'
+                    : 'Adjust sliders to mix'}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* 2. 自选颜色卡片 (Matching raw_04 action bar & slider rows) */}
+          <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
+            {/* 标题与拾色工具栏 */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <PaletteIcon className="w-4 h-4 text-amber-500" />
+                <span>{lang === 'zh' ? '自选颜色' : lang === 'ja' ? '選択色' : 'Custom Colors'}</span>
+              </div>
+
+              {/* 拾色与添加按钮 */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => colorInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-xs font-medium text-slate-700 dark:text-slate-200 shadow-sm active:scale-95"
+                >
+                  <EyedropperIcon className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 flex-shrink-0" weight="bold" />
+                  <span>{lang === 'zh' ? '拾色' : lang === 'ja' ? '色選択' : 'Pick'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => colorInputRef.current?.click()}
+                  className="flex items-center gap-1 px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-sm hover:brightness-105 active:scale-95 transition-all"
+                >
+                  <PlusIcon className="w-3.5 h-3.5" weight="bold" />
+                  <span>{lang === 'zh' ? '添加' : lang === 'ja' ? '追加' : 'Add'}</span>
+                </button>
+              </div>
             </div>
-            <div className="mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-600 flex justify-between text-[10px] font-bold">
-              <span className="text-slate-600 dark:text-slate-400">
-                {lang === 'zh' ? '总计' : lang === 'ja' ? '合計' : 'TOTAL'}
-              </span>
-              <span className="text-macaron-purple dark:text-macaron-pink">
-                {targetVolume.toFixed(2)} ml
-              </span>
+
+            {/* 预设快捷添加按钮 (CMY 三原色 / 黑白) */}
+            <div className="flex items-center gap-2 flex-wrap py-1 my-0.5">
+              <button
+                type="button"
+                onClick={handleAddCMY}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-95 shadow-xs"
+              >
+                <PlusIcon className="w-3.5 h-3.5" weight="bold" />
+                <span>{lang === 'zh' ? 'CMY 三原色' : lang === 'ja' ? 'CMY 三原色' : 'CMY Primaries'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAddBW}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-95 shadow-xs"
+              >
+                <PlusIcon className="w-3.5 h-3.5" weight="bold" />
+                <span>{lang === 'zh' ? '黑白' : lang === 'ja' ? '白黒' : 'Black & White'}</span>
+              </button>
+
+              {/* 从图片取色点快捷添加 */}
+              {availableColors && availableColors.length > 0 && (
+                <div className="flex items-center gap-1.5 ml-auto overflow-x-auto no-scrollbar py-1">
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                    {lang === 'zh' ? '取色点:' : 'Extracted:'}
+                  </span>
+                  {availableColors.slice(0, 6).map((c) => {
+                    const exists = sliders.some((s) => s.color.toUpperCase() === c.hex.toUpperCase());
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleAddCustomColor(c.hex)}
+                        disabled={exists}
+                        className={`w-5 h-5 rounded-full border border-black/15 shadow-sm flex items-center justify-center transition-all ${
+                          exists ? 'opacity-40 cursor-default' : 'hover:scale-110 active:scale-95'
+                        }`}
+                        style={{ backgroundColor: c.hex }}
+                        title={exists ? '已添加' : `点击添加 ${c.hex}`}
+                      >
+                        {!exists && <PlusIcon className="w-2.5 h-2.5 text-white" weight="bold" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 颜色列表 */}
+            {sliders.length > 0 ? (
+              <div className="divide-y divide-slate-100 dark:divide-slate-700/60 pt-1">
+                {sliders.map((s, index) => {
+                  const info = getPaintDisplayName(s.color);
+                  return (
+                    <IOSColorSlider
+                      key={s.id}
+                      color={s.color}
+                      label={info.primary || info.name}
+                      subLabel={info.sub || s.color}
+                      value={Math.round((s.weight ?? 0) * 100)}
+                      onChange={(val) => handleSliderWeightChange(index, val)}
+                      onRemove={() => handleRemoveSlider(s.id)}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+                {lang === 'zh'
+                  ? '已选颜色会出现在这里。可点击「+ CMY 三原色」或使用上方拾色器添加颜色。'
+                  : lang === 'ja'
+                  ? '選択した色がここに表示されます。「+ CMY」または上の色選択から追加してください。'
+                  : 'Selected colors will appear here. Tap + CMY or use the picker to add colors.'}
+              </div>
+            )}
+          </div>
+
+          {/* 3. 混合配方卡片 */}
+          <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <ClipboardTextIcon className="w-4 h-4 text-indigo-500" />
+                  <span>{lang === 'zh' ? '混合配方' : lang === 'ja' ? '配合比' : 'Mixing Recipe'}</span>
+                </div>
+                <div className="text-[11px] font-mono text-slate-400">
+                  {targetVolume} ml
+                </div>
+              </div>
+
+              {/* 快速容量预设 - iOS/Konsta Segmented Pill Bar */}
+              <div className="p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-2xl flex items-center gap-1 shadow-inner overflow-x-auto no-scrollbar">
+                {volumePresets.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setTargetVolume(v)}
+                    className={`min-h-[38px] px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all duration-150 active:scale-[0.95] flex items-center justify-center flex-1 shrink-0 cursor-pointer ${
+                      targetVolume === v
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-orange-500/25 ring-1 ring-white/20'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                    }`}
+                  >
+                    {v}ml
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 容量输入 */}
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+              <label className="text-slate-500 dark:text-slate-400 font-medium">
+                {lang === 'zh' ? '目标总量' : lang === 'ja' ? '目標量' : 'Target Volume'}:
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  value={targetVolume}
+                  onChange={(e) => setTargetVolume(Math.max(1, parseInt(e.target.value) || 20))}
+                  className="w-16 px-2.5 py-1 text-xs text-right font-mono font-bold border border-slate-300/80 dark:border-slate-600/80 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500/30 outline-none"
+                  min="1"
+                  max="100"
+                />
+                <span className="text-xs text-slate-500">ml</span>
+              </div>
+            </div>
+
+            {/* 比例与详细明细 */}
+            {volumes.length > 0 && mixedColor ? (
+              <div className="space-y-2 pt-1">
+                <DropRatioBar
+                  parts={dropParts}
+                  lang={lang}
+                  multiplier={dropMultiplier}
+                  onMultiplierChange={setDropMultiplier}
+                />
+                <div className="space-y-1 pt-1">
+                  {volumes.map((vol, index) => {
+                    const info = getPaintDisplayName(vol.hex);
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between text-xs p-1.5 rounded-lg bg-white/70 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-4 h-4 rounded-full border border-black/15 shadow-sm"
+                            style={{ backgroundColor: vol.hex }}
+                          />
+                          <span className="font-medium text-slate-700 dark:text-slate-200">
+                            {info.name}
+                          </span>
+                          <span className="font-mono text-[10px] text-slate-400">{vol.hex}</span>
+                        </div>
+                        <div className="flex items-center gap-2 font-mono">
+                          {dropCounts[index] ? (
+                            <span className="font-bold text-amber-600 dark:text-amber-400 text-[11px]">
+                              {dropCounts[index] * dropMultiplier}
+                              {t.dropUnit} ·{' '}
+                            </span>
+                          ) : null}
+                          <span className="font-bold text-slate-800 dark:text-slate-100">
+                            {vol.volume.toFixed(1)}ml
+                          </span>
+                          <span className="text-slate-400 text-[10px]">
+                            ({vol.percentage.toFixed(1)}%)
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2">
+                  <BrandMatchPanel
+                    hex={mixedColor}
+                    lang={lang}
+                    compact
+                    assignedId={targetColor?.assignedPaint?.id}
+                    hasSamplePoint={
+                      typeof targetColor?.sampleX === 'number' &&
+                      typeof targetColor?.sampleY === 'number'
+                    }
+                    onAssignCatalog={onAssignCatalogPaint}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                {lang === 'zh' ? '暂无混合配方' : 'No active formula'}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* ==================== 经典 Canvas 轮盘模式 ==================== */
+        <div className="flex flex-col gap-3">
+          {/* 轮盘模式提示标头 */}
+          <div className="text-center my-0.5">
+            <h3 className="text-sm font-bold text-sky-600 dark:text-sky-400 mb-0.5">
+              {lang === 'zh' ? '径向调色轮盘' : lang === 'ja' ? 'ラジアルミキサー' : 'Radial Mixer'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {lang === 'zh' 
+                ? '从外向内拖动滑块增加混合比例 · 使用 Mixbox 物理混色引擎' 
+                : lang === 'ja'
+                ? '外から内にドラッグして混合比率を増やす · Mixbox 物理ベース'
+                : 'Drag sliders from outer to inner to increase mixing ratio · Physical Mixbox'
+              }
+            </p>
+            {targetColor && (
+              <p className="text-xs text-rose-500 dark:text-rose-400 mt-0.5 flex items-center justify-center gap-1">
+                <TargetIcon className="w-3.5 h-3.5 text-rose-500" />
+                <span>{lang === 'zh' ? '目标: ' : lang === 'ja' ? 'ターゲット: ' : 'Target: '}</span>
+                <span className="font-mono font-bold">{targetColor.hex}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Readout Panel */}
+          <div className="w-full flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col items-end">
+                <span className="text-[9px] font-bold text-slate-400 uppercase">
+                  {lang === 'zh' ? '混合结果' : lang === 'ja' ? 'ミックス結果' : 'Mixed Result'}
+                </span>
+                <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
+                  {mixedColor === ''
+                    ? lang === 'zh'
+                      ? '透明'
+                      : lang === 'ja'
+                      ? '透明'
+                      : 'TRANSPARENT'
+                    : mixedColor}
+                </span>
+              </div>
+              <div
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner flex-shrink-0"
+                style={{
+                  backgroundColor: mixedColor || 'transparent',
+                  backgroundImage:
+                    mixedColor === ''
+                      ? 'repeating-conic-gradient(#E0E0E0 0% 25%, #FFFFFF 0% 50%)'
+                      : 'none',
+                  backgroundSize: '15px 15px',
+                }}
+              />
+            </div>
+
+            <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-700" />
+
+            <div className="flex items-center gap-2">
+              <div
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner flex-shrink-0"
+                style={{ backgroundColor: targetColor?.hex || 'transparent' }}
+              />
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-slate-400 uppercase">
+                  {lang === 'zh' ? '目标颜色' : lang === 'ja' ? 'ターゲット' : 'Target Color'}
+                </span>
+                <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
+                  {targetColor?.hex || (lang === 'zh' ? '无' : lang === 'ja' ? 'なし' : 'NONE')}
+                </span>
+              </div>
+            </div>
+
+            <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-700" />
+
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-slate-400 uppercase">
+                  {lang === 'zh' ? '目标总量' : lang === 'ja' ? '目標量' : 'Target Vol'}
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={targetVolume}
+                  onChange={(e) => setTargetVolume(Math.max(1, parseInt(e.target.value) || 20))}
+                  className="w-14 sm:w-16 px-1.5 py-0.5 text-center font-mono text-xs font-bold border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
+                />
+              </div>
+              <button
+                onClick={handleReset}
+                className="px-2.5 py-1 bg-macaron-blue hover:bg-blue-600 text-white rounded-md text-xs font-medium transition-colors shadow-sm flex items-center gap-1"
+              >
+                <ArrowCounterClockwiseIcon className="w-3.5 h-3.5" />
+                <span>{lang === 'zh' ? '重置' : lang === 'ja' ? 'リセット' : 'Reset'}</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleAddCMY}
+                disabled={cmyAdded}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm flex items-center gap-1 ${
+                  cmyAdded
+                    ? 'bg-green-500 text-white cursor-default'
+                    : 'bg-purple-500 text-white hover:bg-purple-600 active:scale-95'
+                }`}
+              >
+                {cmyAdded ? (
+                  <>
+                    <CheckIcon className="w-3.5 h-3.5" weight="bold" />
+                    <span>{t.cmyColorsAdded}</span>
+                  </>
+                ) : (
+                  <>
+                    <PlusIcon className="w-3.5 h-3.5" weight="bold" />
+                    <span>{t.addCmyColors}</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleAddBW}
+                disabled={bwAdded}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm flex items-center gap-1 ${
+                  bwAdded
+                    ? 'bg-green-500 text-white cursor-default'
+                    : 'bg-slate-600 hover:bg-slate-700 text-white active:scale-95'
+                }`}
+              >
+                {bwAdded ? (
+                  <>
+                    <CheckIcon className="w-3.5 h-3.5" weight="bold" />
+                    <span>{t.bwColorsAdded}</span>
+                  </>
+                ) : (
+                  <>
+                    <PlusIcon className="w-3.5 h-3.5" weight="bold" />
+                    <span>{t.addBwColors}</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
-        )}
-      </div>
-      
-      {mixedColor && (
-        <div className="mt-4 w-full max-w-md">
-          <BrandMatchPanel
-            hex={mixedColor}
-            lang={lang}
-            compact
-            assignedId={targetColor?.assignedPaint?.id}
-            hasSamplePoint={typeof targetColor?.sampleX === "number" && typeof targetColor?.sampleY === "number"}
-            onAssignCatalog={onAssignCatalogPaint}
-          />
+
+          {/* Canvas */}
+          <div 
+            ref={canvasContainerRef}
+            className="w-full max-w-[450px] flex items-center justify-center overflow-hidden my-1 select-none mx-auto"
+            style={{ touchAction: 'none' }}
+          >
+            <canvas
+              ref={canvasRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              onTouchStart={(e) => {
+                if (e.touches.length > 0) {
+                  const touch = e.touches[0];
+                  const canvas = canvasRef.current;
+                  if (!canvas) return;
+                  
+                  const rect = canvas.getBoundingClientRect();
+                  const mouseX = (touch.clientX - rect.left) * (WIDTH / rect.width);
+                  const mouseY = (touch.clientY - rect.top) * (HEIGHT / rect.height);
+                  
+                  // 检查是否点击在滑块上
+                  let touchingSlider = false;
+                  for (let i = 0; i < sliders.length; i++) {
+                    const slider = sliders[i];
+                    const t = slider.position;
+                    const angle = slider.angle;
+                    const sinA = Math.sin(angle);
+                    const cosA = Math.cos(angle);
+                    
+                    const outerX = CENTER_X + sinA * OUTER_RADIUS;
+                    const outerY = CENTER_Y + cosA * OUTER_RADIUS;
+                    
+                    const kx = outerX - sinA * t * (OUTER_RADIUS - INNER_RADIUS);
+                    const ky = outerY - cosA * t * (OUTER_RADIUS - INNER_RADIUS);
+                    
+                    const dist = Math.sqrt(Math.pow(mouseX - kx, 2) + Math.pow(mouseY - ky, 2));
+                    
+                    if (dist < 50) {
+                      touchingSlider = true;
+                      break;
+                    }
+                  }
+                  
+                  if (touchingSlider && e.cancelable) {
+                    e.preventDefault();
+                  }
+                  
+                  handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY } as any);
+                }
+              }}
+              onTouchMove={(e) => {
+                if (e.cancelable && draggingIndex !== -1) {
+                  e.preventDefault();
+                }
+                const now = Date.now();
+                if (now - lastMoveTimeRef.current < 16) return;
+                lastMoveTimeRef.current = now;
+                if (e.touches.length > 0) {
+                  handleMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as any);
+                }
+              }}
+              onTouchEnd={handleMouseUp}
+              className="rounded-xl cursor-crosshair shadow-sm"
+              style={{
+                touchAction: 'none',
+                display: 'block',
+                margin: '0 auto',
+                width: `${canvasSize.width}px`,
+                height: `${canvasSize.height}px`,
+                maxWidth: '100%',
+                aspectRatio: '1 / 1',
+              }}
+            />
+          </div>
+
+          {/* Recipe Display */}
+          {volumes.length > 0 && (
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <h4 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1.5 flex items-center gap-1">
+                <ChartBarIcon className="w-3.5 h-3.5 text-indigo-500" />
+                <span>{lang === 'zh' ? '混合配方' : lang === 'ja' ? 'レシピ' : 'RECIPE'}</span>
+              </h4>
+              <DropRatioBar
+                parts={dropParts}
+                lang={lang}
+                multiplier={dropMultiplier}
+                onMultiplierChange={setDropMultiplier}
+              />
+              <div className="space-y-1 max-h-36 overflow-y-auto">
+                {volumes.map((vol, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between text-[10px] bg-white dark:bg-slate-700 p-1.5 rounded border border-slate-200 dark:border-slate-600"
+                  >
+                    <div className="flex items-center space-x-1.5">
+                      <div
+                        className="w-5 h-5 rounded border border-slate-300 dark:border-slate-500"
+                        style={{ backgroundColor: vol.hex }}
+                      />
+                      <span className="font-mono text-slate-700 dark:text-slate-300">{vol.hex}</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      {dropCounts[i] ? (
+                        <span className="font-bold text-slate-700 dark:text-slate-200">
+                          {dropCounts[i] * dropMultiplier}
+                          {t.dropUnit}
+                        </span>
+                      ) : null}
+                      <span className="font-bold text-macaron-blue dark:text-macaron-pink">
+                        {vol.percentage.toFixed(1)}%
+                      </span>
+                      <span className="font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                        {vol.volume.toFixed(2)} ml
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {mixedColor && (
+            <div className="mt-2 w-full">
+              <BrandMatchPanel
+                hex={mixedColor}
+                lang={lang}
+                compact
+                assignedId={targetColor?.assignedPaint?.id}
+                hasSamplePoint={
+                  typeof targetColor?.sampleX === 'number' &&
+                  typeof targetColor?.sampleY === 'number'
+                }
+                onAssignCatalog={onAssignCatalogPaint}
+              />
+            </div>
+          )}
         </div>
       )}
-
-      <div className="text-[10px] text-slate-500 dark:text-slate-400 text-center max-w-md leading-tight">
-        {lang === 'zh' 
-          ? '💡 提示: 外围=0%, 中心=100%。拖动时实时计算混合比例和所需体积。' 
-          : lang === 'ja'
-          ? '💡 ヒント: 外側=0%, 中心=100%。ドラッグ時にリアルタイム計算。'
-          : '💡 Tip: Outer=0%, Inner=100%. Real-time calculation while dragging.'
-        }
-      </div>
     </div>
   );
 };

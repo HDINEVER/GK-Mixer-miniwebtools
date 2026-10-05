@@ -33,7 +33,8 @@ import { ColorData, AppMode, RGB, Language, Theme, ColorSpace, MixerResultCache,
 import { generateId, rgbToCmyk, rgbToHex, hexToRgb, rgbToHsb, rgbToLab } from './utils/colorUtils';
 import { convertToWorkingSpace, isInGamut } from './utils/colorSpaceConverter';
 import { translations } from './utils/translations';
-import { colorsToMarkers, exportAnnotatedImage } from './utils/exportAnnotatedImage';
+import { colorsToMarkers, exportAnnotatedImage, ExportResult } from './utils/exportAnnotatedImage';
+import { ExportSuccessModal } from './components/ExportSuccessModal';
 import {
   SwatchSettings,
   DEFAULT_SWATCH_SETTINGS,
@@ -180,6 +181,8 @@ const App: React.FC = () => {
   const changeImageInputRef = useRef<HTMLInputElement>(null);
   const [canvasBox, setCanvasBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
   const [isExporting, setIsExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<ExportResult | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isWideVisualizer, setIsWideVisualizer] = useState(false);
 
   // Two-finger gesture tracking for zoom and drag/pan
@@ -484,7 +487,13 @@ const App: React.FC = () => {
     if (!canvas || !assigned.length) return;
     setIsExporting(true);
     try {
-      await exportAnnotatedImage(canvas, extractMarkers, swatchSettings);
+      const res = await exportAnnotatedImage(canvas, extractMarkers, swatchSettings);
+      if (res) {
+        setExportResult(res);
+        setIsExportModalOpen(true);
+      }
+    } catch (err) {
+      console.error('[Export] Failed to export annotated image from workbench:', err);
     } finally {
       setIsExporting(false);
     }
@@ -1549,6 +1558,14 @@ const App: React.FC = () => {
         theme={theme}
         setTheme={setTheme}
         t={t}
+      />
+
+      {/* Export Annotated Image Success & Preview Modal */}
+      <ExportSuccessModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        result={exportResult}
+        lang={lang}
       />
 
       {/* 底部悬浮快捷 Dock (Mobile Floating Dock) */}

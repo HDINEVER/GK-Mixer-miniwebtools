@@ -1,11 +1,12 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CatalogPaint, ColorData, Language } from '../types';
 import { translations } from '../utils/translations';
-import { colorsToMarkers, exportAnnotatedImage } from '../utils/exportAnnotatedImage';
+import { colorsToMarkers, exportAnnotatedImage, ExportResult } from '../utils/exportAnnotatedImage';
 import { DEFAULT_SWATCH_SETTINGS, SwatchSettings } from '../utils/swatchLayout';
 import ExtractMarkerOverlay from './ExtractMarkerOverlay';
 import SwatchStudioControls from './SwatchStudioControls';
 import BrandMatchPanel from './BrandMatchPanel';
+import { ExportSuccessModal } from './ExportSuccessModal';
 import {
   TagIcon,
   GearIcon,
@@ -57,6 +58,8 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
   onAssignCatalogPaint,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<ExportResult | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [imgBox, setImgBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
   const [sidebarTab, setSidebarTab] = useState<'match' | 'layout'>('match');
   const t = translations[lang];
@@ -102,7 +105,13 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
     if (!image || !markers.some((marker) => marker.paint)) return;
     setIsExporting(true);
     try {
-      await exportAnnotatedImage(image, markers, swatchSettings);
+      const res = await exportAnnotatedImage(image, markers, swatchSettings);
+      if (res) {
+        setExportResult(res);
+        setIsExportModalOpen(true);
+      }
+    } catch (err) {
+      console.error('[Export] Failed to export annotated image:', err);
     } finally {
       setIsExporting(false);
     }
@@ -153,7 +162,12 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
             type="button"
             onClick={handleExportImage}
             disabled={!sourceImage || isExporting || assignedCount === 0}
-            className="flex items-center justify-center gap-1.5 rounded-lg border border-macaron-green/50 bg-macaron-green/20 px-3.5 py-1.5 text-xs font-bold text-macaron-green transition-all hover:bg-macaron-green hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            title={
+              assignedCount === 0
+                ? (lang === 'zh' ? '请先在左侧为色卡关联油漆' : 'Assign paint to swatches first')
+                : (lang === 'zh' ? '导出并保存色卡标注图到相册' : 'Export and save swatch image')
+            }
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-macaron-green/50 bg-macaron-green/20 px-3.5 py-1.5 text-xs font-bold text-macaron-green transition-all hover:bg-macaron-green hover:text-white disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
           >
             <DownloadSimpleIcon className="h-3.5 w-3.5" weight="bold" />
             {isExporting ? t.exporting : t.exportAnnotated}
@@ -416,17 +430,34 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
               <div className="flex-1 flex flex-col overflow-y-auto">
                 {assignedCount > 0 ? (
                   onChangeSwatchSettings && onAutoArrangeLR && onAutoArrangeTB && onAlign && onResetPositions && (
-                    <SwatchStudioControls
-                      settings={swatchSettings}
-                      onChangeSettings={onChangeSwatchSettings}
-                      onAutoArrangeLR={onAutoArrangeLR}
-                      onAutoArrangeTB={onAutoArrangeTB}
-                      onAlign={onAlign}
-                      onResetPositions={onResetPositions}
-                      lang={lang}
-                      assignedCount={assignedCount}
-                      variant="sidebar"
-                    />
+                    <>
+                      <SwatchStudioControls
+                        settings={swatchSettings}
+                        onChangeSettings={onChangeSwatchSettings}
+                        onAutoArrangeLR={onAutoArrangeLR}
+                        onAutoArrangeTB={onAutoArrangeTB}
+                        onAlign={onAlign}
+                        onResetPositions={onResetPositions}
+                        lang={lang}
+                        assignedCount={assignedCount}
+                        variant="sidebar"
+                      />
+                      <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 sticky bottom-0">
+                        <button
+                          type="button"
+                          onClick={handleExportImage}
+                          disabled={!sourceImage || isExporting || assignedCount === 0}
+                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-macaron-green py-2.5 px-4 text-xs font-bold text-white shadow-md hover:brightness-105 active:scale-98 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <DownloadSimpleIcon className="h-4 w-4" weight="bold" />
+                          <span>
+                            {isExporting
+                              ? t.exporting
+                              : (lang === 'zh' ? '导出色卡标注图 (保存到相册)' : t.exportAnnotated)}
+                          </span>
+                        </button>
+                      </div>
+                    </>
                   )
                 ) : (
                   <div className="p-6 text-center bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
@@ -457,6 +488,13 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
           ? '右パネルで引き出し線の種類、太さ、カードサイズ、自動整列を調整できます。'
           : 'Adjust leader line style, card size, and layout on the right; drag cards to fine-tune.'}
       </p>
+
+      <ExportSuccessModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        result={exportResult}
+        lang={lang}
+      />
     </div>
   );
 };

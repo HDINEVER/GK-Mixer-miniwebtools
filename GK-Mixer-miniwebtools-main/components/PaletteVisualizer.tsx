@@ -268,13 +268,13 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
 
         {/* Right Sidebar: Dual Tab [ 选配悬浮色卡 | 色卡排版外观 ] */}
         {sourceImage && (
-          <div className="w-full lg:w-[320px] xl:w-[350px] flex-shrink-0 flex flex-col overflow-y-auto max-h-full pr-0.5">
+          <div className="w-full lg:w-[350px] xl:w-[390px] flex-shrink-0 flex flex-col lg:overflow-y-auto lg:max-h-full pr-0.5">
             {/* Sidebar Tab Switcher */}
             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-3 border border-slate-200/60 dark:border-slate-700/60 shadow-xs flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setSidebarTab('match')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   sidebarTab === 'match'
                     ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-300 shadow-sm'
                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
@@ -291,7 +291,7 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
               <button
                 type="button"
                 onClick={() => setSidebarTab('layout')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   sidebarTab === 'layout'
                     ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-300 shadow-sm'
                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
@@ -304,19 +304,33 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
 
             {/* Sub-panel 1: 选配模型漆 / 悬浮色卡 */}
             {sidebarTab === 'match' && (
-              <div className="flex flex-col gap-3 flex-1 overflow-y-auto pr-0.5">
-                {/* Sample Points Selector */}
+              <div className="flex flex-col gap-3 flex-1">
+                {/* Unified Target Sample Points & Active Status Card */}
                 {colors.length > 0 ? (
-                  <div className="bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700/70 flex-shrink-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                        {lang === 'zh' ? '① 选择目标取样点:' : lang === 'ja' ? '① 対象サンプリング点:' : '① Select Sample Point:'}
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {colors.length} {lang === 'zh' ? '个点' : 'points'}
-                      </span>
+                  <div className="bg-white dark:bg-slate-800/90 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs flex-shrink-0 flex flex-col gap-2.5">
+                    {/* Header: Title + Point Count + Quick Actions */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                          {lang === 'zh' ? '目标取样点' : lang === 'ja' ? '対象サンプリング点' : 'Sample Point'}
+                        </span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-semibold">
+                          {colors.length} {lang === 'zh' ? '个点' : 'pts'}
+                        </span>
+                      </div>
+                      {activeColor?.assignedPaint && (
+                        <button
+                          type="button"
+                          onClick={() => onUnassignPaint?.(activeColor.id)}
+                          className="text-[11px] text-red-500 hover:text-red-600 dark:text-red-400 font-semibold px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition-colors cursor-pointer"
+                        >
+                          {lang === 'zh' ? '移除此色卡' : 'Remove Swatch'}
+                        </button>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 overflow-x-auto py-1.5 no-scrollbar">
+
+                    {/* Touch-Friendly Point Switcher Pills */}
+                    <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 py-0.5 no-scrollbar">
                       {colors.map((c, idx) => {
                         const isSelected = c.id === (activeColor?.id ?? null);
                         const hasPaint = !!c.assignedPaint;
@@ -325,19 +339,19 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
                             key={c.id}
                             type="button"
                             onClick={() => onSelectColor?.(c.id)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all flex-shrink-0 border ${
+                            className={`flex items-center gap-1.5 min-h-[38px] px-3 rounded-xl text-xs transition-all duration-150 active:scale-95 flex-shrink-0 border cursor-pointer ${
                               isSelected
-                                ? 'bg-sky-50 dark:bg-sky-950/80 border-2 border-sky-500 text-sky-800 dark:text-sky-200 font-bold shadow-xs'
-                                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
+                                ? 'bg-sky-50 dark:bg-sky-950/80 border-sky-500 text-sky-800 dark:text-sky-200 font-bold ring-2 ring-sky-300/40 shadow-xs'
+                                : 'bg-slate-50 dark:bg-slate-800 border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
                             }`}
                           >
                             <span
-                              className="w-3.5 h-3.5 rounded-full border border-black/15 flex-shrink-0 shadow-xs"
+                              className="w-3.5 h-3.5 rounded-full border border-black/20 flex-shrink-0 shadow-xs"
                               style={{ backgroundColor: c.hex }}
                             />
-                            <span className="font-mono text-xs font-semibold">#{idx + 1}</span>
+                            <span className="font-mono font-bold">#{idx + 1}</span>
                             {hasPaint && (
-                              <span className="text-[10px] px-1 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded font-bold leading-none flex items-center justify-center">
+                              <span className="w-3.5 h-3.5 bg-emerald-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center">
                                 <CheckIcon className="w-2.5 h-2.5" weight="bold" />
                               </span>
                             )}
@@ -345,6 +359,36 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
                         );
                       })}
                     </div>
+
+                    {/* Active Point Detail Bar */}
+                    {activeColor && (
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="w-4 h-4 rounded-md border border-black/15 dark:border-white/20 shadow-xs flex-shrink-0"
+                            style={{ backgroundColor: activeColor.hex }}
+                          />
+                          <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-100">
+                            {activeColor.hex}
+                          </span>
+                          <span className="text-[10px] text-slate-400 truncate">
+                            {activeColor.sampleX != null
+                              ? `(${Math.round(activeColor.sampleX * 100)}%, ${Math.round(activeColor.sampleY! * 100)}%)`
+                              : ''}
+                          </span>
+                        </div>
+                        {activeColor.assignedPaint ? (
+                          <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 px-2 py-0.5 rounded-lg truncate max-w-[150px]">
+                            <CheckIcon className="w-3 h-3 flex-shrink-0 text-emerald-600 dark:text-emerald-400" weight="bold" />
+                            <span className="truncate">{activeColor.assignedPaint.code} {activeColor.assignedPaint.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                            {lang === 'zh' ? '点击下方漆卡直接关联' : 'Tap any paint card below'}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200">
@@ -354,65 +398,12 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
                   </div>
                 )}
 
-                {/* Active Point Card & Status */}
-                {activeColor && (
-                  <div className="bg-white dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs flex-shrink-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-5 h-5 rounded-full border-2 border-white dark:border-slate-600 shadow-sm flex-shrink-0"
-                          style={{ backgroundColor: activeColor.hex }}
-                        />
-                        <div>
-                          <div className="font-mono text-xs font-bold text-slate-800 dark:text-slate-100">
-                            {activeColor.hex}
-                          </div>
-                          <div className="text-[10px] text-slate-400">
-                            {activeColor.sampleX != null
-                              ? `${lang === 'zh' ? '画面坐标' : 'Coord'}: (${(activeColor.sampleX * 100).toFixed(0)}%, ${(activeColor.sampleY! * 100).toFixed(0)}%)`
-                              : (lang === 'zh' ? '手动色块' : 'Manual swatch')}
-                          </div>
-                        </div>
-                      </div>
-                      {activeColor.assignedPaint && (
-                        <button
-                          type="button"
-                          onClick={() => onUnassignPaint?.(activeColor.id)}
-                          className="text-[11px] text-red-500 hover:text-red-700 dark:text-red-400 font-medium px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/40 hover:bg-red-100"
-                        >
-                          {lang === 'zh' ? '移除此色卡' : 'Remove'}
-                        </button>
-                      )}
-                    </div>
-
-                    {activeColor.assignedPaint ? (
-                      <div className="p-2 rounded-lg bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs">
-                        <div className="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-200">
-                          <CheckIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" weight="bold" />
-                          <span>{lang === 'zh' ? '已配成品漆:' : 'Assigned Paint:'}</span>
-                          <span className="font-mono">{activeColor.assignedPaint.brand} {activeColor.assignedPaint.code}</span>
-                        </div>
-                        <div className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
-                          {activeColor.assignedPaint.name} ({activeColor.assignedPaint.hex})
-                        </div>
-                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">
-                          {lang === 'zh' ? '可在下方重新选择替换，或切至【色卡排版外观】调整排版' : 'Choose below to replace, or switch to Layout tab'}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-2 rounded-lg bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-200">
-                        {lang === 'zh' ? '② 点击下方品牌漆的【使用】按钮，即可为此点生成引出悬浮色卡' : '② Click [Use] on any brand paint below to generate a floating card'}
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 {/* Brand Match Panel Embedded */}
-                <div className="flex-1 min-h-[300px]">
+                <div className="flex-1">
                   <BrandMatchPanel
                     hex={activeColor?.hex ?? (colors.length > 0 ? colors[0].hex : null)}
                     lang={lang}
-                    compact={true}
+                    disableInternalScroll={true}
                     hasSamplePoint={activeColor ? activeColor.sampleX != null : false}
                     assignedId={activeColor?.assignedPaint?.id}
                     onAssignCatalog={(paint) => {
@@ -427,7 +418,7 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
 
             {/* Sub-panel 2: 色卡排版外观 */}
             {sidebarTab === 'layout' && (
-              <div className="flex-1 flex flex-col overflow-y-auto">
+              <div className="flex-1 flex flex-col">
                 {assignedCount > 0 ? (
                   onChangeSwatchSettings && onAutoArrangeLR && onAutoArrangeTB && onAlign && onResetPositions && (
                     <>

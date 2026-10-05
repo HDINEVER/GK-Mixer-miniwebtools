@@ -22,6 +22,7 @@ interface BrandMatchPanelProps {
   onSelect?: (paint: PaintBrand) => void;
   onAssignCatalog?: (paint: CatalogPaint) => void;
   compact?: boolean;
+  disableInternalScroll?: boolean;
   hasSamplePoint?: boolean;
 }
 
@@ -34,6 +35,7 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
   onSelect,
   onAssignCatalog,
   compact = false,
+  disableInternalScroll = false,
   hasSamplePoint = false,
 }) => {
   const [paints, setPaints] = useState<CatalogPaint[] | null>(null);
@@ -115,15 +117,15 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
         <p className="text-[10px] leading-relaxed text-slate-400">
           {hasSamplePoint
             ? lang === "zh"
-              ? "点「使用」会在取色点钉上可拖拽色卡，导出 PNG 时一起画进原图。"
+              ? "点击下方任意品牌漆卡片（或右侧「使用」）即可为取样点生成悬浮色卡。"
               : lang === "ja"
-                ? "「使う」で採取点にカードを置き、書き出し時に画像へ合成します。"
-                : "Use pins a draggable swatch at the sample point. Export burns it into the photo."
+                ? "カードまたは「使う」をタップすると採取点に色カードを配置します。"
+                : "Tap any paint card or [Use] to pin a floating swatch at the sample point."
             : lang === "zh"
-              ? "先在左侧图上点一下取色，再点「使用」，色卡才会出现在图上。"
+              ? "先在图上点击取样点，再点击漆卡即可生成色卡。"
               : lang === "ja"
-                ? "先に左の画像で色を採取してから「使う」を押すと、カードが画像に出ます。"
-                : "Pick a point on the left image first, then Use to drop a card on that spot."}
+                ? "先に画像上の採取点を選んでから漆カードをタップしてください。"
+                : "Select a sample point first, then tap any paint card."}
         </p>
       )}
 
@@ -218,26 +220,37 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
           {lang === "zh" ? "正在载入色库…" : "Loading catalog…"}
         </div>
       ) : (
-        <div className={`space-y-3 overflow-y-auto pr-1 ${compact ? "max-h-56" : "max-h-80"}`}>
+        <div
+          className={`space-y-3 ${
+            disableInternalScroll
+              ? ""
+              : compact
+              ? "max-h-56 overflow-y-auto pr-1"
+              : "max-h-80 overflow-y-auto pr-1"
+          }`}
+        >
           {groups.map((group) => (
             <div key={group.brand}>
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {localizedBrand(group.brand, lang)}
+              <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <span>{localizedBrand(group.brand, lang)}</span>
+                <span className="text-[10px] font-mono font-normal">
+                  {group.matches.length} {lang === "zh" ? "款匹配" : "matches"}
+                </span>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {group.matches.map((match) => {
                   const active = selectedId === match.paint.id;
                   const used = assignedId === match.paint.id;
                   const quality = matchQuality(match.deltaE);
                   const qualityClass =
                     quality === "close"
-                      ? "text-emerald-600"
+                      ? "text-emerald-600 dark:text-emerald-400"
                       : quality === "usable"
-                        ? "text-sky-600"
+                        ? "text-sky-600 dark:text-sky-400"
                         : "text-slate-400";
                   const useLabel = used
                     ? lang === "zh"
-                      ? "已用"
+                      ? "已选配"
                       : lang === "ja"
                         ? "使用中"
                         : "Used"
@@ -246,6 +259,17 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                       : lang === "ja"
                         ? "使う"
                         : "Use";
+
+                  const isInteractive = !!onAssignCatalog || selectable;
+
+                  const handleItemClick = () => {
+                    if (onAssignCatalog) {
+                      onAssignCatalog(match.paint);
+                    } else if (selectable) {
+                      onSelect?.(catalogToPaintBrand(match.paint));
+                    }
+                  };
+
                   return (
                     <PaintBottleHover
                       key={match.paint.id}
@@ -255,41 +279,42 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                       hex={match.paint.hex}
                     >
                     <div
-                      className={`flex w-full items-center gap-2 rounded-xl border p-2.5 transition-all duration-150 active:scale-[0.98] ${
-                        active
+                      role={isInteractive ? "button" : undefined}
+                      tabIndex={isInteractive ? 0 : undefined}
+                      onClick={handleItemClick}
+                      onKeyDown={(e) => {
+                        if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          handleItemClick();
+                        }
+                      }}
+                      className={`group relative flex w-full items-center gap-3 rounded-2xl border p-2.5 sm:p-3 transition-all duration-150 active:scale-[0.985] ${
+                        isInteractive ? "cursor-pointer" : ""
+                      } ${
+                        used
+                          ? "border-emerald-500/70 bg-emerald-50/70 dark:bg-emerald-950/40 ring-1 ring-emerald-500/40 shadow-xs"
+                          : active
                           ? "border-macaron-purple bg-macaron-purple/10 ring-1 ring-macaron-purple shadow-xs"
-                          : "border-slate-100 dark:border-slate-800/80 bg-white/60 dark:bg-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800"
+                          : "border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-800/80 hover:border-sky-400 hover:bg-sky-50/40 dark:hover:border-sky-500/50 dark:hover:bg-slate-800 shadow-xs"
                       }`}
                     >
-                      <button
-                        type="button"
-                        disabled={!selectable}
-                        onClick={() => {
-                          if (!selectable) return;
-                          onSelect?.(catalogToPaintBrand(match.paint));
-                        }}
-                        className={`flex min-w-0 flex-1 items-center gap-2.5 text-left ${
-                          selectable ? "cursor-pointer" : "cursor-default"
-                        }`}
-                      >
-                        <div
-                          className="h-9 w-9 flex-shrink-0 rounded-lg border border-slate-200/80 shadow-xs dark:border-slate-700"
-                          style={{ backgroundColor: match.paint.hex }}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <span className="block truncate font-mono text-xs font-bold text-slate-700 dark:text-slate-200">
-                            {match.paint.code} {match.paint.name}
-                          </span>
-                          <span className="block truncate font-mono text-[10px] text-slate-500">
-                            {match.paint.hex}
-                            {match.paint.set ? ` · ${match.paint.set}` : ""}
-                            {match.paint.approx ? (lang === "zh" ? " · 近似" : " · approx") : ""}
-                            <span className={`ml-1 font-semibold ${qualityClass}`}>
-                              · ΔE {match.deltaE.toFixed(1)} · {matchQualityLabel(match.deltaE, lang)}
-                            </span>
+                      <div
+                        className="h-10 w-10 flex-shrink-0 rounded-xl border border-black/15 dark:border-white/15 shadow-sm transition-transform duration-150 group-hover:scale-105"
+                        style={{ backgroundColor: match.paint.hex }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate font-mono text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                          {match.paint.code} {match.paint.name}
+                        </span>
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          <span>{match.paint.hex}</span>
+                          {match.paint.set ? <span>· {match.paint.set}</span> : null}
+                          {match.paint.approx ? <span>· {lang === "zh" ? "近似" : "approx"}</span> : null}
+                          <span className={`font-bold ${qualityClass}`}>
+                            · ΔE {match.deltaE.toFixed(1)} · {matchQualityLabel(match.deltaE, lang)}
                           </span>
                         </div>
-                      </button>
+                      </div>
                       {onAssignCatalog && (
                         <button
                           type="button"
@@ -297,13 +322,14 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                             event.stopPropagation();
                             onAssignCatalog(match.paint);
                           }}
-                          className={`flex h-8 min-w-[3.5rem] flex-shrink-0 items-center justify-center rounded-full px-3 text-[11px] font-bold transition-all duration-150 active:scale-95 cursor-pointer ${
+                          className={`flex min-h-[38px] min-w-[4.5rem] flex-shrink-0 items-center justify-center gap-1 rounded-xl px-3.5 text-xs font-bold transition-all duration-150 active:scale-95 cursor-pointer shadow-xs ${
                             used
-                              ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300"
-                              : "bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-900/30 dark:text-sky-300"
+                              ? "bg-emerald-600 text-white shadow-emerald-500/25"
+                              : "bg-sky-50 text-sky-700 hover:bg-sky-500 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white border border-sky-200/90 dark:border-sky-800"
                           }`}
                         >
-                          {useLabel}
+                          {used && <CheckIcon className="w-3.5 h-3.5" weight="bold" />}
+                          <span>{useLabel}</span>
                         </button>
                       )}
                     </div>
@@ -314,7 +340,7 @@ const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
             </div>
           ))}
           {groups.length === 0 && (
-            <div className="py-4 text-center text-[11px] text-slate-400">
+            <div className="py-6 text-center text-xs text-slate-400">
               {lang === "zh" ? "没有匹配结果" : "No matches"}
             </div>
           )}

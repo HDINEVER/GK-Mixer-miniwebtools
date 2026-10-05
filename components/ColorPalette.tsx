@@ -191,6 +191,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
               <span>{t.hexInput}</span>
           </button>
           <button 
+              data-pick-control="true"
               onClick={onAddManual}
               disabled={!hasImage}
               className={`flex items-center gap-1 text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
@@ -206,6 +207,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
               <span>{t.manualPick}</span>
           </button>
           <button 
+              data-pick-control="true"
               onClick={onContinuousPick}
               disabled={!hasImage}
               className={`flex items-center gap-1 text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${

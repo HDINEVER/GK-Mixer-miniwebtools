@@ -166,14 +166,14 @@ const App: React.FC = () => {
   const [isContinuousPicking, setIsContinuousPicking] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [loupe, setLoupe] = useState<{ x: number; y: number; hex: string } | null>(null);
-  const pinchStart = useRef<{ distance: number; scale: number } | null>(null);
 
-  // Zoom State
+  // Zoom & Pan State
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const startPos = useRef({ x: 0, y: 0 });
   const currentOffset = useRef({ x: 0, y: 0 });
+  const currentScale = useRef(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const transformRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -181,6 +181,23 @@ const App: React.FC = () => {
   const [canvasBox, setCanvasBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
   const [isExporting, setIsExporting] = useState(false);
   const [isWideVisualizer, setIsWideVisualizer] = useState(false);
+
+  // Two-finger gesture tracking for zoom and drag/pan
+  const twoFingerRef = useRef<{
+    initialDist: number;
+    initialScale: number;
+    initialCenter: { x: number; y: number };
+    initialOffset: { x: number; y: number };
+  } | null>(null);
+  const isSingleDragging = useRef(false);
+
+  useEffect(() => {
+    currentScale.current = scale;
+  }, [scale]);
+
+  useEffect(() => {
+    currentOffset.current = offset;
+  }, [offset]);
 
   const selectedColor = colors.find(c => c.id === selectedColorId) || null;
   const t = translations[lang];
@@ -503,111 +520,236 @@ const App: React.FC = () => {
     );
   };
 
-  const handleZoomIn = () => setScale(s => Math.min(s + 0.5, 8));
-  const handleZoomOut = () => setScale(s => Math.max(1, s - 0.5));
-  const handleReset = () => { setScale(1); setOffset({x:0, y:0}); };
-
-  // Pan Handlers - Optimized for high-res images
-  const updateTransform = useCallback(() => {
+  const applyTransform = useCallback((x: number, y: number, s: number) => {
     if (transformRef.current) {
-      transformRef.current.style.transform = `translate(${currentOffset.current.x}px, ${currentOffset.current.y}px) scale(${scale})`;
+      transformRef.current.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
     }
-  }, [scale]);
+  }, []);
+
+  const handleZoomIn = () => {
+    const next = Math.min(currentScale.current + 0.5, 8);
+    currentScale.current = next;
+    setScale(next);
+    applyTransform(currentOffset.current.x, currentOffset.current.y, next);
+  };
+  const handleZoomOut = () => {
+    const next = Math.max(1, currentScale.current - 0.5);
+    currentScale.current = next;
+    if (next <= 1) {
+      currentOffset.current = { x: 0, y: 0 };
+      setOffset({ x: 0, y: 0 });
+    }
+    setScale(next);
+    applyTransform(currentOffset.current.x, currentOffset.current.y, next);
+  };
+  const handleReset = () => {
+    currentScale.current = 1;
+    currentOffset.current = { x: 0, y: 0 };
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+    applyTransform(0, 0, 1);
+  };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!isPicking && scale > 1) {
+    if (!isPicking && currentScale.current > 1) {
       setIsDragging(true);
-      currentOffset.current = { x: offset.x, y: offset.y };
-      startPos.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
+      isSingleDragging.current = true;
+      startPos.current = {
+        x: e.clientX - currentOffset.current.x,
+        y: e.clientY - currentOffset.current.y,
+      };
     }
-  }, [isPicking, scale, offset]);
-  
+  }, [isPicking]);
+
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isDragging) {
-      // Cancel any pending RAF to avoid stacking
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-      // Use RAF for smooth 60fps updates
+    if (isSingleDragging.current) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
-        currentOffset.current = {
-          x: e.clientX - startPos.current.x,
-          y: e.clientY - startPos.current.y
-        };
-        updateTransform();
+        const nextX = e.clientX - startPos.current.x;
+        const nextY = e.clientY - startPos.current.y;
+        currentOffset.current = { x: nextX, y: nextY };
+        applyTransform(nextX, nextY, currentScale.current);
       });
     }
-  }, [isDragging, updateTransform]);
+  }, [applyTransform]);
 
   const handleMouseUp = useCallback(() => {
-    if (isDragging) {
-      // Sync final position to React state
+    if (isSingleDragging.current) {
       setOffset({ ...currentOffset.current });
+      isSingleDragging.current = false;
     }
     setIsDragging(false);
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
-  }, [isDragging]);
+  }, []);
 
-  // Touch Handlers for Mobile - Optimized
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+  // Touch Handlers for Mobile - Optimized with 2-finger Pan & Zoom support
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    // 2 Fingers: Pinch-Zoom + Two-Finger Pan
     if (e.touches.length === 2) {
-      const [a, b] = [e.touches[0], e.touches[1]];
-      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      pinchStart.current = { distance, scale };
-      setIsDragging(false);
-      return;
-    }
-    if (!isPicking && scale > 1 && e.touches.length === 1) {
-      setIsDragging(true);
-      const touch = e.touches[0];
-      currentOffset.current = { x: offset.x, y: offset.y };
-      startPos.current = { x: touch.clientX - offset.x, y: touch.clientY - offset.y };
-    }
-  }, [isPicking, scale, offset]);
+      if (e.cancelable) e.preventDefault();
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+      const center = {
+        x: (t0.clientX + t1.clientX) / 2,
+        y: (t0.clientY + t1.clientY) / 2,
+      };
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && pinchStart.current) {
-      if (e.cancelable) e.preventDefault();
-      const [a, b] = [e.touches[0], e.touches[1]];
-      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      const next = pinchStart.current.scale * (distance / pinchStart.current.distance);
-      setScale(Math.min(Math.max(1, next), 8));
+      twoFingerRef.current = {
+        initialDist: dist > 0 ? dist : 1,
+        initialScale: currentScale.current,
+        initialCenter: center,
+        initialOffset: { ...currentOffset.current },
+      };
+
+      isSingleDragging.current = false;
+      setIsDragging(true);
+      setLoupe(null);
       return;
     }
-    if (isDragging && e.touches.length === 1) {
-      if (e.cancelable) e.preventDefault();
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-      rafRef.current = requestAnimationFrame(() => {
+
+    // 1 Finger: Pan when zoomed in (and not picking)
+    if (e.touches.length === 1) {
+      twoFingerRef.current = null;
+      if (!isPicking && currentScale.current > 1) {
+        if (e.cancelable) e.preventDefault();
         const touch = e.touches[0];
-        currentOffset.current = {
-          x: touch.clientX - startPos.current.x,
-          y: touch.clientY - startPos.current.y
+        startPos.current = {
+          x: touch.clientX - currentOffset.current.x,
+          y: touch.clientY - currentOffset.current.y,
         };
-        updateTransform();
+        isSingleDragging.current = true;
+        setIsDragging(true);
+      }
+    }
+  }, [isPicking]);
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    // 2 Fingers: Combined Pinch-to-Zoom + Two-Finger Drag/Pan
+    if (e.touches.length === 2 && twoFingerRef.current) {
+      if (e.cancelable) e.preventDefault();
+
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+      const center = {
+        x: (t0.clientX + t1.clientX) / 2,
+        y: (t0.clientY + t1.clientY) / 2,
+      };
+
+      const { initialDist, initialScale, initialCenter, initialOffset } = twoFingerRef.current;
+      const ratio = dist / initialDist;
+      const newScale = Math.min(Math.max(1, initialScale * ratio), 8);
+
+      const containerRect = containerRef.current?.getBoundingClientRect();
+      const rectLeft = containerRect?.left ?? 0;
+      const rectTop = containerRect?.top ?? 0;
+
+      // Focal points relative to viewport top-left
+      const p0x = initialCenter.x - rectLeft;
+      const p0y = initialCenter.y - rectTop;
+      const px = center.x - rectLeft;
+      const py = center.y - rectTop;
+
+      const scaleFactor = newScale / initialScale;
+
+      // Formula: keep the point under initial focal point anchored under current center
+      let nextOffsetX = px - scaleFactor * (p0x - initialOffset.x);
+      let nextOffsetY = py - scaleFactor * (p0y - initialOffset.y);
+
+      if (newScale <= 1.01) {
+        nextOffsetX = 0;
+        nextOffsetY = 0;
+      }
+
+      currentScale.current = newScale;
+      currentOffset.current = { x: nextOffsetX, y: nextOffsetY };
+
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        applyTransform(nextOffsetX, nextOffsetY, newScale);
       });
-    } else if (isPicking && e.touches.length === 1 && canvasRef.current) {
+      return;
+    }
+
+    // 1 Finger Drag
+    if (e.touches.length === 1 && isSingleDragging.current) {
+      if (e.cancelable) e.preventDefault();
+      const touch = e.touches[0];
+      const nextX = touch.clientX - startPos.current.x;
+      const nextY = touch.clientY - startPos.current.y;
+      currentOffset.current = { x: nextX, y: nextY };
+
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        applyTransform(nextX, nextY, currentScale.current);
+      });
+      return;
+    }
+
+    // 1 Finger Color Picker preview
+    if (e.touches.length === 1 && isPicking && canvasRef.current) {
       if (e.cancelable) e.preventDefault();
       const touch = e.touches[0];
       previewAtClient(touch.clientX, touch.clientY);
     }
-  }, [isDragging, updateTransform, isPicking, scale]);
+  }, [applyTransform, isPicking]);
 
-  const handleTouchEnd = useCallback(() => {
-    pinchStart.current = null;
-    if (isDragging) {
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    // If one finger remains on screen after 2-finger gesture:
+    if (e.touches.length === 1) {
+      twoFingerRef.current = null;
+      const remainingTouch = e.touches[0];
+      if (!isPicking && currentScale.current > 1) {
+        startPos.current = {
+          x: remainingTouch.clientX - currentOffset.current.x,
+          y: remainingTouch.clientY - currentOffset.current.y,
+        };
+        isSingleDragging.current = true;
+      }
+      return;
+    }
+
+    // All fingers lifted
+    if (e.touches.length === 0) {
+      twoFingerRef.current = null;
+      isSingleDragging.current = false;
+      setIsDragging(false);
+
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+
+      setScale(currentScale.current);
       setOffset({ ...currentOffset.current });
     }
-    setIsDragging(false);
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-  }, [isDragging]);
+  }, [isPicking]);
+
+  // Attach non-passive native touch event listeners to guarantee preventDefault works
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => handleTouchStart(e);
+    const onTouchMove = (e: TouchEvent) => handleTouchMove(e);
+    const onTouchEnd = (e: TouchEvent) => handleTouchEnd(e);
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd, { passive: false });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: false });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   React.useEffect(() => {
     if (sourceImage && canvasRef.current && imageRef.current) {
@@ -857,7 +999,8 @@ const App: React.FC = () => {
                     {/* Viewport */}
                     <div 
                         ref={containerRef}
-                        className="relative h-[28rem] w-full overflow-hidden rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-move touch-none"
+                        className="relative h-[28rem] w-full overflow-hidden rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-move touch-none select-none overscroll-none"
+                        style={{ touchAction: 'none' }}
                         onWheel={handleWheel}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
@@ -866,9 +1009,6 @@ const App: React.FC = () => {
                           handleMouseUp();
                           setLoupe(null);
                         }}
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
                     >
                             {/* Hidden source image for reference */}
                         <img ref={imageRef} src={sourceImage} className="hidden" alt="source ref" onLoad={() => {

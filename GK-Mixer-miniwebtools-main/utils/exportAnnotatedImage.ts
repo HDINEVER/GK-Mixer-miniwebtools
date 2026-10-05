@@ -1,3 +1,4 @@
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { CatalogPaint, ColorData } from "../types";
 import { getContrastColor } from "./colorUtils";
 import { paintBottleUrls } from "./paintBottle";
@@ -10,6 +11,27 @@ import {
   SwatchSettings,
   DEFAULT_SWATCH_SETTINGS,
 } from "./swatchLayout";
+
+export interface MediaSaverPlugin {
+  saveImageToGallery(options: {
+    base64Data: string;
+    filename?: string;
+  }): Promise<{ success: boolean; uri?: string; filePath?: string }>;
+  shareImage(options: {
+    base64Data: string;
+    filename?: string;
+    title?: string;
+  }): Promise<{ success: boolean }>;
+}
+
+export const MediaSaver = registerPlugin<MediaSaverPlugin>("MediaSaver");
+
+export interface ExportResult {
+  dataUrl: string;
+  filename: string;
+  savedToGallery: boolean;
+  shared: boolean;
+}
 
 export interface ExtractMarker {
   id: string;
@@ -154,10 +176,10 @@ export const exportAnnotatedImage = async (
   source: HTMLImageElement | HTMLCanvasElement,
   markers: ExtractMarker[],
   settings?: Partial<SwatchSettings>
-): Promise<void> => {
+): Promise<ExportResult | null> => {
   const cw = "naturalWidth" in source && source.naturalWidth ? source.naturalWidth : source.width;
   const ch = "naturalHeight" in source && source.naturalHeight ? source.naturalHeight : source.height;
-  if (!cw || !ch) return;
+  if (!cw || !ch) return null;
 
   const mergedSettings: SwatchSettings = {
     ...DEFAULT_SWATCH_SETTINGS,
@@ -170,7 +192,7 @@ export const exportAnnotatedImage = async (
   canvas.width = cw;
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) return null;
 
   ctx.drawImage(source, 0, 0, cw, ch);
 
@@ -388,8 +410,81 @@ export const exportAnnotatedImage = async (
   }
   drawWatermark(ctx, cw, ch, (r / n) * 0.299 + (g / n) * 0.587 + (b / n) * 0.114 < 128);
 
-  const link = document.createElement("a");
-  link.download = `gk-mixer-swatch-${Date.now()}.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
+  const filename = `gk-mixer-swatch-${Date.now()}.png`;
+  return await saveOrExportImage(canvas, filename);
+};
+
+export const saveOrExportImage = async (
+  canvas: HTMLCanvasElement,
+  filename = `gk-mixer-swatch-${Date.now()}.png`
+): Promise<ExportResult> => {
+  const dataUrl = canvas.toDataURL("image/png");
+  let savedToGallery = false;
+  let shared = false;
+
+  // 1. Android APK native MediaSaver plugin
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const res = await MediaSaver.saveImageToGallery({
+        base64Data: dataUrl,
+        filename,
+      });
+      if (res && res.success) {
+        savedToGallery = true;
+      }
+    } catch (err) {
+      console.warn("[Export] MediaSaver native save failed:", err);
+    }
+  }
+
+  // 2. If not on native platform, or if native save failed, trigger browser download
+  if (!Capacitor.isNativePlatform()) {
+    try {
+      const link = document.createElement("a");
+      link.download = filename;
+      link.href = dataUrl;
+      link.click();
+    } catch (linkErr) {
+      console.warn("[Export] DOM download link click failed:", linkErr);
+    }
+  }
+
+  return { dataUrl, filename, savedToGallery, shared };
+};
+
+export const shareExportedImage = async (
+  dataUrl: string,
+  filename = `gk-mixer-swatch-${Date.now()}.png`
+): Promise<boolean> => {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const res = await MediaSaver.shareImage({
+        base64Data: dataUrl,
+        filename,
+        title: "分享色卡标注图",
+      });
+      return res?.success ?? false;
+    } catch (e) {
+      console.warn("[Share] Native share failed:", e);
+    }
+  }
+
+  if (typeof navigator !== "undefined" && navigator.share) {
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], filename, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "GK Mixer 色卡标注图",
+        });
+        return true;
+      }
+    } catch (err) {
+      console.log("[Share] Web share cancelled or failed:", err);
+    }
+  }
+
+  return false;
 };

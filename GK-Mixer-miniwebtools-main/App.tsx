@@ -190,6 +190,14 @@ const App: React.FC = () => {
     initialOffset: { x: number; y: number };
   } | null>(null);
   const isSingleDragging = useRef(false);
+  const touchPickRef = useRef<{
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastY: number;
+    startTime: number;
+  } | null>(null);
+  const lastTouchCommitTimeRef = useRef<number>(0);
 
   useEffect(() => {
     currentScale.current = scale;
@@ -373,6 +381,7 @@ const App: React.FC = () => {
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isPicking || !canvasRef.current) return;
+    if (Date.now() - lastTouchCommitTimeRef.current < 500) return;
     const rgb = sampleCanvasAtClient(canvasRef.current, e.clientX, e.clientY);
     if (!rgb) return;
     commitSampledRgb(rgb, { nx: rgb.nx, ny: rgb.ny });
@@ -585,10 +594,11 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Touch Handlers for Mobile - Optimized with 2-finger Pan & Zoom support
+  // Touch Handlers for Mobile - Optimized with 2-finger Pan & Zoom and 1-finger Color Pick
   const handleTouchStart = useCallback((e: TouchEvent) => {
     // 2 Fingers: Pinch-Zoom + Two-Finger Pan
     if (e.touches.length === 2) {
+      touchPickRef.current = null;
       if (e.cancelable) e.preventDefault();
       const t0 = e.touches[0];
       const t1 = e.touches[1];
@@ -611,12 +621,34 @@ const App: React.FC = () => {
       return;
     }
 
-    // 1 Finger: Pan when zoomed in (and not picking)
+    // 1 Finger:
     if (e.touches.length === 1) {
       twoFingerRef.current = null;
+      const touch = e.touches[0];
+
+      // If in color picking mode and touched on the image canvas
+      if (isPicking && canvasRef.current) {
+        const rgb = sampleCanvasAtClient(canvasRef.current, touch.clientX, touch.clientY);
+        if (rgb) {
+          if (e.cancelable) e.preventDefault();
+          touchPickRef.current = {
+            startX: touch.clientX,
+            startY: touch.clientY,
+            lastX: touch.clientX,
+            lastY: touch.clientY,
+            startTime: Date.now(),
+          };
+          previewAtClient(touch.clientX, touch.clientY);
+        } else {
+          touchPickRef.current = null;
+          setLoupe(null);
+        }
+        return;
+      }
+
+      // Pan when zoomed in (and not picking)
       if (!isPicking && currentScale.current > 1) {
         if (e.cancelable) e.preventDefault();
-        const touch = e.touches[0];
         startPos.current = {
           x: touch.clientX - currentOffset.current.x,
           y: touch.clientY - currentOffset.current.y,
@@ -675,7 +707,7 @@ const App: React.FC = () => {
       return;
     }
 
-    // 1 Finger Drag
+    // 1 Finger Drag (when zoomed in)
     if (e.touches.length === 1 && isSingleDragging.current) {
       if (e.cancelable) e.preventDefault();
       const touch = e.touches[0];
@@ -690,11 +722,14 @@ const App: React.FC = () => {
       return;
     }
 
-    // 1 Finger Color Picker preview
-    if (e.touches.length === 1 && isPicking && canvasRef.current) {
+    // 1 Finger Color Picker preview (ONLY when a valid picking touch is active on canvas)
+    if (e.touches.length === 1 && isPicking && touchPickRef.current && canvasRef.current) {
       if (e.cancelable) e.preventDefault();
       const touch = e.touches[0];
+      touchPickRef.current.lastX = touch.clientX;
+      touchPickRef.current.lastY = touch.clientY;
       previewAtClient(touch.clientX, touch.clientY);
+      return;
     }
   }, [applyTransform, isPicking]);
 
@@ -715,6 +750,19 @@ const App: React.FC = () => {
 
     // All fingers lifted
     if (e.touches.length === 0) {
+      // 1. Commit touch color pick if active
+      if (isPicking && touchPickRef.current && canvasRef.current) {
+        const { lastX, lastY } = touchPickRef.current;
+        const rgb = sampleCanvasAtClient(canvasRef.current, lastX, lastY);
+        if (rgb) {
+          lastTouchCommitTimeRef.current = Date.now();
+          commitSampledRgb(rgb, { nx: rgb.nx, ny: rgb.ny });
+        } else {
+          setLoupe(null);
+        }
+        touchPickRef.current = null;
+      }
+
       twoFingerRef.current = null;
       isSingleDragging.current = false;
       setIsDragging(false);
@@ -727,9 +775,9 @@ const App: React.FC = () => {
       setScale(currentScale.current);
       setOffset({ ...currentOffset.current });
     }
-  }, [isPicking]);
+  }, [isPicking, commitSampledRgb]);
 
-  // Attach non-passive native touch event listeners to guarantee preventDefault works
+  // Attach non-passive native touch event listeners to container and window
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -750,6 +798,36 @@ const App: React.FC = () => {
       window.removeEventListener('touchcancel', onTouchEnd);
     };
   }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+
+  // Exit picking mode when tapping / clicking outside the image frame
+  useEffect(() => {
+    if (!isPicking) return;
+
+    const handlePointerDownOutside = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // Inside image container -> handled by container
+      if (containerRef.current && containerRef.current.contains(target)) {
+        return;
+      }
+
+      // Inside toolbar or pick buttons -> don't auto-cancel
+      if (target.closest('[data-pick-control]') || target.closest('[data-image-toolbar]')) {
+        return;
+      }
+
+      // Tapped outside the image frame -> exit picking mode cleanly
+      setIsPicking(false);
+      setIsContinuousPicking(false);
+      setLoupe(null);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDownOutside, { passive: true });
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDownOutside);
+    };
+  }, [isPicking]);
 
   React.useEffect(() => {
     if (sourceImage && canvasRef.current && imageRef.current) {
@@ -957,7 +1035,7 @@ const App: React.FC = () => {
             ) : (
                 <div className="flex flex-col gap-4">
                     {/* Toolbar */}
-                    <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded-lg">
+                    <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded-lg" data-image-toolbar="true">
                         <div className="flex flex-wrap gap-2">
                             <button onClick={handleZoomIn} className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue">{t.zoomIn}</button>
                             <button onClick={handleZoomOut} className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue">{t.zoomOut}</button>
@@ -1005,6 +1083,17 @@ const App: React.FC = () => {
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
+                        onClick={(e) => {
+                          // If clicked inside container on empty space outside canvas, exit picking
+                          if (isPicking && canvasRef.current) {
+                            const rgb = sampleCanvasAtClient(canvasRef.current, e.clientX, e.clientY);
+                            if (!rgb) {
+                              setIsPicking(false);
+                              setIsContinuousPicking(false);
+                              setLoupe(null);
+                            }
+                          }
+                        }}
                         onMouseLeave={() => {
                           handleMouseUp();
                           setLoupe(null);
@@ -1077,9 +1166,21 @@ const App: React.FC = () => {
                         </div>
 
                         {isPicking && (
-                            <div className="absolute top-4 left-4 bg-black/70 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm pointer-events-none z-10">
-                                {t.clickToPick}
-                            </div>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsPicking(false);
+                                  setIsContinuousPicking(false);
+                                  setLoupe(null);
+                                }}
+                                className="absolute top-4 left-4 z-20 flex items-center gap-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs px-3 py-1 font-medium shadow-md backdrop-blur-sm transition-all active:scale-95 cursor-pointer"
+                                title={lang === 'zh' ? '点击退出取色模式' : lang === 'ja' ? 'クリックして終了' : 'Click to exit pick mode'}
+                            >
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                <span>{t.clickToPick}</span>
+                                <span className="ml-1 text-[11px] opacity-75 hover:opacity-100 font-bold">✕</span>
+                            </button>
                         )}
                         <div className="absolute top-3 right-3 z-20 flex gap-2">
                           <button

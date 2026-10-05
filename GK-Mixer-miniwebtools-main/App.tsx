@@ -254,8 +254,6 @@ const App: React.FC = () => {
       if (extracted.length > 0) {
         setSelectedColorId(extracted[0].id);
       }
-      setIsPicking(true);
-      setIsContinuousPicking(true);
     } finally {
       setIsExtracting(false);
     }
@@ -594,9 +592,9 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Touch Handlers for Mobile - Optimized with 2-finger Pan & Zoom and 1-finger Color Pick
+  // Touch Handlers for Mobile - 2-finger Pan & Zoom, 1-finger Color Pick or Screen Scroll
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    // 2 Fingers: Pinch-Zoom + Two-Finger Pan
+    // 2 Fingers: Combined Pinch-to-Zoom + Two-Finger Pan/Drag image position
     if (e.touches.length === 2) {
       touchPickRef.current = null;
       if (e.cancelable) e.preventDefault();
@@ -640,22 +638,19 @@ const App: React.FC = () => {
           };
           previewAtClient(touch.clientX, touch.clientY);
         } else {
+          // Touch outside canvas pixels while in picking mode -> exit picking mode so single finger can scroll
           touchPickRef.current = null;
           setLoupe(null);
+          setIsPicking(false);
+          setIsContinuousPicking(false);
         }
         return;
       }
 
-      // Pan when zoomed in (and not picking)
-      if (!isPicking && currentScale.current > 1) {
-        if (e.cancelable) e.preventDefault();
-        startPos.current = {
-          x: touch.clientX - currentOffset.current.x,
-          y: touch.clientY - currentOffset.current.y,
-        };
-        isSingleDragging.current = true;
-        setIsDragging(true);
-      }
+      // Single finger when NOT picking:
+      // Never intercept single-finger touch! The entire page is recognized as scrolling the screen.
+      isSingleDragging.current = false;
+      return;
     }
   }, [isPicking]);
 
@@ -692,7 +687,7 @@ const App: React.FC = () => {
       let nextOffsetX = px - scaleFactor * (p0x - initialOffset.x);
       let nextOffsetY = py - scaleFactor * (p0y - initialOffset.y);
 
-      if (newScale <= 1.01) {
+      if (newScale <= 1.01 && initialScale <= 1.01) {
         nextOffsetX = 0;
         nextOffsetY = 0;
       }
@@ -703,21 +698,6 @@ const App: React.FC = () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
         applyTransform(nextOffsetX, nextOffsetY, newScale);
-      });
-      return;
-    }
-
-    // 1 Finger Drag (when zoomed in)
-    if (e.touches.length === 1 && isSingleDragging.current) {
-      if (e.cancelable) e.preventDefault();
-      const touch = e.touches[0];
-      const nextX = touch.clientX - startPos.current.x;
-      const nextY = touch.clientY - startPos.current.y;
-      currentOffset.current = { x: nextX, y: nextY };
-
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(() => {
-        applyTransform(nextX, nextY, currentScale.current);
       });
       return;
     }
@@ -737,14 +717,10 @@ const App: React.FC = () => {
     // If one finger remains on screen after 2-finger gesture:
     if (e.touches.length === 1) {
       twoFingerRef.current = null;
-      const remainingTouch = e.touches[0];
-      if (!isPicking && currentScale.current > 1) {
-        startPos.current = {
-          x: remainingTouch.clientX - currentOffset.current.x,
-          y: remainingTouch.clientY - currentOffset.current.y,
-        };
-        isSingleDragging.current = true;
-      }
+      isSingleDragging.current = false;
+      setIsDragging(false);
+      setScale(currentScale.current);
+      setOffset({ ...currentOffset.current });
       return;
     }
 
@@ -1077,8 +1053,12 @@ const App: React.FC = () => {
                     {/* Viewport */}
                     <div 
                         ref={containerRef}
-                        className="relative h-[28rem] w-full overflow-hidden rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-move touch-none select-none overscroll-none"
-                        style={{ touchAction: 'none' }}
+                        className={`relative h-[28rem] w-full overflow-hidden rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 select-none ${
+                          isPicking ? 'touch-none cursor-crosshair' : 'touch-pan-y'
+                        }`}
+                        style={{ 
+                          touchAction: isPicking ? 'none' : 'pan-y'
+                        }}
                         onWheel={handleWheel}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}

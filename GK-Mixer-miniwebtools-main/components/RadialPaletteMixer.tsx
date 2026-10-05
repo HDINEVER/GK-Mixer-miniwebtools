@@ -1051,13 +1051,6 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
             <PaletteIcon className="w-5 h-5 text-amber-500 shrink-0" />
             <span>{lang === 'zh' ? '自选调色盘' : lang === 'ja' ? 'カスタム調色盤' : 'Custom Color Mixer'}</span>
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {lang === 'zh'
-              ? '参考 iOS 色板调节模式，自由拾色并滑动配比'
-              : lang === 'ja'
-              ? 'iOSスタイルのスライダーで自由調色'
-              : 'iOS-style custom palette slider mixer'}
-          </p>
         </div>
 
         {/* View Mode Toggle: [ 色板模式 ] / [ 轮盘模式 ] */}

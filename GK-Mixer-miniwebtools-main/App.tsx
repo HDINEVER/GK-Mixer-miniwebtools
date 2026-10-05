@@ -30,7 +30,7 @@ import ExtractMarkerOverlay from './components/ExtractMarkerOverlay';
 import SwatchStudioControls from './components/SwatchStudioControls';
 import Loader from './components/Loader';
 import { ColorData, AppMode, RGB, Language, Theme, ColorSpace, MixerResultCache, RadialMixerCache, BasicMixerCache, MixingMode, SliderState, BaseColor, CatalogPaint } from './types';
-import { extractProminentColors, generateId, rgbToCmyk, rgbToHex, hexToRgb, rgbToHsb, rgbToLab } from './utils/colorUtils';
+import { generateId, rgbToCmyk, rgbToHex, hexToRgb, rgbToHsb, rgbToLab } from './utils/colorUtils';
 import { convertToWorkingSpace, isInGamut } from './utils/colorSpaceConverter';
 import { translations } from './utils/translations';
 import { colorsToMarkers, exportAnnotatedImage } from './utils/exportAnnotatedImage';
@@ -240,23 +240,13 @@ const App: React.FC = () => {
     }
   }, [theme]);
 
-  const handleImageLoaded = async (_file: File, img: HTMLImageElement) => {
+  const handleImageLoaded = (_file: File, img: HTMLImageElement) => {
     setSourceImage(img.src);
     // Reset zoom
     setScale(1);
     setOffset({ x: 0, y: 0 });
-    
-    // Show loading animation
-    setIsExtracting(true);
-    try {
-      const extracted = await extractProminentColors(img, 3, colorSpace);
-      setColors(extracted);
-      if (extracted.length > 0) {
-        setSelectedColorId(extracted[0].id);
-      }
-    } finally {
-      setIsExtracting(false);
-    }
+    setColors([]);
+    setSelectedColorId(null);
   };
 
   const handleManualAdd = () => {

@@ -792,13 +792,6 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({ lang, cache, onCacheU
             <DropIcon className="w-5 h-5 text-sky-500 shrink-0" />
             <span>{lang === 'zh' ? '基础混色台' : lang === 'ja' ? '基本色調色台' : 'Basic Color Mixer'}</span>
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {lang === 'zh'
-              ? '参考 iOS 色板调节模式，滑动基础颜料配比'
-              : lang === 'ja'
-              ? 'iOSスタイルのスライダーで配合調整'
-              : 'iOS-style pigment slider adjustment'}
-          </p>
         </div>
 
         {/* View Mode Toggle: [ 色板模式 ] / [ 轮盘模式 ] */}

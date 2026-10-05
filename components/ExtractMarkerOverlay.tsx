@@ -250,8 +250,7 @@ const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
   return (
     <div 
       ref={rootRef} 
-      className="pointer-events-none relative z-10 h-full w-full touch-none select-none overscroll-none"
-      style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+      className="pointer-events-none relative z-10 h-full w-full select-none"
     >
       <svg className="absolute inset-0 h-full w-full overflow-visible pointer-events-none">
         {positions.map(({ marker, left, top }) => {

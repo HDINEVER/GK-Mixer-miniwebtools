@@ -97,21 +97,6 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
     return () => observer.disconnect();
   }, [sourceImage]);
 
-  // Guard visualizer canvas stage against viewport scrolling & pull-to-refresh on touch devices
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const preventStageTouch = (e: TouchEvent) => {
-      if (e.cancelable) {
-        e.preventDefault();
-      }
-    };
-    stage.addEventListener('touchmove', preventStageTouch, { passive: false });
-    return () => {
-      stage.removeEventListener('touchmove', preventStageTouch);
-    };
-  }, [sourceImage]);
-
   const handleExportImage = async () => {
     const image = imageRef.current;
     if (!image || !markers.some((marker) => marker.paint)) return;
@@ -181,8 +166,8 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
         {/* Left/Center: Visualizer Preview Canvas Stage */}
         <div
           ref={stageRef}
-          className="viz-stage relative flex flex-1 min-w-0 min-h-[380px] lg:min-h-0 flex-col overflow-hidden rounded-xl bg-slate-950 shadow-inner touch-none overscroll-none select-none"
-          style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+          className="viz-stage relative flex flex-1 min-w-0 min-h-[380px] lg:min-h-0 flex-col overflow-hidden rounded-xl bg-slate-950 shadow-inner touch-pan-y select-none"
+          style={{ touchAction: 'pan-y' }}
         >
           {!sourceImage ? (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
@@ -217,8 +202,8 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
           ) : (
             <div 
               ref={frameRef} 
-              className="relative flex min-h-0 flex-1 items-center justify-center p-2 touch-none overscroll-none select-none"
-              style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+              className="relative flex min-h-0 flex-1 items-center justify-center p-2 touch-pan-y select-none"
+              style={{ touchAction: 'pan-y' }}
             >
               <img
                 ref={imageRef}
@@ -226,8 +211,8 @@ const PaletteVisualizer: React.FC<PaletteVisualizerProps> = ({
                 alt=""
                 crossOrigin={sourceImage.startsWith('http') ? 'anonymous' : undefined}
                 onLoad={syncBox}
-                className="max-h-full max-w-full object-contain pointer-events-none select-none touch-none"
-                style={{ outline: '1px solid oklch(1 0 0 / 0.1)', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'none' }}
+                className="max-h-full max-w-full object-contain pointer-events-none select-none"
+                style={{ outline: '1px solid oklch(1 0 0 / 0.1)', userSelect: 'none', WebkitUserSelect: 'none' }}
                 draggable={false}
               />
               {imgBox.width > 0 && (

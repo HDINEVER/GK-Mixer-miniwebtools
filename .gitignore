@@ -16,6 +16,8 @@ goldie/out/
 goldie-studio/
 promo_preview/
 app_store_screenshots/
+assets/app-store/framed/
+assets/app-store/promo-preview/
 .argent/
 
 # Nested independent repos
@@ -26,5 +28,8 @@ privacy-policy-repo/
 .AppleDouble
 .LSOverride
 
-# Extraction scratch
+# Extraction scratch & large binary catalogs
+NightWorks_Output
 NightWorks_Output/
+assets/paint-catalogs/nightworks/
+

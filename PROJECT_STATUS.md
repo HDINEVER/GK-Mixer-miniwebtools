@@ -11,7 +11,9 @@
 ios-GK-mixer/
 ├── GK-Mixer/                        ← ⭐ 当前主力：Native SwiftUI App（target）
 ├── GK-Mixer-miniwebtools-main/      ← 📖 参考源：原始 Web App（算法 + UI 风格来源）
-├── gkmixer-1.icon/                  ← Icon Composer 源文件
+├── assets/                          ← 🎨 统一素材与设计资源库（详见 ASSETS_CATALOG.md）
+├── scripts/                         ← 🛠️ 自动化构建与素材处理脚本
+├── ASSETS_CATALOG.md                ← 📖 素材索引与内容查找指南
 ├── PROJECT_STATUS.md                ← 📋 本文件
 └── .git/
 ```
@@ -50,6 +52,7 @@ ios-GK-mixer/
 | 页面 | `Views/PaletteView.swift` | ✅ 搜索、分类、3 列网格、详情 Sheet、RAL 信息、配方暂存、分享与删除 |
 | 页面 | `Views/SettingsView.swift` | ✅ 原生 `Form`；主题切换、算法选择、版本号（读 Bundle）、外链均已生效 |
 | 资产 | `Assets.xcassets/AccentColor` | ✅ #FF9900 + Dark 变体 |
+| 颜料数据库 | `Resources/PaintCatalog.json` | ✅ 收录 Gaia、Mr.Hobby、Jumpwind（230 色，含最新 CC 灰阶与原色）、Night Works、Hobby Mio、Sunin7 等品牌，支持云端高清缩略图 |
 | 设计文档 | `LIQUID_GLASS_UI_REFERENCE.md` | ✅ **实现与验收以本文为准** |
 | 设计文档 | `GK_DESIGN_DOC.md` / `design.md` / `liquidglass-project-reference.md` | 📖 产品稿 / 早期愿景 / HIG 理论背景 |
 

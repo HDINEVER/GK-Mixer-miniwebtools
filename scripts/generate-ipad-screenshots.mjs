@@ -63,7 +63,7 @@ const scenes = [
 ];
 
 const RAW_DIR = '/Users/krooshuang/code/ios-GK-mixer/goldie/out/raw/iphone-6.9/en-US';
-const OUT_DIR = '/Users/krooshuang/code/ios-GK-mixer/app_store_screenshots/ipad-13';
+const OUT_DIR = '/Users/krooshuang/code/ios-GK-mixer/assets/app-store/framed/ipad-13';
 const BACKUP_OUT_DIR = '/Users/krooshuang/code/ios-GK-mixer/goldie/out/screenshots/ipad-13/en-US';
 
 fs.mkdirSync(OUT_DIR, { recursive: true });

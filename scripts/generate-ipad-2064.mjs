@@ -12,8 +12,8 @@ const CANVAS_WIDTH = 2064;
 const CANVAS_HEIGHT = 2752;
 
 const RAW_DIR = '/Users/krooshuang/code/ios-GK-mixer/goldie/out/raw/ipad-raw';
-const OUT_FRAMED = '/Users/krooshuang/code/ios-GK-mixer/app_store_screenshots/ipad-2064x2752/framed';
-const OUT_FULL = '/Users/krooshuang/code/ios-GK-mixer/app_store_screenshots/ipad-2064x2752/fullscreen';
+const OUT_FRAMED = '/Users/krooshuang/code/ios-GK-mixer/assets/app-store/framed/ipad-2064x2752/framed';
+const OUT_FULL = '/Users/krooshuang/code/ios-GK-mixer/assets/app-store/framed/ipad-2064x2752/fullscreen';
 
 fs.mkdirSync(OUT_FRAMED, { recursive: true });
 fs.mkdirSync(OUT_FULL, { recursive: true });

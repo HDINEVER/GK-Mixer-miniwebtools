@@ -61,7 +61,7 @@ def get_commodity_category(code, current_set, finish):
     return current_set
 
 # Update NightWorksCatalog.json
-nw_path = '/Users/krooshuang/code/ios-GK-mixer/NightWorks_Output/NightWorksCatalog.json'
+nw_path = '/Users/krooshuang/code/ios-GK-mixer/assets/paint-catalogs/nightworks/NightWorksCatalog.json'
 with open(nw_path, 'r', encoding='utf-8') as f:
     nw_data = json.load(f)
 

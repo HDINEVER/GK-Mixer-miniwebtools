@@ -110,7 +110,7 @@ def match_paint_url(paint):
     # 11. 金属漆及其他无法精确对应的
     return STORE_URL
 
-with open('/Users/krooshuang/code/ios-GK-mixer/NightWorks_Output/NightWorksCatalog.json') as f:
+with open('/Users/krooshuang/code/ios-GK-mixer/assets/paint-catalogs/nightworks/NightWorksCatalog.json') as f:
     catalog = json.load(f)
 
 matched_counts = {}

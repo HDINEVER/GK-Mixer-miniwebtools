@@ -19,7 +19,7 @@ from PIL import Image
 
 PATH_SYS = "/Users/krooshuang/Downloads/颜料体系2026.9.29.xlsx"
 PATH_ALL = "/Users/krooshuang/Downloads/夜之工坊颜料类产品大全(1).xlsx"
-OUT_DIR = "/Users/krooshuang/code/ios-GK-mixer/NightWorks_Output"
+OUT_DIR = "/Users/krooshuang/code/ios-GK-mixer/assets/paint-catalogs/nightworks"
 WEB_DIR = "/Users/krooshuang/code/ios-GK-mixer/GK-Mixer-miniwebtools-main/public/paints/nightworks"
 
 os.makedirs(os.path.join(OUT_DIR, "paints"), exist_ok=True)

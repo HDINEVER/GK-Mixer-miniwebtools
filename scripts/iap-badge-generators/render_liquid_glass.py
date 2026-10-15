@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
 src_icon_path = '/Users/krooshuang/code/ios-GK-mixer/GK-Mixer/GK-Mixer/Assets.xcassets/AppIcon.appiconset/AppIcon.png'
-out_dir = '/Users/krooshuang/code/ios-GK-mixer/IAP_Promotional_Images'
+out_dir = '/Users/krooshuang/code/ios-GK-mixer/assets/iap-promotional'
 os.makedirs(out_dir, exist_ok=True)
 
 base_icon = Image.open(src_icon_path).convert('RGB')

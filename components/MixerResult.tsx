@@ -453,7 +453,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
              </div>
 
              {/* Volume Buttons (iOS/Konsta Segmented Pill Bar) */}
-             <div className="w-full mb-6">
+             <div className="w-full mb-4">
                 <div className="p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-2xl flex items-center gap-1 shadow-inner overflow-x-auto no-scrollbar">
                     {[10, 20, 30, 40, 50, 60].map(v => (
                         <button
@@ -470,6 +470,16 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                         </button>
                     ))}
                 </div>
+             </div>
+
+             {/* Drop Ratio Formula Card (几比几比几配方卡 - 全宽展示，避免在调漆瓶侧栏挤压换行) */}
+             <div className="w-full mb-4">
+                <DropRatioBar
+                   parts={dropParts}
+                   lang={lang}
+                   multiplier={dropMultiplier}
+                   onMultiplierChange={setDropMultiplier}
+                />
              </div>
 
              <div className="flex flex-col sm:flex-row gap-6 items-end w-full justify-center bg-slate-50 dark:bg-slate-800/30 p-6 rounded-xl border border-slate-100 dark:border-slate-700 relative overflow-hidden min-h-[320px]">
@@ -532,13 +542,6 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                         <span>{t.totalVolume}: {bottleVolume}ml</span>
                         <span className="text-macaron-purple">{selectedBasePaint ? 'BASE MODE' : 'PURE MODE'}</span>
                      </div>
-
-                     <DropRatioBar
-                        parts={dropParts}
-                        lang={lang}
-                        multiplier={dropMultiplier}
-                        onMultiplierChange={setDropMultiplier}
-                     />
                      
                      {/* Color Analysis Section */}
                      {mixLayers.length > 1 && (() => {

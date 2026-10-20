@@ -61,6 +61,7 @@ ios-GK-mixer/
 | 双通道分享服务 | `Utils/ProjectSharingService.swift` | ✅ 极简传输协议（`gkm1:<Base64>` + zlib 压缩）、Vision 离线扫码识别、本地油漆数据库精准反查还原完整缩略图与色号、`.gkmix` v2 专属工程包导出/导入 |
 | 涂装分享海报生成器 | `Views/ProjectLibrary/ProjectSharePosterView.swift` | ✅ 工业说明书美学海报生成器：100% 复用 `PartCanvasBaseLayerView`、ImageRenderer 前同步预加载油漆缩略图防丢、源图宽高比严格贴合消灭黑边死区、36×36 官方 App Icon 品牌徽章、稀疏高容错白底二维码 |
 | 涂装名片海报 | `Views/ProjectLibrary/ProjectSharePosterView.swift` | ✅ SwiftUI `ImageRenderer` 3x 超清名片海报，复合载体免服务器完整还原可编辑工程 |
+| 油漆数据库（Tab 4） | `Views/PaintCatalogView.swift` + `Models/PaintCatalog.swift` | ✅ 仿 Notion Database 架构：移除顶部不透明白底启用 `.scrollEdgeEffectStyle(.soft)` 原生羽化；横向品牌胶囊轨（去重复）；动态 Filter Pills（系列/光泽/重置✕）+ 上滑自动折叠；双视图切换（画廊 3 列网格 / 单列 52pt 紧凑属性表）；空格多词分词搜索（`盖亚 黑`、`002`、`#HEX`）+ 快捷筛选 Chips |
 | 设计文档 | `LIQUID_GLASS_UI_REFERENCE.md` | ✅ **实现与验收以本文为准** |
 | 设计文档 | `GK_DESIGN_DOC.md` / `design.md` / `liquidglass-project-reference.md` | 📖 产品稿 / 早期愿景 / HIG 理论背景 |
 

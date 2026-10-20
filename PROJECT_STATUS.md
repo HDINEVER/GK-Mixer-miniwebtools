@@ -54,10 +54,12 @@ ios-GK-mixer/
 | 资产 | `Assets.xcassets/AccentColor` | ✅ #FF9900 + Dark 变体 |
 | 颜料数据库 | `Resources/PaintCatalog.json` | ✅ 收录 Gaia、Mr.Hobby、Jumpwind（230 色，含最新 CC 灰阶与原色）、Night Works、Hobby Mio、Sunin7 等品牌，支持云端高清缩略图 |
 | 涂装模型与工程 | `Models/ProjectModels.swift` | ✅ `TopWorkspaceMode`、`BottomMainTab`、`TonalStep`、`PaintingStep`、`FloatingSwatchNode`、`PartCanvas`、SwiftData `@Model PaintProject`、Transferable `GKMixerProjectDocument` |
-| 涂装工程详情台 | `Views/ProjectLibrary/PaintProjectDetailView.swift` | ✅ 双层手势隔离编辑架构：上半屏零件工程横向分页翻页，下半屏油漆流 + 触感刻度轮（`DialWheelControl`）微调 X/Y 坐标 + 明度色阶联动 |
+| 涂装工程底图组件 | `Views/ProjectLibrary/PartCanvasBaseLayerView.swift` | ✅ 零件图画布 1:1 独立基底组件，复用 CAD 90° 直角折线、锚点圆环与 `ExtractSwatchCard` |
+| 涂装工程详情台 | `Views/ProjectLibrary/PaintProjectDetailView.swift` | ✅ 双层手势隔离编辑架构：复用 `PartCanvasBaseLayerView`，下半屏油漆流 + 触感刻度轮微调坐标 + 明度色阶联动 |
 | 明暗色阶联动 | `Views/ProjectLibrary/TonalGradientPickerSheet.swift` | ✅ 联动 ChromaStudio 生成高光/主色/阴影三段/五段渐变色阶 |
 | 工序标签生成器 | `Views/ProjectLibrary/PaintingStepBuilderView.swift` | ✅ 仿 Apple 快捷指令（Shortcuts）纵向积木工作流：垂直管道连接线（28pt 轴线）、双行积木卡片、动态油漆胶囊切换、行内参数微调胶囊（稀释比/气压/手法）、上下拖拽排序与分类模板插入 |
-| 双通道分享服务 | `Utils/ProjectSharingService.swift` | ✅ 统一载荷协议（`gkmixer://p?v=1&mode=local&d=...`）、CoreImage 高质感圆点二维码、Vision 离线扫码识别 + 54% 零件图自动裁切还原 |
+| 双通道分享服务 | `Utils/ProjectSharingService.swift` | ✅ 极简传输协议（`gkm1:<Base64>` + zlib 压缩）、Vision 离线扫码识别、本地油漆数据库精准反查还原完整缩略图与色号、`.gkmix` v2 专属工程包导出/导入 |
+| 涂装分享海报生成器 | `Views/ProjectLibrary/ProjectSharePosterView.swift` | ✅ 工业说明书美学海报生成器：100% 复用 `PartCanvasBaseLayerView`、ImageRenderer 前同步预加载油漆缩略图防丢、源图宽高比严格贴合消灭黑边死区、36×36 官方 App Icon 品牌徽章、稀疏高容错白底二维码 |
 | 涂装名片海报 | `Views/ProjectLibrary/ProjectSharePosterView.swift` | ✅ SwiftUI `ImageRenderer` 3x 超清名片海报，复合载体免服务器完整还原可编辑工程 |
 | 设计文档 | `LIQUID_GLASS_UI_REFERENCE.md` | ✅ **实现与验收以本文为准** |
 | 设计文档 | `GK_DESIGN_DOC.md` / `design.md` / `liquidglass-project-reference.md` | 📖 产品稿 / 早期愿景 / HIG 理论背景 |

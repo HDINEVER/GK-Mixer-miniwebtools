@@ -56,7 +56,7 @@ ios-GK-mixer/
 | 涂装模型与工程 | `Models/ProjectModels.swift` | ✅ `TopWorkspaceMode`、`BottomMainTab`、`TonalStep`、`PaintingStep`、`FloatingSwatchNode`、`PartCanvas`、SwiftData `@Model PaintProject`、Transferable `GKMixerProjectDocument` |
 | 涂装工程详情台 | `Views/ProjectLibrary/PaintProjectDetailView.swift` | ✅ 双层手势隔离编辑架构：上半屏零件工程横向分页翻页，下半屏油漆流 + 触感刻度轮（`DialWheelControl`）微调 X/Y 坐标 + 明度色阶联动 |
 | 明暗色阶联动 | `Views/ProjectLibrary/TonalGradientPickerSheet.swift` | ✅ 联动 ChromaStudio 生成高光/主色/阴影三段/五段渐变色阶 |
-| 工序标签生成器 | `Views/ProjectLibrary/PaintingStepBuilderView.swift` | ✅ 半自动推导工序流 + 免打字 Chip Builder 组装带 SF Symbols 的步骤胶囊 |
+| 工序标签生成器 | `Views/ProjectLibrary/PaintingStepBuilderView.swift` | ✅ 仿 Apple 快捷指令（Shortcuts）纵向积木工作流：垂直管道连接线（28pt 轴线）、双行积木卡片、动态油漆胶囊切换、行内参数微调胶囊（稀释比/气压/手法）、上下拖拽排序与分类模板插入 |
 | 双通道分享服务 | `Utils/ProjectSharingService.swift` | ✅ 统一载荷协议（`gkmixer://p?v=1&mode=local&d=...`）、CoreImage 高质感圆点二维码、Vision 离线扫码识别 + 54% 零件图自动裁切还原 |
 | 涂装名片海报 | `Views/ProjectLibrary/ProjectSharePosterView.swift` | ✅ SwiftUI `ImageRenderer` 3x 超清名片海报，复合载体免服务器完整还原可编辑工程 |
 | 设计文档 | `LIQUID_GLASS_UI_REFERENCE.md` | ✅ **实现与验收以本文为准** |

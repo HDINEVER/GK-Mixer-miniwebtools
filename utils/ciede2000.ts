@@ -31,6 +31,7 @@ export const labFromRgb = (r: number, g: number, b: number): Lab => {
 };
 
 export const rgbFromHex = (hex: string): { r: number; g: number; b: number } | null => {
+  if (!hex || typeof hex !== "string") return null;
   const cleaned = hex.trim().replace(/^#/, "");
   if (!/^[0-9A-Fa-f]{6}$/.test(cleaned)) return null;
   return {

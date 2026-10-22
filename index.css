@@ -11,16 +11,28 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 2. Disable mobile browser callout, text selection, and accidental gesture zooms */
-html, body {
+/* 2. Disable mobile browser callout, text selection, while preserving native page scrolling */
+html {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
-  touch-action: pan-x pan-y;
-  overscroll-behavior-y: contain;
-  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
+  overflow-x: clip;
+  overflow-y: auto;
+  max-width: 100vw;
+}
+
+body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: pan-y pinch-zoom;
+  overflow-x: clip;
+  max-width: 100vw;
 }
 
 /* 3. Re-enable text selection for input, textarea, and editable content */
@@ -35,12 +47,18 @@ select,
   touch-action: manipulation !important;
 }
 
-/* 4. Safe Area Insets for Android Display Cutout / Notch / Navigation Bar */
+/* 4. Safe Area Insets & Dynamic Accent Theme Variables */
 :root {
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+  --accent-color: #EF5350;
+  --accent-rgb: 239 83 80;
+  --accent-hover: #E53935;
+  --accent-hover-rgb: 229 57 53;
+  --accent-soft: rgb(239 83 80 / 0.12);
+  --accent-dark-text-rgb: 255 138 128;
 }
 
 .safe-top {
@@ -59,11 +77,9 @@ button:not(:disabled):active,
   transition: transform 0.1s ease;
 }
 
-/* Fix overscroll background color issue on mobile (iOS Safari bounce effect) and prevent pull-to-refresh / swipe back conflicts */
+/* Fix overscroll background color issue on mobile (iOS Safari bounce effect) */
 html {
   background-color: #f8fafc; /* slate-50 for light mode */
-  overscroll-behavior-y: contain;
-  overscroll-behavior-x: none;
 }
 
 html.dark {
@@ -76,8 +92,6 @@ body {
   background-color: #f8fafc; /* slate-50 */
   min-height: 100vh;
   min-height: 100dvh; /* Use dynamic viewport height for mobile */
-  overscroll-behavior-y: contain;
-  overscroll-behavior-x: none;
 }
 
 /* Touch and gesture conflict guards for stage and canvas draggable areas */
@@ -223,3 +237,634 @@ body:has(.dark) {
     box-shadow: 0 0 10px 2px currentColor;
   }
 }
+
+/* ==========================================================================
+   Engineering Darkroom Grid Viewport (Light & Dark) + Blueprint Crosshairs
+   ========================================================================== */
+.engineering-viewport-grid,
+.gk-canvas-backdrop {
+  position: relative;
+  background-color: #F8FAFC;
+  background-image:
+    linear-gradient(to right, #E2E8F0 1px, transparent 1px),
+    linear-gradient(to bottom, #E2E8F0 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+html.dark .engineering-viewport-grid,
+.dark .engineering-viewport-grid,
+html.dark .gk-canvas-backdrop,
+.dark .gk-canvas-backdrop {
+  background-color: #0F172A;
+  background-image:
+    linear-gradient(to right, #1E293B 1px, transparent 1px),
+    linear-gradient(to bottom, #1E293B 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Blueprint corner crosshairs (+) */
+.gk-blueprint-crosshair {
+  display: none;
+}
+
+html[data-ui-style="blueprint"] .gk-blueprint-crosshair {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(15, 23, 42, 0.45);
+  pointer-events: none;
+  z-index: 5;
+}
+
+html.dark[data-ui-style="blueprint"] .gk-blueprint-crosshair {
+  color: rgba(148, 163, 184, 0.45);
+}
+
+/* ==========================================================================
+   Technical Prefix Tags (only visible in Blueprint Wireframe UI Style)
+   ========================================================================== */
+.tech-prefix {
+  display: none;
+}
+
+html[data-ui-style="blueprint"] .tech-prefix {
+  display: inline;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+  margin-right: 0.35rem;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Dual UI Visual Style Engine:
+   - data-ui-style="glass"     (🔮 Liquid Glass / Apple iOS)
+   - data-ui-style="blueprint" (📐 Technical Blueprint Wireframe)
+   ========================================================================== */
+
+/* --- Style A: Technical Blueprint Wireframe (data-ui-style="blueprint") --- */
+html[data-ui-style="blueprint"],
+html[data-ui-style="blueprint"] body,
+html[data-ui-style="blueprint"] .k-app,
+html[data-ui-style="blueprint"] .gk-page-bg {
+  background-color: #F8FAFC !important;
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.05) 1px, transparent 1px) !important;
+  background-size: 24px 24px !important;
+}
+
+html.dark[data-ui-style="blueprint"],
+html.dark[data-ui-style="blueprint"] body,
+html.dark[data-ui-style="blueprint"] .k-app,
+html.dark[data-ui-style="blueprint"] .gk-page-bg {
+  background-color: #0B0F19 !important;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px) !important;
+  background-size: 24px 24px !important;
+}
+
+/* Disable frosted glass blur in blueprint mode for crisp vector precision */
+html[data-ui-style="blueprint"] *,
+html[data-ui-style="blueprint"] *::before,
+html[data-ui-style="blueprint"] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Top header in blueprint mode */
+html[data-ui-style="blueprint"] header.gk-app-header,
+html[data-ui-style="blueprint"] .gk-header {
+  background: #FFFFFF !important;
+  border-bottom: 1.5px solid #0F172A !important;
+  box-shadow: 0 2px 0 #0F172A;
+}
+
+html.dark[data-ui-style="blueprint"] header.gk-app-header,
+html.dark[data-ui-style="blueprint"] .gk-header {
+  background: #111827 !important;
+  border-bottom: 1.5px solid #334155 !important;
+  box-shadow: 0 2px 0 #020617;
+}
+
+/* Main cards & panels in blueprint mode */
+html[data-ui-style="blueprint"] .gk-panel-card,
+html[data-ui-style="blueprint"] .gk-card,
+html[data-ui-style="blueprint"] main > div > .rounded-2xl {
+  border-radius: 6px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+  background-color: #FFFFFF !important;
+}
+
+html.dark[data-ui-style="blueprint"] .gk-panel-card,
+html.dark[data-ui-style="blueprint"] .gk-card,
+html.dark[data-ui-style="blueprint"] main > div > .rounded-2xl {
+  border-radius: 6px !important;
+  border: 1.5px solid #334155 !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+  background-color: #111827 !important;
+}
+
+/* Portrait (< 1024px) Blueprint hard-shadow & spacing compaction */
+@media (max-width: 1023px) {
+  html[data-ui-style="blueprint"] .gk-panel-card,
+  html[data-ui-style="blueprint"] .gk-card,
+  html[data-ui-style="blueprint"] main > div > .rounded-2xl {
+    box-shadow: 2px 2px 0px #0F172A !important;
+  }
+  html.dark[data-ui-style="blueprint"] .gk-panel-card,
+  html.dark[data-ui-style="blueprint"] .gk-card,
+  html.dark[data-ui-style="blueprint"] main > div > .rounded-2xl {
+    box-shadow: 2px 2px 0px #020617 !important;
+  }
+  html[data-ui-style="blueprint"] nav.gk-mobile-dock {
+    box-shadow: 2px 2px 0px #0F172A !important;
+  }
+  html.dark[data-ui-style="blueprint"] nav.gk-mobile-dock {
+    box-shadow: 2px 2px 0px #020617 !important;
+  }
+}
+
+/* Dashed engineering dividers inside panels */
+html[data-ui-style="blueprint"] .gk-dashed-divider-b {
+  border-bottom: 1px dashed #94A3B8 !important;
+}
+html[data-ui-style="blueprint"] .gk-dashed-divider-t {
+  border-top: 1px dashed #94A3B8 !important;
+}
+html.dark[data-ui-style="blueprint"] .gk-dashed-divider-b {
+  border-bottom: 1px dashed #475569 !important;
+}
+html.dark[data-ui-style="blueprint"] .gk-dashed-divider-t {
+  border-top: 1px dashed #475569 !important;
+}
+
+/* Mechanical buttons & pills in blueprint mode */
+html[data-ui-style="blueprint"] .gk-mech-btn,
+html[data-ui-style="blueprint"] .gk-btn-secondary {
+  border: 1.5px solid #0F172A !important;
+  border-radius: 5px !important;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease !important;
+}
+html.dark[data-ui-style="blueprint"] .gk-mech-btn,
+html.dark[data-ui-style="blueprint"] .gk-btn-secondary {
+  border: 1.5px solid #475569 !important;
+}
+html[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled):hover,
+html[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled):hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0px #0F172A;
+}
+html.dark[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled):hover,
+html.dark[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled):hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0px #020617;
+}
+html[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled):active,
+html[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled):active {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 0px 0px 0px !important;
+}
+
+/* Active tab / Primary action button in blueprint mode */
+html[data-ui-style="blueprint"] .gk-mech-primary,
+html[data-ui-style="blueprint"] .gk-btn-primary,
+html[data-ui-style="blueprint"] .gk-tab-pill-active {
+  background-color: var(--accent-color) !important;
+  border: 1.5px solid #0F172A !important;
+  border-radius: 5px !important;
+  color: #FFFFFF !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .gk-mech-primary,
+html.dark[data-ui-style="blueprint"] .gk-btn-primary,
+html.dark[data-ui-style="blueprint"] .gk-tab-pill-active {
+  border-color: #64748B !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .gk-mech-primary:not(:disabled):active,
+html[data-ui-style="blueprint"] .gk-btn-primary:not(:disabled):active,
+html[data-ui-style="blueprint"] .gk-tab-pill-active:not(:disabled):active {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 0px 0px 0px !important;
+}
+
+/* Tab bar container & inactive tabs in blueprint mode */
+html[data-ui-style="blueprint"] .gk-tab-bar {
+  border-radius: 6px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #F1F5F9 !important;
+  padding: 3px !important;
+}
+html.dark[data-ui-style="blueprint"] .gk-tab-bar {
+  border-color: #334155 !important;
+  background-color: #0F172A !important;
+}
+html[data-ui-style="blueprint"] .gk-tab-pill:not(.gk-tab-pill-active) {
+  border-radius: 4px !important;
+  border: 1px solid transparent;
+}
+html[data-ui-style="blueprint"] .gk-tab-pill:not(.gk-tab-pill-active):hover {
+  border-color: #0F172A;
+  background-color: #FFFFFF;
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0px #0F172A;
+}
+html.dark[data-ui-style="blueprint"] .gk-tab-pill:not(.gk-tab-pill-active):hover {
+  border-color: #475569;
+  background-color: #1E293B;
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0px #020617;
+}
+
+/* Mobile dock in blueprint mode */
+html[data-ui-style="blueprint"] nav.gk-mobile-dock {
+  border-radius: 8px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+  background-color: #FFFFFF !important;
+}
+html.dark[data-ui-style="blueprint"] nav.gk-mobile-dock {
+  border-color: #334155 !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+  background-color: #111827 !important;
+}
+
+/* ==========================================================================
+   Smooth Damped-Spring Tab & Studio Focus Transitions
+   ========================================================================== */
+@keyframes gk-tab-enter-up {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gk-tab-enter-forward {
+  0% {
+    opacity: 0;
+    transform: translate3d(10px, 8px, 0) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gk-tab-enter-backward {
+  0% {
+    opacity: 0;
+    transform: translate3d(-10px, 8px, 0) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gk-studio-focus-zoom {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.gk-tab-transition {
+  animation: gk-tab-enter-up 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gk-tab-transition-forward {
+  animation: gk-tab-enter-forward 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gk-tab-transition-backward {
+  animation: gk-tab-enter-backward 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gk-studio-focus-anim {
+  animation: gk-studio-focus-zoom 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ==========================================================================
+   Deep Sub-Component Penetration for Technical Blueprint Wireframe Mode
+   Strictly scoped under html[data-ui-style="blueprint"] so Liquid Glass
+   (data-ui-style="glass") remains 100% untouched.
+   ========================================================================== */
+
+/* 1. Internal Sub-Cards (2px hard shadow & 3px hard shadow variants) */
+html[data-ui-style="blueprint"] .bp-subcard {
+  border-radius: 6px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-subcard {
+  border-color: #475569 !important;
+  background-color: #111827 !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-subcard-active {
+  border-radius: 6px !important;
+  border: 2px solid #0F172A !important;
+  background-color: var(--accent-soft) !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-subcard-active {
+  border-color: var(--accent-color) !important;
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-subcard-interactive:hover {
+  transform: translate(-1px, -1px) !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-subcard-interactive:hover {
+  transform: translate(-1px, -1px) !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+}
+
+/* Larger internal panels / TOP 6 cards / Chroma Studio sub-cards (3px hard shadow) */
+html[data-ui-style="blueprint"] .bp-subcard-lg {
+  border-radius: 6px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-subcard-lg {
+  border-color: #475569 !important;
+  background-color: #111827 !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+}
+
+/* Project / Swatch Cover Cards in Library (2px solid border + 4px hard shadow) */
+html[data-ui-style="blueprint"] .bp-project-card {
+  border-radius: 6px !important;
+  border: 2px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 4px 4px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-project-card {
+  border-color: #475569 !important;
+  background-color: #111827 !important;
+  box-shadow: 4px 4px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-project-card:hover {
+  transform: translate(-1px, -1px) !important;
+  border-color: #0F172A !important;
+  box-shadow: 5px 5px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-project-card:hover {
+  transform: translate(-1px, -1px) !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 5px 5px 0px #020617 !important;
+}
+
+/* 2. Segmented Switchers & Pill Buttons */
+html[data-ui-style="blueprint"] .bp-segmented {
+  border-radius: 6px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #F8FAFC !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-segmented {
+  border-color: #475569 !important;
+  background-color: #0F172A !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-segmented-item {
+  border-radius: 4px !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+}
+html[data-ui-style="blueprint"] .bp-segmented-item-active {
+  border-radius: 4px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-segmented-item-active {
+  border-color: #64748B !important;
+  box-shadow: 1.5px 1.5px 0px #020617 !important;
+}
+
+/* Filter Pills / Brand Chips / Category Tags */
+html[data-ui-style="blueprint"] .bp-pill {
+  border-radius: 5px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-pill {
+  border-color: #475569 !important;
+  background-color: #1E293B !important;
+  color: #F1F5F9 !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-pill:hover {
+  background-color: var(--accent-soft) !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-pill:hover {
+  border-color: var(--accent-color) !important;
+}
+html[data-ui-style="blueprint"] .bp-pill-active {
+  border-radius: 5px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-pill-active {
+  border-color: #94A3B8 !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+
+/* 3. Search Bars & Inputs */
+html[data-ui-style="blueprint"] .bp-input {
+  border-radius: 5px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-input {
+  border-color: #475569 !important;
+  background-color: #0F172A !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-input:focus {
+  border-color: #0F172A !important;
+  box-shadow: 2px 2px 0px var(--accent-color) !important;
+  outline: none !important;
+}
+
+/* 4. Color Swatches, Matrix Cells, and Technical Badges */
+html[data-ui-style="blueprint"] .bp-swatch {
+  border-radius: 4px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: none !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-swatch {
+  border-color: #64748B !important;
+}
+
+html[data-ui-style="blueprint"] .bp-matrix-cell {
+  border-radius: 4px !important;
+  border: 1.5px solid rgba(15, 23, 42, 0.85) !important;
+  box-shadow: none !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-matrix-cell {
+  border: 1.5px solid rgba(148, 163, 184, 0.65) !important;
+}
+html[data-ui-style="blueprint"] .bp-matrix-cell-active {
+  border-radius: 4px !important;
+  border: 2px solid #0F172A !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+  outline: none !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-matrix-cell-active {
+  border: 2px solid #F8FAFC !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+}
+
+html[data-ui-style="blueprint"] .bp-badge {
+  border-radius: 3px !important;
+  border: 1px solid #0F172A !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-badge {
+  border-color: #64748B !important;
+}
+
+html[data-ui-style="blueprint"] .bp-dot {
+  border-radius: 3px !important;
+  border: 1.5px solid #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-dot {
+  border-color: #94A3B8 !important;
+}
+
+/* 5. Action Buttons, Use Buttons, and Floating FAB */
+html[data-ui-style="blueprint"] .bp-btn {
+  border-radius: 4px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-btn {
+  border-color: #475569 !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-btn:not(:disabled):hover {
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-btn:not(:disabled):active {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 0px 0px 0px !important;
+}
+
+html[data-ui-style="blueprint"] .bp-use-btn {
+  border-radius: 4px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: var(--accent-soft) !important;
+  color: #0F172A !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-use-btn {
+  border-color: #475569 !important;
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  color: #F8FAFC !important;
+  box-shadow: 1.5px 1.5px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-use-btn:hover {
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+}
+html[data-ui-style="blueprint"] .bp-use-btn-used {
+  border-radius: 4px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+}
+
+html[data-ui-style="blueprint"] .bp-fab {
+  border-radius: 8px !important;
+  border: 2px solid #0F172A !important;
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  box-shadow: 4px 4px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-fab {
+  border-color: #94A3B8 !important;
+  box-shadow: 4px 4px 0px #020617 !important;
+}
+
+/* 6. Dividers & Dashed Technical Callout Boxes */
+html[data-ui-style="blueprint"] .bp-dashed-box {
+  border-radius: 4px !important;
+  border: 1.5px dashed #0F172A !important;
+  background-color: #F8FAFC !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-dashed-box {
+  border-color: #475569 !important;
+  background-color: #0F172A !important;
+}
+
+html[data-ui-style="blueprint"] .bp-dashed-header {
+  border-bottom: 1.5px dashed #94A3B8 !important;
+  padding-bottom: 6px !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-dashed-header {
+  border-bottom-color: #475569 !important;
+}
+
+html[data-ui-style="blueprint"] .bp-top-divider {
+  border-top: 1.5px solid #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-top-divider {
+  border-top-color: #475569 !important;
+}
+
+html[data-ui-style="blueprint"] .bp-bottom-divider {
+  border-bottom: 1.5px solid #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-bottom-divider {
+  border-bottom-color: #475569 !important;
+}
+
+html[data-ui-style="blueprint"] .bp-center-dashed-divider {
+  border-left: 1.5px dashed #0F172A !important;
+  background: transparent !important;
+  width: 0px !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-center-dashed-divider {
+  border-left-color: #94A3B8 !important;
+}
+
+

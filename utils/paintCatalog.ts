@@ -273,12 +273,12 @@ export const catalogToPaintBrand = (paint: CatalogPaint): PaintBrand => ({
   hex: paint.hex,
 });
 
-export const nearestCatalogPaint = (
+export const nearestCatalogPaintWithDeltaE = (
   paints: CatalogPaint[],
   hex: string,
   brands = FEATURED_BRANDS,
   solidsOnly = true
-): CatalogPaint | undefined => {
+): { paint: CatalogPaint; deltaE: number } | undefined => {
   const target = labFromHex(hex);
   if (!target || !paints.length) return undefined;
   const allowed = new Set(brands);
@@ -293,5 +293,14 @@ export const nearestCatalogPaint = (
       best = paint;
     }
   }
-  return best;
+  return best ? { paint: best, deltaE: bestDelta } : undefined;
+};
+
+export const nearestCatalogPaint = (
+  paints: CatalogPaint[],
+  hex: string,
+  brands = FEATURED_BRANDS,
+  solidsOnly = true
+): CatalogPaint | undefined => {
+  return nearestCatalogPaintWithDeltaE(paints, hex, brands, solidsOnly)?.paint;
 };

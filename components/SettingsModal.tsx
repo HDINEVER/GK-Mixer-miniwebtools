@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Drawer } from 'vaul';
 import {
   XIcon,
@@ -16,13 +16,18 @@ import {
   SparkleIcon,
   CheckIcon,
   SwatchesIcon,
+  SquaresFour as SquaresFourIcon,
 } from '@phosphor-icons/react';
 import { ColorSpace, Language } from '../types';
 import {
   ACCENT_THEMES,
   AccentThemeId,
+  UIStyle,
+  THEME_SYNC_EVENT,
   loadAccentTheme,
   saveAccentTheme,
+  loadUIStyle,
+  saveUIStyle,
   themeSwatches,
 } from '../utils/accentTheme';
 
@@ -51,10 +56,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [copiedQQ, setCopiedQQ] = useState(false);
   const [accentTheme, setAccentTheme] = useState<AccentThemeId>(() => loadAccentTheme());
+  const [uiStyle, setUiStyle] = useState<UIStyle>(() => loadUIStyle());
+
+  useEffect(() => {
+    const sync = () => {
+      setAccentTheme(loadAccentTheme());
+      setUiStyle(loadUIStyle());
+    };
+    window.addEventListener(THEME_SYNC_EVENT, sync);
+    return () => window.removeEventListener(THEME_SYNC_EVENT, sync);
+  }, []);
 
   const handleAccentChange = (id: AccentThemeId) => {
     setAccentTheme(id);
     saveAccentTheme(id);
+  };
+
+  const handleUiStyleChange = (style: UIStyle) => {
+    setUiStyle(style);
+    saveUIStyle(style);
   };
 
   const handleCopyQQ = () => {
@@ -199,8 +219,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onClick={() => setTheme('light')}
                   className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 text-xs font-medium transition-all active:scale-[0.97] ${
                     theme === 'light'
-                      ? 'border-amber-500 bg-amber-500 font-bold text-white shadow-sm'
-                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-amber-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
+                      ? 'border-[var(--accent-color)] bg-[var(--accent-color)] font-bold text-white shadow-sm'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
                   }`}
                 >
                   <SunIcon className="h-4 w-4" />
@@ -211,12 +231,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onClick={() => setTheme('dark')}
                   className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 text-xs font-medium transition-all active:scale-[0.97] ${
                     theme === 'dark'
-                      ? 'border-indigo-600 bg-indigo-600 font-bold text-white shadow-sm'
-                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
+                      ? 'border-[var(--accent-color)] bg-[var(--accent-color)] font-bold text-white shadow-sm'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
                   }`}
                 >
                   <MoonIcon className="h-4 w-4" />
                   <span>{lang === 'zh' ? '深色模式' : lang === 'ja' ? 'ダーク' : 'Dark Mode'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 3.5. 界面视觉风格 / UI Visual Style */}
+            <div>
+              <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <SquaresFourIcon className="h-3.5 w-3.5" /> {lang === 'zh' ? '界面视觉风格 (UI Style)' : lang === 'ja' ? 'UI スタイル' : 'UI Visual Style'}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleUiStyleChange('glass')}
+                  aria-pressed={uiStyle === 'glass'}
+                  className={`relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all active:scale-[0.97] ${
+                    uiStyle === 'glass'
+                      ? 'border-[var(--accent-color)] bg-[var(--accent-soft)] text-slate-900 ring-1 ring-[var(--accent-color)]/40 dark:text-white'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span className="text-xs font-extrabold">
+                      🔮 {lang === 'zh' ? '流体毛玻璃 (Glass)' : lang === 'ja' ? 'リキッドガラス' : 'Liquid Glass'}
+                    </span>
+                    {uiStyle === 'glass' && (
+                      <span
+                        className="flex h-4 w-4 items-center justify-center rounded-full text-white"
+                        style={{ backgroundColor: 'var(--accent-color)' }}
+                      >
+                        <CheckIcon className="h-2.5 w-2.5" weight="bold" />
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+                    {lang === 'zh'
+                      ? '大圆角 · 磨砂半透明 · 柔和弥散阴影'
+                      : 'Frosted blur, large radii & soft shadows'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUiStyleChange('blueprint')}
+                  aria-pressed={uiStyle === 'blueprint'}
+                  className={`relative flex flex-col items-start gap-1 rounded-lg border-2 p-3 text-left transition-all active:scale-[0.97] ${
+                    uiStyle === 'blueprint'
+                      ? 'border-slate-900 bg-[var(--accent-soft)] text-slate-900 shadow-[2px_2px_0px_#0f172a] dark:border-slate-300 dark:text-white'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span className="text-xs font-extrabold">
+                      📐 {lang === 'zh' ? '工程线框风 (Blueprint)' : lang === 'ja' ? 'ブループリント' : 'Blueprint Wireframe'}
+                    </span>
+                    {uiStyle === 'blueprint' && (
+                      <span
+                        className="flex h-4 w-4 items-center justify-center rounded text-white border border-slate-900"
+                        style={{ backgroundColor: 'var(--accent-color)' }}
+                      >
+                        <CheckIcon className="h-2.5 w-2.5" weight="bold" />
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+                    {lang === 'zh'
+                      ? '24px 工程网格 · 1.5px 硬边框 · 机械硬投影'
+                      : '24px grid, 1.5px crisp border & hard offset shadow'}
+                  </span>
                 </button>
               </div>
             </div>
@@ -237,8 +325,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       onClick={() => handleAccentChange(item.id)}
                       aria-pressed={active}
                       className={`relative flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1 py-2 text-[11px] font-semibold transition-all duration-150 active:scale-[0.96] ${
-                        active
-                          ? 'border-sky-500 bg-sky-50 text-sky-700 shadow-sm ring-1 ring-sky-500/40 dark:bg-sky-500/15 dark:text-sky-200'
+                       active
+                          ? 'border-accent bg-accent/10 text-accent shadow-sm ring-1 ring-accent/40 dark:bg-accent/15 dark:text-accent-light'
                           : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
                       }`}
                     >
@@ -253,7 +341,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </span>
                       <span className="truncate">{item.name[lang] ?? item.name.en}</span>
                       {active && (
-                        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-white">
+                        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-white">
                           <CheckIcon className="h-2.5 w-2.5" weight="bold" />
                         </span>
                       )}

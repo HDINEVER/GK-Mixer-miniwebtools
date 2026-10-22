@@ -7,6 +7,7 @@ export interface SwatchSettings {
   lineWidth: number; // 1 to 6 px, default 2.5
   lineMatchPaintColor: boolean; // default false
   cardScale: number; // 0.6 to 1.6, default 1.0
+  cardBaseWidth: number; // 120 to 220 px, default 160 (locked aspect ratio with height)
   cardGlassEffect: boolean; // default false
 }
 
@@ -15,33 +16,42 @@ export const DEFAULT_SWATCH_SETTINGS: SwatchSettings = {
   lineWidth: 2.5,
   lineMatchPaintColor: false,
   cardScale: 1.0,
+  cardBaseWidth: 160,
   cardGlassEffect: false,
 };
 
 export const BASE_CARD_W = 160;
 export const BASE_CARD_H = 72;
+export const CARD_ASPECT_RATIO = BASE_CARD_H / BASE_CARD_W; // 0.45 locked aspect ratio
 export const REFERENCE_CANVAS_DIM = 800;
+
+export function getCardBaseDimensions(cardBaseWidth = BASE_CARD_W): { baseW: number; baseH: number } {
+  const baseW = Math.min(220, Math.max(120, cardBaseWidth || BASE_CARD_W));
+  const baseH = Math.round(baseW * CARD_ASPECT_RATIO);
+  return { baseW, baseH };
+}
 
 /**
  * Computes proportional canvas scale factor for cards & lines given image dimensions.
  * Matches iOS ExtractLabelMetrics.canvasScale with narrow aspect-ratio adaptation.
  */
-export function getCanvasScale(width: number, height: number): number {
+export function getCanvasScale(width: number, height: number, cardBaseWidth = BASE_CARD_W): number {
   const maxSide = Math.max(width, height);
   if (maxSide <= 1) return 1.0;
 
   let scale = maxSide / REFERENCE_CANVAS_DIM;
+  const { baseW } = getCardBaseDimensions(cardBaseWidth);
 
   // Guard for ultra-tall portrait aspect ratios (e.g. 9:19.5 phone screenshots):
   // Cap the card width so it never takes up more than ~36% of the canvas width
   // at default 1.0x card scale, preserving clean two-column layout without overlap.
   const maxCardWidth = width * 0.36;
-  if (BASE_CARD_W * scale > maxCardWidth && width > 40) {
-    scale = maxCardWidth / BASE_CARD_W;
+  if (baseW * scale > maxCardWidth && width > 40) {
+    scale = maxCardWidth / baseW;
   }
 
   // Set a reasonable floor so interactive cards don't vanish on tiny thumbnails
-  return Math.max(0.35, scale);
+  return Math.max(0.32, scale);
 }
 
 export interface LeaderLinePath {
@@ -299,17 +309,19 @@ export function autoArrangeLeftRight<T extends { id: string; nx: number; ny: num
   boxW: number,
   boxH: number,
   cardScale = 1.0,
-  edgePadding = 12
+  edgePadding = 12,
+  cardBaseWidth = BASE_CARD_W
 ): { [id: string]: { nx: number; ny: number } } {
   const assigned = markers.filter((m) => !!m.paint);
   if (assigned.length === 0) return {};
 
   const width = Math.max(boxW, 100);
   const height = Math.max(boxH, 100);
-  const canvasScale = getCanvasScale(width, height);
+  const { baseW, baseH } = getCardBaseDimensions(cardBaseWidth);
+  const canvasScale = getCanvasScale(width, height, baseW);
   const totalScale = canvasScale * cardScale;
-  const cardW = BASE_CARD_W * totalScale;
-  const cardH = BASE_CARD_H * totalScale;
+  const cardW = baseW * totalScale;
+  const cardH = baseH * totalScale;
   const resolvedEdgePadding = Math.min(edgePadding, width * 0.04);
 
   const leftGroup: T[] = [];
@@ -415,17 +427,19 @@ export function autoArrangeTopBottom<T extends { id: string; nx: number; ny: num
   boxW: number,
   boxH: number,
   cardScale = 1.0,
-  edgePadding = 12
+  edgePadding = 12,
+  cardBaseWidth = BASE_CARD_W
 ): { [id: string]: { nx: number; ny: number } } {
   const assigned = markers.filter((m) => !!m.paint);
   if (assigned.length === 0) return {};
 
   const width = Math.max(boxW, 100);
   const height = Math.max(boxH, 100);
-  const canvasScale = getCanvasScale(width, height);
+  const { baseW, baseH } = getCardBaseDimensions(cardBaseWidth);
+  const canvasScale = getCanvasScale(width, height, baseW);
   const totalScale = canvasScale * cardScale;
-  const cardW = BASE_CARD_W * totalScale;
-  const cardH = BASE_CARD_H * totalScale;
+  const cardW = baseW * totalScale;
+  const cardH = baseH * totalScale;
   const resolvedEdgePadding = Math.min(edgePadding, height * 0.04);
 
   const topGroup: T[] = [];
@@ -532,14 +546,16 @@ export function alignMarkers<T extends { id: string; nx: number; ny: number; lab
   boxH: number,
   cardScale = 1.0,
   targetId?: string,
-  edgePadding = 12
+  edgePadding = 12,
+  cardBaseWidth = BASE_CARD_W
 ): { [id: string]: { nx: number; ny: number } } {
   const width = Math.max(boxW, 100);
   const height = Math.max(boxH, 100);
-  const canvasScale = getCanvasScale(width, height);
+  const { baseW, baseH } = getCardBaseDimensions(cardBaseWidth);
+  const canvasScale = getCanvasScale(width, height, baseW);
   const totalScale = canvasScale * cardScale;
-  const cardW = BASE_CARD_W * totalScale;
-  const cardH = BASE_CARD_H * totalScale;
+  const cardW = baseW * totalScale;
+  const cardH = baseH * totalScale;
   const cardWNorm = cardW / width;
   const cardHNorm = cardH / height;
   const resolvedEdgePadding = Math.min(edgePadding, Math.min(width, height) * 0.04);
@@ -593,14 +609,16 @@ export function resetMarkerPositions<T extends { id: string; nx: number; ny: num
   boxW: number,
   boxH: number,
   cardScale = 1.0,
-  targetId?: string
+  targetId?: string,
+  cardBaseWidth = BASE_CARD_W
 ): { [id: string]: { nx: number; ny: number } } {
   const width = Math.max(boxW, 100);
   const height = Math.max(boxH, 100);
-  const canvasScale = getCanvasScale(width, height);
+  const { baseW, baseH } = getCardBaseDimensions(cardBaseWidth);
+  const canvasScale = getCanvasScale(width, height, baseW);
   const totalScale = canvasScale * cardScale;
-  const cardW = BASE_CARD_W * totalScale;
-  const cardH = BASE_CARD_H * totalScale;
+  const cardW = baseW * totalScale;
+  const cardH = baseH * totalScale;
   const cardWNorm = cardW / width;
   const cardHNorm = cardH / height;
   const gap = Math.max(12, width * 0.02) / width;

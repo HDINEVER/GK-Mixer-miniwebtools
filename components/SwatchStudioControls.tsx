@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
-import { Language } from '../types';
-import { translations } from '../utils/translations';
+import React, { useEffect, useRef, useState } from "react";
+import { CatalogPaint, ColorData, Language } from "../types";
+import { translations } from "../utils/translations";
 import {
+  alignMarkers,
+  autoArrangeLeftRight,
+  autoArrangeTopBottom,
   ExtractLeaderLineStyle,
+  getCanvasScale,
+  getCardBaseDimensions,
+  resetMarkerPositions,
   SwatchSettings,
-} from '../utils/swatchLayout';
+} from "../utils/swatchLayout";
+import { localizedBrand } from "../utils/paintCatalog";
 import {
   SparkleIcon,
   ArrowLeftIcon,
@@ -18,37 +25,270 @@ import {
   ColumnsIcon,
   RowsIcon,
   CaretDownIcon,
-} from '@phosphor-icons/react';
+} from "@phosphor-icons/react";
 
-interface SwatchStudioControlsProps {
+export interface SwatchStudioControlsProps {
   settings: SwatchSettings;
-  onChangeSettings: (updater: (prev: SwatchSettings) => SwatchSettings) => void;
-  onAutoArrangeLR: () => void;
-  onAutoArrangeTB: () => void;
-  onAlign: (alignment: 'left' | 'right' | 'top' | 'bottom' | 'autoH' | 'autoV') => void;
-  onResetPositions: () => void;
+  onChangeSettings?: (updater: (prev: SwatchSettings) => SwatchSettings) => void;
+  onUpdateSettings?: (updater: (prev: SwatchSettings) => SwatchSettings) => void;
+  onAutoArrangeLR?: () => void;
+  onAutoArrangeTB?: () => void;
+  onAlign?: (alignment: "left" | "right" | "top" | "bottom" | "autoH" | "autoV") => void;
+  onResetPositions?: () => void;
   lang: Language;
-  assignedCount: number;
+  assignedCount?: number;
   className?: string;
   isCompact?: boolean;
-  variant?: 'toolbar' | 'sidebar';
+  variant?: "toolbar" | "sidebar";
+  // Optional direct colors control (used in SwatchEditorModal)
+  colors?: ColorData[];
+  selectedColor?: ColorData | null;
+  onSelectColor?: (color: ColorData) => void;
+  onUpdateColors?: (updater: (prev: ColorData[]) => ColorData[]) => void;
+  canvasSize?: { w: number; h: number };
+  onExportImage?: () => void;
+  isExporting?: boolean;
 }
 
 export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
   settings,
   onChangeSettings,
+  onUpdateSettings,
   onAutoArrangeLR,
   onAutoArrangeTB,
   onAlign,
   onResetPositions,
   lang,
-  assignedCount,
-  className = '',
+  assignedCount: assignedCountProp,
+  className = "",
   isCompact = false,
-  variant = 'toolbar',
+  variant = "toolbar",
+  colors,
+  selectedColor,
+  onSelectColor,
+  onUpdateColors,
+  canvasSize = { w: 600, h: 450 },
+  onExportImage,
+  isExporting,
 }) => {
   const [isExpanded, setIsExpanded] = useState(!isCompact);
+  const [applyToAll, setApplyToAll] = useState<boolean>(false);
   const t = translations[lang] || translations.zh;
+  const updateSettings = onChangeSettings || onUpdateSettings || (() => {});
+
+  const assignedColors = (colors || []).filter(
+    (c): c is ColorData & { sampleX: number; sampleY: number; assignedPaint: CatalogPaint } =>
+      Number.isFinite(c.sampleX) && Number.isFinite(c.sampleY) && !!c.assignedPaint
+  );
+
+  const assignedCount = assignedCountProp ?? assignedColors.length;
+  const activeAssigned =
+    selectedColor && selectedColor.assignedPaint
+      ? selectedColor
+      : assignedColors[0] || null;
+
+  const { w: cw, h: ch } = canvasSize;
+  const { baseW, baseH } = getCardBaseDimensions(settings.cardBaseWidth);
+  const s = getCanvasScale(cw, ch, baseW);
+  const effectiveScale = activeAssigned
+    ? activeAssigned.labelScale ?? settings.cardScale
+    : settings.cardScale;
+  const cardWNorm = cw > 0 ? (baseW * s * effectiveScale) / cw : 0.2;
+  const cardHNorm = ch > 0 ? (baseH * s * effectiveScale) / ch : 0.1;
+  const maxX = Math.max(0.01, 1 - cardWNorm);
+  const maxY = Math.max(0.01, 1 - cardHNorm);
+
+  const curNx =
+    activeAssigned && typeof activeAssigned.labelNx === "number"
+      ? activeAssigned.labelNx
+      : activeAssigned && typeof activeAssigned.sampleX === "number"
+      ? activeAssigned.sampleX > 0.55
+        ? Math.max(0.01, activeAssigned.sampleX - cardWNorm - 0.03)
+        : Math.min(maxX, activeAssigned.sampleX + 0.03)
+      : 0.1;
+
+  const curNy =
+    activeAssigned && typeof activeAssigned.labelNy === "number"
+      ? activeAssigned.labelNy
+      : activeAssigned && typeof activeAssigned.sampleY === "number"
+      ? Math.min(maxY, Math.max(0.01, activeAssigned.sampleY - cardHNorm / 2))
+      : 0.1;
+
+  const triggerAutoArrangeLR = () => {
+    if (onAutoArrangeLR) {
+      onAutoArrangeLR();
+      return;
+    }
+    if (!onUpdateColors) return;
+    const markers = assignedColors.map((c) => ({
+      id: c.id,
+      nx: c.sampleX,
+      ny: c.sampleY,
+      paint: c.assignedPaint,
+    }));
+    const arranged = autoArrangeLeftRight(
+      markers,
+      cw,
+      ch,
+      settings.cardScale,
+      12,
+      settings.cardBaseWidth
+    );
+    onUpdateColors((prev) =>
+      prev.map((c) =>
+        arranged[c.id] ? { ...c, labelNx: arranged[c.id].nx, labelNy: arranged[c.id].ny } : c
+      )
+    );
+  };
+
+  const triggerAutoArrangeTB = () => {
+    if (onAutoArrangeTB) {
+      onAutoArrangeTB();
+      return;
+    }
+    if (!onUpdateColors) return;
+    const markers = assignedColors.map((c) => ({
+      id: c.id,
+      nx: c.sampleX,
+      ny: c.sampleY,
+      paint: c.assignedPaint,
+    }));
+    const arranged = autoArrangeTopBottom(
+      markers,
+      cw,
+      ch,
+      settings.cardScale,
+      12,
+      settings.cardBaseWidth
+    );
+    onUpdateColors((prev) =>
+      prev.map((c) =>
+        arranged[c.id] ? { ...c, labelNx: arranged[c.id].nx, labelNy: arranged[c.id].ny } : c
+      )
+    );
+  };
+
+  const triggerAlign = (alignment: "left" | "right" | "top" | "bottom" | "autoH" | "autoV") => {
+    if (onAlign) {
+      onAlign(alignment);
+      return;
+    }
+    if (!onUpdateColors) return;
+    const markers = assignedColors.map((c) => ({
+      id: c.id,
+      nx: c.sampleX,
+      ny: c.sampleY,
+      labelNx: c.labelNx,
+      labelNy: c.labelNy,
+      paint: c.assignedPaint,
+    }));
+    const targetId = applyToAll ? undefined : activeAssigned?.id;
+    const aligned = alignMarkers(
+      markers,
+      alignment,
+      cw,
+      ch,
+      settings.cardScale,
+      targetId,
+      12,
+      settings.cardBaseWidth
+    );
+    onUpdateColors((prev) =>
+      prev.map((c) =>
+        aligned[c.id] ? { ...c, labelNx: aligned[c.id].nx, labelNy: aligned[c.id].ny } : c
+      )
+    );
+  };
+
+  const triggerReset = () => {
+    if (onResetPositions) {
+      onResetPositions();
+      return;
+    }
+    if (!onUpdateColors) return;
+    const markers = assignedColors.map((c) => ({
+      id: c.id,
+      nx: c.sampleX,
+      ny: c.sampleY,
+    }));
+    const targetId = applyToAll ? undefined : activeAssigned?.id;
+    const reset = resetMarkerPositions(
+      markers,
+      cw,
+      ch,
+      settings.cardScale,
+      targetId,
+      settings.cardBaseWidth
+    );
+    onUpdateColors((prev) =>
+      prev.map((c) =>
+        reset[c.id]
+          ? {
+              ...c,
+              labelNx: reset[c.id].nx,
+              labelNy: reset[c.id].ny,
+              labelScale: applyToAll ? undefined : c.id === activeAssigned?.id ? undefined : c.labelScale,
+            }
+          : c
+      )
+    );
+  };
+
+  const sliderRafRef = useRef<number | null>(null);
+  const pendingActionRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (sliderRafRef.current !== null) {
+        cancelAnimationFrame(sliderRafRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleSliderUpdate = (fn: () => void) => {
+    pendingActionRef.current = fn;
+    if (sliderRafRef.current === null) {
+      sliderRafRef.current = requestAnimationFrame(() => {
+        sliderRafRef.current = null;
+        pendingActionRef.current?.();
+      });
+    }
+  };
+
+  const handleScaleChange = (newScale: number) => {
+    const clamped = Math.min(1.6, Math.max(0.6, newScale));
+    const targetId = activeAssigned?.id;
+    scheduleSliderUpdate(() => {
+      if (applyToAll || !targetId || !onUpdateColors) {
+        updateSettings((prev) => ({ ...prev, cardScale: clamped }));
+        if (onUpdateColors) {
+          onUpdateColors((prev) => prev.map((c) => ({ ...c, labelScale: undefined })));
+        }
+      } else {
+        onUpdateColors((prev) =>
+          prev.map((c) => (c.id === targetId ? { ...c, labelScale: clamped } : c))
+        );
+      }
+    });
+  };
+
+  const handlePosChange = (axis: "x" | "y", val: number) => {
+    if (!activeAssigned || !onUpdateColors) return;
+    const targetId = activeAssigned.id;
+    const clampedVal = axis === "x" ? Math.min(Math.max(0, val), maxX) : Math.min(Math.max(0, val), maxY);
+    scheduleSliderUpdate(() => {
+      onUpdateColors((prev) =>
+        prev.map((c) => {
+          if (c.id !== targetId) return c;
+          return {
+            ...c,
+            labelNx: axis === "x" ? clampedVal : c.labelNx ?? curNx,
+            labelNy: axis === "y" ? clampedVal : c.labelNy ?? curNy,
+          };
+        })
+      );
+    });
+  };
 
   const lineStyles: Array<{
     id: ExtractLeaderLineStyle;
@@ -56,8 +296,8 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
     icon: React.ReactNode;
   }> = [
     {
-      id: 'stepped',
-      title: t.lineStepped || '折线',
+      id: "stepped",
+      title: t.lineStepped || "折线",
       icon: (
         <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M3 15h6v-10h8" strokeLinecap="round" strokeLinejoin="miter" />
@@ -65,8 +305,8 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
       ),
     },
     {
-      id: 'roundedStepped',
-      title: t.lineRoundedStepped || '圆角',
+      id: "roundedStepped",
+      title: t.lineRoundedStepped || "圆角",
       icon: (
         <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M3 15h4a2 2 0 0 0 2-2V7a2 2 0 0 1 2-2h6" strokeLinecap="round" strokeLinejoin="round" />
@@ -74,8 +314,8 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
       ),
     },
     {
-      id: 'straight',
-      title: t.lineStraight || '直线',
+      id: "straight",
+      title: t.lineStraight || "直线",
       icon: (
         <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
           <line x1="3" y1="16" x2="17" y2="4" strokeLinecap="round" />
@@ -83,8 +323,8 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
       ),
     },
     {
-      id: 'curved',
-      title: t.lineCurved || '曲线',
+      id: "curved",
+      title: t.lineCurved || "曲线",
       icon: (
         <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M3 15 C 9 15, 11 5, 17 5" strokeLinecap="round" />
@@ -93,372 +333,292 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
     },
   ];
 
-  const scalePresets = [
-    { label: '75%', value: 0.75 },
-    { label: '100%', value: 1.0 },
-    { label: '125%', value: 1.25 },
-    { label: '150%', value: 1.5 },
-  ];
-
-  if (variant === 'sidebar') {
-    return (
-      <div
-        className={`flex flex-col rounded-xl border border-slate-200/90 bg-white/95 p-3.5 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 space-y-4 ${className}`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-tr from-sky-500 to-indigo-500 text-white shadow-sm">
-              <CardsIcon className="h-3.5 w-3.5" weight="bold" />
-            </div>
-            <div>
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                {t.swatchStudio || '色卡制作'}
-              </div>
-              <div className="text-[10px] text-slate-400">
-                {assignedCount} {lang === 'zh' ? '个色卡' : 'cards'}
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onResetPositions}
-            className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition"
-            title="重置色卡至采样点附近位置"
-          >
-            <ArrowCounterClockwiseIcon className="h-3 w-3" weight="bold" />
-            <span>{t.resetLayout || '重置'}</span>
-          </button>
-        </div>
-
-        {/* 1-Click Auto Arrange */}
-        <div>
-          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {lang === 'zh' ? '一键智能排版' : lang === 'ja' ? '自動レイアウト' : 'Smart Layout'}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={onAutoArrangeLR}
-              disabled={assignedCount === 0}
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-sky-200/80 bg-sky-50/70 p-2 text-xs font-bold text-sky-700 transition hover:bg-sky-100 hover:shadow-sm active:scale-[0.98] disabled:opacity-40 dark:border-sky-800/80 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/60"
-            >
-              <ColumnsIcon className="h-4 w-4" weight="bold" />
-              <span>{t.autoArrangeLR || '左右分列'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onAutoArrangeTB}
-              disabled={assignedCount === 0}
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200/80 bg-indigo-50/70 p-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 hover:shadow-sm active:scale-[0.98] disabled:opacity-40 dark:border-indigo-800/80 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60"
-            >
-              <RowsIcon className="h-4 w-4" weight="bold" />
-              <span>{t.autoArrangeTB || '上下分行'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Section 1: 连接线种类 */}
-        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-              {t.leaderLineStyle || '连接线种类'}
-            </span>
-            <span className="font-mono text-[10px] text-slate-400">
-              {settings.lineStyle === 'stepped'
-                ? '90° 折线'
-                : settings.lineStyle === 'roundedStepped'
-                ? '圆角折线'
-                : settings.lineStyle === 'straight'
-                ? '极简直线'
-                : '平滑曲线'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-4 gap-1 rounded-lg bg-slate-100/90 p-1 dark:bg-slate-800/90">
-            {lineStyles.map((item) => {
-              const active = settings.lineStyle === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onChangeSettings((prev) => ({ ...prev, lineStyle: item.id }))}
-                  className={`flex flex-col items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-semibold transition-all ${
-                    active
-                      ? 'bg-white text-sky-600 shadow-sm dark:bg-slate-700 dark:text-white'
-                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-                  }`}
-                  title={item.title}
-                >
-                  {item.icon}
-                  <span>{item.title}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center justify-between gap-2 pt-1 text-xs">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">
-              {t.lineWidth || '粗细'}:
-            </span>
-            <input
-              type="range"
-              min="1"
-              max="6"
-              step="0.5"
-              value={settings.lineWidth}
-              onChange={(e) =>
-                onChangeSettings((prev) => ({ ...prev, lineWidth: parseFloat(e.target.value) }))
-              }
-              className="h-1.5 flex-1 cursor-pointer accent-sky-500"
-            />
-            <span className="font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300 w-8 text-right">
-              {settings.lineWidth.toFixed(1)}px
-            </span>
-          </div>
-
-          <label className="flex cursor-pointer select-none items-center gap-2 pt-0.5">
-            <input
-              type="checkbox"
-              checked={settings.lineMatchPaintColor}
-              onChange={(e) =>
-                onChangeSettings((prev) => ({ ...prev, lineMatchPaintColor: e.target.checked }))
-              }
-              className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
-            />
-            <span className="text-[11px] text-slate-600 dark:text-slate-300">
-              {t.lineMatchPaint || '连接线匹配油漆主色'}
-            </span>
-          </label>
-        </div>
-
-        {/* Section 2: 色卡大小 & 质感 */}
-        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-              {t.cardSize || '色卡大小'}
-            </span>
-            <span className="font-mono text-[10px] font-bold text-sky-600 dark:text-sky-400">
-              {Math.round(settings.cardScale * 100)}%
-            </span>
-          </div>
-
-          <div className="grid grid-cols-4 gap-1 rounded-lg bg-slate-100/90 p-0.5 dark:bg-slate-800/90">
-            {scalePresets.map((preset) => {
-              const active = Math.abs(settings.cardScale - preset.value) < 0.05;
-              return (
-                <button
-                  key={preset.label}
-                  type="button"
-                  onClick={() => onChangeSettings((prev) => ({ ...prev, cardScale: preset.value }))}
-                  className={`rounded-md py-1 text-center text-[10px] font-semibold transition ${
-                    active
-                      ? 'bg-white text-sky-600 shadow-sm dark:bg-slate-700 dark:text-white'
-                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                  }`}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400">60%</span>
-            <input
-              type="range"
-              min="0.6"
-              max="1.5"
-              step="0.05"
-              value={settings.cardScale}
-              onChange={(e) =>
-                onChangeSettings((prev) => ({ ...prev, cardScale: parseFloat(e.target.value) }))
-              }
-              className="h-1.5 flex-1 cursor-pointer accent-sky-500"
-            />
-            <span className="text-[10px] text-slate-400">150%</span>
-          </div>
-
-          <label className={`flex cursor-pointer select-none items-center justify-between gap-2 rounded-lg border p-2 transition ${
-            settings.cardGlassEffect
-              ? 'border-sky-300 bg-sky-50/70 text-sky-800 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-300 shadow-sm'
-              : 'border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50'
-          }`}>
-            <span className="flex items-center gap-1 text-[11px] font-semibold">
-              <SparkleIcon className="w-3.5 h-3.5 text-sky-500" weight="fill" />
-              <span>{t.cardGlass || '液态玻璃质感'}</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={settings.cardGlassEffect}
-              onChange={(e) =>
-                onChangeSettings((prev) => ({ ...prev, cardGlassEffect: e.target.checked }))
-              }
-              className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
-            />
-          </label>
-        </div>
-
-        {/* Section 3: 边缘对齐 */}
-        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-              {t.edgeAlign || '边缘对齐与避让'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-1.5">
-            <button
-              type="button"
-              onClick={() => onAlign('left')}
-              className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
-            >
-              <ArrowLeftIcon className="w-3 h-3" />
-              <span>{t.alignLeft || '靠左'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onAlign('autoH')}
-              className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
-            >
-              <ArrowsHorizontalIcon className="w-3 h-3" />
-              <span>{t.alignAuto || '水平避让'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onAlign('right')}
-              className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
-            >
-              <ArrowRightIcon className="w-3 h-3" />
-              <span>{t.alignRight || '靠右'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onAlign('top')}
-              className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
-            >
-              <ArrowUpIcon className="w-3 h-3" />
-              <span>{t.alignTop || '靠顶'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onAlign('autoV')}
-              className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
-            >
-              <ArrowsVerticalIcon className="w-3 h-3" />
-              <span>{t.alignAuto || '垂直避让'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onAlign('bottom')}
-              className="flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white py-1.5 text-[10px] font-medium text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400 shadow-xs"
-            >
-              <ArrowDownIcon className="w-3 h-3" />
-              <span>{t.alignBottom || '靠底'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
-      className={`rounded-xl border border-slate-200/90 bg-white/95 shadow-sm backdrop-blur-md transition-all dark:border-slate-700/80 dark:bg-slate-900/95 ${className}`}
+      className={`flex flex-col rounded-2xl border border-slate-200/90 bg-white/95 p-3.5 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 space-y-3.5 ${className}`}
     >
-      {/* Header bar / Quick toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-3">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-tr from-sky-500 to-indigo-500 text-white shadow-sm">
             <CardsIcon className="h-3.5 w-3.5" weight="bold" />
           </div>
           <div>
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
-              {t.swatchStudio || '色卡制作'}
-            </span>
-            <span className="ml-1.5 text-[10px] text-slate-400">
-              ({assignedCount} {lang === 'zh' ? '个色卡' : 'cards'})
-            </span>
+            <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
+              {t.swatchStudio || "色卡制作与排版"}
+            </div>
+            <div className="text-[10px] text-slate-400">
+              {assignedCount} {lang === "zh" ? "个色卡" : "cards"}
+            </div>
           </div>
         </div>
 
-        {/* Quick auto-layout buttons */}
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onAutoArrangeLR}
-            disabled={assignedCount === 0}
-            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-sky-600 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-sky-400"
-            title="将所有色卡左右分列排列，自动垂直避让"
-          >
-            <ColumnsIcon className="h-3.5 w-3.5" weight="bold" />
-            <span>{t.autoArrangeLR || '左右分列'}</span>
-          </button>
+          {colors && onUpdateColors && (
+            <div className="inline-flex rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200/70 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setApplyToAll(false)}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${
+                  !applyToAll
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                当前
+              </button>
+              <button
+                type="button"
+                onClick={() => setApplyToAll(true)}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${
+                  applyToAll
+                    ? "bg-sky-500 text-white shadow-xs"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                全部
+              </button>
+            </div>
+          )}
 
           <button
             type="button"
-            onClick={onAutoArrangeTB}
-            disabled={assignedCount === 0}
-            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-sky-600 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-sky-400"
-            title="将所有色卡上下分行排列，自动水平避让"
+            onClick={triggerReset}
+            className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition"
+            title="重置色卡至采样点附近位置"
           >
-            <RowsIcon className="h-3.5 w-3.5" weight="bold" />
-            <span>{t.autoArrangeTB || '上下分行'}</span>
+            <ArrowCounterClockwiseIcon className="h-3 w-3" weight="bold" />
+            <span>{t.resetLayout || "重置"}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setIsExpanded((prev) => !prev)}
-            className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold transition ${
-              isExpanded
-                ? 'border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300'
-                : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-            }`}
-          >
-            <CaretDownIcon
-              className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-              weight="bold"
-            />
-            <span>{isExpanded ? (lang === 'zh' ? '收起设置' : 'Hide') : (lang === 'zh' ? '更多设置' : 'Settings')}</span>
-          </button>
+          {variant === "toolbar" && isCompact && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-1 text-slate-400 hover:text-slate-600"
+            >
+              <CaretDownIcon
+                className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+              />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Expanded detailed settings panel */}
+      {/* Horizontal Scrollable Assigned Paint Cards Selector (when colors provided) */}
+      {assignedColors.length > 0 && onSelectColor && (
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          {assignedColors.map((item, idx) => {
+            const isSelected = activeAssigned?.id === item.id;
+            const p = item.assignedPaint;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelectColor(item)}
+                className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-left transition shrink-0 border ${
+                  isSelected
+                    ? "border-sky-500 bg-sky-50 dark:bg-sky-950/60 text-slate-900 dark:text-white ring-1 ring-sky-400/40 shadow-2xs"
+                    : "border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                }`}
+              >
+                <span
+                  className="h-3.5 w-3.5 rounded border border-black/15 shrink-0"
+                  style={{ backgroundColor: p.hex }}
+                />
+                <div className="min-w-0 max-w-[115px]">
+                  <div className="truncate text-[10px] font-extrabold leading-tight">
+                    #{idx + 1} {localizedBrand(p.brand, lang)} {p.code}
+                  </div>
+                  <div className="truncate text-[9px] text-slate-400 leading-tight">{p.name}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {isExpanded && (
-        <div className="space-y-3.5 border-t border-slate-100 p-3.5 dark:border-slate-800/80">
-          {/* Section 1: 连接线种类 (Leader Line Style) */}
+        <div className="space-y-3.5">
+          {/* 1-Click Auto Arrange */}
           <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-[11px] font-bold tracking-wide text-slate-600 dark:text-slate-300">
-                {t.leaderLineStyle || '连接线种类'}
-              </span>
-              <span className="font-mono text-[10px] text-slate-400">
-                {settings.lineStyle === 'stepped'
-                  ? '90° 直角工程折线'
-                  : settings.lineStyle === 'roundedStepped'
-                  ? '导圆角作例流线'
-                  : settings.lineStyle === 'straight'
-                  ? '极简直接连线'
-                  : '平滑贝塞尔曲线'}
-              </span>
+            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              {lang === "zh" ? "一键智能排版" : "Smart Layout"}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={triggerAutoArrangeLR}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/80 py-2 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 hover:text-sky-600 transition"
+              >
+                <ColumnsIcon className="h-3.5 w-3.5 text-sky-500" weight="bold" />
+                <span>{t.autoArrangeLR || "左右分列"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={triggerAutoArrangeTB}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/80 py-2 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 hover:text-sky-600 transition"
+              >
+                <RowsIcon className="h-3.5 w-3.5 text-sky-500" weight="bold" />
+                <span>{t.autoArrangeTB || "上下分行"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 6 Quick Alignment Pills */}
+          <div className="grid grid-cols-6 gap-1">
+            <button
+              type="button"
+              onClick={() => triggerAlign("left")}
+              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+            >
+              <ArrowLeftIcon className="h-3 w-3" />
+              <span>靠左</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerAlign("autoH")}
+              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+            >
+              <ArrowsHorizontalIcon className="h-3 w-3" />
+              <span>自适应H</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerAlign("right")}
+              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+            >
+              <ArrowRightIcon className="h-3 w-3" />
+              <span>靠右</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerAlign("top")}
+              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+            >
+              <ArrowUpIcon className="h-3 w-3" />
+              <span>靠顶</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerAlign("autoV")}
+              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+            >
+              <ArrowsVerticalIcon className="h-3 w-3" />
+              <span>自适应V</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerAlign("bottom")}
+              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+            >
+              <ArrowDownIcon className="h-3 w-3" />
+              <span>靠底</span>
+            </button>
+          </div>
+
+          {/* Card Scale, Locked Aspect Ratio Base Width, and X/Y Sliders */}
+          <div className="space-y-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/50 p-3 border border-slate-200/60 dark:border-slate-800">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-slate-600 dark:text-slate-300">
+                  {t.cardSize || "色卡缩放"}
+                </span>
+                <span className="font-mono font-bold text-sky-600 dark:text-sky-400">
+                  {Math.round(effectiveScale * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0.6}
+                max={1.6}
+                step={0.02}
+                value={effectiveScale}
+                onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
+                className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+              />
             </div>
 
-            <div className="grid grid-cols-4 gap-1.5 rounded-lg bg-slate-100/80 p-1 dark:bg-slate-800/80">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-slate-600 dark:text-slate-300">
+                  卡片宽度 (锁定等比)
+                </span>
+                <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                  {settings.cardBaseWidth || 160}px
+                </span>
+              </div>
+              <input
+                type="range"
+                min={120}
+                max={220}
+                step={4}
+                value={settings.cardBaseWidth || 160}
+                onChange={(e) =>
+                  updateSettings((prev) => ({
+                    ...prev,
+                    cardBaseWidth: parseInt(e.target.value, 10),
+                  }))
+                }
+                className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+              />
+            </div>
+
+            {activeAssigned && onUpdateColors && (
+              <>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-slate-600 dark:text-slate-300">水平位置 (X)</span>
+                    <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                      {Math.round((curNx / maxX) * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxX}
+                    step={0.005}
+                    value={Math.min(curNx, maxX)}
+                    onChange={(e) => handlePosChange("x", parseFloat(e.target.value))}
+                    className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-slate-600 dark:text-slate-300">垂直位置 (Y)</span>
+                    <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                      {Math.round((curNy / maxY) * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxY}
+                    step={0.005}
+                    value={Math.min(curNy, maxY)}
+                    onChange={(e) => handlePosChange("y", parseFloat(e.target.value))}
+                    className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Leader Line Style & Width */}
+          <div className="space-y-2.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+            <div className="grid grid-cols-4 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
               {lineStyles.map((item) => {
                 const active = settings.lineStyle === item.id;
                 return (
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => onChangeSettings((prev) => ({ ...prev, lineStyle: item.id }))}
-                    className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-all ${
+                    onClick={() => updateSettings((prev) => ({ ...prev, lineStyle: item.id }))}
+                    className={`flex items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-bold transition ${
                       active
-                        ? 'bg-white text-sky-600 shadow-sm dark:bg-slate-700 dark:text-white'
-                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                        ? "bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-xs"
+                        : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
                     }`}
                   >
                     {item.icon}
@@ -468,173 +628,66 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
               })}
             </div>
 
-            {/* Line width and color options */}
-            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {t.lineWidth || '粗细'}:
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-slate-600 dark:text-slate-300">
+                  {t.lineWidth || "连接线粗细"}
                 </span>
-                <input
-                  type="range"
-                  min="1"
-                  max="6"
-                  step="0.5"
-                  value={settings.lineWidth}
-                  onChange={(e) =>
-                    onChangeSettings((prev) => ({ ...prev, lineWidth: parseFloat(e.target.value) }))
-                  }
-                  className="h-1.5 w-24 cursor-pointer accent-sky-500"
-                />
-                <span className="font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
                   {settings.lineWidth.toFixed(1)}px
                 </span>
               </div>
+              <input
+                type="range"
+                min={1}
+                max={6}
+                step={0.5}
+                value={settings.lineWidth}
+                onChange={(e) =>
+                  updateSettings((prev) => ({
+                    ...prev,
+                    lineWidth: parseFloat(e.target.value),
+                  }))
+                }
+                className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+              />
+            </div>
 
-              <label className="flex cursor-pointer select-none items-center gap-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+              <label className="flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 px-2.5 py-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={settings.lineMatchPaintColor}
                   onChange={(e) =>
-                    onChangeSettings((prev) => ({ ...prev, lineMatchPaintColor: e.target.checked }))
+                    updateSettings((prev) => ({
+                      ...prev,
+                      lineMatchPaintColor: e.target.checked,
+                    }))
                   }
-                  className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
+                  className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                 />
-                <span className="text-[11px] text-slate-600 dark:text-slate-300">
-                  {t.lineMatchPaint || '匹配油漆颜色'}
+                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                  {t.lineMatchColor || "线条跟随油漆色"}
                 </span>
               </label>
-            </div>
-          </div>
 
-          {/* Section 2: 色卡卡片大小与质感 (Card Size & Appearance) */}
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-[11px] font-bold tracking-wide text-slate-600 dark:text-slate-300">
-                {t.cardSize || '色卡大小'}
-              </span>
-              <span className="font-mono text-[10px] font-bold text-sky-600 dark:text-sky-400">
-                {Math.round(settings.cardScale * 100)}%
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-lg bg-slate-100/80 p-0.5 dark:bg-slate-800/80">
-                {scalePresets.map((preset) => {
-                  const active = Math.abs(settings.cardScale - preset.value) < 0.05;
-                  return (
-                    <button
-                      key={preset.label}
-                      type="button"
-                      onClick={() => onChangeSettings((prev) => ({ ...prev, cardScale: preset.value }))}
-                      className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${
-                        active
-                          ? 'bg-white text-sky-600 shadow-sm dark:bg-slate-700 dark:text-white'
-                          : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <input
-                type="range"
-                min="0.6"
-                max="1.5"
-                step="0.05"
-                value={settings.cardScale}
-                onChange={(e) =>
-                  onChangeSettings((prev) => ({ ...prev, cardScale: parseFloat(e.target.value) }))
-                }
-                className="h-1.5 min-w-[5rem] flex-1 cursor-pointer accent-sky-500"
-              />
-
-              {/* Liquid Glass toggle */}
-              <label className="flex cursor-pointer select-none items-center gap-1.5 rounded-lg border border-slate-200/80 px-2 py-1 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+              <label className="flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 px-2.5 py-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={settings.cardGlassEffect}
                   onChange={(e) =>
-                    onChangeSettings((prev) => ({ ...prev, cardGlassEffect: e.target.checked }))
+                    updateSettings((prev) => ({
+                      ...prev,
+                      cardGlassEffect: e.target.checked,
+                    }))
                   }
-                  className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
+                  className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                 />
-                <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                <span className="flex items-center gap-1 text-[11px] font-medium text-slate-700 dark:text-slate-300">
                   <SparkleIcon className="w-3.5 h-3.5 text-sky-500" weight="fill" />
-                  <span>{t.cardGlass || '液态玻璃效果'}</span>
+                  <span>{t.cardGlass || "液态玻璃效果"}</span>
                 </span>
               </label>
-            </div>
-          </div>
-
-          {/* Section 3: 边缘对齐与微调 (Alignment Controls) */}
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-[11px] font-bold tracking-wide text-slate-600 dark:text-slate-300">
-                {t.edgeAlign || '边缘对齐'}
-              </span>
-              <button
-                type="button"
-                onClick={onResetPositions}
-                className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-sky-600 dark:hover:text-sky-400"
-                title="重置所有卡片到采样点附近默认偏移位置"
-              >
-                <ArrowCounterClockwiseIcon className="h-3 w-3" weight="bold" />
-                <span>{t.resetLayout || '重置位置'}</span>
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => onAlign('left')}
-                className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
-              >
-                <ArrowLeftIcon className="w-3 h-3" />
-                <span>{t.alignLeft || '靠左'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onAlign('autoH')}
-                className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
-              >
-                <ArrowsHorizontalIcon className="w-3 h-3" />
-                <span>{t.alignAuto || '水平自适应'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onAlign('right')}
-                className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
-              >
-                <ArrowRightIcon className="w-3 h-3" />
-                <span>{t.alignRight || '靠右'}</span>
-              </button>
-              <span className="text-slate-300 dark:text-slate-700">|</span>
-              <button
-                type="button"
-                onClick={() => onAlign('top')}
-                className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
-              >
-                <ArrowUpIcon className="w-3 h-3" />
-                <span>{t.alignTop || '靠顶'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onAlign('autoV')}
-                className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
-              >
-                <ArrowsVerticalIcon className="w-3 h-3" />
-                <span>{t.alignAuto || '垂直自适应'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onAlign('bottom')}
-                className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-sky-600 dark:hover:text-sky-400"
-              >
-                <ArrowDownIcon className="w-3 h-3" />
-                <span>{t.alignBottom || '靠底'}</span>
-              </button>
             </div>
           </div>
         </div>

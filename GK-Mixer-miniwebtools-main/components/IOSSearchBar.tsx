@@ -48,7 +48,7 @@ export const IOSSearchBar: React.FC<IOSSearchBarProps> = ({
         }}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        className="w-full h-10 sm:h-11 pl-9 pr-9 bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-850 rounded-xl sm:rounded-2xl border border-slate-200/60 dark:border-slate-700/60 focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/20 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all outline-none"
+        className="bp-input w-full h-10 sm:h-11 pl-9 pr-9 bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-850 rounded-xl sm:rounded-2xl border border-slate-200/60 dark:border-slate-700/60 focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/20 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all outline-none"
       />
 
       {/* iOS Clear Button (Circle with X) */}

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, startTransition } from 'react';
 import { App as KonstaApp } from 'konsta/react';
 import {
   SunIcon,
@@ -16,25 +16,66 @@ import {
   TrashIcon,
   DownloadSimpleIcon,
   XIcon,
+  SquaresFour as SquaresFourIcon,
+  Stack as StackIcon,
+  DotsThree as DotsThreeIcon,
+  FolderPlus as FolderPlusIcon,
+  Tag as TagIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@phosphor-icons/react';
 import SettingsModal from './components/SettingsModal';
 import DropZone from './components/DropZone';
 import ColorPalette from './components/ColorPalette';
 import MixerResult from './components/MixerResult';
+import ChromaStudioPanel from './components/ChromaStudioPanel';
 import PaletteVisualizer from './components/PaletteVisualizer';
 import RadialPaletteMixer from './components/RadialPaletteMixer';
 import BasicColorMixer from './components/BasicColorMixer';
 import PaintCatalogBrowser from './components/PaintCatalogBrowser';
-import ColorLoupe, { sampleCanvasAtClient } from './components/ColorLoupe';
+import BrandMatchPanel from './components/BrandMatchPanel';
+import { ProjectLibraryView } from './components/ProjectLibraryView';
+import { SwatchEditorModal } from './components/SwatchEditorModal';
+import { SaveToProjectModal } from './components/SaveToProjectModal';
+import QuickPaintAssignSheet from './components/QuickPaintAssignSheet';
+import ColoringSandboxLab from './components/ColoringSandboxLab';
+import ColorLoupe, { ColorLoupeHandle, sampleCanvasAtClient } from './components/ColorLoupe';
 import ExtractMarkerOverlay from './components/ExtractMarkerOverlay';
 import SwatchStudioControls from './components/SwatchStudioControls';
 import Loader from './components/Loader';
-import { ColorData, AppMode, RGB, Language, Theme, ColorSpace, MixerResultCache, RadialMixerCache, BasicMixerCache, MixingMode, SliderState, BaseColor, CatalogPaint } from './types';
+import KeepAlivePanel from './components/KeepAlivePanel';
+import ErrorBoundary from './components/ErrorBoundary';
+import {
+  ColorData,
+  AppMode,
+  RGB,
+  Language,
+  Theme,
+  ColorSpace,
+  MixerResultCache,
+  RadialMixerCache,
+  SliderState,
+  BasicMixerCache,
+  BaseColor,
+  CatalogPaint,
+  PaintProject,
+  PaletteCategory,
+  SavedColor,
+  PartCanvas,
+  TonalStep,
+} from './types';
 import { generateId, rgbToCmyk, rgbToHex, hexToRgb, rgbToHsb, rgbToLab } from './utils/colorUtils';
-import { convertToWorkingSpace, isInGamut } from './utils/colorSpaceConverter';
+import { convertToWorkingSpace } from './utils/colorSpaceConverter';
 import { translations } from './utils/translations';
 import { colorsToMarkers, exportAnnotatedImage, ExportResult } from './utils/exportAnnotatedImage';
 import { ExportSuccessModal } from './components/ExportSuccessModal';
+import { loadPaintCatalog, localizedBrand } from './utils/paintCatalog';
+import {
+  loadStudioData,
+  saveProjectsToDB,
+  saveCategoriesToDB,
+  saveColorsToDB,
+  colorsToFloatingNodes,
+} from './utils/projectStore';
 import {
   SwatchSettings,
   DEFAULT_SWATCH_SETTINGS,
@@ -43,6 +84,12 @@ import {
   alignMarkers,
   resetMarkerPositions,
 } from './utils/swatchLayout';
+import {
+  UIStyle,
+  THEME_SYNC_EVENT,
+  loadUIStyle,
+  saveUIStyle,
+} from './utils/accentTheme';
 
 // Default base colors for BasicColorMixer
 const DEFAULT_BASE_COLORS: BaseColor[] = [
@@ -60,35 +107,139 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.ANALYZE);
   const [lang, setLang] = useState<Language>('zh');
   const [theme, setTheme] = useState<Theme>('light');
+  const [uiStyle, setUiStyle] = useState<UIStyle>(() => loadUIStyle());
   const [colorSpace, setColorSpace] = useState<ColorSpace>('srgb');
+
+  useEffect(() => {
+    const syncStyle = () => setUiStyle(loadUIStyle());
+    window.addEventListener(THEME_SYNC_EVENT, syncStyle);
+    return () => window.removeEventListener(THEME_SYNC_EVENT, syncStyle);
+  }, []);
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [colors, setColors] = useState<ColorData[]>([]);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
 
+  // === Studio IndexedDB Persistence (Projects, Categories, Saved Single-Color Swatches) ===
+  const [catalogPaints, setCatalogPaints] = useState<CatalogPaint[]>([]);
+  const [projects, setProjects] = useState<PaintProject[]>([]);
+  const [categories, setCategories] = useState<PaletteCategory[]>([]);
+  const [savedColors, setSavedColors] = useState<SavedColor[]>([]);
+  const [studioLoaded, setStudioLoaded] = useState(false);
+
+  // Modals & Tonal Redirection State
+  const [isSwatchEditorOpen, setIsSwatchEditorOpen] = useState(false);
+  const [isSaveToProjectOpen, setIsSaveToProjectOpen] = useState(false);
+  const [isSourceActionMenuOpen, setIsSourceActionMenuOpen] = useState(false);
+  const [quickAssignColorId, setQuickAssignColorId] = useState<string | null>(null);
+  const [pendingTonalSampleId, setPendingTonalSampleId] = useState<string | null>(null);
+  const [actionToast, setActionToast] = useState<string | null>(null);
+  const sourceActionMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    loadPaintCatalog().then((paints) => {
+      if (active) setCatalogPaints(paints);
+    });
+    loadStudioData().then((data) => {
+      if (!active) return;
+      setProjects(data.projects);
+      setCategories(data.categories);
+      setSavedColors(data.savedColors);
+      setStudioLoaded(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!studioLoaded) return;
+    const timer = window.setTimeout(() => {
+      saveProjectsToDB(projects);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [projects, studioLoaded]);
+
+  useEffect(() => {
+    if (!studioLoaded) return;
+    const timer = window.setTimeout(() => {
+      saveCategoriesToDB(categories);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [categories, studioLoaded]);
+
+  useEffect(() => {
+    if (!studioLoaded) return;
+    const timer = window.setTimeout(() => {
+      saveColorsToDB(savedColors);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [savedColors, studioLoaded]);
+
+  useEffect(() => {
+    if (!isSourceActionMenuOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (sourceActionMenuRef.current && !sourceActionMenuRef.current.contains(e.target as Node)) {
+        setIsSourceActionMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [isSourceActionMenuOpen]);
+
+  const showToast = useCallback((msg: string) => {
+    setActionToast(msg);
+    setTimeout(() => {
+      setActionToast((prev) => (prev === msg ? null : prev));
+    }, 2600);
+  }, []);
+
   // === iOS-style Navigation State ===
-  // Mobile/Portrait: 4 core bottom dock tabs
-  type MobileMainTab = 'workbench' | 'tuning' | 'studio' | 'catalog';
-  type WorkbenchSubpage = 'extract' | 'pro' | 'mixbox';
-  type TuningSubpage = 'custom' | 'basic';
-  type DesktopPanelTab = 'pro' | 'mixbox' | 'custom' | 'basic' | 'studio' | 'catalog';
+  // Mobile/Portrait: 5 core bottom dock tabs
+  type MobileMainTab = 'workbench' | 'tuning' | 'coloring' | 'studio' | 'catalog';
+  type WorkbenchSubpage = 'extract' | 'mixer' | 'chroma';
+  type TuningSubpage = 'custom' | 'basic' | 'brands';
+  type DesktopPanelTab = 'mixer' | 'chroma' | 'custom' | 'basic' | 'brands' | 'coloring' | 'studio' | 'catalog';
 
   const [mobileMainTab, setMobileMainTab] = useState<MobileMainTab>('workbench');
   const [workbenchSubpage, setWorkbenchSubpage] = useState<WorkbenchSubpage>('extract');
   const [tuningSubpage, setTuningSubpage] = useState<TuningSubpage>('custom');
-  const [desktopTab, setDesktopTab] = useState<DesktopPanelTab>('pro');
+  const [desktopTab, setDesktopTab] = useState<DesktopPanelTab>('mixer');
+  const [coloringIncomingImage, setColoringIncomingImage] = useState<{
+    url: string;
+    label?: string;
+    token: number;
+  } | null>(null);
+  const [focusProjectId, setFocusProjectId] = useState<string | null>(null);
+  // Urgent UI state for the desktop tab pill: updates synchronously on click so the
+  // highlight responds instantly, while the heavy panel swap runs in a transition.
+  const [desktopTabUI, setDesktopTabUI] = useState<DesktopPanelTab>('mixer');
+  const [tabTransitionDir, setTabTransitionDir] = useState<'forward' | 'backward' | 'up'>('up');
+  useEffect(() => {
+    setDesktopTabUI(desktopTab);
+  }, [desktopTab]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  const DESKTOP_TAB_ORDER: DesktopPanelTab[] = ['mixer', 'chroma', 'custom', 'basic', 'brands', 'coloring', 'studio', 'catalog'];
+  const MOBILE_TAB_ORDER: MobileMainTab[] = ['workbench', 'tuning', 'coloring', 'studio', 'catalog'];
+
   const handleSwitchMobileTab = useCallback((tab: MobileMainTab) => {
-    // If re-tapping the active workbench tab while on pro/mixbox, cycle back to extract (iOS UX pattern)
+    // If re-tapping the active workbench tab while on mixer/chroma, cycle back to extract (iOS UX pattern)
     if (tab === mobileMainTab && tab === 'workbench' && workbenchSubpage !== 'extract') {
+      setTabTransitionDir('backward');
       setWorkbenchSubpage('extract');
       return;
     }
+    const prevIdx = MOBILE_TAB_ORDER.indexOf(mobileMainTab);
+    const nextIdx = MOBILE_TAB_ORDER.indexOf(tab);
+    setTabTransitionDir(nextIdx >= prevIdx ? 'forward' : 'backward');
     setMobileMainTab(tab);
     if (tab === 'workbench') {
-      setDesktopTab(workbenchSubpage === 'extract' ? 'pro' : workbenchSubpage);
+      setDesktopTab(workbenchSubpage === 'extract' ? 'mixer' : workbenchSubpage);
     } else if (tab === 'tuning') {
       setDesktopTab(tuningSubpage);
+    } else if (tab === 'coloring') {
+      setDesktopTab('coloring');
     } else if (tab === 'studio') {
       setDesktopTab('studio');
     } else if (tab === 'catalog') {
@@ -97,31 +248,61 @@ const App: React.FC = () => {
   }, [mobileMainTab, workbenchSubpage, tuningSubpage]);
 
   const handleSwitchWorkbenchSubpage = useCallback((sub: WorkbenchSubpage) => {
+    const order: WorkbenchSubpage[] = ['extract', 'mixer', 'chroma'];
+    setTabTransitionDir(order.indexOf(sub) >= order.indexOf(workbenchSubpage) ? 'forward' : 'backward');
     setMobileMainTab('workbench');
     setWorkbenchSubpage(sub);
-    setDesktopTab(sub === 'extract' ? 'pro' : sub);
-  }, []);
+    if (sub !== 'extract') {
+      setDesktopTab(sub);
+    }
+  }, [workbenchSubpage]);
 
   const handleSwitchTuningSubpage = useCallback((sub: TuningSubpage) => {
+    const order: TuningSubpage[] = ['custom', 'basic', 'brands'];
+    setTabTransitionDir(order.indexOf(sub) >= order.indexOf(tuningSubpage) ? 'forward' : 'backward');
     setMobileMainTab('tuning');
     setTuningSubpage(sub);
     setDesktopTab(sub);
-  }, []);
+  }, [tuningSubpage]);
 
   const handleSwitchDesktopTab = useCallback((tab: DesktopPanelTab) => {
-    setDesktopTab(tab);
-    if (tab === 'pro' || tab === 'mixbox') {
-      setMobileMainTab('workbench');
-      setWorkbenchSubpage(tab);
-    } else if (tab === 'custom' || tab === 'basic') {
-      setMobileMainTab('tuning');
-      setTuningSubpage(tab);
-    } else if (tab === 'studio') {
-      setMobileMainTab('studio');
-    } else if (tab === 'catalog') {
-      setMobileMainTab('catalog');
-    }
-  }, []);
+    // 1) Urgent: pill highlight & directional transition
+    const prevIdx = DESKTOP_TAB_ORDER.indexOf(desktopTabUI);
+    const nextIdx = DESKTOP_TAB_ORDER.indexOf(tab);
+    setTabTransitionDir(nextIdx >= prevIdx ? 'forward' : 'backward');
+    setDesktopTabUI(tab);
+    // 2) Non-blocking: panel swap + mirrored mobile state
+    startTransition(() => {
+      setDesktopTab(tab);
+      if (tab === 'mixer' || tab === 'chroma') {
+        setMobileMainTab('workbench');
+        setWorkbenchSubpage(tab);
+      } else if (tab === 'custom' || tab === 'basic' || tab === 'brands') {
+        setMobileMainTab('tuning');
+        setTuningSubpage(tab);
+      } else if (tab === 'coloring') {
+        setMobileMainTab('coloring');
+      } else if (tab === 'studio') {
+        setMobileMainTab('studio');
+      } else if (tab === 'catalog') {
+        setMobileMainTab('catalog');
+      }
+    });
+  }, [desktopTabUI]);
+
+  const handleSendImageToColoring = useCallback(
+    (url: string, label?: string) => {
+      if (!url) return;
+      setColoringIncomingImage({ url, label, token: Date.now() });
+      handleSwitchDesktopTab('coloring');
+      showToast(
+        lang === 'zh'
+          ? '✨ 已载入模型图像，请在右侧明度色板选色试涂'
+          : '✨ Loaded model image into Color Studio'
+      );
+    },
+    [handleSwitchDesktopTab, lang, showToast]
+  );
 
   // Swatch card display and leader line settings
   const [swatchSettings, setSwatchSettings] = useState<SwatchSettings>(() => {
@@ -133,15 +314,18 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem('gkmixer_swatch_settings', JSON.stringify(swatchSettings));
-    } catch {}
+    const timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem('gkmixer_swatch_settings', JSON.stringify(swatchSettings));
+      } catch {}
+    }, 250);
+    return () => window.clearTimeout(timer);
   }, [swatchSettings]);
   
   // === Cache states for preserving component states across tab switches ===
   // MixerResult cache
   const [mixerResultCache, setMixerResultCache] = useState<MixerResultCache>({
-    mixingMode: 'professional',
+    mixingMode: 'mixbox',
     bottleVolume: 20
   });
   
@@ -163,10 +347,14 @@ const App: React.FC = () => {
   // Ref for manual picker canvas
   const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const loupeHandleRef = useRef<ColorLoupeHandle | null>(null);
   const [isPicking, setIsPicking] = useState(false);
   const [isContinuousPicking, setIsContinuousPicking] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
-  const [loupe, setLoupe] = useState<{ x: number; y: number; hex: string } | null>(null);
+
+  const hideLoupe = useCallback(() => {
+    loupeHandleRef.current?.hide();
+  }, []);
 
   // Zoom & Pan State
   const [scale, setScale] = useState(1);
@@ -283,48 +471,57 @@ const App: React.FC = () => {
     }
   };
 
+  const buildSafeColorData = (
+    rgbInput: RGB,
+    opts?: { hex?: string; nx?: number; ny?: number }
+  ): ColorData => {
+    const safeR = Number.isFinite(rgbInput?.r) ? Math.max(0, Math.min(255, Math.round(rgbInput.r))) : 128;
+    const safeG = Number.isFinite(rgbInput?.g) ? Math.max(0, Math.min(255, Math.round(rgbInput.g))) : 128;
+    const safeB = Number.isFinite(rgbInput?.b) ? Math.max(0, Math.min(255, Math.round(rgbInput.b))) : 128;
+    const rgb: RGB = { r: safeR, g: safeG, b: safeB };
+    const computedHex = rgbToHex(safeR, safeG, safeB) || '#808080';
+    const hex =
+      typeof opts?.hex === 'string' && /^#[0-9a-fA-F]{6}$/.test(opts.hex)
+        ? opts.hex.toUpperCase()
+        : computedHex.toUpperCase();
+    const id =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : generateId() || `swatch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+    return {
+      id,
+      hex,
+      rgb,
+      cmyk: rgbToCmyk(safeR, safeG, safeB) ?? { c: 0, m: 0, y: 0, k: 0 },
+      hsb: rgbToHsb(safeR, safeG, safeB) ?? { h: 0, s: 0, b: 50 },
+      lab: rgbToLab(safeR, safeG, safeB) ?? { l: 50, a: 0, b: 0 },
+      source: 'manual',
+      colorSpace: colorSpace,
+      sampleX: Number.isFinite(opts?.nx) ? opts!.nx : 0.5,
+      sampleY: Number.isFinite(opts?.ny) ? opts!.ny : 0.5,
+      assignedPaint: undefined,
+    };
+  };
+
   const handleAddColor = (hex: string) => {
     const rgb = hexToRgb(hex);
     if (!rgb) return;
-    
-    const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
-    const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
-    
-    const newColor: ColorData = {
-      id: generateId(),
-      hex,
-      rgb,
-      cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
-      hsb,
-      lab,
-      source: 'manual',
-      colorSpace: colorSpace
-    };
-    
+    const newColor = buildSafeColorData(rgb, { hex });
     setColors(prev => [newColor, ...prev]);
     setSelectedColorId(newColor.id);
   };
 
   const handleAddColors = (hexColors: string[]) => {
-    const newColors = hexColors.map(hex => {
-      const rgb = hexToRgb(hex);
-      if (!rgb) return null;
-      
-      const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
-      const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
-      
-      return {
-        id: generateId(),
-        hex,
-        rgb,
-        cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
-        hsb,
-        lab,
-        source: 'manual' as const,
-        colorSpace: colorSpace
-      };
-    }).filter(Boolean) as ColorData[];
-    
+    if (!Array.isArray(hexColors)) return;
+    const newColors = hexColors
+      .map(hex => {
+        const rgb = hexToRgb(hex);
+        if (!rgb) return null;
+        return buildSafeColorData(rgb, { hex });
+      })
+      .filter(Boolean) as ColorData[];
+
     setColors(prev => [...newColors, ...prev]);
     if (newColors.length > 0) {
       setSelectedColorId(newColors[0].id);
@@ -332,43 +529,27 @@ const App: React.FC = () => {
   };
 
   const commitSampledRgb = (rgbInput: RGB, sample?: { nx: number; ny: number }) => {
+    if (!rgbInput) return;
     let rgb = rgbInput;
     if (colorSpace === 'adobe-rgb') {
       rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
     }
-    const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-    const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
-    const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
-    const newColor: ColorData = {
-      id: generateId(),
-      hex,
-      rgb,
-      cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
-      hsb,
-      lab,
-      source: 'manual',
-      colorSpace: colorSpace,
-      sampleX: sample?.nx,
-      sampleY: sample?.ny,
-    };
+    const newColor = buildSafeColorData(rgb, {
+      nx: sample?.nx ?? 0.5,
+      ny: sample?.ny ?? 0.5,
+    });
     setColors(prev => [newColor, ...prev]);
     setSelectedColorId(newColor.id);
-    setDesktopTab('pro');
+    setDesktopTab('mixer');
     if (!isContinuousPicking) {
       setIsPicking(false);
-      setLoupe(null);
+      hideLoupe();
     }
   };
 
-  const previewAtClient = (clientX: number, clientY: number) => {
-    if (!canvasRef.current) return;
-    const rgb = sampleCanvasAtClient(canvasRef.current, clientX, clientY);
-    if (!rgb) {
-      setLoupe(null);
-      return;
-    }
-    setLoupe({ x: clientX, y: clientY, hex: rgbToHex(rgb.r, rgb.g, rgb.b) });
-  };
+  const previewAtClient = useCallback((clientX: number, clientY: number) => {
+    loupeHandleRef.current?.updateAtClient(clientX, clientY);
+  }, []);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isPicking || !canvasRef.current) return;
@@ -383,14 +564,80 @@ const App: React.FC = () => {
     previewAtClient(e.clientX, e.clientY);
   };
 
-  // Zoom Handlers
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const delta = -e.deltaY * 0.001;
-        setScale(s => Math.min(Math.max(1, s + delta), 8));
+  // Safe symmetric viewport clamping for source image canvas
+  const clampSourceViewport = useCallback((panX: number, panY: number, s: number, vw: number, vh: number) => {
+    if (!vw || !vh || isNaN(panX) || isNaN(panY)) {
+      return { x: 0, y: 0 };
     }
-  };
+    const iw = vw * s;
+    const ih = vh * s;
+    const boundX1 = vw * 0.7 - iw;
+    const boundX2 = vw * 0.3;
+    const minX = Math.min(boundX1, boundX2);
+    const maxX = Math.max(boundX1, boundX2);
+
+    const boundY1 = vh * 0.7 - ih;
+    const boundY2 = vh * 0.3;
+    const minY = Math.min(boundY1, boundY2);
+    const maxY = Math.max(boundY1, boundY2);
+
+    return {
+      x: Math.min(Math.max(panX, minX), maxX),
+      y: Math.min(Math.max(panY, minY), maxY),
+    };
+  }, []);
+
+  // Prevent browser window zoom on trackpad pinch / Ctrl+wheel over canvas container, and support 2-finger trackpad pan when zoomed
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onNativeWheel = (e: WheelEvent) => {
+      const rect = el.getBoundingClientRect();
+      const vw = rect.width || 600;
+      const vh = rect.height || 400;
+
+      // Case A: Trackpad pinch zoom (ctrlKey / metaKey)
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const factor = Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * 0.008);
+        const prevScale = currentScale.current;
+        const nextScale = Math.min(Math.max(1, prevScale * factor), 8);
+        const px = e.clientX - rect.left;
+        const py = e.clientY - rect.top;
+        const ratio = nextScale / prevScale;
+        const rawX = px - (px - currentOffset.current.x) * ratio;
+        const rawY = py - (py - currentOffset.current.y) * ratio;
+        const clamped = nextScale <= 1.02 ? { x: 0, y: 0 } : clampSourceViewport(rawX, rawY, nextScale, vw, vh);
+        currentScale.current = nextScale;
+        currentOffset.current = clamped;
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(() => {
+          applyTransform(clamped.x, clamped.y, nextScale);
+          setScale(nextScale);
+          setOffset(clamped);
+        });
+        return;
+      }
+
+      // Case B: Mac trackpad 2-finger scroll -> pan when zoomed in, otherwise let page scroll naturally
+      if (currentScale.current > 1.05 && (Math.abs(e.deltaX) > 0 || Math.abs(e.deltaY) > 0)) {
+        e.preventDefault();
+        const rawX = currentOffset.current.x - e.deltaX;
+        const rawY = currentOffset.current.y - e.deltaY;
+        const clamped = clampSourceViewport(rawX, rawY, currentScale.current, vw, vh);
+        currentOffset.current = clamped;
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(() => {
+          applyTransform(clamped.x, clamped.y, currentScale.current);
+          setOffset(clamped);
+        });
+      }
+    };
+    el.addEventListener('wheel', onNativeWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onNativeWheel);
+    };
+  }, [sourceImage, clampSourceViewport]);
 
   const hasSamplePoint = (color: ColorData) =>
     Number.isFinite(color.sampleX) && Number.isFinite(color.sampleY);
@@ -410,31 +657,164 @@ const App: React.FC = () => {
     );
   };
 
-  const handleAssignCatalogPaint = (paint: CatalogPaint) => {
+  const handleAssignCatalogPaint = useCallback((paint: CatalogPaint, explicitColorId?: string) => {
     let targetId: string | null = null;
     setColors((prev) => {
-      const selected = prev.find((color) => color.id === selectedColorId);
-      const target =
-        selected && hasSamplePoint(selected)
-          ? selected
-          : prev.find(hasSamplePoint) ?? selected;
+      if (prev.length === 0) {
+        const rgb = hexToRgb(paint.hex) || { r: 128, g: 128, b: 128 };
+        const newId = generateId();
+        targetId = newId;
+        const pos = defaultCardPos(0.5, 0.5);
+        const created: ColorData = {
+          id: newId,
+          hex: paint.hex.toUpperCase(),
+          rgb,
+          cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
+          hsb: rgbToHsb(rgb.r, rgb.g, rgb.b),
+          lab: rgbToLab(rgb.r, rgb.g, rgb.b),
+          source: 'manual',
+          colorSpace,
+          sampleX: 0.5,
+          sampleY: 0.5,
+          assignedPaint: paint,
+          ...pos,
+        };
+        return [created];
+      }
+
+      const preferredId = explicitColorId ?? selectedColorId;
+      const selected = prev.find((color) => color.id === preferredId);
+      const target = selected ?? prev.find(hasSamplePoint) ?? prev[0];
       if (!target) return prev;
       targetId = target.id;
+
+      const targetIndex = prev.findIndex((c) => c.id === target.id);
+      const hasCoords = hasSamplePoint(target);
+      const nx = hasCoords ? target.sampleX! : Math.min(0.82, 0.28 + (targetIndex % 3) * 0.2);
+      const ny = hasCoords ? target.sampleY! : Math.min(0.82, 0.28 + Math.floor(targetIndex / 3) * 0.2);
       const place =
-        hasSamplePoint(target) && target.labelNx == null && target.labelNy == null
-          ? defaultCardPos(target.sampleX!, target.sampleY!)
+        target.labelNx == null && target.labelNy == null
+          ? defaultCardPos(nx, ny)
           : {};
+
       return prev.map((color) =>
-        color.id === target.id ? { ...color, assignedPaint: paint, ...place } : color
+        color.id === target.id
+          ? {
+              ...color,
+              sampleX: nx,
+              sampleY: ny,
+              assignedPaint: paint,
+              ...place,
+            }
+          : color
       );
     });
+
     if (targetId) {
       setSelectedColorId(targetId);
-      if (desktopTab !== "studio" && mobileMainTab !== "studio") {
-        setDesktopTab("pro");
-      }
     }
-  };
+
+    // Reverse-jump closed loop: return to source canvas on mobile/portrait and ensure canvas is visible
+    if (desktopTab !== 'studio' && mobileMainTab !== 'studio') {
+      setMobileMainTab('workbench');
+      setWorkbenchSubpage('extract');
+      if (desktopTab === 'brands' || desktopTab === 'catalog') {
+        setDesktopTabUI('mixer');
+        startTransition(() => {
+          setDesktopTab('mixer');
+        });
+      }
+      window.setTimeout(() => {
+        containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 80);
+    }
+
+    const brandLabel = localizedBrand(paint.brand, lang);
+    showToast(
+      lang === 'zh'
+        ? `✅ 已将 ${brandLabel} ${paint.code} 指派给当前色卡`
+        : `✅ Assigned ${brandLabel} ${paint.code} to current swatch`
+    );
+  }, [selectedColorId, colorSpace, desktopTab, mobileMainTab, lang, showToast]);
+
+  const handleUpdateTonalGradient = useCallback((colorId: string, tonalGradient: TonalStep[] | undefined) => {
+    setColors((prev) =>
+      prev.map((color) =>
+        color.id === colorId ? { ...color, tonalGradient } : color
+      )
+    );
+  }, []);
+
+  const handleStartTonalReplace = useCallback((colorId: string) => {
+    setSelectedColorId(colorId);
+    setPendingTonalSampleId(colorId);
+    handleSwitchWorkbenchSubpage('chroma');
+  }, [handleSwitchWorkbenchSubpage]);
+
+  const handleConfirmTonalReplace = useCallback((sampleId: string, newHex: string) => {
+    const rgb = hexToRgb(newHex);
+    if (!rgb) return;
+    const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
+    const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
+    setColors((prev) =>
+      prev.map((color) =>
+        color.id === sampleId
+          ? {
+              ...color,
+              hex: newHex.toUpperCase(),
+              rgb,
+              cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
+              hsb,
+              lab,
+              assignedPaint: undefined,
+            }
+          : color
+      )
+    );
+    setPendingTonalSampleId(null);
+    setSelectedColorId(sampleId);
+    handleSwitchWorkbenchSubpage('extract');
+    showToast(lang === 'zh' ? '已替换取色点颜色，请重新指派匹配油漆' : 'Replaced sample color');
+  }, [handleSwitchWorkbenchSubpage, lang, showToast]);
+
+  const handleSaveCurrentColorToPalette = useCallback(() => {
+    const target = selectedColor || colors[0];
+    if (!target) return;
+    const newSaved: SavedColor = {
+      id: generateId(),
+      name: target.assignedPaint
+        ? `${target.assignedPaint.brand} ${target.assignedPaint.code} ${target.assignedPaint.name}`
+        : `取色 ${target.hex}`,
+      hex: target.hex.toUpperCase(),
+      categoryId: categories[0]?.id ?? null,
+      brand: target.assignedPaint?.brand,
+      code: target.assignedPaint?.code,
+      createdAt: Date.now(),
+    };
+    setSavedColors((prev) => [newSaved, ...prev]);
+    // Also add to RadialPaletteMixer custom palette if not already present
+    setRadialMixerCache((prev) => {
+      if (prev.sliders.some((s) => s.hex.toUpperCase() === target.hex.toUpperCase())) return prev;
+      return {
+        ...prev,
+        sliders: [
+          ...prev.sliders,
+          {
+            id: generateId(),
+            name: target.assignedPaint ? `${target.assignedPaint.brand} ${target.assignedPaint.code}` : target.hex,
+            brand: target.assignedPaint?.brand,
+            code: target.assignedPaint?.code,
+            hex: target.hex,
+            rgb: target.rgb,
+            lab: target.lab,
+            weight: 0,
+            assignedPaint: target.assignedPaint,
+          },
+        ],
+      };
+    });
+    showToast(lang === 'zh' ? `已收藏 ${target.hex} 到涂装库单色色卡与自选调色盘` : `Saved ${target.hex} to palette`);
+  }, [selectedColor, colors, categories, lang, showToast]);
 
   const handleMoveLabel = useCallback((id: string, labelNx: number, labelNy: number) => {
     setColors((prev) =>
@@ -456,30 +836,30 @@ const App: React.FC = () => {
   const handleAutoArrangeLR = useCallback(() => {
     const w = canvasBox.width || 800;
     const h = canvasBox.height || 600;
-    const newPositions = autoArrangeLeftRight(extractMarkers, w, h, swatchSettings.cardScale);
+    const newPositions = autoArrangeLeftRight(extractMarkers, w, h, swatchSettings.cardScale, swatchSettings.cardBaseWidth);
     handleBatchMoveLabels(newPositions);
-  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, handleBatchMoveLabels]);
+  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, swatchSettings.cardBaseWidth, handleBatchMoveLabels]);
 
   const handleAutoArrangeTB = useCallback(() => {
     const w = canvasBox.width || 800;
     const h = canvasBox.height || 600;
-    const newPositions = autoArrangeTopBottom(extractMarkers, w, h, swatchSettings.cardScale);
+    const newPositions = autoArrangeTopBottom(extractMarkers, w, h, swatchSettings.cardScale, swatchSettings.cardBaseWidth);
     handleBatchMoveLabels(newPositions);
-  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, handleBatchMoveLabels]);
+  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, swatchSettings.cardBaseWidth, handleBatchMoveLabels]);
 
   const handleAlign = useCallback((alignment: 'left' | 'right' | 'top' | 'bottom' | 'autoH' | 'autoV') => {
     const w = canvasBox.width || 800;
     const h = canvasBox.height || 600;
-    const newPositions = alignMarkers(extractMarkers, alignment, w, h, swatchSettings.cardScale, selectedColorId ?? undefined);
+    const newPositions = alignMarkers(extractMarkers, alignment, w, h, swatchSettings.cardScale, selectedColorId ?? undefined, swatchSettings.cardBaseWidth);
     handleBatchMoveLabels(newPositions);
-  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, selectedColorId, handleBatchMoveLabels]);
+  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, swatchSettings.cardBaseWidth, selectedColorId, handleBatchMoveLabels]);
 
   const handleResetPositions = useCallback(() => {
     const w = canvasBox.width || 800;
     const h = canvasBox.height || 600;
-    const newPositions = resetMarkerPositions(extractMarkers, w, h, swatchSettings.cardScale, selectedColorId ?? undefined);
+    const newPositions = resetMarkerPositions(extractMarkers, w, h, swatchSettings.cardScale, selectedColorId ?? undefined, swatchSettings.cardBaseWidth);
     handleBatchMoveLabels(newPositions);
-  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, selectedColorId, handleBatchMoveLabels]);
+  }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, swatchSettings.cardBaseWidth, selectedColorId, handleBatchMoveLabels]);
 
   const handleExportAnnotated = async () => {
     const canvas = canvasRef.current;
@@ -614,13 +994,16 @@ const App: React.FC = () => {
 
       isSingleDragging.current = false;
       setIsDragging(true);
-      setLoupe(null);
+      hideLoupe();
       return;
     }
 
     // 1 Finger:
     if (e.touches.length === 1) {
       twoFingerRef.current = null;
+      if (Date.now() - lastTouchCommitTimeRef.current < 160) {
+        return;
+      }
       const touch = e.touches[0];
 
       // If in color picking mode and touched on the image canvas
@@ -639,7 +1022,7 @@ const App: React.FC = () => {
         } else {
           // Touch outside canvas pixels while in picking mode -> exit picking mode so single finger can scroll
           touchPickRef.current = null;
-          setLoupe(null);
+          hideLoupe();
           setIsPicking(false);
           setIsContinuousPicking(false);
         }
@@ -651,7 +1034,7 @@ const App: React.FC = () => {
       isSingleDragging.current = false;
       return;
     }
-  }, [isPicking]);
+  }, [isPicking, hideLoupe, previewAtClient]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     // 2 Fingers: Combined Pinch-to-Zoom + Two-Finger Drag/Pan
@@ -660,19 +1043,21 @@ const App: React.FC = () => {
 
       const t0 = e.touches[0];
       const t1 = e.touches[1];
-      const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+      const dist = Math.max(1, Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY));
       const center = {
         x: (t0.clientX + t1.clientX) / 2,
         y: (t0.clientY + t1.clientY) / 2,
       };
 
       const { initialDist, initialScale, initialCenter, initialOffset } = twoFingerRef.current;
-      const ratio = dist / initialDist;
+      const ratio = dist / Math.max(1, initialDist);
       const newScale = Math.min(Math.max(1, initialScale * ratio), 8);
 
       const containerRect = containerRef.current?.getBoundingClientRect();
       const rectLeft = containerRect?.left ?? 0;
       const rectTop = containerRect?.top ?? 0;
+      const vw = containerRect?.width || 600;
+      const vh = containerRect?.height || 400;
 
       // Focal points relative to viewport top-left
       const p0x = initialCenter.x - rectLeft;
@@ -682,21 +1067,17 @@ const App: React.FC = () => {
 
       const scaleFactor = newScale / initialScale;
 
-      // Formula: keep the point under initial focal point anchored under current center
-      let nextOffsetX = px - scaleFactor * (p0x - initialOffset.x);
-      let nextOffsetY = py - scaleFactor * (p0y - initialOffset.y);
-
-      if (newScale <= 1.01 && initialScale <= 1.01) {
-        nextOffsetX = 0;
-        nextOffsetY = 0;
-      }
+      // Keep the point under initial focal point anchored under current center (simultaneous pinch + 2-finger pan)
+      const rawOffsetX = px - scaleFactor * (p0x - initialOffset.x);
+      const rawOffsetY = py - scaleFactor * (p0y - initialOffset.y);
+      const clamped = clampSourceViewport(rawOffsetX, rawOffsetY, newScale, vw, vh);
 
       currentScale.current = newScale;
-      currentOffset.current = { x: nextOffsetX, y: nextOffsetY };
+      currentOffset.current = clamped;
 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
-        applyTransform(nextOffsetX, nextOffsetY, newScale);
+        applyTransform(clamped.x, clamped.y, newScale);
       });
       return;
     }
@@ -710,17 +1091,19 @@ const App: React.FC = () => {
       previewAtClient(touch.clientX, touch.clientY);
       return;
     }
-  }, [applyTransform, isPicking]);
+  }, [applyTransform, isPicking, clampSourceViewport]);
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
-    // If one finger remains on screen after 2-finger gesture:
-    if (e.touches.length === 1) {
+    // If fewer than 2 fingers remain after a 2-finger gesture, immediately release 2-finger state & set 150ms cooldown
+    if (e.touches.length < 2 && twoFingerRef.current) {
       twoFingerRef.current = null;
+      touchPickRef.current = null;
       isSingleDragging.current = false;
       setIsDragging(false);
+      lastTouchCommitTimeRef.current = Date.now();
       setScale(currentScale.current);
       setOffset({ ...currentOffset.current });
-      return;
+      if (e.touches.length === 1) return;
     }
 
     // All fingers lifted
@@ -733,7 +1116,7 @@ const App: React.FC = () => {
           lastTouchCommitTimeRef.current = Date.now();
           commitSampledRgb(rgb, { nx: rgb.nx, ny: rgb.ny });
         } else {
-          setLoupe(null);
+          hideLoupe();
         }
         touchPickRef.current = null;
       }
@@ -750,9 +1133,9 @@ const App: React.FC = () => {
       setScale(currentScale.current);
       setOffset({ ...currentOffset.current });
     }
-  }, [isPicking, commitSampledRgb]);
+  }, [isPicking, commitSampledRgb, hideLoupe]);
 
-  // Attach non-passive native touch event listeners to container and window
+  // Attach native touch event listeners strictly to the canvas container (NEVER window)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -760,19 +1143,27 @@ const App: React.FC = () => {
     const onTouchStart = (e: TouchEvent) => handleTouchStart(e);
     const onTouchMove = (e: TouchEvent) => handleTouchMove(e);
     const onTouchEnd = (e: TouchEvent) => handleTouchEnd(e);
+    const onWindowBlur = () => {
+      twoFingerRef.current = null;
+      touchPickRef.current = null;
+      isSingleDragging.current = false;
+      setIsDragging(false);
+    };
 
     el.addEventListener('touchstart', onTouchStart, { passive: false });
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
-    window.addEventListener('touchend', onTouchEnd, { passive: false });
-    window.addEventListener('touchcancel', onTouchEnd, { passive: false });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: false });
+    el.addEventListener('touchcancel', onTouchEnd, { passive: false });
+    window.addEventListener('blur', onWindowBlur);
 
     return () => {
       el.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
-      window.removeEventListener('touchcancel', onTouchEnd);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+      window.removeEventListener('blur', onWindowBlur);
     };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd, sourceImage]);
 
   // Exit picking mode when tapping / clicking outside the image frame
   useEffect(() => {
@@ -795,14 +1186,14 @@ const App: React.FC = () => {
       // Tapped outside the image frame -> exit picking mode cleanly
       setIsPicking(false);
       setIsContinuousPicking(false);
-      setLoupe(null);
+      hideLoupe();
     };
 
     document.addEventListener('pointerdown', handlePointerDownOutside, { passive: true });
     return () => {
       document.removeEventListener('pointerdown', handlePointerDownOutside);
     };
-  }, [isPicking]);
+  }, [isPicking, hideLoupe]);
 
   React.useEffect(() => {
     if (sourceImage && canvasRef.current && imageRef.current) {
@@ -828,6 +1219,18 @@ const App: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
+    const syncLabHash = () => {
+      if (window.location.hash === '#coloring-lab') {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        handleSwitchDesktopTab('coloring');
+      }
+    };
+    syncLabHash();
+    window.addEventListener('hashchange', syncLabHash);
+    return () => window.removeEventListener('hashchange', syncLabHash);
+  }, [handleSwitchDesktopTab]);
+
+  useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 8);
     };
@@ -840,46 +1243,52 @@ const App: React.FC = () => {
       theme="material"
       dark={theme === 'dark'}
       safeAreas={false}
-      className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 flex flex-col overflow-x-hidden font-mono"
+      className="min-h-screen bg-slate-50 dark:bg-slate-950 gk-page-bg transition-colors duration-300 flex flex-col overflow-x-hidden font-mono"
     >
-      {/* Header with seamless translucent iOS blur on scroll */}
-      <header className={`sticky top-0 z-40 pt-[env(safe-area-inset-top,0px)] transition-all duration-300 ${
-        isScrolled
-          ? 'bg-white/75 dark:bg-slate-950/75 backdrop-blur-xl shadow-xs'
-          : 'bg-white/50 dark:bg-slate-950/50 backdrop-blur-md'
-      }`}>
+      {/* Header with iOS 26/27 Soft Progressive Blur Edge Effect (or Blueprint solid header) */}
+      <header className="gk-app-header gk-header sticky top-0 z-40 pt-[env(safe-area-inset-top,0px)] transition-all duration-300 bg-gradient-to-b from-white/90 via-white/65 to-transparent dark:from-slate-950/90 dark:via-slate-950/65 dark:to-transparent backdrop-blur-xl">
         <div className="max-w-[1920px] mx-auto px-4 md:px-6 h-14 flex justify-between items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-macaron-pink"></div>
-            <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-macaron-blue"></div>
-            <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-macaron-green"></div>
-            <h1 className="ml-1 sm:ml-2 font-bold text-slate-800 dark:text-slate-100 tracking-tight text-base sm:text-lg">
-              <span className="lg:hidden">Gk-mixer</span>
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/app-logo.png"
+              alt="GK-Mixer"
+              className="w-7 h-7 rounded-lg object-cover shadow-xs border border-slate-200/60 dark:border-slate-700/60"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-macaron-pink"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-macaron-blue"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-macaron-green"></div>
+            </div>
+            <h1 className="ml-0.5 font-bold text-slate-800 dark:text-slate-100 tracking-tight text-base sm:text-lg">
+              <span className="lg:hidden">GK-Mixer</span>
               <span className="hidden lg:inline">{t.title}</span>
             </h1>
           </div>
           
           {/* Desktop Controls (hidden on mobile) */}
-          <div className="hidden lg:flex gap-4 items-center">
+          <div className="hidden lg:flex gap-3 items-center">
              {/* Color Space Selector */}
-             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
+             <div className="gk-tab-bar flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
                 <button 
                   onClick={() => setColorSpace('srgb')} 
-                  className={`px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${colorSpace === 'srgb' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${colorSpace === 'srgb' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
                   title={t.colorSpaceSrgb}
                 >
                   sRGB
                 </button>
                 <button 
                   onClick={() => setColorSpace('display-p3')} 
-                  className={`px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${colorSpace === 'display-p3' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${colorSpace === 'display-p3' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
                   title={t.colorSpaceP3}
                 >
                   P3
                 </button>
                 <button 
                   onClick={() => setColorSpace('adobe-rgb')} 
-                  className={`px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${colorSpace === 'adobe-rgb' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${colorSpace === 'adobe-rgb' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
                   title={t.colorSpaceAdobe}
                 >
                   Adobe
@@ -887,15 +1296,15 @@ const App: React.FC = () => {
              </div>
 
              {/* Language Selector */}
-             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
-                <button onClick={() => setLang('en')} className={`px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${lang === 'en' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>EN</button>
-                <button onClick={() => setLang('zh')} className={`px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${lang === 'zh' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>中文</button>
-                <button onClick={() => setLang('ja')} className={`px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${lang === 'ja' ? 'bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>日文</button>
+             <div className="gk-tab-bar flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
+                <button onClick={() => setLang('en')} className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${lang === 'en' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>EN</button>
+                <button onClick={() => setLang('zh')} className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${lang === 'zh' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>中文</button>
+                <button onClick={() => setLang('ja')} className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${lang === 'ja' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>日文</button>
              </div>
 
              <button 
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-yellow-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-[0.95]"
+                className="gk-mech-btn p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-yellow-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-[0.95]"
                 title="Toggle Theme"
              >
                 {theme === 'light' ? <MoonIcon className="w-4 h-4" /> : <SunIcon className="w-4 h-4" />}
@@ -904,7 +1313,7 @@ const App: React.FC = () => {
              <button
                 type="button"
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-[0.95]"
+                className="gk-mech-btn p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-[0.95]"
                 title={lang === 'zh' ? '设置与关于' : 'Settings & About'}
                 aria-label="Settings & About"
              >
@@ -913,15 +1322,17 @@ const App: React.FC = () => {
           </div>
 
           {/* Mobile Hamburger Settings Button */}
-          <button
-            type="button"
-            onClick={() => setIsSettingsOpen(true)}
-            className="lg:hidden p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all"
-            aria-label="Settings"
-            title="Settings"
-          >
-            <ListIcon className="w-6 h-6" />
-          </button>
+          <div className="flex lg:hidden items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="gk-mech-btn p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all"
+              aria-label="Settings"
+              title="Settings"
+            >
+              <ListIcon className="w-6 h-6" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -940,60 +1351,64 @@ const App: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 max-w-[1920px] mx-auto w-full p-2.5 sm:p-4 md:p-6 pb-28 lg:pb-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 xl:gap-8 overflow-x-hidden">
+      <main className="flex-1 max-w-[1920px] mx-auto w-full p-2.5 sm:p-4 md:p-6 pb-28 lg:pb-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 xl:gap-8 overflow-x-hidden min-w-0">
         
         {/* Left Column: Image & Palette */}
-        {(!isWideVisualizer || desktopTab !== 'studio') && (
-          <div className={`flex flex-col gap-6 lg:col-span-5 xl:col-span-4 ${mobileMainTab === 'workbench' && workbenchSubpage === 'extract' ? 'block' : 'hidden lg:block'}`}>
-            <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors duration-300">
-              {/* Mobile Top Segmented Control for Workbench (拾色 | 专业分解 | Mixbox分解) */}
+        {/* Left column stays mounted in wide mode (hidden via class) to avoid costly canvas/image remounts */}
+        {(
+          <div className={`flex flex-col gap-6 lg:col-span-5 xl:col-span-4 min-w-0 pr-1.5 pb-1.5 ${mobileMainTab === 'workbench' && workbenchSubpage === 'extract' ? 'block' : 'hidden'} ${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' ? 'lg:hidden' : 'lg:block'}`}>
+            <div className="gk-panel-card gk-card bg-white dark:bg-slate-900 p-2.5 sm:p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors duration-300">
+              {/* Mobile Top Segmented Control for Workbench (拾色 | 调色分解 | 明度色卡) */}
               <div className="lg:hidden mb-4">
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
+                <div className="gk-tab-bar flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
                   <button
                     type="button"
                     onClick={() => handleSwitchWorkbenchSubpage('extract')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center gap-1 ${
+                    className={`gk-tab-pill flex-1 py-1.5 text-xs font-bold rounded-full transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
                       workbenchSubpage === 'extract'
-                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                        ? 'gk-tab-pill-active bg-white dark:bg-slate-700 text-accent dark:text-white shadow-sm'
                         : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                     }`}
                   >
-                    <CrosshairIcon className="w-3.5 h-3.5" />
+                    <CrosshairIcon className="w-3.5 h-3.5 shrink-0" />
                     <span>{lang === 'zh' ? '拾色' : lang === 'ja' ? '抽出' : 'Extract'}</span>
                     {colors.length > 0 && (
-                      <span className="ml-0.5 px-1 min-w-[14px] h-3.5 bg-sky-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none">
+                      <span className="ml-0.5 px-1 min-w-[14px] h-3.5 bg-accent text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none tabular-nums">
                         {colors.length}
                       </span>
                     )}
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleSwitchWorkbenchSubpage('pro')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center gap-1 ${
-                      workbenchSubpage === 'pro'
-                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                    onClick={() => handleSwitchWorkbenchSubpage('mixer')}
+                    className={`gk-tab-pill flex-1 py-1.5 text-xs font-bold rounded-full transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
+                      workbenchSubpage === 'mixer'
+                        ? 'gk-tab-pill-active bg-white dark:bg-slate-700 text-accent dark:text-white shadow-sm'
                         : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                     }`}
                   >
-                    <SparkleIcon className="w-3.5 h-3.5" />
-                    <span>{lang === 'zh' ? '专业分解' : lang === 'ja' ? 'プロ' : 'Pro'}</span>
+                    <FlaskIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span>{lang === 'zh' ? '调色分解' : lang === 'ja' ? '混色' : 'Mixer'}</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleSwitchWorkbenchSubpage('mixbox')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center gap-1 ${
-                      workbenchSubpage === 'mixbox'
-                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                    onClick={() => handleSwitchWorkbenchSubpage('chroma')}
+                    className={`gk-tab-pill flex-1 py-1.5 text-xs font-bold rounded-full transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
+                      workbenchSubpage === 'chroma'
+                        ? 'gk-tab-pill-active bg-white dark:bg-slate-700 text-accent dark:text-white shadow-sm'
                         : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                     }`}
                   >
-                    <PaletteIcon className="w-3.5 h-3.5" />
-                    <span>{lang === 'zh' ? 'Mixbox分解' : lang === 'ja' ? 'Mixbox' : 'Mixbox'}</span>
+                    <SquaresFourIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span>{lang === 'zh' ? '明度色卡' : lang === 'ja' ? '色階' : 'Chroma'}</span>
                   </button>
                 </div>
               </div>
 
-              <h2 className="text-xs font-bold text-slate-400 mb-4 tracking-widest">{t.sourceInput}</h2>
+              <h2 className="text-xs font-bold text-slate-400 mb-4 tracking-widest">
+                <span className="tech-prefix">[CANVAS]</span>
+                {t.sourceInput}
+              </h2>
             
             {!sourceImage ? (
                 <div className="relative">
@@ -1012,14 +1427,22 @@ const App: React.FC = () => {
                     {/* Toolbar */}
                     <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded-lg" data-image-toolbar="true">
                         <div className="flex flex-wrap gap-2">
-                            <button onClick={handleZoomIn} className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue">{t.zoomIn}</button>
-                            <button onClick={handleZoomOut} className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue">{t.zoomOut}</button>
-                            <button onClick={handleReset} className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue">{t.reset}</button>
+                            <button onClick={handleZoomIn} className="gk-btn-secondary px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-coral whitespace-nowrap">{t.zoomIn}</button>
+                            <button onClick={handleZoomOut} className="gk-btn-secondary px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-coral whitespace-nowrap">{t.zoomOut}</button>
+                            <button onClick={handleReset} className="gk-btn-secondary px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-coral whitespace-nowrap">{t.reset}</button>
                             <button
                                 onClick={() => changeImageInputRef.current?.click()}
-                                className="px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-macaron-blue"
+                                className="gk-btn-secondary px-2 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-coral whitespace-nowrap"
                             >
                                 {t.changeImage}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => sourceImage && handleSendImageToColoring(sourceImage, '取色画布源图')}
+                                className="gk-btn-primary px-2.5 py-1 bg-[var(--accent-color)] text-white text-xs font-extrabold rounded border border-transparent hover:opacity-95 whitespace-nowrap cursor-pointer"
+                                title="将当前源图像一键发送至 AI 试色台进行分件改色与光影预览"
+                            >
+                                🎨 {lang === 'zh' ? '试色改色' : 'Color Studio'}
                             </button>
                             <input
                                 ref={changeImageInputRef}
@@ -1058,7 +1481,6 @@ const App: React.FC = () => {
                         style={{ 
                           touchAction: isPicking ? 'none' : 'pan-y'
                         }}
-                        onWheel={handleWheel}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
@@ -1069,20 +1491,24 @@ const App: React.FC = () => {
                             if (!rgb) {
                               setIsPicking(false);
                               setIsContinuousPicking(false);
-                              setLoupe(null);
+                              hideLoupe();
                             }
                           }
                         }}
                         onMouseLeave={() => {
                           handleMouseUp();
-                          setLoupe(null);
+                          hideLoupe();
                         }}
                     >
                             {/* Hidden source image for reference */}
                         <img ref={imageRef} src={sourceImage} className="hidden" alt="source ref" onLoad={() => {
-                            // Trigger re-render to draw canvas
+                            // Trigger re-render to draw canvas with willReadFrequently enabled from creation
                             const canvas = canvasRef.current;
-                            const ctx = canvas?.getContext('2d');
+                            const canvasColorSpace = colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace;
+                            const ctx = canvas?.getContext('2d', {
+                              colorSpace: canvasColorSpace,
+                              willReadFrequently: true,
+                            });
                             const img = imageRef.current;
                             if(canvas && ctx && img) {
                                 canvas.width = img.naturalWidth;
@@ -1111,11 +1537,13 @@ const App: React.FC = () => {
                                 ref={canvasRef}
                                 onClick={handleCanvasClick}
                                 onMouseMove={handleCanvasPointerMove}
-                                onMouseLeave={() => setLoupe(null)}
+                                onMouseLeave={hideLoupe}
                                 className={`block max-h-full max-w-full shadow-lg ${isPicking ? 'cursor-crosshair ring-2 ring-macaron-green' : ''}`}
                                 style={{
                                     maxWidth: '100%',
                                     maxHeight: '100%',
+                                    width: 'auto',
+                                    height: 'auto',
                                     objectFit: 'contain'
                                 }}
                             />
@@ -1137,6 +1565,10 @@ const App: React.FC = () => {
                                     settings={swatchSettings}
                                     onSelect={setSelectedColorId}
                                     onRemove={handleUnassignPaint}
+                                    onRequestAssign={(id) => {
+                                      setSelectedColorId(id);
+                                      setQuickAssignColorId(id);
+                                    }}
                                     onMoveLabel={handleMoveLabel}
                                 />
                               </div>
@@ -1151,7 +1583,7 @@ const App: React.FC = () => {
                                   e.stopPropagation();
                                   setIsPicking(false);
                                   setIsContinuousPicking(false);
-                                  setLoupe(null);
+                                  hideLoupe();
                                 }}
                                 className="absolute top-4 left-4 z-20 flex items-center gap-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs px-3 py-1 font-medium shadow-md backdrop-blur-sm transition-all active:scale-95 cursor-pointer"
                                 title={lang === 'zh' ? '点击退出取色模式' : lang === 'ja' ? 'クリックして終了' : 'Click to exit pick mode'}
@@ -1162,6 +1594,16 @@ const App: React.FC = () => {
                             </button>
                         )}
                         <div className="absolute top-3 right-3 z-20 flex gap-2">
+                          {assignedMarkers.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setIsSwatchEditorOpen(true)}
+                              className="flex items-center gap-1 rounded-lg bg-white/90 dark:bg-slate-800/90 px-2.5 py-1.5 text-[10px] font-bold text-slate-800 dark:text-slate-100 shadow-lg backdrop-blur-sm hover:bg-white border border-slate-200/70 dark:border-slate-700"
+                            >
+                              <SwatchesIcon className="h-3.5 w-3.5 text-accent" />
+                              {lang === 'zh' ? '编辑色卡' : 'Edit Swatches'}
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={handleExportAnnotated}
@@ -1172,6 +1614,70 @@ const App: React.FC = () => {
                             {isExporting ? t.exporting : t.exportAnnotated}
                           </button>
                         </div>
+                    </div>
+
+                    {/* Source Image Bottom Helper Caption & Apple Music-style ••• Secondary Action Menu */}
+                    <div className="flex items-center justify-between gap-2 px-1 pt-0.5">
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-snug">
+                        {lang === 'zh'
+                          ? '点按画面取色；放大请用双指捏合。点按右下角菜单可收藏颜色、导出 PNG 或保存至涂装项目。'
+                          : 'Tap image to pick color; pinch with 2 fingers to zoom. Use the menu on the right to save or export.'}
+                      </p>
+
+                      {/* Plain ••• Button (44x44px hit area, no outer circle border, coral accent) */}
+                      <div className="relative flex-shrink-0" ref={sourceActionMenuRef}>
+                        <button
+                          type="button"
+                          onClick={() => setIsSourceActionMenuOpen((v) => !v)}
+                          className="w-11 h-11 flex items-center justify-center text-accent hover:opacity-80 active:scale-95 transition-all cursor-pointer"
+                          title={lang === 'zh' ? '更多操作' : 'More Actions'}
+                          aria-label="More Actions"
+                        >
+                          <DotsThreeIcon className="w-6 h-6" weight="bold" />
+                        </button>
+
+                        {isSourceActionMenuOpen && (
+                          <div className="absolute right-0 bottom-11 w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xl py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
+                            <button
+                              type="button"
+                              disabled={!assignedMarkers.length || isExporting}
+                              onClick={() => {
+                                setIsSourceActionMenuOpen(false);
+                                handleExportAnnotated();
+                              }}
+                              className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 flex items-center justify-between gap-2"
+                            >
+                              <span>{lang === 'zh' ? '导出 PNG 图片' : 'Export PNG Image'}</span>
+                              <DownloadSimpleIcon className="w-4 h-4 text-slate-500" />
+                            </button>
+                            <div className="h-[1px] bg-slate-100 dark:bg-slate-800 my-0.5" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsSourceActionMenuOpen(false);
+                                setIsSaveToProjectOpen(true);
+                              }}
+                              className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between gap-2"
+                            >
+                              <span>{lang === 'zh' ? '保存至涂装项目...' : 'Save to Project...'}</span>
+                              <FolderPlusIcon className="w-4 h-4 text-accent" />
+                            </button>
+                            <div className="h-[1px] bg-slate-100 dark:bg-slate-800 my-0.5" />
+                            <button
+                              type="button"
+                              disabled={!selectedColor && colors.length === 0}
+                              onClick={() => {
+                                setIsSourceActionMenuOpen(false);
+                                handleSaveCurrentColorToPalette();
+                              }}
+                              className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 flex items-center justify-between gap-2"
+                            >
+                              <span>{lang === 'zh' ? '添加当前颜色到自选调色盘' : 'Save Color to Custom Palette'}</span>
+                              <PaletteIcon className="w-4 h-4 text-accent" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                 </div>
             )}
@@ -1186,24 +1692,37 @@ const App: React.FC = () => {
                   onResetPositions={handleResetPositions}
                   lang={lang}
                   assignedCount={assignedMarkers.length}
+                  colors={colors}
+                  selectedColor={selectedColor}
+                  onSelectColor={(c) => setSelectedColorId(c.id)}
+                  onUpdateColors={setColors}
+                  canvasSize={{ w: canvasBox.width || 600, h: canvasBox.height || 450 }}
                   className="mt-3"
                 />
             )}
 
             {assignedMarkers.length > 0 && (
-                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                <div className="bp-subcard mt-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                            <span className="tech-prefix">[WORKFLOW]</span>
                             {lang === "zh" ? "油漆标注" : lang === "ja" ? "塗料割り当て" : "Paint Assignments"}
                             <span className="ml-1 font-normal text-slate-400">
                                 · {assignedMarkers.length} {lang === "zh" ? "个色卡" : "markers"}
                             </span>
                         </span>
-                        <div className="flex gap-3 text-[11px] font-bold">
-                            <button type="button" onClick={handleCopyAssignments} className="text-sky-600 hover:underline">
+                        <div className="flex gap-3 text-[11px] font-bold shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setIsSwatchEditorOpen(true)}
+                              className="text-accent hover:underline whitespace-nowrap"
+                            >
+                              {lang === "zh" ? "色卡精修" : "Edit Layout"}
+                            </button>
+                            <button type="button" onClick={handleCopyAssignments} className="text-accent hover:underline whitespace-nowrap">
                                 {lang === "zh" ? "复制" : "Copy"}
                             </button>
-                            <button type="button" onClick={handleClearAssignments} className="text-red-500 hover:underline">
+                            <button type="button" onClick={handleClearAssignments} className="text-red-500 hover:underline whitespace-nowrap">
                                 {lang === "zh" ? "全部清除" : "Clear all"}
                             </button>
                         </div>
@@ -1214,15 +1733,15 @@ const App: React.FC = () => {
                             return (
                                 <div
                                     key={marker.id}
-                                    className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 ${
+                                    className={`bp-subcard flex items-center gap-2 rounded-lg border px-2 py-1.5 ${
                                         marker.id === selectedColorId
-                                            ? "border-sky-300 bg-sky-50 dark:border-sky-700 dark:bg-sky-950/40"
+                                            ? "bp-subcard-active border-accent/40 bg-accent/8 dark:border-accent/50 dark:bg-accent/15"
                                             : "border-slate-100 dark:border-slate-800"
                                     }`}
                                 >
                                     <button
                                         type="button"
-                                        className="h-7 w-7 flex-shrink-0 rounded-md border border-slate-200"
+                                        className="bp-swatch h-7 w-7 flex-shrink-0 rounded-md border border-slate-200"
                                         style={{ backgroundColor: paint.hex }}
                                         onClick={() => setSelectedColorId(marker.id)}
                                     />
@@ -1231,7 +1750,7 @@ const App: React.FC = () => {
                                         className="min-w-0 flex-1 text-left"
                                         onClick={() => {
                                             setSelectedColorId(marker.id);
-                                            handleSwitchWorkbenchSubpage('pro');
+                                            handleSwitchWorkbenchSubpage('mixer');
                                         }}
                                     >
                                         <div className="truncate text-[11px] font-bold text-slate-700 dark:text-slate-200">
@@ -1241,18 +1760,27 @@ const App: React.FC = () => {
                                     </button>
                                     <button
                                         type="button"
+                                        onClick={() => handleStartTonalReplace(marker.id)}
+                                        className="bp-pill flex-shrink-0 rounded-full bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 flex items-center gap-0.5 whitespace-nowrap"
+                                        title={lang === "zh" ? "通过明度色卡微调取色点颜色" : "Adjust tone in Chroma Matrix"}
+                                    >
+                                        <SquaresFourIcon className="w-3 h-3 shrink-0" />
+                                        <span>{lang === "zh" ? "明暗微调" : "Tone"}</span>
+                                    </button>
+                                    <button
+                                        type="button"
                                         onClick={() => {
                                             setSelectedColorId(marker.id);
-                                            handleSwitchWorkbenchSubpage('pro');
+                                            handleSwitchWorkbenchSubpage('mixer');
                                         }}
-                                        className="flex-shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700"
+                                        className="bp-pill flex-shrink-0 rounded-full bg-accent/10 dark:bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent dark:text-accent-light whitespace-nowrap"
                                     >
                                         {lang === "zh" ? "混色" : "Mix"}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => handleUnassignPaint(marker.id)}
-                                        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-[10px] text-white"
+                                        className="bp-badge flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-[10px] text-white"
                                         aria-label="Remove"
                                     >
                                         ×
@@ -1270,19 +1798,32 @@ const App: React.FC = () => {
                     {colors.length > 0 && (
                         <div className="flex justify-between items-center mb-2 sm:mb-3">
                             <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
+                                <span className="tech-prefix">[PALETTE]</span>
                                 {t.extractedColors || (lang === 'zh' ? '已提取颜色' : lang === 'ja' ? '抽出された色' : 'Extracted Colors')}
                             </span>
-                            <button
-                                onClick={() => {
-                                    setColors([]);
-                                    setSelectedColorId(null);
-                                }}
-                                className="flex items-center gap-1 text-[10px] sm:text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                                title={lang === 'zh' ? '清空所有颜色' : lang === 'ja' ? 'すべての色をクリア' : 'Clear all colors'}
-                            >
-                                <TrashIcon className="w-3.5 h-3.5" />
-                                <span>{lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}</span>
-                            </button>
+                            <div className="flex items-center gap-3">
+                              {selectedColor && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartTonalReplace(selectedColor.id)}
+                                  className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-accent hover:underline"
+                                >
+                                  <SquaresFourIcon className="w-3.5 h-3.5" />
+                                  <span>{lang === 'zh' ? '明度色卡微调选中色' : 'Fine-tune Tone'}</span>
+                                </button>
+                              )}
+                              <button
+                                  onClick={() => {
+                                      setColors([]);
+                                      setSelectedColorId(null);
+                                  }}
+                                  className="flex items-center gap-1 text-[10px] sm:text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                  title={lang === 'zh' ? '清空所有颜色' : lang === 'ja' ? 'すべての色をクリア' : 'Clear all colors'}
+                              >
+                                  <TrashIcon className="w-3.5 h-3.5" />
+                                  <span>{lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}</span>
+                              </button>
+                            </div>
                         </div>
                     )}
                     <ColorPalette 
@@ -1293,6 +1834,15 @@ const App: React.FC = () => {
                         onContinuousPick={handleContinuousPick}
                         onDeleteColor={handleDeleteColor}
                         onAddColorByHex={handleAddColor}
+                        onOpenQuickAssign={(c) => {
+                          setSelectedColorId(c.id);
+                          setQuickAssignColorId(c.id);
+                        }}
+                        onUnassignPaint={handleUnassignPaint}
+                        onNavigateToMixer={(c) => {
+                          setSelectedColorId(c.id);
+                          handleSwitchWorkbenchSubpage('mixer');
+                        }}
                         hasImage={!!sourceImage}
                         isPicking={isPicking}
                         isContinuousPicking={isContinuousPicking}
@@ -1305,94 +1855,106 @@ const App: React.FC = () => {
         )}
 
         {/* Right Column: Tools & Output */}
-        <div className={`${isWideVisualizer && desktopTab === 'studio' ? "col-span-12" : "lg:col-span-7 xl:col-span-8"} ${!(mobileMainTab === 'workbench' && workbenchSubpage === 'extract') ? 'block' : 'hidden lg:block'} w-full max-w-full overflow-x-hidden`}>
-           <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full transition-colors duration-300 flex flex-col w-full max-w-full overflow-x-hidden">
+        <div className={`${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' ? "col-span-12" : "lg:col-span-7 xl:col-span-8"} ${!(mobileMainTab === 'workbench' && workbenchSubpage === 'extract') ? 'block' : 'hidden lg:block'} w-full max-w-full min-w-0 pr-1.5 pb-1.5`}>
+           <div className="gk-panel-card gk-card bg-white dark:bg-slate-900 p-2.5 sm:p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full flex flex-col w-full max-w-full min-w-0">
                 
-                {/* Mobile Top Segmented Control for Workbench (when on mobile in workbench: pro or mixbox) */}
+                {/* Mobile Top Segmented Control for Workbench (when on mobile in workbench: mixer or chroma) */}
                 {mobileMainTab === 'workbench' && (
                   <div className="lg:hidden mb-4">
-                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
+                    <div className="gk-tab-bar flex bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
                       <button
                         type="button"
                         onClick={() => handleSwitchWorkbenchSubpage('extract')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center gap-1 ${
+                        className={`gk-tab-pill flex-1 py-1.5 text-xs font-bold rounded-full transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
                           workbenchSubpage === 'extract'
-                            ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                            ? 'gk-tab-pill-active bg-white dark:bg-slate-700 text-accent dark:text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                         }`}
                       >
-                        <CrosshairIcon className="w-3.5 h-3.5" />
+                        <CrosshairIcon className="w-3.5 h-3.5 shrink-0" />
                         <span>{lang === 'zh' ? '拾色' : lang === 'ja' ? '抽出' : 'Extract'}</span>
                         {colors.length > 0 && (
-                          <span className="ml-0.5 px-1 min-w-[14px] h-3.5 bg-sky-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none">
+                          <span className="ml-0.5 px-1 min-w-[14px] h-3.5 bg-accent text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none tabular-nums">
                             {colors.length}
                           </span>
                         )}
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleSwitchWorkbenchSubpage('pro')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center gap-1 ${
-                          workbenchSubpage === 'pro'
-                            ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                        onClick={() => handleSwitchWorkbenchSubpage('mixer')}
+                        className={`gk-tab-pill flex-1 py-1.5 text-xs font-bold rounded-full transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
+                          workbenchSubpage === 'mixer'
+                            ? 'gk-tab-pill-active bg-white dark:bg-slate-700 text-accent dark:text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                         }`}
                       >
-                        <SparkleIcon className="w-3.5 h-3.5" />
-                        <span>{lang === 'zh' ? '专业分解' : lang === 'ja' ? 'プロ' : 'Pro'}</span>
+                        <FlaskIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span>{lang === 'zh' ? '调色分解' : lang === 'ja' ? '混色' : 'Mixer'}</span>
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleSwitchWorkbenchSubpage('mixbox')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center gap-1 ${
-                          workbenchSubpage === 'mixbox'
-                            ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                        onClick={() => handleSwitchWorkbenchSubpage('chroma')}
+                        className={`gk-tab-pill flex-1 py-1.5 text-xs font-bold rounded-full transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
+                          workbenchSubpage === 'chroma'
+                            ? 'gk-tab-pill-active bg-white dark:bg-slate-700 text-accent dark:text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                         }`}
                       >
-                        <PaletteIcon className="w-3.5 h-3.5" />
-                        <span>{lang === 'zh' ? 'Mixbox分解' : lang === 'ja' ? 'Mixbox' : 'Mixbox'}</span>
+                        <SquaresFourIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span>{lang === 'zh' ? '明度色卡' : lang === 'ja' ? '色階' : 'Chroma'}</span>
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* Mobile Top Segmented Control for Tuning (自选 | 基础) */}
+                {/* Mobile Top Segmented Control for Tuning (自选 | 基础 | 近邻) */}
                 {mobileMainTab === 'tuning' && (
                   <div className="lg:hidden mb-4">
-                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
+                    <div className="gk-tab-bar flex bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
                       <button
                         type="button"
                         onClick={() => handleSwitchTuningSubpage('custom')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center gap-1 ${
+                        className={`gk-tab-pill flex-1 py-1.5 text-xs font-bold rounded-full transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
                           tuningSubpage === 'custom'
-                            ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                            ? 'gk-tab-pill-active bg-white dark:bg-slate-700 text-accent dark:text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                         }`}
                       >
-                        <SlidersHorizontalIcon className="w-3.5 h-3.5" />
+                        <SlidersHorizontalIcon className="w-3.5 h-3.5 shrink-0" />
                         <span>{lang === 'zh' ? '自选' : lang === 'ja' ? '自選' : 'Custom'}</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleSwitchTuningSubpage('basic')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center gap-1 ${
+                        className={`gk-tab-pill flex-1 py-1.5 text-xs font-bold rounded-full transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
                           tuningSubpage === 'basic'
-                            ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                            ? 'gk-tab-pill-active bg-white dark:bg-slate-700 text-accent dark:text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                         }`}
                       >
-                        <DropIcon className="w-3.5 h-3.5" />
+                        <DropIcon className="w-3.5 h-3.5 shrink-0" />
                         <span>{lang === 'zh' ? '基础' : lang === 'ja' ? '基本' : 'Basic'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchTuningSubpage('brands')}
+                        className={`gk-tab-pill flex-1 py-1.5 text-xs font-bold rounded-full transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
+                          tuningSubpage === 'brands'
+                            ? 'gk-tab-pill-active bg-white dark:bg-slate-700 text-accent dark:text-white shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                        }`}
+                      >
+                        <TagIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span>{lang === 'zh' ? '近邻' : lang === 'ja' ? '近似色' : 'Matches'}</span>
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* Mobile Quick Color Switcher (switch active color directly inside tools without leaving view) */}
-                {colors.length > 0 && (
-                  <div className="lg:hidden mt-1 mb-5 pt-1.5 pb-3 border-b border-slate-200/80 dark:border-slate-700/80 flex items-center gap-2.5 overflow-x-auto no-scrollbar">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex-shrink-0 pl-0.5">
+                {/* Mobile Quick Color Switcher (hidden in coloring/studio/catalog/brands standalone where dedicated headers exist) */}
+                {colors.length > 0 && mobileMainTab !== 'coloring' && mobileMainTab !== 'studio' && mobileMainTab !== 'catalog' && !(mobileMainTab === 'tuning' && tuningSubpage === 'brands') && (
+                  <div className="gk-dashed-divider-b lg:hidden mt-1 mb-5 pt-1.5 pb-3 border-b border-slate-200/80 dark:border-slate-700/80 flex items-center gap-2.5 overflow-x-auto no-scrollbar">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex-shrink-0 pl-0.5 whitespace-nowrap">
                       {lang === 'zh' ? '当前色:' : lang === 'ja' ? '対象色:' : 'Target:'}
                     </span>
                     <div className="flex items-center gap-2 py-1.5 overflow-x-auto no-scrollbar">
@@ -1403,9 +1965,9 @@ const App: React.FC = () => {
                             key={c.id}
                             type="button"
                             onClick={() => setSelectedColorId(c.id)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all flex-shrink-0 ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all flex-shrink-0 whitespace-nowrap ${
                               isSel
-                                ? 'bg-sky-50 dark:bg-sky-950/80 border-2 border-sky-500 text-sky-800 dark:text-sky-200 font-bold shadow-xs'
+                                ? 'bg-accent/10 dark:bg-accent/20 border-2 border-accent text-accent dark:text-accent-light font-bold shadow-xs'
                                 : 'bg-slate-100 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70 text-slate-600 dark:text-slate-400 hover:bg-slate-200/60'
                             }`}
                           >
@@ -1419,64 +1981,80 @@ const App: React.FC = () => {
                 )}
 
                 {/* Desktop Tabs Bar */}
-                <div className="hidden lg:flex justify-between items-center mb-6">
-                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1 gap-1 flex-wrap">
+                <div className="hidden lg:flex w-full items-center mb-6" translate="no">
+                    <div className="gk-tab-bar w-full flex items-center bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-full p-1 gap-1 flex-wrap border border-slate-200/60 dark:border-slate-700/60">
                         {/* 混色台组 */}
                         <button 
-                            onClick={() => handleSwitchDesktopTab('pro')}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${desktopTab === 'pro' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            onClick={() => handleSwitchDesktopTab('mixer')}
+                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'mixer' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
-                            <SparkleIcon className="w-3.5 h-3.5" />
-                            <span>{lang === 'zh' ? '专业分解' : 'Pro Mixer'}</span>
+                            <FlaskIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span><span className="tech-prefix">[WORKFLOW]</span>{lang === 'zh' ? '调色分解' : 'Mixer'}</span>
                         </button>
                         <button 
-                            onClick={() => handleSwitchDesktopTab('mixbox')}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${desktopTab === 'mixbox' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            onClick={() => handleSwitchDesktopTab('chroma')}
+                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'chroma' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
-                            <PaletteIcon className="w-3.5 h-3.5" />
-                            <span>{lang === 'zh' ? 'Mixbox分解' : 'Mixbox 2.0'}</span>
+                            <SquaresFourIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{lang === 'zh' ? '明度色卡' : 'Chroma Matrix'}</span>
                         </button>
                         
-                        <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5" />
+                        <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5 shrink-0" />
 
                         {/* 调色台组 */}
                         <button 
                             onClick={() => handleSwitchDesktopTab('custom')}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${desktopTab === 'custom' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'custom' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
-                            <SlidersHorizontalIcon className="w-3.5 h-3.5" />
-                            <span>{lang === 'zh' ? '自选调色' : 'Custom'}</span>
+                            <SlidersHorizontalIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span><span className="tech-prefix">[PALETTE]</span>{lang === 'zh' ? '自选调色' : 'Custom'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('basic')}
-                            className={`px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${desktopTab === 'basic' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-2.5 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'basic' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
-                            <DropIcon className="w-3.5 h-3.5" />
+                            <DropIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '基础色' : 'Basic'}</span>
                         </button>
+                        <button 
+                            onClick={() => handleSwitchDesktopTab('brands')}
+                            className={`gk-tab-pill flex-1 justify-center px-2.5 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'brands' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <TagIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{lang === 'zh' ? '品牌近邻' : 'Brand Matches'}</span>
+                        </button>
 
-                        <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5" />
+                        <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5 shrink-0" />
 
-                        {/* 色卡与数据库 */}
+                        {/* 试色台、涂装库与数据库 */}
+                        <button 
+                            onClick={() => handleSwitchDesktopTab('coloring')}
+                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'coloring' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            title="GKMixer STUDIO · AI 智能分件试色台 (COLOR STUDIO)"
+                        >
+                            <PaletteIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span><span className="tech-prefix">[STUDIO]</span>🎨 {lang === 'zh' ? '试色台' : 'Color Studio'}</span>
+                        </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('studio')}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${desktopTab === 'studio' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'studio' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
-                            <SwatchesIcon className="w-3.5 h-3.5" />
-                            <span>{lang === 'zh' ? '色卡制作' : 'Swatch Studio'}</span>
+                            <StackIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span><span className="tech-prefix">[LIBRARY]</span>{lang === 'zh' ? '涂装库' : 'Paint Library'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('catalog')}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${desktopTab === 'catalog' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'catalog' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
-                            <DatabaseIcon className="w-3.5 h-3.5" />
-                            <span>{lang === 'zh' ? '数据库' : 'Catalog'}</span>
+                            <DatabaseIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span><span className="tech-prefix">[DATABASE]</span>{lang === 'zh' ? '数据库' : 'Catalog'}</span>
                         </button>
                     </div>
                 </div>
 
-                {/* Active Content Panel */}
-                {desktopTab === 'pro' ? (
+                {/* Active Content Panel - Kept persistently mounted to eliminate unmount/remount lag during tab switching */}
+                <KeepAlivePanel active={desktopTab === 'mixer'} direction={tabTransitionDir}>
+                  <ErrorBoundary fallbackTitle="调色分解视图遇到渲染异常">
                     <MixerResult 
                         color={selectedColor} 
                         lang={lang} 
@@ -1486,21 +2064,30 @@ const App: React.FC = () => {
                         onCacheUpdate={setMixerResultCache}
                         onAssignCatalogPaint={handleAssignCatalogPaint}
                         onNavigateToExtract={() => handleSwitchWorkbenchSubpage('extract')}
-                        forcedMode="professional"
                     />
-                ) : desktopTab === 'mixbox' ? (
-                    <MixerResult 
-                        color={selectedColor} 
-                        lang={lang} 
-                        colorSpace={colorSpace} 
+                  </ErrorBoundary>
+                </KeepAlivePanel>
+
+                <KeepAlivePanel active={desktopTab === 'chroma'} direction={tabTransitionDir}>
+                  <ErrorBoundary fallbackTitle="明度色卡视图遇到渲染异常">
+                    <ChromaStudioPanel 
+                        color={selectedColor}
+                        availableColors={colors}
+                        selectedColorId={selectedColorId}
+                        onSelectColorId={setSelectedColorId}
+                        onSelectColor={(c) => setSelectedColorId(c.id)}
+                        lang={lang}
                         onAddColor={handleAddColor}
-                        cache={mixerResultCache}
-                        onCacheUpdate={setMixerResultCache}
-                        onAssignCatalogPaint={handleAssignCatalogPaint}
                         onNavigateToExtract={() => handleSwitchWorkbenchSubpage('extract')}
-                        forcedMode="mixbox"
+                        pendingTonalSample={colors.find((c) => c.id === pendingTonalSampleId) || null}
+                        onConfirmTonalReplace={handleConfirmTonalReplace}
+                        onCancelTonalReplace={() => setPendingTonalSampleId(null)}
                     />
-                ) : desktopTab === 'custom' ? (
+                  </ErrorBoundary>
+                </KeepAlivePanel>
+
+                <KeepAlivePanel active={desktopTab === 'custom'} direction={tabTransitionDir}>
+                  <ErrorBoundary fallbackTitle="自选调色视图遇到渲染异常">
                     <RadialPaletteMixer
                         targetColor={selectedColor}
                         availableColors={colors}
@@ -1509,43 +2096,180 @@ const App: React.FC = () => {
                         cache={radialMixerCache}
                         onCacheUpdate={setRadialMixerCache}
                         onAssignCatalogPaint={handleAssignCatalogPaint}
+                        onNavigateToBrands={(hex) => {
+                          handleAddColor(hex);
+                          handleSwitchDesktopTab('brands');
+                        }}
                     />
-                ) : desktopTab === 'basic' ? (
+                  </ErrorBoundary>
+                </KeepAlivePanel>
+
+                <KeepAlivePanel active={desktopTab === 'basic'} direction={tabTransitionDir}>
+                  <ErrorBoundary fallbackTitle="基础调色视图遇到渲染异常">
                     <BasicColorMixer 
                         lang={lang}
                         cache={basicMixerCache}
                         onCacheUpdate={setBasicMixerCache}
+                        onNavigateToBrands={(hex) => {
+                          handleAddColor(hex);
+                          handleSwitchDesktopTab('brands');
+                        }}
+                        onSaveToCustomPalette={(hex) => {
+                          setRadialMixerCache((prev) => {
+                            const exists = prev.sliders.some((s) => s.color.toUpperCase() === hex.toUpperCase());
+                            if (exists) return prev;
+                            const newSlider: SliderState = {
+                              id: `custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                              color: hex.toUpperCase(),
+                              weight: 0.2,
+                              position: 0.2,
+                              angle: 0,
+                              scale: 1.0,
+                            };
+                            return {
+                              ...prev,
+                              sliders: [...prev.sliders, newSlider],
+                            };
+                          });
+                          handleSwitchDesktopTab('custom');
+                        }}
                     />
-                ) : desktopTab === 'catalog' ? (
+                  </ErrorBoundary>
+                </KeepAlivePanel>
+
+                <KeepAlivePanel active={desktopTab === 'brands'} direction={tabTransitionDir}>
+                  <ErrorBoundary fallbackTitle="品牌近邻视图遇到渲染异常">
+                    <BrandMatchPanel
+                        hex={selectedColor?.hex || colors[0]?.hex || '#4A7BD0'}
+                        lang={lang}
+                        standaloneMode={true}
+                        hasSamplePoint={!!selectedColor && hasSamplePoint(selectedColor)}
+                        assignedId={selectedColor?.assignedPaint?.id || null}
+                        onAssignCatalog={handleAssignCatalogPaint}
+                        onChangeHex={handleAddColor}
+                        onSyncToWorkbench={(hex) => {
+                          handleAddColor(hex);
+                          handleSwitchWorkbenchSubpage('mixer');
+                        }}
+                        sourceOptions={{
+                          workbenchHex: selectedColor?.hex || colors[0]?.hex || null,
+                          customMixHex: radialMixerCache.sliders[0]?.hex || null,
+                          basicMixHex: basicMixerCache.baseColors[0]?.hex || null,
+                          libraryHex: savedColors[0]?.hex || null,
+                        }}
+                    />
+                  </ErrorBoundary>
+                </KeepAlivePanel>
+
+                <KeepAlivePanel active={desktopTab === 'coloring'} direction={tabTransitionDir}>
+                  <ErrorBoundary fallbackTitle="AI 试色台视图遇到渲染异常">
+                    <ColoringSandboxLab
+                        lang={lang}
+                        theme={theme}
+                        setTheme={setTheme}
+                        incomingImage={coloringIncomingImage}
+                        externalCatalogPaints={catalogPaints}
+                        onSendColorToMixer={(hex) => {
+                          handleAddColor(hex);
+                          handleSwitchWorkbenchSubpage('mixer');
+                          showToast(lang === 'zh' ? `已将试色油漆 ${hex} 发送至「调色分解」反推配方` : `Sent ${hex} to Mixer`);
+                        }}
+                        onCreatePaintProject={(newProj) => {
+                          setProjects((prev) => [newProj, ...prev]);
+                          setFocusProjectId(newProj.id);
+                          handleSwitchDesktopTab('studio');
+                          showToast(
+                            lang === 'zh'
+                              ? `已创建涂装工程「${newProj.title}」并自动生成色卡与工序`
+                              : `Created project ${newProj.title}`
+                          );
+                        }}
+                    />
+                  </ErrorBoundary>
+                </KeepAlivePanel>
+
+                <KeepAlivePanel active={desktopTab === 'catalog'} direction={tabTransitionDir}>
+                  <ErrorBoundary fallbackTitle="数据库视图遇到渲染异常">
                     <PaintCatalogBrowser
                         lang={lang}
                         onPickHex={handleAddColor}
+                        onAssignCatalog={handleAssignCatalogPaint}
+                        activeSampleColor={selectedColor || colors[0] || null}
                     />
-                ) : (
-                    <PaletteVisualizer 
-                        sourceImage={sourceImage}
-                        colors={colors}
-                        lang={lang}
-                        selectedColorId={selectedColorId}
+                  </ErrorBoundary>
+                </KeepAlivePanel>
+
+                <KeepAlivePanel active={desktopTab === 'studio'} direction={tabTransitionDir}>
+                  <ErrorBoundary fallbackTitle="涂装库视图遇到渲染异常">
+                    <ProjectLibraryView
+                        projects={projects}
+                        onChangeProjects={setProjects}
+                        categories={categories}
+                        onChangeCategories={setCategories}
+                        savedColors={savedColors}
+                        onChangeSavedColors={setSavedColors}
+                        catalogPaints={catalogPaints}
                         swatchSettings={swatchSettings}
-                        onChangeSwatchSettings={setSwatchSettings}
-                        onAutoArrangeLR={handleAutoArrangeLR}
-                        onAutoArrangeTB={handleAutoArrangeTB}
-                        onAlign={handleAlign}
-                        onResetPositions={handleResetPositions}
-                        onSelectColor={setSelectedColorId}
-                        onAssignCatalogPaint={handleAssignCatalogPaint}
-                        onUnassignPaint={handleUnassignPaint}
-                        onMoveLabel={handleMoveLabel}
+                        onUpdateSwatchSettings={setSwatchSettings}
+                        lang={lang}
                         isWideMode={isWideVisualizer}
-                        onToggleWideMode={() => setIsWideVisualizer((prev) => !prev)}
-                        onNavigateToExtract={() => handleSwitchWorkbenchSubpage('extract')}
+                        onToggleWideMode={() => startTransition(() => setIsWideVisualizer((v) => !v))}
+                        focusProjectId={focusProjectId}
+                        onClearFocusProject={() => setFocusProjectId(null)}
+                        onSendImageToColoring={handleSendImageToColoring}
+                        onSendColorToWorkbench={(hex) => {
+                          handleAddColor(hex);
+                          handleSwitchWorkbenchSubpage('mixer');
+                        }}
                     />
-                )}
+                  </ErrorBoundary>
+                </KeepAlivePanel>
            </div>
         </div>
 
       </main>
+
+      {/* Shared Swatch Editor Modal (callable from Tab 1 Extract Workbench) */}
+      <SwatchEditorModal
+        isOpen={isSwatchEditorOpen}
+        onClose={() => setIsSwatchEditorOpen(false)}
+        imageSrc={sourceImage || ''}
+        colors={colors}
+        selectedColor={selectedColor}
+        onSelectColor={(c) => setSelectedColorId(c.id)}
+        onUpdateColors={setColors}
+        settings={swatchSettings}
+        onUpdateSettings={setSwatchSettings}
+        lang={lang}
+        onExportImage={handleExportAnnotated}
+        isExporting={isExporting}
+      />
+
+      {/* Save Current Swatch Canvas to Tab 3 PaintProject Modal */}
+      <SaveToProjectModal
+        isOpen={isSaveToProjectOpen}
+        onClose={() => setIsSaveToProjectOpen(false)}
+        imageSrc={sourceImage}
+        colors={colors}
+        projects={projects}
+        categories={categories}
+        onSaveToProject={(updatedOrNewProject, isNew) => {
+          if (isNew) {
+            setProjects((prev) => [updatedOrNewProject, ...prev]);
+          } else {
+            setProjects((prev) =>
+              prev.map((p) => (p.id === updatedOrNewProject.id ? updatedOrNewProject : p))
+            );
+          }
+          showToast(lang === 'zh' ? `已保存零件色卡至「${updatedOrNewProject.title || '涂装工程'}」` : 'Saved part canvas to project');
+        }}
+        onCreateCategory={(name) => {
+          const newCat: PaletteCategory = { id: generateId(), name, createdAt: Date.now() };
+          setCategories((prev) => [...prev, newCat]);
+          return newCat;
+        }}
+        lang={lang}
+      />
 
       {/* Settings Modal Drawer (iOS-style floating sheet containing all consolidated developer info) */}
       <SettingsModal
@@ -1568,21 +2292,71 @@ const App: React.FC = () => {
         lang={lang}
       />
 
-      {/* 底部悬浮快捷 Dock (Mobile Floating Dock) */}
+      {/* Quick Paint Assign Bottom Sheet (Vertical-Friendly Closed Loop) */}
+      <QuickPaintAssignSheet
+        isOpen={!!quickAssignColorId}
+        onClose={() => setQuickAssignColorId(null)}
+        targetColor={
+          quickAssignColorId
+            ? colors.find((c) => c.id === quickAssignColorId) || selectedColor
+            : null
+        }
+        sampleIndex={
+          quickAssignColorId
+            ? Math.max(0, colors.findIndex((c) => c.id === quickAssignColorId))
+            : 0
+        }
+        catalogPaints={catalogPaints}
+        lang={lang}
+        onAssignPaint={(paint) => {
+          handleAssignCatalogPaint(paint, quickAssignColorId ?? undefined);
+          setQuickAssignColorId(null);
+        }}
+        onUnassignPaint={() => {
+          const id = quickAssignColorId ?? selectedColorId;
+          if (id) handleUnassignPaint(id);
+          setQuickAssignColorId(null);
+        }}
+        onNavigateToBrandMatches={() => {
+          if (quickAssignColorId) setSelectedColorId(quickAssignColorId);
+          setQuickAssignColorId(null);
+          handleSwitchTuningSubpage('brands');
+        }}
+        onNavigateToBrands={() => {
+          if (quickAssignColorId) setSelectedColorId(quickAssignColorId);
+          setQuickAssignColorId(null);
+          handleSwitchTuningSubpage('brands');
+        }}
+        onNavigateToMixer={() => {
+          if (quickAssignColorId) setSelectedColorId(quickAssignColorId);
+          setQuickAssignColorId(null);
+          handleSwitchWorkbenchSubpage('mixer');
+        }}
+      />
+
+      {/* Floating Action Toast */}
+      {actionToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full border-2 border-accent bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 text-xs font-bold shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <CheckCircleIcon className="w-4 h-4 text-accent flex-shrink-0" weight="fill" />
+          <span>{actionToast}</span>
+        </div>
+      )}
+
+      {/* 底部悬浮快捷 Dock (Mobile Floating Dock: 5 Core Tabs) */}
       <nav
         aria-label="Mobile Navigation Dock"
-        className="lg:hidden fixed left-3 right-3 max-w-md mx-auto z-40 bg-white/94 dark:bg-[#1c1c1e]/94 backdrop-blur-2xl rounded-full border border-sky-500/15 dark:border-sky-400/20 shadow-[0_12px_36px_rgba(0,0,0,0.14),0_1px_3px_rgba(0,0,0,0.06)] select-none px-1.5 py-1"
+        className="gk-mobile-dock lg:hidden fixed left-3 right-3 max-w-md mx-auto z-40 bg-white/94 dark:bg-[#1c1c1e]/94 backdrop-blur-2xl rounded-full border border-slate-200/80 dark:border-slate-700/80 shadow-[0_12px_36px_rgba(0,0,0,0.14),0_1px_3px_rgba(0,0,0,0.06)] select-none px-1.5 py-1"
         style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom, 0.75rem))' }}
       >
-        <div className="grid grid-cols-4 w-full items-center gap-1">
-          {/* 1. 混色台 (Workbench: 拾色 | 专业分解 | Mixbox分解) */}
+        <div className="grid grid-cols-5 w-full items-center gap-0.5">
+          {/* 1. 混色台 (Workbench: 拾色 | 调色分解 | 明度色卡) */}
           <button
             type="button"
             onClick={() => handleSwitchMobileTab('workbench')}
             className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
               mobileMainTab === 'workbench'
-                ? 'bg-sky-500/15 dark:bg-sky-400/20 text-sky-600 dark:text-sky-300 font-bold shadow-xs ring-1 ring-sky-500/25 dark:ring-sky-400/30'
-                : 'text-slate-700 dark:text-slate-300 font-medium hover:text-sky-600 dark:hover:text-sky-400'
+                ? 'bg-accent/12 dark:bg-accent/22 text-accent dark:text-accent-light font-bold shadow-xs ring-1 ring-accent/25 dark:ring-accent/35'
+                : 'text-slate-700 dark:text-slate-300 font-medium hover:text-accent dark:hover:text-accent-light'
             }`}
           >
             <div className="relative flex items-center justify-center mb-0.5">
@@ -1593,12 +2367,12 @@ const App: React.FC = () => {
                   style={{ backgroundColor: selectedColor.hex }}
                 />
               ) : colors.length > 0 ? (
-                <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 bg-sky-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none shadow-sm">
+                <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 bg-accent text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none shadow-sm tabular-nums">
                   {colors.length}
                 </span>
               ) : null}
             </div>
-            <span className="text-[11px] tracking-tight whitespace-nowrap text-center leading-none">
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">
               {t.dockWorkbench || (lang === 'zh' ? '混色台' : lang === 'ja' ? '混色台' : 'Workbench')}
             </span>
           </button>
@@ -1609,55 +2383,68 @@ const App: React.FC = () => {
             onClick={() => handleSwitchMobileTab('tuning')}
             className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
               mobileMainTab === 'tuning'
-                ? 'bg-sky-500/15 dark:bg-sky-400/20 text-sky-600 dark:text-sky-300 font-bold shadow-xs ring-1 ring-sky-500/25 dark:ring-sky-400/30'
-                : 'text-slate-700 dark:text-slate-300 font-medium hover:text-sky-600 dark:hover:text-sky-400'
+                ? 'bg-accent/12 dark:bg-accent/22 text-accent dark:text-accent-light font-bold shadow-xs ring-1 ring-accent/25 dark:ring-accent/35'
+                : 'text-slate-700 dark:text-slate-300 font-medium hover:text-accent dark:hover:text-accent-light'
             }`}
           >
             <div className="relative flex items-center justify-center mb-0.5">
               <SlidersHorizontalIcon className="w-5 h-5 flex-shrink-0" />
             </div>
-            <span className="text-[11px] tracking-tight whitespace-nowrap text-center leading-none">
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">
               {t.dockTuning || (lang === 'zh' ? '调色' : lang === 'ja' ? '調色' : 'Tuning')}
             </span>
           </button>
 
-          {/* 3. 色卡制作 (Swatch Studio / Visualizer: 特色独立Tab) */}
+          {/* 3. 试色台 (Color Studio: AI 分件试色台) */}
+          <button
+            type="button"
+            onClick={() => handleSwitchMobileTab('coloring')}
+            className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
+              mobileMainTab === 'coloring'
+                ? 'bg-accent/12 dark:bg-accent/22 text-accent dark:text-accent-light font-bold shadow-xs ring-1 ring-accent/25 dark:ring-accent/35'
+                : 'text-slate-700 dark:text-slate-300 font-medium hover:text-accent dark:hover:text-accent-light'
+            }`}
+          >
+            <div className="relative flex items-center justify-center mb-0.5">
+              <PaletteIcon className="w-5 h-5 flex-shrink-0" />
+            </div>
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">
+              {lang === 'zh' ? '试色台' : lang === 'ja' ? '試色台' : 'Studio'}
+            </span>
+          </button>
+
+          {/* 4. 涂装库 (Paint Library: 涂装工程 | 单色色卡) */}
           <button
             type="button"
             onClick={() => handleSwitchMobileTab('studio')}
             className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
               mobileMainTab === 'studio'
-                ? 'bg-sky-500/15 dark:bg-sky-400/20 text-sky-600 dark:text-sky-300 font-bold shadow-xs ring-1 ring-sky-500/25 dark:ring-sky-400/30'
-                : 'text-slate-700 dark:text-slate-300 font-medium hover:text-sky-600 dark:hover:text-sky-400'
+                ? 'bg-accent/12 dark:bg-accent/22 text-accent dark:text-accent-light font-bold shadow-xs ring-1 ring-accent/25 dark:ring-accent/35'
+                : 'text-slate-700 dark:text-slate-300 font-medium hover:text-accent dark:hover:text-accent-light'
             }`}
           >
             <div className="relative flex items-center justify-center mb-0.5">
-              <SwatchesIcon className="w-5 h-5 flex-shrink-0" />
-              {assignedMarkers.length > 0 && (
-                <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 bg-emerald-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center leading-none shadow-sm">
-                  {assignedMarkers.length}
-                </span>
-              )}
+              <StackIcon className="w-5 h-5 flex-shrink-0" />
             </div>
-            <span className="text-[11px] tracking-tight whitespace-nowrap text-center leading-none">
-              {t.dockStudio || (lang === 'zh' ? '色卡制作' : lang === 'ja' ? '色見本' : 'Swatches')}
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">
+              {lang === 'zh' ? '涂装库' : lang === 'ja' ? '塗装庫' : 'Library'}
             </span>
           </button>
 
-          {/* 4. 数据库 (Catalog) */}
+          {/* 5. 数据库 (Catalog) */}
           <button
             type="button"
             onClick={() => handleSwitchMobileTab('catalog')}
             className={`min-w-0 relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-200 active:scale-95 whitespace-nowrap ${
               mobileMainTab === 'catalog'
-                ? 'bg-sky-500/15 dark:bg-sky-400/20 text-sky-600 dark:text-sky-300 font-bold shadow-xs ring-1 ring-sky-500/25 dark:ring-sky-400/30'
-                : 'text-slate-700 dark:text-slate-300 font-medium hover:text-sky-600 dark:hover:text-sky-400'
+                ? 'bg-accent/12 dark:bg-accent/22 text-accent dark:text-accent-light font-bold shadow-xs ring-1 ring-accent/25 dark:ring-accent/35'
+                : 'text-slate-700 dark:text-slate-300 font-medium hover:text-accent dark:hover:text-accent-light'
             }`}
           >
             <div className="relative flex items-center justify-center mb-0.5">
               <DatabaseIcon className="w-5 h-5 flex-shrink-0" />
             </div>
-            <span className="text-[11px] tracking-tight whitespace-nowrap text-center leading-none">
+            <span className="text-[10px] tracking-tight whitespace-nowrap text-center leading-none">
               {t.dockCatalog || (lang === 'zh' ? '数据库' : lang === 'ja' ? '色庫' : 'Catalog')}
             </span>
           </button>
@@ -1665,10 +2452,8 @@ const App: React.FC = () => {
       </nav>
 
       <ColorLoupe
-        visible={!!loupe && isPicking}
-        clientX={loupe?.x ?? 0}
-        clientY={loupe?.y ?? 0}
-        hex={loupe?.hex ?? '#000000'}
+        ref={loupeHandleRef}
+        active={isPicking}
         canvas={canvasRef.current}
       />
     </KonstaApp>

@@ -42,7 +42,8 @@ const processPixelsSync = (data: Uint8ClampedArray, colorMap: Map<number, number
 };
 
 export const hexToRgb = (hex: string): RGB => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!hex || typeof hex !== 'string') return { r: 0, g: 0, b: 0 };
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
   return result ? {
     r: parseInt(result[1], 16),
     g: parseInt(result[2], 16),
@@ -51,7 +52,10 @@ export const hexToRgb = (hex: string): RGB => {
 };
 
 export const rgbToHex = (r: number, g: number, b: number): string => {
-  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+  const sr = Number.isFinite(r) ? Math.max(0, Math.min(255, Math.round(r))) : 0;
+  const sg = Number.isFinite(g) ? Math.max(0, Math.min(255, Math.round(g))) : 0;
+  const sb = Number.isFinite(b) ? Math.max(0, Math.min(255, Math.round(b))) : 0;
+  return "#" + ((1 << 24) + (sr << 16) + (sg << 8) + sb).toString(16).slice(1).toUpperCase();
 };
 
 export const rgbToCmyk = (r: number, g: number, b: number): CMYK => {

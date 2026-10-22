@@ -129,7 +129,12 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
   const [ralMatch, setRalMatch] = useState<RALColor | null>(null);
   // Use cache values if available, otherwise use defaults
   const [bottleVolume, setBottleVolume] = useState<number>(cache?.bottleVolume ?? 20);
-  const [mixingMode, setMixingMode] = useState<MixingMode>(forcedMode ?? cache?.mixingMode ?? 'professional');
+  const [mixingMode, setMixingMode] = useState<MixingMode>(forcedMode ?? cache?.mixingMode ?? 'mixbox');
+
+  const handleSetMixingMode = (mode: MixingMode) => {
+    setMixingMode(mode);
+    onCacheUpdate?.({ ...cache, mixingMode: mode, bottleVolume });
+  };
   const [selectedBasePaint, setSelectedBasePaint] = useState<PaintBrand | null>(null);
   const [professionalRecipe, setProfessionalRecipe] = useState<ReturnType<typeof calculateProfessionalRecipe> | null>(null);
   const [addedToPalette, setAddedToPalette] = useState(false);
@@ -346,7 +351,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
   if (!color) {
     return (
       <div className="h-full min-h-[320px] flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
-        <div className="w-14 h-14 rounded-2xl bg-macaron-blue/10 flex items-center justify-center text-macaron-blue mb-4 shadow-sm">
+        <div className="w-14 h-14 rounded-2xl bg-accent/12 flex items-center justify-center text-accent mb-4 shadow-sm">
           <DropIcon className="w-7 h-7" weight="bold" />
         </div>
         <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
@@ -363,7 +368,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
           <button
             type="button"
             onClick={onNavigateToExtract}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-macaron-pink to-macaron-blue text-white text-xs font-bold shadow-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold shadow-md active:scale-95 transition-all flex items-center gap-1.5 whitespace-nowrap"
           >
             <PlusIcon className="w-4 h-4" weight="bold" />
             <span>{lang === 'zh' ? '前往取色页面' : lang === 'ja' ? '色抽出へ' : 'Go to Pick Color'}</span>
@@ -374,95 +379,73 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-macaron-blue/30 dark:border-slate-700 shadow-sm p-4 md:p-6 overflow-hidden transition-colors duration-300">
+    <div className="bp-subcard-lg bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-sm p-4 md:p-6 overflow-hidden transition-colors duration-300">
       
 
 
 
       {/* Mixing Mode Selector: Hidden when forcedMode is active (mode is selected via top tabs/desktop bar) */}
       {!forcedMode && (
-        <div className="border-b border-slate-100 dark:border-slate-800 pb-6 mb-6">
-          <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
-            {lang === 'zh' ? '混色算法' : lang === 'ja' ? '混色アルゴリズム' : 'Mixing Algorithm'}
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setMixingMode('professional')}
-              className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium ${
-                mixingMode === 'professional'
-                  ? 'border-purple-500 bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400'
-                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-purple-500/50'
-              }`}
-            >
-              <div className="font-bold mb-1 flex items-center justify-center gap-1">
-                <SparkleIcon className="w-4 h-4 text-purple-500" />
-                <span>Professional</span>
-              </div>
-              <div className="text-xs opacity-70">
-                {lang === 'zh' ? 'HSB 专业喷涂' : lang === 'ja' ? 'プロ塗装' : 'Pro Spray Painting'}
-              </div>
-            </button>
-            
-            <button
-              onClick={() => setMixingMode('mixbox')}
-              className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium ${
-                mixingMode === 'mixbox'
-                  ? 'border-macaron-blue bg-macaron-blue/10 text-macaron-blue dark:bg-macaron-blue/20'
-                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-macaron-blue/50'
-              }`}
-            >
-              <div className="font-bold mb-1 flex items-center justify-center gap-1">
-                <PaletteIcon className="w-4 h-4 text-macaron-blue" />
-                <span>Mixbox</span>
-              </div>
-              <div className="text-xs opacity-70">
-                {lang === 'zh' ? '物理混色算法' : lang === 'ja' ? '物理混色' : 'Physical Mixing'}
-              </div>
-            </button>
+        <div className="bp-subcard flex items-center justify-between gap-2 bg-slate-100/90 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 mb-6">
+          <div className="flex items-center gap-1.5 pl-2 text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+            <ScalesIcon className="w-4 h-4 text-accent shrink-0" weight="bold" />
+            <span>{lang === 'zh' ? '混色模式' : lang === 'ja' ? '混色モード' : 'Mixing Mode'}</span>
           </div>
           
-          {/* Mode Description */}
-          <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
-            {mixingMode === 'professional' && (
-              lang === 'zh'
-                ? 'Professional 专业模式 - HSB 色彩空间分析 + LAB 色差计算，模拟专业喷涂工艺'
-                : lang === 'ja'
-                ? 'Professional モード - HSB 色空間分析 + LAB 色差計算、プロのスプレー塗装をシミュレート'
-                : 'Professional Mode - HSB color space analysis + LAB color difference calculation, simulates pro spray painting'
-            )}
-            {mixingMode === 'mixbox' && (
-              lang === 'zh' 
-                ? 'Mixbox 2.0 物理混色算法 - 基于 7 维潜在空间模拟真实颜料混合，蓝 + 黄=绿 (非灰色)'
-                : lang === 'ja'
-                ? 'Mixbox 2.0 物理混色アルゴリズム - 7 次元潜在空間による物理的な絵の具混合シミュレーション'
-                : 'Mixbox 2.0 Physical Mixing - 7D latent space simulation, Blue+Yellow=Green (not Gray)'
-            )}
+          <div className="bp-segmented flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl shadow-xs border border-slate-200/50 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => handleSetMixingMode('mixbox')}
+              className={`bp-segmented-item flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all duration-150 whitespace-nowrap ${
+                mixingMode === 'mixbox'
+                  ? 'bp-segmented-item-active bg-accent text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Mixbox 物理混色算法 (真实颜料仿真，蓝+黄=绿)"
+            >
+              <PaletteIcon className="w-3.5 h-3.5 shrink-0" weight="bold" />
+              <span>Mixbox (物理)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSetMixingMode('professional')}
+              className={`bp-segmented-item flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all duration-150 whitespace-nowrap ${
+                mixingMode === 'professional'
+                  ? 'bp-segmented-item-active bg-accent text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="HSB 专业喷涂分解 (色相饱和度与 LAB 色差分析)"
+            >
+              <SparkleIcon className="w-3.5 h-3.5 shrink-0" weight="bold" />
+              <span>HSB (专业)</span>
+            </button>
           </div>
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 xl:gap-6 w-full max-w-full min-w-0 items-start">
         
         {/* Left: Bottle & Calculator */}
-        <div className="flex-1 flex flex-col items-center">
-             <div className="w-full flex justify-between items-center mb-4">
-                 <h3 className="text-xs font-bold text-macaron-blue tracking-wider flex items-center gap-2">
-                    <span className="w-2 h-2 bg-macaron-blue rounded-full"></span>
+        <div className="min-w-0 w-full flex flex-col items-center pr-1.5 pb-1.5">
+             <div className="w-full flex justify-between items-center mb-2.5">
+                 <h3 className="text-xs font-bold text-accent tracking-wider flex items-center gap-2">
+                    <span className="w-2 h-2 bg-accent rounded-full"></span>
                     {t.mixingBottle}
                 </h3>
              </div>
 
              {/* Volume Buttons (iOS/Konsta Segmented Pill Bar) */}
-             <div className="w-full mb-4">
-                <div className="p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-2xl flex items-center gap-1 shadow-inner overflow-x-auto no-scrollbar">
+             <div className="w-full mb-3">
+                <div className="bp-segmented p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-xl flex items-center gap-1 shadow-inner overflow-x-auto no-scrollbar w-full max-w-full">
                     {[10, 20, 30, 40, 50, 60].map(v => (
                         <button
                             key={v}
                             type="button"
                             onClick={() => setBottleVolume(v)}
-                            className={`min-h-[38px] px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all duration-150 active:scale-[0.95] flex items-center justify-center flex-1 shrink-0 cursor-pointer ${
+                            className={`bp-segmented-item min-h-[30px] sm:min-h-[32px] px-2 sm:px-2.5 py-0.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold transition-all duration-150 active:scale-[0.95] flex items-center justify-center flex-1 min-w-[2.25rem] cursor-pointer whitespace-nowrap ${
                                 bottleVolume === v
-                                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-orange-500/25 ring-1 ring-white/20'
+                                    ? 'bp-segmented-item-active bg-accent text-white shadow-sm ring-1 ring-white/20'
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
                             }`}
                         >
@@ -472,8 +455,8 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                 </div>
              </div>
 
-             {/* Drop Ratio Formula Card (几比几比几配方卡 - 全宽展示，避免在调漆瓶侧栏挤压换行) */}
-             <div className="w-full mb-4">
+             {/* Drop Ratio Formula Card (几比几比几配方卡) */}
+             <div className="w-full mb-3">
                 <DropRatioBar
                    parts={dropParts}
                    lang={lang}
@@ -482,22 +465,22 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                 />
              </div>
 
-             <div className="flex flex-col sm:flex-row gap-6 items-end w-full justify-center bg-slate-50 dark:bg-slate-800/30 p-6 rounded-xl border border-slate-100 dark:border-slate-700 relative overflow-hidden min-h-[320px]">
+             <div className="bp-subcard-lg flex flex-col sm:flex-row gap-4 items-end w-full justify-center bg-slate-50 dark:bg-slate-800/30 p-3.5 sm:p-4 rounded-xl border border-slate-100 dark:border-slate-700 relative overflow-hidden min-h-[260px]">
                 
                 {/* Bottle Graphic */}
-                <div className="relative mx-auto sm:mx-0">
+                <div className="relative mx-auto sm:mx-0 flex-shrink-0">
                     {/* Bottle Neck */}
-                    <div className="w-16 h-4 bg-slate-200 dark:bg-slate-600 mx-auto rounded-t-sm border-x border-t border-slate-300 dark:border-slate-500 opacity-50"></div>
+                    <div className="w-12 sm:w-14 h-3 sm:h-3.5 bg-slate-200 dark:bg-slate-600 mx-auto rounded-t-sm border-x border-t border-slate-300 dark:border-slate-500 opacity-50"></div>
                     
                     {/* Bottle Body */}
-                    <div className="relative w-32 h-64 border-2 border-slate-400 dark:border-slate-500 bg-white/50 dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm overflow-hidden z-10">
+                    <div className="relative w-24 sm:w-28 h-52 sm:h-56 border-2 border-slate-400 dark:border-slate-500 bg-white/50 dark:bg-slate-800/50 rounded-lg shadow-lg backdrop-blur-sm overflow-hidden z-10">
                         
                         {/* Ticks */}
                         <div className="absolute right-0 top-0 h-full w-full pointer-events-none z-20 flex flex-col justify-end pb-0">
                              {[...Array(11)].map((_, i) => (
                                  <div key={i} className="w-full flex justify-end items-center pr-1 border-t border-slate-300/30 dark:border-slate-500/30 h-[10%] relative">
-                                     <span className="text-[9px] font-mono text-slate-400 mr-1">{i * 10}%</span>
-                                     <div className="w-2 h-px bg-slate-400"></div>
+                                     <span className="text-[8px] font-mono text-slate-400 mr-0.5">{i * 10}%</span>
+                                     <div className="w-1.5 h-px bg-slate-400"></div>
                                  </div>
                              ))}
                         </div>
@@ -515,9 +498,9 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                                         minHeight: layer.heightPercent > 0 ? '1px' : '0' 
                                     }}
                                 >
-                                    {layer.heightPercent > 5 && (
+                                    {layer.heightPercent > 6 && (
                                         <span 
-                                            className="text-[10px] font-bold font-mono opacity-80 drop-shadow-md"
+                                            className="text-[9px] font-bold font-mono opacity-80 drop-shadow-md truncate px-0.5"
                                             style={{ color: layer.textColor }}
                                         >
                                             {layer.label}
@@ -533,14 +516,14 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                     </div>
                     
                     {/* Reflection overlay */}
-                    <div className="absolute top-4 left-2 w-2 h-56 bg-white opacity-20 rounded-full blur-[1px] z-20 pointer-events-none"></div>
+                    <div className="absolute top-3 left-1.5 w-1.5 h-44 bg-white opacity-20 rounded-full blur-[1px] z-20 pointer-events-none"></div>
                 </div>
 
                 {/* Legend / List */}
-                <div className="w-full sm:flex-1 h-auto sm:max-h-[22rem] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                <div className="w-full sm:flex-1 min-w-0 h-auto sm:max-h-[18rem] overflow-y-auto space-y-2 pr-1.5 custom-scrollbar">
                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 border-b border-slate-200 dark:border-slate-700 pb-1 mb-2">
                         <span>{t.totalVolume}: {bottleVolume}ml</span>
-                        <span className="text-macaron-purple">{selectedBasePaint ? 'BASE MODE' : 'PURE MODE'}</span>
+                        <span className="text-accent">{selectedBasePaint ? 'BASE MODE' : 'PURE MODE'}</span>
                      </div>
                      
                      {/* Color Analysis Section */}
@@ -586,7 +569,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                          return (
                              <>
                                  {/* 彩色漆混合结果 */}
-                                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 p-2 rounded-lg border border-blue-200 dark:border-blue-900/30 mb-2">
+                                 <div className="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200/80 dark:border-slate-700 mb-2">
                                      <div className="flex items-center gap-2">
                                          <div 
                                              className="w-8 h-8 rounded border-2 border-white dark:border-slate-600 shadow-sm flex-shrink-0" 
@@ -608,10 +591,10 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                                                      setTimeout(() => setAddedToPalette(false), 2000);
                                                  }}
                                                  disabled={addedToPalette}
-                                                 className={`px-2 py-1 text-[10px] font-medium rounded transition-all ${
+                                                 className={`px-2 py-1 text-[10px] font-medium rounded transition-all whitespace-nowrap ${
                                                      addedToPalette
-                                                         ? 'bg-green-500 text-white cursor-default'
-                                                         : 'bg-blue-500 hover:bg-blue-600 text-white'
+                                                         ? 'bg-emerald-500 text-white cursor-default'
+                                                         : 'bg-accent hover:bg-accent-hover text-white'
                                                  }`}
                                              >
                                                  {addedToPalette ? (
@@ -720,7 +703,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
         </div>
 
         {/* Right: Selection & AI */}
-        <div className="flex-1 flex flex-col gap-6">
+        <div className="min-w-0 w-full flex flex-col gap-5 pr-1.5 pb-1.5">
             
             <BrandMatchPanel
               hex={color.hex}
@@ -739,10 +722,10 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                     <h3 className="text-xs font-bold text-orange-500 tracking-wider mb-3">
                         {t.ralStandard || 'RAL Standard'}
                     </h3>
-                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-700 p-4 rounded-lg border-2 border-orange-200 dark:border-orange-900/30 shadow-sm">
+                    <div className="bp-subcard-lg bg-gradient-to-br from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-700 p-4 rounded-lg border-2 border-orange-200 dark:border-orange-900/30 shadow-sm">
                         <div className="flex items-center gap-4">
                             <div 
-                                className="w-16 h-16 rounded-lg border-2 border-white dark:border-slate-600 shadow-md flex-shrink-0" 
+                                className="bp-swatch w-16 h-16 rounded-lg border-2 border-white dark:border-slate-600 shadow-md flex-shrink-0" 
                                 style={{ backgroundColor: ralMatch.hex }}
                             />
                             <div className="flex-1">
@@ -750,7 +733,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                                     <span className="font-mono text-lg font-bold text-orange-600 dark:text-orange-400">
                                         RAL {ralMatch.ral}
                                     </span>
-                                    <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded">
+                                    <span className="bp-badge text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded">
                                         {t.industryStandard || 'Industry Standard'}
                                     </span>
                                 </div>
@@ -776,14 +759,14 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
             <div className="flex-1 flex flex-col">
                 <h3 className="text-xs font-bold text-macaron-green tracking-wider mb-3 flex justify-between items-center">
                   {lang === 'zh' ? '专业配方分析' : lang === 'ja' ? 'プロレシピ分析' : 'Professional Recipe'}
-                  <span className="text-[10px] font-normal opacity-50 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-500">
+                  <span className="bp-badge text-[10px] font-normal opacity-50 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-500">
                      HSB+LAB
                   </span>
                 </h3>
                 
                 {
                   /* Professional Mode Display */
-                  <div className="flex-1 font-mono text-xs text-slate-600 dark:text-slate-300 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-700 p-4 rounded-lg border-2 border-purple-200 dark:border-purple-900/30 overflow-y-auto max-h-[400px] custom-scrollbar space-y-3">
+                  <div className="bp-subcard-lg flex-1 font-mono text-xs text-slate-600 dark:text-slate-300 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-700 p-4 rounded-lg border-2 border-purple-200 dark:border-purple-900/30 overflow-y-auto max-h-[400px] custom-scrollbar space-y-3">
                     
                     {/* Strategy Badge */}
                     <div className="flex items-center gap-2 mb-3">

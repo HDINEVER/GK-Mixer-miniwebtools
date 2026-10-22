@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          'lucide-react': path.resolve(__dirname, './components/lucide-shim.tsx'),
         }
       },
       css: {
@@ -46,7 +47,12 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        cssCodeSplit: false
+        cssCodeSplit: false,
+        rollupOptions: {
+          input: {
+            main: path.resolve(__dirname, 'index.html'),
+          }
+        }
       }
     };
 });

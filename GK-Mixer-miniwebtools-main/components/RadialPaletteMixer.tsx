@@ -11,6 +11,7 @@ import {
   PaletteIcon,
   PlusIcon,
   EyedropperIcon,
+  ArrowRightIcon,
 } from '@phosphor-icons/react';
 import { CatalogPaint, ColorData, Language, RadialMixerCache, SliderState } from '../types';
 import { hexToRgb, mixboxMultiBlend, hexToRAL, findNearestPaints } from '../utils/colorUtils';
@@ -31,6 +32,7 @@ interface RadialPaletteMixerProps {
   cache?: RadialMixerCache;
   onCacheUpdate?: (cache: RadialMixerCache) => void;
   onAssignCatalogPaint?: (paint: CatalogPaint) => void;
+  onNavigateToBrands?: (hex: string) => void;
 }
 
 // Canvas 基础常量 (标准逻辑坐标空间 450x450)
@@ -58,6 +60,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   cache,
   onCacheUpdate,
   onAssignCatalogPaint,
+  onNavigateToBrands,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -347,23 +350,13 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
     };
   }, [updateCanvasSize]);
   
-  // 移动端: 在拖动时阻止页面滚动
+  // Keep body scroll and touch-action untouched; the radial canvas itself already sets touchAction: 'none'
   useEffect(() => {
-    if (draggingIndex !== -1) {
-      // 阻止页面滚动
-      document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none';
-    } else {
-      // 恢复页面滚动
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-    }
-    
     return () => {
       document.body.style.overflow = '';
       document.body.style.touchAction = '';
     };
-  }, [draggingIndex]);
+  }, []);
   
   // Track available colors IDs for change detection
   const prevAvailableColorsRef = useRef<string>('');
@@ -1048,7 +1041,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
       <div className="flex items-center justify-between gap-2 flex-wrap w-full pb-2 border-b border-slate-100 dark:border-slate-800">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-            <PaletteIcon className="w-5 h-5 text-amber-500 shrink-0" />
+            <PaletteIcon className="w-5 h-5 text-accent shrink-0" />
             <span>{lang === 'zh' ? '自选调色盘' : lang === 'ja' ? 'カスタム調色盤' : 'Custom Color Mixer'}</span>
           </h2>
         </div>
@@ -1058,25 +1051,25 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
           <button
             type="button"
             onClick={() => setViewMode('ios')}
-            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
               viewMode === 'ios'
-                ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-700 text-accent dark:text-accent-light shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
             }`}
           >
-            <SlidersHorizontalIcon className="w-3.5 h-3.5" />
+            <SlidersHorizontalIcon className="w-3.5 h-3.5 shrink-0" />
             <span>{lang === 'zh' ? '色板模式' : lang === 'ja' ? 'スライダー' : 'Sliders'}</span>
           </button>
           <button
             type="button"
             onClick={() => setViewMode('radial')}
-            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
               viewMode === 'radial'
-                ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-700 text-accent dark:text-accent-light shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
             }`}
           >
-            <CircleNotchIcon className="w-3.5 h-3.5" />
+            <CircleNotchIcon className="w-3.5 h-3.5 shrink-0" />
             <span>{lang === 'zh' ? '轮盘模式' : lang === 'ja' ? 'ホイール' : 'Wheel'}</span>
           </button>
         </div>
@@ -1084,121 +1077,14 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
 
       {viewMode === 'ios' ? (
         /* ==================== iOS 色板调节模式 (Matching raw_04) ==================== */
-        <div className="flex flex-col gap-3.5 w-full">
-          {/* 1. 混合结果卡片 */}
-          <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <FlaskIcon className="w-4 h-4 text-purple-500" />
-                <span>{lang === 'zh' ? '混合结果' : lang === 'ja' ? 'ミックス結果' : 'Mixed Result'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {sliders.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-                  >
-                    {lang === 'zh' ? '归零' : lang === 'ja' ? 'ゼロ' : 'Zero'}
-                  </button>
-                )}
-                {sliders.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleClearAll}
-                    className="text-xs text-rose-500 hover:text-rose-700 transition-colors"
-                  >
-                    {lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {mixedColor ? (
-              <div className="space-y-3">
-                {/* 大色块展示 - 移除延时 transition 保证拖拽零延迟响应 */}
-                <div
-                  className="w-full h-24 sm:h-28 rounded-2xl relative shadow-inner border border-black/10 dark:border-white/10 overflow-hidden"
-                  style={{ backgroundColor: mixedColor }}
-                >
-                  {/* 可复制 Hex 标签 */}
-                  <div className="absolute bottom-2.5 left-2.5">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyHex(mixedColor)}
-                      className="bg-white/85 dark:bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-bold text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/15 shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
-                      title="点击复制 Hex 色号"
-                    >
-                      <span>{mixedColor.toUpperCase()}</span>
-                      <span className="text-[10px] text-slate-400">
-                        {copiedHex ? (
-                          <span className="inline-flex items-center gap-0.5 text-emerald-500">
-                            <CheckIcon className="w-3 h-3" />已复制
-                          </span>
-                        ) : (
-                          <ClipboardTextIcon className="w-3.5 h-3.5 inline-block" />
-                        )}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* RAL 近似色与目标色对比 */}
-                <div className="flex flex-col gap-1.5 pt-1 px-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                  {ralMatch && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">
-                        {lang === 'zh' ? 'RAL 近似色' : lang === 'ja' ? 'RAL 近似色' : 'RAL Match'}
-                      </span>
-                      <div className="text-right">
-                        <div className="font-bold text-slate-800 dark:text-slate-200">
-                          RAL {ralMatch.ral} {ralMatch.name}
-                        </div>
-                        <div className="font-mono text-[10px] text-slate-400">
-                          {ralMatch.hex.toUpperCase()} · LRV {ralMatch.lrv}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {targetColor && (
-                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-700/40">
-                      <span className="text-slate-400 font-medium">
-                        {lang === 'zh' ? '比对目标' : lang === 'ja' ? '目標色' : 'Target'}:
-                      </span>
-                      <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
-                        <span
-                          className="w-3 h-3 rounded-full border border-black/15 shadow-sm"
-                          style={{ backgroundColor: targetColor.hex }}
-                        />
-                        <span>{targetColor.hex}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="w-full h-24 sm:h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1.5 text-slate-400">
-                <PaletteIcon className="w-8 h-8 opacity-60 text-slate-400" />
-                <span className="text-xs">
-                  {sliders.length === 0
-                    ? lang === 'zh'
-                      ? '点击下方「＋ 添加」或「+ CMY」添加颜色'
-                      : 'Add colors below to start'
-                    : lang === 'zh'
-                    ? '拖动滑块设置各色用量开始混色'
-                    : 'Adjust sliders to mix'}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* 2. 自选颜色卡片 (Matching raw_04 action bar & slider rows) */}
-          <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
+        /* Mobile: stacked (result → custom colors → recipe). Desktop lg+: left 7 cols (custom colors) / right 5 cols (sticky result + recipe dashboard) */
+        <div className="flex flex-col gap-3.5 w-full lg:grid lg:grid-cols-12 lg:gap-6 lg:items-start">
+          {/* 1. 自选颜色调音台 (左栏，占 7 列) */}
+          <div className="order-2 lg:order-1 lg:col-span-7 bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
             {/* 标题与拾色工具栏 */}
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <PaletteIcon className="w-4 h-4 text-amber-500" />
+            <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+              <div className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <PaletteIcon className="w-4 h-4 text-accent" />
                 <span>{lang === 'zh' ? '自选颜色' : lang === 'ja' ? '選択色' : 'Custom Colors'}</span>
               </div>
 
@@ -1207,16 +1093,16 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                 <button
                   type="button"
                   onClick={() => colorInputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-xs font-medium text-slate-700 dark:text-slate-200 shadow-sm active:scale-95"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-xs font-medium text-slate-700 dark:text-slate-200 shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
                 >
-                  <EyedropperIcon className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 flex-shrink-0" weight="bold" />
+                  <EyedropperIcon className="w-3.5 h-3.5 text-accent flex-shrink-0" weight="bold" />
                   <span>{lang === 'zh' ? '拾色' : lang === 'ja' ? '色選択' : 'Pick'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => colorInputRef.current?.click()}
-                  className="flex items-center gap-1 px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-sm hover:brightness-105 active:scale-95 transition-all"
+                  className="flex items-center gap-1 px-3.5 py-1 rounded-full bg-accent hover:bg-accent-hover text-white font-bold text-xs shadow-sm active:scale-95 transition-all cursor-pointer whitespace-nowrap"
                 >
                   <PlusIcon className="w-3.5 h-3.5" weight="bold" />
                   <span>{lang === 'zh' ? '添加' : lang === 'ja' ? '追加' : 'Add'}</span>
@@ -1229,7 +1115,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               <button
                 type="button"
                 onClick={handleAddCMY}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-95 shadow-xs"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-95 shadow-xs cursor-pointer whitespace-nowrap"
               >
                 <PlusIcon className="w-3.5 h-3.5" weight="bold" />
                 <span>{lang === 'zh' ? 'CMY 三原色' : lang === 'ja' ? 'CMY 三原色' : 'CMY Primaries'}</span>
@@ -1238,7 +1124,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               <button
                 type="button"
                 onClick={handleAddBW}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-95 shadow-xs"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-95 shadow-xs cursor-pointer whitespace-nowrap"
               >
                 <PlusIcon className="w-3.5 h-3.5" weight="bold" />
                 <span>{lang === 'zh' ? '黑白' : lang === 'ja' ? '白黒' : 'Black & White'}</span>
@@ -1258,7 +1144,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                         type="button"
                         onClick={() => handleAddCustomColor(c.hex)}
                         disabled={exists}
-                        className={`w-5 h-5 rounded-full border border-black/15 shadow-sm flex items-center justify-center transition-all ${
+                        className={`w-5 h-5 rounded-full border border-black/15 shadow-sm flex items-center justify-center transition-all cursor-pointer ${
                           exists ? 'opacity-40 cursor-default' : 'hover:scale-110 active:scale-95'
                         }`}
                         style={{ backgroundColor: c.hex }}
@@ -1275,20 +1161,25 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
             {/* 颜色列表 */}
             {sliders.length > 0 ? (
               <div className="divide-y divide-slate-100 dark:divide-slate-700/60 pt-1">
-                {sliders.map((s, index) => {
-                  const info = getPaintDisplayName(s.color);
-                  return (
-                    <IOSColorSlider
-                      key={s.id}
-                      color={s.color}
-                      label={info.primary || info.name}
-                      subLabel={info.sub || s.color}
-                      value={Math.round((s.weight ?? 0) * 100)}
-                      onChange={(val) => handleSliderWeightChange(index, val)}
-                      onRemove={() => handleRemoveSlider(s.id)}
-                    />
-                  );
-                })}
+                {(() => {
+                  const totalWeight = sliders.reduce((sum, s) => sum + (s.weight || 0), 0);
+                  return sliders.map((s, index) => {
+                    const info = getPaintDisplayName(s.color);
+                    const pct = totalWeight > 0 ? ((s.weight || 0) / totalWeight) * 100 : 0;
+                    return (
+                      <IOSColorSlider
+                        key={s.id}
+                        color={s.color}
+                        label={info.primary || info.name}
+                        subLabel={info.sub || s.color}
+                        value={Math.round((s.weight ?? 0) * 100)}
+                        percentageText={pct > 0 ? `${pct.toFixed(0)}%` : undefined}
+                        onChange={(val) => handleSliderWeightChange(index, val)}
+                        onRemove={() => handleRemoveSlider(s.id)}
+                      />
+                    );
+                  });
+                })()}
               </div>
             ) : (
               <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
@@ -1301,121 +1192,236 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
             )}
           </div>
 
-          {/* 3. 混合配方卡片 */}
-          <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
+          {/* 2. 实时看板 (右栏，占 5 列，桌面吸顶) */}
+          <div className="contents lg:flex lg:flex-col lg:col-span-5 lg:sticky lg:top-4 lg:gap-5 lg:order-2">
+            {/* 上层卡片：「🧪 混合结果」 */}
+            <div className="order-1 lg:order-none bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+              <div className="flex items-center justify-between mb-2.5">
                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <ClipboardTextIcon className="w-4 h-4 text-indigo-500" />
-                  <span>{lang === 'zh' ? '混合配方' : lang === 'ja' ? '配合比' : 'Mixing Recipe'}</span>
+                  <FlaskIcon className="w-4 h-4 text-accent" />
+                  <span>{lang === 'zh' ? '混合结果' : lang === 'ja' ? 'ミックス結果' : 'Mixed Result'}</span>
                 </div>
-                <div className="text-[11px] font-mono text-slate-400">
-                  {targetVolume} ml
+                <div className="flex items-center gap-2">
+                  {sliders.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    >
+                      {lang === 'zh' ? '归零' : lang === 'ja' ? 'ゼロ' : 'Zero'}
+                    </button>
+                  )}
+                  {sliders.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAll}
+                      className="text-xs text-rose-500 hover:text-rose-700 transition-colors cursor-pointer"
+                    >
+                      {lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* 快速容量预设 - iOS/Konsta Segmented Pill Bar */}
-              <div className="p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-2xl flex items-center gap-1 shadow-inner overflow-x-auto no-scrollbar">
-                {volumePresets.map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setTargetVolume(v)}
-                    className={`min-h-[38px] px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all duration-150 active:scale-[0.95] flex items-center justify-center flex-1 shrink-0 cursor-pointer ${
-                      targetVolume === v
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-orange-500/25 ring-1 ring-white/20'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                    }`}
+              {mixedColor ? (
+                <div className="space-y-3">
+                  {/* 大色块展示 (Pantone 卡式预览，高度 h-28) */}
+                  <div
+                    className="w-full h-28 rounded-2xl relative shadow-inner border border-black/10 dark:border-white/10 overflow-hidden"
+                    style={{ backgroundColor: mixedColor }}
                   >
-                    {v}ml
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 容量输入 */}
-            <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-              <label className="text-slate-500 dark:text-slate-400 font-medium">
-                {lang === 'zh' ? '目标总量' : lang === 'ja' ? '目標量' : 'Target Volume'}:
-              </label>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  value={targetVolume}
-                  onChange={(e) => setTargetVolume(Math.max(1, parseInt(e.target.value) || 20))}
-                  className="w-16 px-2.5 py-1 text-xs text-right font-mono font-bold border border-slate-300/80 dark:border-slate-600/80 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500/30 outline-none"
-                  min="1"
-                  max="100"
-                />
-                <span className="text-xs text-slate-500">ml</span>
-              </div>
-            </div>
-
-            {/* 比例与详细明细 */}
-            {volumes.length > 0 && mixedColor ? (
-              <div className="space-y-2 pt-1">
-                <DropRatioBar
-                  parts={dropParts}
-                  lang={lang}
-                  multiplier={dropMultiplier}
-                  onMultiplierChange={setDropMultiplier}
-                />
-                <div className="space-y-1 pt-1">
-                  {volumes.map((vol, index) => {
-                    const info = getPaintDisplayName(vol.hex);
-                    return (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between text-xs p-1.5 rounded-lg bg-white/70 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50"
+                    {/* 可复制 Hex 标签 */}
+                    <div className="absolute bottom-2.5 left-2.5">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyHex(mixedColor)}
+                        className="bg-white/85 dark:bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-bold text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/15 shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                        title="点击复制 Hex 色号"
                       >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-4 h-4 rounded-full border border-black/15 shadow-sm"
-                            style={{ backgroundColor: vol.hex }}
-                          />
-                          <span className="font-medium text-slate-700 dark:text-slate-200">
-                            {info.name}
-                          </span>
-                          <span className="font-mono text-[10px] text-slate-400">{vol.hex}</span>
-                        </div>
-                        <div className="flex items-center gap-2 font-mono">
-                          {dropCounts[index] ? (
-                            <span className="font-bold text-amber-600 dark:text-amber-400 text-[11px]">
-                              {dropCounts[index] * dropMultiplier}
-                              {t.dropUnit} ·{' '}
+                        <span>{mixedColor.toUpperCase()}</span>
+                        <span className="text-[10px] text-slate-400">
+                          {copiedHex ? (
+                            <span className="inline-flex items-center gap-0.5 text-emerald-500">
+                              <CheckIcon className="w-3 h-3" />已复制
                             </span>
-                          ) : null}
-                          <span className="font-bold text-slate-800 dark:text-slate-100">
-                            {vol.volume.toFixed(1)}ml
-                          </span>
-                          <span className="text-slate-400 text-[10px]">
-                            ({vol.percentage.toFixed(1)}%)
-                          </span>
+                          ) : (
+                            <ClipboardTextIcon className="w-3.5 h-3.5 inline-block" />
+                          )}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* RAL 近似色与目标色对比 */}
+                  <div className="flex flex-col gap-1.5 pt-1 px-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                    {ralMatch && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">
+                          {lang === 'zh' ? 'RAL 近似色' : lang === 'ja' ? 'RAL 近似色' : 'RAL Match'}
+                        </span>
+                        <div className="text-right">
+                          <div className="font-bold text-slate-800 dark:text-slate-200">
+                            RAL {ralMatch.ral} {ralMatch.name}
+                          </div>
+                          <div className="font-mono text-[10px] text-slate-400">
+                            {ralMatch.hex.toUpperCase()} · LRV {ralMatch.lrv}
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
+                    )}
+
+                    {targetColor && (
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-700/40">
+                        <span className="text-slate-400 font-medium">
+                          {lang === 'zh' ? '比对目标' : lang === 'ja' ? '目標色' : 'Target'}:
+                        </span>
+                        <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                          <span
+                            className="w-3 h-3 rounded-full border border-black/15 shadow-sm"
+                            style={{ backgroundColor: targetColor.hex }}
+                          />
+                          <span>{targetColor.hex}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 快捷动作按钮：「去近邻查找平替 →」 */}
+                  {onNavigateToBrands && mixedColor && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToBrands(mixedColor)}
+                      className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-700/60 hover:bg-accent hover:text-white dark:hover:bg-accent text-slate-700 dark:text-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 group active:scale-[0.98] border border-slate-200/60 dark:border-slate-600/60 shadow-xs cursor-pointer whitespace-nowrap"
+                    >
+                      <span>{lang === 'zh' ? '去近邻查找平替' : lang === 'ja' ? '代替色を探す' : 'Find Brand Alternatives'}</span>
+                      <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" weight="bold" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1.5 text-slate-400">
+                  <PaletteIcon className="w-8 h-8 opacity-60 text-slate-400" />
+                  <span className="text-xs">
+                    {sliders.length === 0
+                      ? lang === 'zh'
+                        ? '点击左侧「＋ 添加」或「+ CMY」添加颜色'
+                        : 'Add colors on the left to start'
+                      : lang === 'zh'
+                      ? '拖动左侧滑块设置各色用量开始混色'
+                      : 'Adjust sliders to mix'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 下层卡片：「📋 混合配方」 */}
+            <div className="order-3 lg:order-none bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
+              <div className="space-y-2">
+                {/* 卡片头部与整合总量输入框 */}
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <ClipboardTextIcon className="w-4 h-4 text-accent" />
+                    <span>{lang === 'zh' ? '混合配方' : lang === 'ja' ? '配合比' : 'Mixing Recipe'}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="font-medium text-[11px]">{lang === 'zh' ? '总量' : lang === 'ja' ? '目標量' : 'Total'}:</span>
+                    <input
+                      type="number"
+                      value={targetVolume}
+                      onChange={(e) => setTargetVolume(Math.max(1, Math.min(200, parseInt(e.target.value, 10) || 20)))}
+                      className="w-12 px-1.5 py-0.5 text-xs text-center font-mono font-bold border border-slate-300/80 dark:border-slate-600/80 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 outline-none tabular-nums"
+                      min="1"
+                      max="200"
+                    />
+                    <span className="font-mono text-[11px] text-slate-500">ml</span>
+                  </div>
                 </div>
 
-                <div className="pt-2">
-                  <BrandMatchPanel
-                    hex={mixedColor}
-                    lang={lang}
-                    compact
-                    assignedId={targetColor?.assignedPaint?.id}
-                    hasSamplePoint={
-                      typeof targetColor?.sampleX === 'number' &&
-                      typeof targetColor?.sampleY === 'number'
-                    }
-                    onAssignCatalog={onAssignCatalogPaint}
-                  />
+                {/* 快速容量预设 - 等宽 6 列网格杜绝截断 */}
+                <div className="p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-xl grid grid-cols-6 gap-1 shadow-inner">
+                  {volumePresets.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setTargetVolume(v)}
+                      className={`h-8 rounded-lg text-xs font-mono font-bold transition-all duration-150 active:scale-[0.95] flex items-center justify-center cursor-pointer whitespace-nowrap ${
+                        targetVolume === v
+                          ? 'bg-accent text-white shadow-xs ring-1 ring-white/20'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                      }`}
+                    >
+                      {v}ml
+                    </button>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
-                {lang === 'zh' ? '暂无混合配方' : 'No active formula'}
-              </div>
-            )}
+
+              {/* 比例与详细明细 */}
+              {volumes.length > 0 && mixedColor ? (
+                <div className="space-y-2.5 pt-1">
+                  <DropRatioBar
+                    parts={dropParts}
+                    lang={lang}
+                    multiplier={dropMultiplier}
+                    onMultiplierChange={setDropMultiplier}
+                  />
+                  <div className="space-y-1 pt-1 max-h-[220px] overflow-y-auto no-scrollbar">
+                    {volumes.map((vol, index) => {
+                      const info = getPaintDisplayName(vol.hex);
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between text-xs p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div
+                              className="w-4 h-4 rounded-full border border-black/15 shadow-sm flex-shrink-0"
+                              style={{ backgroundColor: vol.hex }}
+                            />
+                            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate">
+                              {info.name}
+                            </span>
+                            <span className="font-mono text-[10px] text-slate-400 truncate">{vol.hex}</span>
+                          </div>
+                          <div className="flex items-center gap-2 font-mono flex-shrink-0">
+                            {dropCounts[index] ? (
+                              <span className="font-bold text-accent dark:text-accent-light text-[11px]">
+                                {dropCounts[index] * dropMultiplier}
+                                {t.dropUnit} ·{' '}
+                              </span>
+                            ) : null}
+                            <span className="font-bold text-slate-800 dark:text-slate-100">
+                              {vol.volume.toFixed(1)}ml
+                            </span>
+                            <span className="text-slate-400 text-[10px]">
+                              ({vol.percentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <BrandMatchPanel
+                      hex={mixedColor}
+                      lang={lang}
+                      compact
+                      assignedId={targetColor?.assignedPaint?.id}
+                      hasSamplePoint={
+                        typeof targetColor?.sampleX === 'number' &&
+                        typeof targetColor?.sampleY === 'number'
+                      }
+                      onAssignCatalog={onAssignCatalogPaint}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  {lang === 'zh' ? '暂无混合配方' : 'No active formula'}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : (
@@ -1423,7 +1429,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         <div className="flex flex-col gap-3">
           {/* 轮盘模式提示标头 */}
           <div className="text-center my-0.5">
-            <h3 className="text-sm font-bold text-sky-600 dark:text-sky-400 mb-0.5">
+            <h3 className="text-sm font-bold text-accent dark:text-accent-light mb-0.5">
               {lang === 'zh' ? '径向调色轮盘' : lang === 'ja' ? 'ラジアルミキサー' : 'Radial Mixer'}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -1508,7 +1514,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               </div>
               <button
                 onClick={handleReset}
-                className="px-2.5 py-1 bg-macaron-blue hover:bg-blue-600 text-white rounded-md text-xs font-medium transition-colors shadow-sm flex items-center gap-1"
+                className="px-2.5 py-1 bg-accent hover:bg-accent-hover text-white rounded-md text-xs font-medium transition-colors shadow-sm flex items-center gap-1 whitespace-nowrap"
               >
                 <ArrowCounterClockwiseIcon className="w-3.5 h-3.5" />
                 <span>{lang === 'zh' ? '重置' : lang === 'ja' ? 'リセット' : 'Reset'}</span>
@@ -1519,10 +1525,10 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               <button
                 onClick={handleAddCMY}
                 disabled={cmyAdded}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm flex items-center gap-1 ${
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm flex items-center gap-1 whitespace-nowrap ${
                   cmyAdded
-                    ? 'bg-green-500 text-white cursor-default'
-                    : 'bg-purple-500 text-white hover:bg-purple-600 active:scale-95'
+                    ? 'bg-emerald-500 text-white cursor-default'
+                    : 'bg-accent text-white hover:bg-accent-hover active:scale-95'
                 }`}
               >
                 {cmyAdded ? (
@@ -1541,9 +1547,9 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               <button
                 onClick={handleAddBW}
                 disabled={bwAdded}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm flex items-center gap-1 ${
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm flex items-center gap-1 whitespace-nowrap ${
                   bwAdded
-                    ? 'bg-green-500 text-white cursor-default'
+                    ? 'bg-emerald-500 text-white cursor-default'
                     : 'bg-slate-600 hover:bg-slate-700 text-white active:scale-95'
                 }`}
               >
@@ -1643,7 +1649,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
           {volumes.length > 0 && (
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
               <h4 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1.5 flex items-center gap-1">
-                <ChartBarIcon className="w-3.5 h-3.5 text-indigo-500" />
+                <ChartBarIcon className="w-3.5 h-3.5 text-accent" />
                 <span>{lang === 'zh' ? '混合配方' : lang === 'ja' ? 'レシピ' : 'RECIPE'}</span>
               </h4>
               <DropRatioBar
@@ -1672,7 +1678,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                           {t.dropUnit}
                         </span>
                       ) : null}
-                      <span className="font-bold text-macaron-blue dark:text-macaron-pink">
+                      <span className="font-bold text-accent dark:text-accent-light">
                         {vol.percentage.toFixed(1)}%
                       </span>
                       <span className="font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">

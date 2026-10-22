@@ -39,8 +39,34 @@ export default {
     extend: {
       colors: {
         ...themedColors,
-        'brand-primary': themedColors.sky['600'],
-        'primary': themedColors.sky['600'],
+        'brand-primary': 'rgb(var(--accent-rgb, 239 83 80) / <alpha-value>)',
+        'primary': 'rgb(var(--accent-rgb, 239 83 80) / <alpha-value>)',
+        accent: {
+          DEFAULT: 'rgb(var(--accent-rgb, 239 83 80) / <alpha-value>)',
+          hover: 'rgb(var(--accent-hover-rgb, 229 57 53) / <alpha-value>)',
+          light: 'rgb(var(--accent-dark-text-rgb, 255 138 128) / <alpha-value>)',
+          soft: 'var(--accent-soft, rgb(239 83 80 / 0.12))',
+          50: 'rgb(var(--accent-rgb, 239 83 80) / 0.06)',
+          100: 'rgb(var(--accent-rgb, 239 83 80) / 0.12)',
+          200: 'rgb(var(--accent-rgb, 239 83 80) / 0.22)',
+          300: 'rgb(var(--accent-rgb, 239 83 80) / 0.38)',
+          400: 'rgb(var(--accent-dark-text-rgb, 255 138 128) / <alpha-value>)',
+          500: 'rgb(var(--accent-rgb, 239 83 80) / <alpha-value>)',
+          600: 'rgb(var(--accent-hover-rgb, 229 57 53) / <alpha-value>)',
+          700: 'rgb(var(--accent-hover-rgb, 229 57 53) / <alpha-value>)',
+        },
+        // Dynamic accent alias for coral
+        coral: {
+          DEFAULT: 'rgb(var(--accent-rgb, 239 83 80) / <alpha-value>)',
+          50: 'rgb(var(--accent-rgb, 239 83 80) / 0.06)',
+          100: 'rgb(var(--accent-rgb, 239 83 80) / 0.12)',
+          200: 'rgb(var(--accent-rgb, 239 83 80) / 0.22)',
+          300: 'rgb(var(--accent-rgb, 239 83 80) / 0.38)',
+          400: 'rgb(var(--accent-dark-text-rgb, 255 138 128) / <alpha-value>)',
+          500: 'rgb(var(--accent-rgb, 239 83 80) / <alpha-value>)',
+          600: 'rgb(var(--accent-hover-rgb, 229 57 53) / <alpha-value>)',
+          700: 'rgb(var(--accent-hover-rgb, 229 57 53) / <alpha-value>)',
+        },
         macaron: {
           blue: macaronVar('blue', '#AEC6CF'),
           green: '#77DD77',

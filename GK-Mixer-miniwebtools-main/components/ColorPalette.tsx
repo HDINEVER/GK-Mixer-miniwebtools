@@ -7,10 +7,15 @@ import {
   XIcon,
   ArrowElbowDownLeftIcon,
   HandPointingIcon,
+  TargetIcon,
+  FlaskIcon,
+  CaretRightIcon,
 } from '@phosphor-icons/react';
 import { ColorData, Language } from '../types';
 import { getContrastColor, hexToRgb, rgbToCmyk, rgbToHsb, rgbToLab, generateId } from '../utils/colorUtils';
 import { isInGamut, getColorSpaceName } from '../utils/colorSpaceConverter';
+import { localizedBrand } from '../utils/paintCatalog';
+import { PaintBottleImg } from './PaintBottleHover';
 
 // Use global anime instance from CDN
 declare var anime: any;
@@ -23,13 +28,31 @@ interface ColorPaletteProps {
   onContinuousPick: () => void;
   onDeleteColor: (colorId: string) => void;
   onAddColorByHex?: (hex: string) => void; // New: Add color by hex input
+  onOpenQuickAssign?: (color: ColorData, index: number) => void;
+  onUnassignPaint?: (colorId: string) => void;
+  onNavigateToMixer?: (color: ColorData) => void;
   hasImage?: boolean;
   isPicking?: boolean;
   isContinuousPicking?: boolean;
   lang?: Language;
 }
 
-const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, selectedColorId, onAddManual, onContinuousPick, onDeleteColor, onAddColorByHex, hasImage = false, isPicking = false, isContinuousPicking = false, lang = 'en' }) => {
+const ColorPalette: React.FC<ColorPaletteProps> = ({
+  colors,
+  onColorSelect,
+  selectedColorId,
+  onAddManual,
+  onContinuousPick,
+  onDeleteColor,
+  onAddColorByHex,
+  onOpenQuickAssign,
+  onUnassignPaint,
+  onNavigateToMixer,
+  hasImage = false,
+  isPicking = false,
+  isContinuousPicking = false,
+  lang = 'en',
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const selectionIndicatorRef = useRef<HTMLDivElement>(null);
   
@@ -129,17 +152,21 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
   }, [onDeleteColor]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !containerRef.current.children?.length) return;
     const animeInstance = typeof anime === 'undefined' ? null : anime;
     if (!animeInstance) return;
-    animeInstance({
-      targets: containerRef.current.children,
-      translateY: [20, 0],
-      opacity: [0, 1],
-      delay: animeInstance.stagger(40),
-      duration: 300,
-      easing: 'easeOutExpo'
-    });
+    try {
+      animeInstance({
+        targets: containerRef.current.children,
+        translateY: [20, 0],
+        opacity: [0, 1],
+        delay: animeInstance.stagger ? animeInstance.stagger(40) : 0,
+        duration: 300,
+        easing: 'easeOutExpo'
+      });
+    } catch (err) {
+      console.error('Anime animation warning:', err);
+    }
   }, [colors.length]); // Re-animate if list changes significantly
 
   // Animate selection indicator when selected color changes
@@ -147,14 +174,18 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
     if (!selectionIndicatorRef.current) return;
     const animeInstance = typeof anime === 'undefined' ? null : anime;
     if (!animeInstance) return;
-    animeInstance({
-      targets: selectionIndicatorRef.current,
-      scale: [0.3, 1],
-      opacity: [0, 1],
-      rotate: [-180, 0],
-      duration: 500,
-      easing: 'easeOutElastic(1, .6)'
-    });
+    try {
+      animeInstance({
+        targets: selectionIndicatorRef.current,
+        scale: [0.3, 1],
+        opacity: [0, 1],
+        rotate: [-180, 0],
+        duration: 500,
+        easing: 'easeOutElastic(1, .6)'
+      });
+    } catch (err) {
+      console.error('Anime indicator warning:', err);
+    }
   }, [selectedColorId]);
 
   // Translations
@@ -175,51 +206,53 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
     <div className="w-full relative">
       
       <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
-        <h3 className="text-xs sm:text-sm font-bold text-macaron-blue tracking-wider">DETECTED PALETTE</h3>
-        <div className="flex gap-2 flex-wrap">
+        <h3 className="text-xs sm:text-sm font-bold text-accent tracking-wider">
+          {lang === 'zh' ? '检测到调色板' : lang === 'ja' ? '検出パレット' : 'DETECTED PALETTE'}
+        </h3>
+        <div className="flex gap-1.5 sm:gap-2 flex-wrap">
           {/* HEX Input Toggle Button */}
           <button 
               onClick={() => setShowHexInput(!showHexInput)}
-              className={`flex items-center gap-1 text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 border rounded-full transition-all whitespace-nowrap ${
                 showHexInput
-                  ? 'border-macaron-purple bg-macaron-purple text-white cursor-pointer shadow-lg'
-                  : 'border-macaron-purple text-macaron-purple hover:bg-macaron-purple hover:text-white cursor-pointer'
+                  ? 'bp-pill-active border-accent bg-accent text-white cursor-pointer shadow-sm'
+                  : 'bp-pill border-accent/50 text-accent hover:bg-accent hover:text-white cursor-pointer'
               }`}
               title={t.hexInput}
           >
-              <HashIcon className="w-3 h-3" />
+              <HashIcon className="w-3 h-3 shrink-0" />
               <span>{t.hexInput}</span>
           </button>
           <button 
               data-pick-control="true"
               onClick={onAddManual}
               disabled={!hasImage}
-              className={`flex items-center gap-1 text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
                 hasImage 
                   ? isPicking && !isContinuousPicking
-                    ? 'border-macaron-green bg-macaron-green text-white cursor-pointer'
-                    : 'border-macaron-green text-macaron-green hover:bg-macaron-green hover:text-white cursor-pointer'
-                  : 'border-slate-300 text-slate-300 cursor-not-allowed opacity-50'
+                    ? 'bp-pill-active border-accent bg-accent text-white cursor-pointer shadow-sm'
+                    : 'bp-pill border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-accent hover:text-accent cursor-pointer'
+                  : 'bp-pill border-slate-300 text-slate-300 cursor-not-allowed opacity-50'
               }`}
               title={hasImage ? t.clickToPick : t.uploadFirst}
           >
-              <PlusIcon className="w-3 h-3" />
+              <PlusIcon className="w-3 h-3 shrink-0" />
               <span>{t.manualPick}</span>
           </button>
           <button 
               data-pick-control="true"
               onClick={onContinuousPick}
               disabled={!hasImage}
-              className={`flex items-center gap-1 text-[10px] sm:text-xs px-2 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
                 hasImage 
                   ? isContinuousPicking
-                    ? 'border-macaron-blue bg-macaron-blue text-white cursor-pointer'
-                    : 'border-macaron-blue text-macaron-blue hover:bg-macaron-blue hover:text-white cursor-pointer'
-                  : 'border-slate-300 text-slate-300 cursor-not-allowed opacity-50'
+                    ? 'bp-pill-active border-accent bg-accent text-white cursor-pointer shadow-sm'
+                    : 'bp-pill border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-accent hover:text-accent cursor-pointer'
+                  : 'bp-pill border-slate-300 text-slate-300 cursor-not-allowed opacity-50'
               }`}
               title={hasImage ? t.continuous : t.uploadFirst}
           >
-              <ArrowClockwiseIcon className="w-3 h-3" />
+              <ArrowClockwiseIcon className="w-3 h-3 shrink-0" />
               <span>{t.continuous}</span>
           </button>
         </div>
@@ -227,7 +260,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
 
       {/* HEX Input Panel */}
       {showHexInput && (
-        <div className="hex-input-container mb-4 p-3 sm:p-4 bg-gradient-to-r from-slate-50 to-purple-50 dark:from-slate-800 dark:to-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-700 shadow-lg animate-in slide-in-from-top duration-300">
+        <div className="hex-input-container mb-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-accent/30 dark:border-accent/40 shadow-md animate-in slide-in-from-top duration-300">
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             {/* Color Preview */}
             <div 
@@ -255,12 +288,12 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
                 maxLength={7}
                 className={`w-full px-3 py-2 sm:py-2.5 rounded-lg border-2 font-mono text-sm sm:text-base uppercase transition-all duration-300 outline-none
                   ${isHexInputValid 
-                    ? 'border-macaron-green bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' 
+                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300' 
                     : hexInput && !isHexInputValid
                       ? 'border-red-300 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300'
                       : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200'
                   }
-                  focus:ring-2 focus:ring-macaron-purple/30
+                  focus:ring-2 focus:ring-accent/30
                 `}
               />
               {hexInput && !isHexInputValid && (
@@ -269,7 +302,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
                 </span>
               )}
               {isHexInputValid && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-green-500 flex items-center gap-0.5">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-emerald-500 flex items-center gap-0.5">
                   {t.pressEnter} <ArrowElbowDownLeftIcon className="w-3 h-3" />
                 </span>
               )}
@@ -279,9 +312,9 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
             <button
               onClick={handleAddHexColor}
               disabled={!isHexInputValid}
-              className={`px-4 py-2 sm:py-2.5 rounded-lg font-bold text-sm transition-all duration-300 flex items-center gap-1.5 justify-center ${
+              className={`px-4 py-2 sm:py-2.5 rounded-lg font-bold text-sm transition-all duration-300 flex items-center gap-1.5 justify-center whitespace-nowrap ${
                 isHexInputValid
-                  ? 'bg-gradient-to-r from-macaron-purple to-macaron-blue text-white hover:shadow-lg hover:scale-105 cursor-pointer'
+                  ? 'bg-accent hover:bg-accent-hover text-white hover:shadow-md cursor-pointer'
                   : 'bg-slate-200 dark:bg-slate-600 text-slate-400 cursor-not-allowed'
               }`}
             >
@@ -320,56 +353,161 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
           )}
         </div>
       ) : (
-        <div ref={containerRef} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-        {colors.map((c) => (
+        <div ref={containerRef} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4 pr-1.5 pb-1.5">
+        {colors.map((c, idx) => {
+          if (!c) return null;
+          const safeHex = typeof c.hex === 'string' && c.hex.startsWith('#') ? c.hex : '#808080';
+          const paint = c?.assignedPaint ?? null;
+          return (
           <div 
-            key={c.id}
+            key={c.id || `swatch-${idx}`}
             onClick={() => onColorSelect(c)}
             className={`
-              color-card relative p-2 sm:p-3 rounded-lg border-2 cursor-pointer transition-all duration-150 group
-              ${selectedColorId === c.id ? 'shadow-md transform -translate-y-1' : 'border-slate-100 dark:border-slate-700 hover:border-macaron-pink'}
+              color-card bp-subcard bp-subcard-interactive relative flex flex-col justify-between p-2 sm:p-3 rounded-xl border-2 cursor-pointer transition-all duration-150 group
+              ${selectedColorId === c.id ? 'bp-subcard-active shadow-md transform -translate-y-0.5' : 'border-slate-100 dark:border-slate-700 hover:border-accent/50'}
             `}
-            style={selectedColorId === c.id ? { borderColor: c.hex, boxShadow: `0 4px 12px -2px ${c.hex}40` } : undefined}
+            style={selectedColorId === c.id ? { borderColor: safeHex, boxShadow: `0 4px 12px -2px ${safeHex}40` } : undefined}
           >
-            <div 
-              className="w-full h-12 sm:h-16 rounded-md mb-2 shadow-inner" 
-              style={{ backgroundColor: c.hex }}
-            />
-            <div className="flex justify-between items-end relative">
-                <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[10px] sm:text-xs text-slate-600 dark:text-slate-300 font-bold truncate">{c.hex}</p>
-                    <p className="font-mono text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500">
-                        C{c.cmyk.c} M{c.cmyk.m} Y{c.cmyk.y} K{c.cmyk.k}
-                    </p>
-                    {/* Color Space Badge & Gamut Warning */}
-                    {c.colorSpace && c.colorSpace !== 'srgb' && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className="text-[8px] bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1 rounded">
-                          {getColorSpaceName(c.colorSpace, 'en')}
-                        </span>
-                        {!isInGamut(c.rgb, c.colorSpace) && (
-                          <span className="inline-flex text-amber-600 dark:text-amber-400" title="Out of gamut"><WarningIcon className="w-3 h-3" /></span>
-                        )}
-                      </div>
-                    )}
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                    {c.source === 'auto' ? (
-                        <span className="text-[9px] sm:text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 px-1 rounded">AUTO</span>
-                    ) : (
-                        <span className="text-[9px] sm:text-[10px] bg-macaron-yellow dark:bg-yellow-700 text-slate-600 dark:text-yellow-200 px-1 rounded">USR</span>
-                    )}
-                    
-                    {/* Selection Indicator - Inside Info Area */}
-                    {selectedColorId === c.id && (
-                        <div 
-                          ref={selectionIndicatorRef}
-                          className="w-4 h-4 rounded-full bg-gradient-to-br from-macaron-pink to-macaron-blue border border-white dark:border-slate-600 shadow-md flex items-center justify-center flex-shrink-0"
-                        >
-                            <div className="w-2 h-2 bg-white rounded-full" />
+            <div>
+              <div 
+                className="bp-swatch relative w-full h-12 sm:h-16 rounded-lg mb-2 shadow-inner" 
+                style={{ backgroundColor: safeHex }}
+              >
+                <span className="bp-badge absolute left-1.5 top-1.5 rounded-md bg-slate-900/65 backdrop-blur-xs px-1.5 py-0.5 font-mono text-[9px] font-bold text-white leading-none">
+                  #{idx + 1}
+                </span>
+              </div>
+              <div className="flex justify-between items-end relative">
+                  <div className="min-w-0 flex-1">
+                      <p className="font-mono text-[10px] sm:text-xs text-slate-700 dark:text-slate-200 font-bold truncate">{safeHex}</p>
+                      <p className="font-mono text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500">
+                          C{c?.cmyk?.c ?? 0} M{c?.cmyk?.m ?? 0} Y{c?.cmyk?.y ?? 0} K{c?.cmyk?.k ?? 0}
+                      </p>
+                      {/* Color Space Badge & Gamut Warning */}
+                      {c.colorSpace && c.colorSpace !== 'srgb' && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="bp-badge text-[8px] bg-accent/12 text-accent dark:text-accent-light px-1 rounded">
+                            {getColorSpaceName(c.colorSpace, 'en')}
+                          </span>
+                          {c.rgb && !isInGamut(c.rgb, c.colorSpace) && (
+                            <span className="inline-flex text-amber-600 dark:text-amber-400" title="Out of gamut"><WarningIcon className="w-3 h-3" /></span>
+                          )}
                         </div>
+                      )}
+                  </div>
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                      {c.source === 'auto' ? (
+                          <span className="bp-badge text-[9px] sm:text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 px-1 rounded">AUTO</span>
+                      ) : (
+                          <span className="bp-badge text-[9px] sm:text-[10px] bg-macaron-yellow dark:bg-yellow-700 text-slate-600 dark:text-yellow-200 px-1 rounded">USR</span>
+                      )}
+                      
+                      {/* Selection Indicator - Inside Info Area */}
+                      {selectedColorId === c.id && (
+                          <div 
+                            ref={selectionIndicatorRef}
+                            className="w-4 h-4 rounded-full bg-accent border border-white dark:border-slate-600 shadow-md flex items-center justify-center flex-shrink-0"
+                          >
+                              <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                          </div>
+                      )}
+                  </div>
+              </div>
+            </div>
+
+            {/* 油漆指派与流转操作区 (Paint Assignment & Quick Flow Slot) */}
+            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/90">
+              {paint ? (
+                /* 状态 B：已指派具体油漆 */
+                <div className="flex items-center justify-between gap-1 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 px-1.5 py-1">
+                  <div
+                    className="flex items-center gap-1.5 min-w-0 flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onColorSelect(c);
+                      onOpenQuickAssign?.(c, idx);
+                    }}
+                  >
+                    <div className="relative h-6 w-6 rounded border border-slate-200 dark:border-slate-600 overflow-hidden shrink-0 flex items-center justify-center bg-white">
+                      <span className="absolute inset-0" style={{ backgroundColor: paint.hex }} />
+                      <PaintBottleImg
+                        brand={paint.brand}
+                        code={paint.code}
+                        className="relative z-10 h-full w-full object-contain bg-white/90"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1 leading-tight">
+                      <div className="text-[10px] font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                        {localizedBrand(paint.brand, (lang as 'zh' | 'ja' | 'en') || 'zh')} {paint.code}
+                      </div>
+                      <div className="text-[9px] text-slate-500 dark:text-slate-400 truncate">
+                        {paint.name}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onColorSelect(c);
+                        onOpenQuickAssign?.(c, idx);
+                      }}
+                      className="rounded px-1.5 py-0.5 text-[9px] font-bold bg-accent/12 text-accent dark:text-accent-light hover:bg-accent hover:text-white transition whitespace-nowrap cursor-pointer"
+                    >
+                      {lang === 'zh' ? '更换' : 'Change'}
+                    </button>
+                    {onUnassignPaint && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUnassignPaint(c.id);
+                        }}
+                        className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200/80 dark:bg-slate-700 text-[9px] font-bold text-slate-500 hover:bg-rose-500 hover:text-white transition cursor-pointer"
+                        title={lang === 'zh' ? '解除绑定' : 'Unassign'}
+                      >
+                        ✕
+                      </button>
                     )}
+                  </div>
                 </div>
+              ) : (
+                /* 状态 A：尚未指派油漆 */
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onColorSelect(c);
+                      onOpenQuickAssign?.(c, idx);
+                    }}
+                    className="flex-1 min-w-0 flex items-center justify-between gap-1 rounded-lg border border-dashed border-accent/45 bg-accent/8 hover:bg-accent hover:text-white hover:border-accent px-2 py-1 text-[10px] font-extrabold text-accent dark:text-accent-light transition cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1 min-w-0 truncate">
+                      <TargetIcon className="w-3 h-3 shrink-0" weight="bold" />
+                      <span className="truncate">
+                        {lang === 'zh' ? '指派油漆' : 'Assign Paint'}
+                      </span>
+                    </span>
+                    <CaretRightIcon className="w-2.5 h-2.5 shrink-0" weight="bold" />
+                  </button>
+                  {onNavigateToMixer && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onColorSelect(c);
+                        onNavigateToMixer(c);
+                      }}
+                      className="shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-accent hover:text-accent px-1.5 py-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 transition cursor-pointer whitespace-nowrap"
+                      title={lang === 'zh' ? '分解混色配方' : 'Mix Recipe'}
+                    >
+                      <FlaskIcon className="w-3 h-3" weight="bold" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* Concise Delete Button */}
@@ -383,7 +521,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect, sele
               <XIcon className="w-3.5 h-3.5" weight="bold" />
             </button>
           </div>
-        ))}
+          );
+        })}
         </div>
       )}
     </div>

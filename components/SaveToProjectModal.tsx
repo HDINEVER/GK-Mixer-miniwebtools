@@ -106,7 +106,7 @@ export const SaveToProjectModal: React.FC<SaveToProjectModalProps> = ({
       desktopPlacement="center"
       desktopWidth={440}
       icon={
-        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent/15 text-accent">
+        <span className="bp-swatch flex h-8 w-8 items-center justify-center rounded-xl bg-accent/15 text-accent">
           <FolderPlusIcon className="h-4 w-4" />
         </span>
       }
@@ -121,14 +121,14 @@ export const SaveToProjectModal: React.FC<SaveToProjectModalProps> = ({
     >
         <form onSubmit={handleConfirm} className="space-y-4">
           {/* Mode Switcher */}
-          <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 p-1">
+          <div className="bp-segmented grid grid-cols-2 gap-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 p-1">
             <button
               type="button"
               disabled={projects.length === 0}
               onClick={() => setMode("existing")}
-              className={`rounded-xl py-2 text-xs font-extrabold transition ${
+              className={`bp-segmented-item rounded-xl py-2 text-xs font-extrabold transition ${
                 mode === "existing"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                  ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                   : "text-slate-500 disabled:opacity-40"
               }`}
             >
@@ -137,9 +137,9 @@ export const SaveToProjectModal: React.FC<SaveToProjectModalProps> = ({
             <button
               type="button"
               onClick={() => setMode("new")}
-              className={`rounded-xl py-2 text-xs font-extrabold transition ${
+              className={`bp-segmented-item rounded-xl py-2 text-xs font-extrabold transition ${
                 mode === "new"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                  ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                   : "text-slate-500"
               }`}
             >
@@ -152,7 +152,7 @@ export const SaveToProjectModal: React.FC<SaveToProjectModalProps> = ({
               <label className="text-xs font-bold text-slate-600 dark:text-slate-300">
                 选择目标工程文件夹
               </label>
-              <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+              <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1.5 pb-1.5">
                 {projects.map((proj) => {
                   const active = proj.id === selectedProjectId;
                   return (
@@ -160,9 +160,9 @@ export const SaveToProjectModal: React.FC<SaveToProjectModalProps> = ({
                       key={proj.id}
                       type="button"
                       onClick={() => setSelectedProjectId(proj.id)}
-                      className={`w-full flex items-center justify-between gap-3 rounded-2xl border p-2.5 text-left transition ${
+                      className={`bp-subcard w-full flex items-center justify-between gap-3 rounded-2xl border p-2.5 text-left transition ${
                         active
-                          ? "border-coral bg-coral/10 ring-1 ring-coral/30"
+                          ? "bp-subcard-active border-coral bg-coral/10 ring-1 ring-coral/30"
                           : "border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                       }`}
                     >
@@ -171,10 +171,10 @@ export const SaveToProjectModal: React.FC<SaveToProjectModalProps> = ({
                           <img
                             src={proj.coverImageDataUrl}
                             alt=""
-                            className="h-10 w-10 rounded-xl object-cover border border-black/10 shrink-0"
+                            className="bp-swatch h-10 w-10 rounded-xl object-cover border border-black/10 shrink-0"
                           />
                         ) : (
-                          <div className="h-10 w-10 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
+                          <div className="bp-swatch h-10 w-10 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
                         )}
                         <div className="min-w-0">
                           <div className="truncate text-xs font-extrabold text-slate-900 dark:text-white">
@@ -202,7 +202,7 @@ export const SaveToProjectModal: React.FC<SaveToProjectModalProps> = ({
                   value={newProjectTitle}
                   onChange={(e) => setNewProjectTitle(e.target.value)}
                   placeholder="例如：卡牛 Ver.Ka 涂装企划"
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-xs font-bold text-slate-900 dark:text-white focus:border-coral focus:outline-none"
+                  className="bp-input w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-xs font-bold text-slate-900 dark:text-white focus:border-coral focus:outline-none"
                 />
               </div>
 
@@ -227,26 +227,26 @@ export const SaveToProjectModal: React.FC<SaveToProjectModalProps> = ({
                       value={newCatName}
                       onChange={(e) => setNewCatName(e.target.value)}
                       placeholder="输入新分类名称"
-                      className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-xs font-bold"
+                      className="bp-input flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-xs font-bold"
                     />
                     <button
                       type="button"
                       onClick={handleAddCat}
-                      className="rounded-xl bg-coral px-3 py-1.5 text-xs font-bold text-white"
+                      className="bp-btn rounded-xl bg-coral px-3 py-1.5 text-xs font-bold text-white"
                     >
                       添加
                     </button>
                   </div>
                 )}
 
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 pr-1 pb-1">
                   <button
                     type="button"
                     onClick={() => setSelectedCategoryId(null)}
                     className={`rounded-full px-3 py-1 text-xs font-bold transition ${
                       selectedCategoryId === null
-                        ? "bg-coral text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                        ? "bp-pill-active bg-coral text-white"
+                        : "bp-pill bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                     }`}
                   >
                     未分类
@@ -258,8 +258,8 @@ export const SaveToProjectModal: React.FC<SaveToProjectModalProps> = ({
                       onClick={() => setSelectedCategoryId(cat.id)}
                       className={`rounded-full px-3 py-1 text-xs font-bold transition ${
                         selectedCategoryId === cat.id
-                          ? "bg-coral text-white"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                          ? "bp-pill-active bg-coral text-white"
+                          : "bp-pill bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                       }`}
                     >
                       {cat.name}
@@ -280,14 +280,14 @@ export const SaveToProjectModal: React.FC<SaveToProjectModalProps> = ({
               value={partName}
               onChange={(e) => setPartName(e.target.value)}
               placeholder="例如：头部与天线 / 胸部主外甲 / 浮游炮"
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-xs font-bold text-slate-900 dark:text-white focus:border-coral focus:outline-none"
+              className="bp-input w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-xs font-bold text-slate-900 dark:text-white focus:border-coral focus:outline-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={!imageSrc}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-accent hover:bg-accent-hover py-3 text-sm font-semibold text-white shadow-sm disabled:opacity-40 transition"
+            className="bp-btn w-full flex items-center justify-center gap-2 rounded-2xl bg-accent hover:bg-accent-hover py-3 text-sm font-semibold text-white shadow-sm disabled:opacity-40 transition"
           >
             <PlusIcon className="h-4 w-4" />
             <span>保存零件色卡至涂装库</span>

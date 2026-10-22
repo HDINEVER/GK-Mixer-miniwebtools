@@ -805,7 +805,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
   }));
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-3.5 w-full">
+    <div ref={containerRef} className="flex flex-col gap-3.5 w-full pr-1.5 pb-1.5">
       {/* Header with Title and Mode Switcher */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
@@ -816,13 +816,13 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
         </div>
 
         {/* View Mode Toggle: [ 色板模式 ] / [ 轮盘模式 ] */}
-        <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs">
+        <div className="bp-segmented inline-flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs">
           <button
             type="button"
             onClick={() => setViewMode('ios')}
-            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            className={`bp-segmented-item px-3 py-1 rounded-lg font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               viewMode === 'ios'
-                ? 'bg-white dark:bg-slate-700 text-accent dark:text-accent-light shadow-sm'
+                ? 'bp-segmented-item-active bg-white dark:bg-slate-700 text-accent dark:text-accent-light shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
             }`}
           >
@@ -832,9 +832,9 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
           <button
             type="button"
             onClick={() => setViewMode('radial')}
-            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            className={`bp-segmented-item px-3 py-1 rounded-lg font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               viewMode === 'radial'
-                ? 'bg-white dark:bg-slate-700 text-accent dark:text-accent-light shadow-sm'
+                ? 'bp-segmented-item-active bg-white dark:bg-slate-700 text-accent dark:text-accent-light shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
             }`}
           >
@@ -849,19 +849,19 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
         /* Mobile: stacked (result → pigments → formula). Desktop lg+: left 7 cols (pigments console) / right 5 cols (sticky result + formula dashboard) */
         <div className="flex flex-col gap-3.5 w-full lg:grid lg:grid-cols-12 lg:gap-6 lg:items-start">
           {/* 1. 基础颜料调音台 (左栏，占 7 列) */}
-          <div className="order-2 lg:order-1 lg:col-span-7 bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+          <div className="bp-subcard-lg order-2 lg:order-1 lg:col-span-7 bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+            <div className="bp-dashed-header flex items-center justify-between mb-3 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
               <div className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <DropIcon className="w-4 h-4 text-accent" />
                 <span>{lang === 'zh' ? '基础颜料' : lang === 'ja' ? '基本顔料' : 'Basic Pigments'}</span>
               </div>
-              <span className="text-[11px] font-mono text-slate-400">
+              <span className="bp-badge px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400">
                 {lang === 'zh' ? '8色基础系统' : lang === 'ja' ? '8色ベース' : '8-Color System'}
               </span>
             </div>
 
             {/* 单列纵向排列 */}
-            <div className="grid grid-cols-1 divide-y divide-slate-100 dark:divide-slate-700/60">
+            <div className="bp-slider-list grid grid-cols-1 divide-y divide-slate-100 dark:divide-slate-700/60">
               {baseColors.map((paint, index) => {
                 const ratio = mixRatios[index] ?? 0;
                 const pct = totalRatio > 0 ? (ratio / totalRatio) * 100 : 0;
@@ -883,7 +883,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
           {/* 2. 实时看板 (右栏，占 5 列，桌面吸顶) */}
           <div className="contents lg:flex lg:flex-col lg:col-span-5 lg:sticky lg:top-4 lg:gap-5 lg:order-2">
             {/* 上层卡片：「🧪 混合结果」 */}
-            <div className="order-1 lg:order-none bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+            <div className="bp-subcard-lg order-1 lg:order-none bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
               <div className="flex items-center justify-between mb-2.5">
                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <FlaskIcon className="w-4 h-4 text-accent" />
@@ -893,7 +893,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                   <button
                     type="button"
                     onClick={handleReset}
-                    className="text-xs text-slate-400 hover:text-rose-500 transition-colors"
+                    className="bp-pill px-2 py-0.5 rounded-full text-xs font-bold text-slate-500 hover:text-rose-500 transition-colors cursor-pointer"
                   >
                     {lang === 'zh' ? '重置' : lang === 'ja' ? 'リセット' : 'Reset'}
                   </button>
@@ -904,7 +904,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                 <div className="space-y-3">
                   {/* Pantone 色卡式预览大色块 (高度 h-28，约 112px) */}
                   <div
-                    className="w-full h-28 rounded-2xl relative shadow-inner border border-black/10 dark:border-white/10 overflow-hidden"
+                    className="bp-mixed-preview w-full h-28 rounded-2xl relative shadow-inner border border-black/10 dark:border-white/10 overflow-hidden"
                     style={{ backgroundColor: finalColor }}
                   >
                     {/* 可复制 Hex 标签 */}
@@ -912,7 +912,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                       <button
                         type="button"
                         onClick={() => handleCopyHex(finalColor)}
-                        className="bg-white/85 dark:bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-bold text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/15 shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
+                        className="bp-pill bg-white/85 dark:bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-bold text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/15 shadow-sm hover:scale-105 active:scale-95 transition-transform flex items-center gap-1.5 cursor-pointer"
                         title="点击复制 Hex 色号"
                       >
                         <span>{finalColor.toUpperCase()}</span>
@@ -931,7 +931,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
 
                   {/* RAL 近似匹配结果 */}
                   {ralMatch && (
-                    <div className="flex items-center justify-between text-xs pt-1 px-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <div className="bp-dashed-header flex items-center justify-between text-xs pt-1 px-1 border-t border-slate-200/60 dark:border-slate-700/60">
                       <span className="text-slate-500 dark:text-slate-400 font-medium">
                         {lang === 'zh' ? 'RAL 近似色' : lang === 'ja' ? 'RAL 近似色' : 'RAL Match'}
                       </span>
@@ -951,7 +951,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                     <button
                       type="button"
                       onClick={() => onNavigateToBrands(finalColor)}
-                      className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-700/60 hover:bg-accent hover:text-white dark:hover:bg-accent text-slate-700 dark:text-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 group active:scale-[0.98] border border-slate-200/60 dark:border-slate-600/60 shadow-xs cursor-pointer whitespace-nowrap"
+                      className="bp-btn w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-700/60 hover:bg-accent hover:text-white dark:hover:bg-accent text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 group active:scale-[0.98] border border-slate-200/60 dark:border-slate-600/60 shadow-xs cursor-pointer whitespace-nowrap"
                     >
                       <span>{lang === 'zh' ? '去近邻查找平替' : lang === 'ja' ? '代替色を探す' : 'Find Brand Alternatives'}</span>
                       <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" weight="bold" />
@@ -959,7 +959,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                   )}
                 </div>
               ) : (
-                <div className="w-full h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1.5 text-slate-400">
+                <div className="bp-dashed-box w-full h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1.5 text-slate-400">
                   <DropIcon className="w-8 h-8 opacity-60 text-slate-400" />
                   <span className="text-xs">
                     {lang === 'zh' ? '调整左侧滑块开始混色' : lang === 'ja' ? 'スライダーを調整して混色' : 'Adjust sliders to mix'}
@@ -969,7 +969,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
             </div>
 
             {/* 下层卡片：「📋 配方输出」 */}
-            <div className="order-3 lg:order-none bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
+            <div className="bp-subcard-lg order-3 lg:order-none bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
               <div className="space-y-2">
                 {/* 卡片头部与整合总量输入框 */}
                 <div className="flex items-center justify-between">
@@ -983,7 +983,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                       type="number"
                       value={totalVolume}
                       onChange={(e) => setTotalVolume(Math.max(1, Math.min(200, parseInt(e.target.value, 10) || 20)))}
-                      className="w-12 px-1.5 py-0.5 text-xs text-center font-mono font-bold border border-slate-300/80 dark:border-slate-600/80 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 outline-none tabular-nums"
+                      className="bp-input w-12 px-1.5 py-0.5 text-xs text-center font-mono font-bold border border-slate-300/80 dark:border-slate-600/80 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 outline-none tabular-nums"
                       min="1"
                       max="200"
                     />
@@ -992,15 +992,15 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                 </div>
 
                 {/* 快速容量预设 - 等宽 6 列网格杜绝截断 */}
-                <div className="p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-xl grid grid-cols-6 gap-1 shadow-inner">
+                <div className="bp-segmented p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-xl grid grid-cols-6 gap-1 shadow-inner">
                   {volumePresets.map((v) => (
                     <button
                       key={v}
                       type="button"
                       onClick={() => setTotalVolume(v)}
-                      className={`h-8 rounded-lg text-xs font-mono font-bold transition-all duration-150 active:scale-[0.95] flex items-center justify-center cursor-pointer whitespace-nowrap ${
+                      className={`bp-segmented-item h-8 rounded-lg text-xs font-mono font-bold transition-colors duration-150 active:scale-[0.95] flex items-center justify-center cursor-pointer whitespace-nowrap ${
                         totalVolume === v
-                          ? 'bg-accent text-white shadow-xs ring-1 ring-white/20'
+                          ? 'bp-segmented-item-active bg-accent text-white shadow-xs ring-1 ring-white/20'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
                       }`}
                     >
@@ -1019,15 +1019,15 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                     multiplier={dropMultiplier}
                     onMultiplierChange={setDropMultiplier}
                   />
-                  <div className="space-y-1 pt-1 max-h-[220px] overflow-y-auto no-scrollbar">
+                  <div className="space-y-1.5 pt-1 pr-1 pb-1 max-h-[220px] overflow-y-auto no-scrollbar">
                     {activeItems.map((item, index) => (
                       <div
                         key={item.color.id}
-                        className="flex items-center justify-between text-xs p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
+                        className="bp-subcard flex items-center justify-between text-xs p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <div
-                            className="w-4 h-4 rounded-full border border-black/15 shadow-sm flex-shrink-0"
+                            className="bp-dot w-4 h-4 rounded-full border border-black/15 shadow-sm flex-shrink-0"
                             style={{ backgroundColor: item.color.hex }}
                           />
                           <span className="font-semibold text-slate-700 dark:text-slate-200 truncate">
@@ -1056,11 +1056,11 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                   </div>
 
                   {/* 底部保存快捷操作 */}
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <div className="bp-dashed-header pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                     <button
                       type="button"
                       onClick={handleSaveToPalette}
-                      className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-sm cursor-pointer whitespace-nowrap ${
+                      className={`bp-btn w-full py-2 px-3 rounded-xl text-xs font-bold transition-colors duration-150 flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-sm cursor-pointer whitespace-nowrap ${
                         savedToPalette
                           ? 'bg-emerald-500 text-white shadow-emerald-500/25'
                           : 'bg-accent hover:bg-accent-hover text-white shadow-accent/20'
@@ -1081,7 +1081,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                <div className="bp-dashed-box py-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-center text-xs text-slate-400 dark:text-slate-500">
                   {t.noMix}
                 </div>
               )}
@@ -1101,7 +1101,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                 type="number"
                 value={totalVolume}
                 onChange={(e) => setTotalVolume(Math.max(1, parseInt(e.target.value) || 20))}
-                className="w-16 px-1.5 py-0.5 text-xs border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                className="bp-input w-16 px-1.5 py-0.5 text-xs border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
                 min="1"
                 max="100"
               />
@@ -1110,7 +1110,7 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
 
             <button
               onClick={handleReset}
-              className="px-2.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              className="bp-btn px-2.5 py-0.5 text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
             >
               {t.reset}
             </button>
@@ -1129,11 +1129,11 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
           </div>
 
           {/* 配方显示 */}
-          <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="bp-subcard-lg p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
             <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               {t.formula}
             </h3>
-            <div className="space-y-1 min-h-[60px]">
+            <div className="space-y-1.5 min-h-[60px]">
               {finalColor && activeItems.length > 0 ? (
                 <>
                   <DropRatioBar
@@ -1143,9 +1143,9 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                     onMultiplierChange={setDropMultiplier}
                   />
                   {activeItems.map((item, index) => (
-                    <div key={item.color.id} className="flex items-center gap-1.5 text-xs">
+                    <div key={item.color.id} className="bp-subcard flex items-center gap-1.5 text-xs p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700">
                       <div
-                        className="w-3.5 h-3.5 rounded border-2 border-white dark:border-slate-600"
+                        className="bp-swatch w-3.5 h-3.5 rounded border-2 border-white dark:border-slate-600"
                         style={{ backgroundColor: item.color.hex }}
                       />
                       <span className="font-mono text-slate-600 dark:text-slate-400">
@@ -1167,19 +1167,19 @@ const BasicColorMixer: React.FC<BasicColorMixerProps> = ({
                   ))}
                 </>
               ) : (
-                <div className="flex items-center justify-center h-[60px]">
+                <div className="bp-dashed-box flex items-center justify-center h-[60px] rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
                   <p className="text-xs text-slate-400 dark:text-slate-500">{t.noMix}</p>
                 </div>
               )}
             </div>
 
             {finalColor && (
-              <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
+              <div className="bp-dashed-header mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
                   {t.result}:
                 </span>
                 <div
-                  className="w-6 h-6 rounded border-2 border-white dark:border-slate-600 shadow-md"
+                  className="bp-swatch w-6 h-6 rounded border-2 border-white dark:border-slate-600 shadow-md"
                   style={{ backgroundColor: finalColor }}
                 />
                 <span className="font-mono text-xs text-slate-600 dark:text-slate-400">

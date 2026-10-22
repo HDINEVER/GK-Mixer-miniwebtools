@@ -420,7 +420,7 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
             {/* Sample pin dot */}
             <button
               type="button"
-              className="pointer-events-auto absolute rounded-full transition-transform hover:scale-125"
+              className="bp-pin-dot pointer-events-auto absolute rounded-full transition-transform hover:scale-125"
               style={{
                 left: `${marker.nx * 100}%`,
                 top: `${marker.ny * 100}%`,
@@ -428,7 +428,7 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
                 height: 14,
                 backgroundColor: settings.lineMatchPaintColor && paint ? paintHex : marker.hex,
                 border: active
-                  ? "2.5px solid #38bdf8"
+                  ? "2.5px solid var(--accent-color)"
                   : `2px solid ${settings.lineMatchPaintColor && paint ? "#ffffff" : "#ffffff"}`,
                 boxShadow: "0 1px 4px rgba(0,0,0,0.65)",
                 transform: `translate(-50%, -50%) scale(${pinScale})`,
@@ -528,21 +528,21 @@ const SwatchCard = React.memo<{
   return (
     <div
       style={{ width: `${baseW}px`, height: `${totalH}px` }}
-      className={`group relative flex flex-col rounded-xl ${
+      className={`bp-floating-swatch group relative flex flex-col rounded-xl ${
         glassEffect
           ? "bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border border-white/55 dark:border-white/20 shadow-xl"
           : "bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700 shadow-lg"
-      } ${active ? "ring-2 ring-coral border-coral" : ""}`}
+      } ${active ? "bp-floating-swatch-active ring-2 ring-[var(--accent-color)] border-[var(--accent-color)]" : ""}`}
     >
       {/* Locked Aspect Ratio Main Body with Strict Overflow Clipping */}
       <div
         style={{ height: `${baseH}px` }}
-        className="flex w-full items-stretch overflow-hidden rounded-t-[11px]"
+        className="bp-floating-swatch-body flex w-full items-stretch overflow-hidden rounded-t-[11px]"
       >
         {/* Fixed-ratio Left Thumbnail / Bottle */}
         <div
           style={{ width: `${thumbW}px`, height: `${baseH}px` }}
-          className={`flex flex-shrink-0 items-center justify-center overflow-hidden px-0.5 ${
+          className={`bp-floating-swatch-thumb flex flex-shrink-0 items-center justify-center overflow-hidden px-0.5 ${
             !hasTonal ? "rounded-bl-[11px]" : ""
           } ${
             glassEffect
@@ -590,7 +590,7 @@ const SwatchCard = React.memo<{
           </div>
           <div className="mt-1 flex items-center gap-1 overflow-hidden">
             <span
-              className="inline-block truncate rounded px-1.5 py-px font-mono text-[9px] font-bold tabular-nums"
+              className="bp-badge inline-block truncate rounded px-1.5 py-px font-mono text-[9px] font-bold tabular-nums"
               style={{
                 backgroundColor: paintHex,
                 color: isLightHex(paintHex) ? "#000" : "#fff",
@@ -604,7 +604,7 @@ const SwatchCard = React.memo<{
 
       {/* Optional 3-Step Tonal Gradient Bar at bottom */}
       {hasTonal && marker.tonalGradient && (
-        <div className="flex h-[12px] w-full shrink-0 overflow-hidden rounded-b-[11px] border-t border-black/10">
+        <div className="bp-floating-swatch-tonal flex h-[12px] w-full shrink-0 overflow-hidden rounded-b-[11px] border-t border-black/10">
           {marker.tonalGradient.map((step) => (
             <div
               key={step.id}
@@ -619,7 +619,7 @@ const SwatchCard = React.memo<{
       {/* Sample hex badge if different */}
       {showSample && (
         <span
-          className="absolute -right-1 -top-4 z-20 rounded-full px-1.5 py-px font-mono text-[8px] font-bold text-white shadow"
+          className="bp-badge absolute -right-1 -top-4 z-20 rounded-full px-1.5 py-px font-mono text-[8px] font-bold text-white shadow"
           style={{ backgroundColor: sampleHex }}
           title={`采样色: ${sampleHex}`}
         >
@@ -631,7 +631,7 @@ const SwatchCard = React.memo<{
       {showRemove && (
         <button
           type="button"
-          className="absolute -right-2 -top-2 z-30 flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-white opacity-0 shadow-md pointer-events-none hover:bg-red-500 group-hover:pointer-events-auto group-hover:opacity-100 transition-opacity"
+          className="bp-delete-btn absolute -right-2 -top-2 z-30 flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-white opacity-0 shadow-md pointer-events-none hover:bg-red-500 group-hover:pointer-events-auto group-hover:opacity-100 transition-opacity"
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();

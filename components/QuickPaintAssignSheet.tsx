@@ -183,7 +183,7 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
     >
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs transition-opacity" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-h-[86dvh] w-full max-w-lg flex-col rounded-t-[28px] border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl outline-none">
+        <Drawer.Content className="bp-modal-shell fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-h-[86dvh] w-full max-w-lg flex-col rounded-t-[28px] border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl outline-none">
           {/* Grabber handle */}
           <div className="my-2.5 mx-auto h-1.5 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700" />
 
@@ -191,7 +191,7 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 px-4 pb-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <div
-                className="h-9 w-9 rounded-xl border-2 border-white dark:border-slate-700 shadow-md shrink-0"
+                className="bp-swatch h-9 w-9 rounded-xl border-2 border-white dark:border-slate-700 shadow-md shrink-0"
                 style={{ backgroundColor: targetHex }}
               />
               <div className="min-w-0">
@@ -217,7 +217,7 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                     onUnassignPaint(targetColor.id);
                     onClose();
                   }}
-                  className="rounded-full bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 transition whitespace-nowrap cursor-pointer"
+                  className="bp-pill rounded-full bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 transition whitespace-nowrap cursor-pointer"
                 >
                   ✕ 解绑
                 </button>
@@ -225,7 +225,7 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-200 transition cursor-pointer"
+                className="bp-btn flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-200 transition cursor-pointer"
                 aria-label="Close"
               >
                 <XIcon className="h-4 w-4" weight="bold" />
@@ -236,13 +236,13 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
           {/* Dual-Mode Switcher: [✨ 最佳近似油漆 (TOP 10) | 🔍 搜索全部油漆库] */}
           <div className="px-4 pt-3 pb-2 space-y-2.5 shrink-0">
             <div className="flex items-center gap-2">
-              <div className="flex flex-1 rounded-full bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200/70 dark:border-slate-700/70">
+              <div className="bp-segmented flex flex-1 rounded-full bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200/70 dark:border-slate-700/70">
                 <button
                   type="button"
                   onClick={() => setActiveTab("top10")}
-                  className={`flex-1 flex items-center justify-center gap-1 rounded-full py-1.5 px-2.5 text-xs font-extrabold transition whitespace-nowrap cursor-pointer ${
+                  className={`bp-segmented-item flex-1 flex items-center justify-center gap-1 rounded-full py-1.5 px-2.5 text-xs font-extrabold transition whitespace-nowrap cursor-pointer ${
                     activeTab === "top10"
-                      ? "bg-accent text-white shadow-xs"
+                      ? "bp-segmented-item-active bg-accent text-white shadow-xs"
                       : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
                   }`}
                 >
@@ -252,9 +252,9 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab("search")}
-                  className={`flex-1 flex items-center justify-center gap-1 rounded-full py-1.5 px-2.5 text-xs font-extrabold transition whitespace-nowrap cursor-pointer ${
+                  className={`bp-segmented-item flex-1 flex items-center justify-center gap-1 rounded-full py-1.5 px-2.5 text-xs font-extrabold transition whitespace-nowrap cursor-pointer ${
                     activeTab === "search"
-                      ? "bg-accent text-white shadow-xs"
+                      ? "bp-segmented-item-active bg-accent text-white shadow-xs"
                       : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
                   }`}
                 >
@@ -269,8 +269,8 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                   onClick={() => setSolidsOnly((v) => !v)}
                   className={`h-8 px-2.5 rounded-full border text-[11px] font-bold flex items-center gap-1 shrink-0 whitespace-nowrap transition cursor-pointer ${
                     solidsOnly
-                      ? "bg-accent text-white border-accent"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                      ? "bp-pill-active bg-accent text-white border-accent"
+                      : "bp-pill bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                   }`}
                 >
                   {solidsOnly && <CheckIcon className="h-3 w-3" weight="bold" />}
@@ -289,7 +289,7 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="按品牌+色号空格搜索，如：盖亚 红 / Gaia 003 / 星影 金"
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 pl-9 pr-8 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-accent"
+                    className="bp-input w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 pl-9 pr-8 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-accent"
                   />
                   {searchQuery && (
                     <button
@@ -302,14 +302,14 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 pr-1">
                   <button
                     type="button"
                     onClick={() => setSelectedBrand("ALL")}
                     className={`h-6 px-2.5 rounded-full text-[11px] font-bold shrink-0 whitespace-nowrap transition cursor-pointer ${
                       selectedBrand === "ALL"
-                        ? "bg-accent text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                        ? "bp-pill-active bg-accent text-white"
+                        : "bp-pill bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                     }`}
                   >
                     全部品牌
@@ -321,8 +321,8 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                       onClick={() => setSelectedBrand(b)}
                       className={`h-6 px-2.5 rounded-full text-[11px] font-bold shrink-0 whitespace-nowrap transition cursor-pointer ${
                         selectedBrand === b
-                          ? "bg-accent text-white"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                          ? "bp-pill-active bg-accent text-white"
+                          : "bp-pill bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                       }`}
                     >
                       {localizedBrand(b, lang)}
@@ -351,9 +351,9 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                       onAssignPaint(paint, targetColor.id);
                       onClose();
                     }}
-                    className={`w-full flex items-center justify-between gap-2.5 rounded-2xl border p-2 text-left transition active:scale-[0.99] cursor-pointer ${
+                    className={`bp-subcard bp-subcard-interactive w-full flex items-center justify-between gap-2.5 rounded-2xl border p-2 text-left transition-colors active:scale-[0.99] cursor-pointer ${
                       isCurrentAssigned
-                        ? "border-accent bg-accent/10 dark:bg-accent/20 shadow-xs"
+                        ? "bp-subcard-active border-accent bg-accent/10 dark:bg-accent/20 shadow-xs"
                         : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/80 hover:border-accent/50 hover:bg-slate-50/70 dark:hover:bg-slate-800/60"
                     }`}
                   >
@@ -369,7 +369,7 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                         </span>
                       )}
 
-                      <div className="relative h-10 w-10 rounded-xl border border-slate-200/80 dark:border-slate-700 overflow-hidden shrink-0 flex items-center justify-center bg-slate-50 dark:bg-slate-800">
+                      <div className="bp-swatch relative h-10 w-10 rounded-xl border border-slate-200/80 dark:border-slate-700 overflow-hidden shrink-0 flex items-center justify-center bg-slate-50 dark:bg-slate-800">
                         <span
                           className="absolute inset-0"
                           style={{ backgroundColor: paint.hex }}
@@ -390,7 +390,7 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                         <div className="mt-0.5 flex items-center gap-2 text-[10px] text-slate-400">
                           <span className="inline-flex items-center gap-1 font-mono font-bold">
                             <span
-                              className="h-2.5 w-2.5 rounded-full border border-black/15"
+                              className="bp-dot h-2.5 w-2.5 rounded-full border border-black/15"
                               style={{ backgroundColor: paint.hex ?? "#808080" }}
                             />
                             {(paint.hex ?? "#808080").toUpperCase()}
@@ -405,10 +405,10 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
 
                     {/* Right: Instant Assign Pill */}
                     <span
-                      className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-extrabold whitespace-nowrap transition ${
+                      className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-extrabold whitespace-nowrap transition-colors ${
                         isCurrentAssigned
-                          ? "bg-accent text-white"
-                          : "bg-accent/12 text-accent dark:bg-accent/22 dark:text-accent-light group-hover:bg-accent group-hover:text-white"
+                          ? "bp-pill-active bg-accent text-white"
+                          : "bp-pill bg-accent/12 text-accent dark:bg-accent/22 dark:text-accent-light group-hover:bg-accent group-hover:text-white"
                       }`}
                     >
                       {isCurrentAssigned ? "✓ 已指派" : "指派"}
@@ -436,7 +436,7 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                   onNavigateToBrands(targetColor);
                 }
               }}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-2.5 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-accent hover:text-accent transition whitespace-nowrap cursor-pointer"
+              className="bp-btn flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-2.5 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-accent hover:text-accent transition-colors whitespace-nowrap cursor-pointer"
             >
               <TagIcon className="h-3.5 w-3.5 text-accent shrink-0" weight="bold" />
               <span>前往「品牌近邻」深度筛选</span>
@@ -448,7 +448,7 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                 onClose();
                 onNavigateToMixer(targetColor);
               }}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover py-2.5 px-3 text-xs font-extrabold text-white shadow-xs transition whitespace-nowrap cursor-pointer"
+              className="bp-btn flex items-center justify-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover py-2.5 px-3 text-xs font-extrabold text-white shadow-xs transition-colors whitespace-nowrap cursor-pointer"
             >
               <FlaskIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
               <span>前往「调色分解」计算混色</span>

@@ -335,19 +335,19 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
 
   return (
     <div
-      className={`flex flex-col rounded-2xl border border-slate-200/90 bg-white/95 p-3.5 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 space-y-3.5 ${className}`}
+      className={`bp-subcard-lg flex flex-col rounded-2xl border border-slate-200/90 bg-white/95 p-3.5 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 space-y-3.5 ${className}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+      <div className="bp-dashed-header flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-tr from-sky-500 to-indigo-500 text-white shadow-sm">
+          <div className="bp-swatch flex h-6 w-6 items-center justify-center rounded-md bg-[var(--accent-color)] text-white shadow-sm">
             <CardsIcon className="h-3.5 w-3.5" weight="bold" />
           </div>
           <div>
             <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
               {t.swatchStudio || "色卡制作与排版"}
             </div>
-            <div className="text-[10px] text-slate-400">
+            <div className="text-[10px] font-mono text-slate-400">
               {assignedCount} {lang === "zh" ? "个色卡" : "cards"}
             </div>
           </div>
@@ -355,13 +355,13 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
 
         <div className="flex items-center gap-1.5">
           {colors && onUpdateColors && (
-            <div className="inline-flex rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200/70 dark:border-slate-700">
+            <div className="bp-segmented inline-flex rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200/70 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => setApplyToAll(false)}
-                className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${
+                className={`bp-segmented-item rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors cursor-pointer ${
                   !applyToAll
-                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                    ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                     : "text-slate-500 dark:text-slate-400"
                 }`}
               >
@@ -370,9 +370,9 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
               <button
                 type="button"
                 onClick={() => setApplyToAll(true)}
-                className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${
+                className={`bp-segmented-item rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors cursor-pointer ${
                   applyToAll
-                    ? "bg-sky-500 text-white shadow-xs"
+                    ? "bp-segmented-item-active bg-[var(--accent-color)] text-white shadow-xs"
                     : "text-slate-500 dark:text-slate-400"
                 }`}
               >
@@ -384,7 +384,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
           <button
             type="button"
             onClick={triggerReset}
-            className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition"
+            className="bp-btn flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors cursor-pointer"
             title="重置色卡至采样点附近位置"
           >
             <ArrowCounterClockwiseIcon className="h-3 w-3" weight="bold" />
@@ -407,7 +407,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
 
       {/* Horizontal Scrollable Assigned Paint Cards Selector (when colors provided) */}
       {assignedColors.length > 0 && onSelectColor && (
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 pr-1">
           {assignedColors.map((item, idx) => {
             const isSelected = activeAssigned?.id === item.id;
             const p = item.assignedPaint;
@@ -416,18 +416,18 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => onSelectColor(item)}
-                className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-left transition shrink-0 border ${
+                className={`bp-subcard bp-subcard-interactive flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-left transition-colors shrink-0 border cursor-pointer ${
                   isSelected
-                    ? "border-sky-500 bg-sky-50 dark:bg-sky-950/60 text-slate-900 dark:text-white ring-1 ring-sky-400/40 shadow-2xs"
+                    ? "bp-subcard-active border-[var(--accent-color)] bg-[var(--accent-soft)] text-slate-900 dark:text-white ring-1 ring-[var(--accent-color)]/40 shadow-2xs"
                     : "border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
                 }`}
               >
                 <span
-                  className="h-3.5 w-3.5 rounded border border-black/15 shrink-0"
+                  className="bp-swatch h-3.5 w-3.5 rounded border border-black/15 shrink-0"
                   style={{ backgroundColor: p.hex }}
                 />
                 <div className="min-w-0 max-w-[115px]">
-                  <div className="truncate text-[10px] font-extrabold leading-tight">
+                  <div className="truncate font-mono text-[10px] font-extrabold leading-tight">
                     #{idx + 1} {localizedBrand(p.brand, lang)} {p.code}
                   </div>
                   <div className="truncate text-[9px] text-slate-400 leading-tight">{p.name}</div>
@@ -445,32 +445,32 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
             <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
               {lang === "zh" ? "一键智能排版" : "Smart Layout"}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 pr-1">
               <button
                 type="button"
                 onClick={triggerAutoArrangeLR}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/80 py-2 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 hover:text-sky-600 transition"
+                className="bp-btn flex items-center justify-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/80 py-2 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors cursor-pointer"
               >
-                <ColumnsIcon className="h-3.5 w-3.5 text-sky-500" weight="bold" />
+                <ColumnsIcon className="h-3.5 w-3.5 text-[var(--accent-color)]" weight="bold" />
                 <span>{t.autoArrangeLR || "左右分列"}</span>
               </button>
               <button
                 type="button"
                 onClick={triggerAutoArrangeTB}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/80 py-2 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 hover:text-sky-600 transition"
+                className="bp-btn flex items-center justify-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/80 py-2 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors cursor-pointer"
               >
-                <RowsIcon className="h-3.5 w-3.5 text-sky-500" weight="bold" />
+                <RowsIcon className="h-3.5 w-3.5 text-[var(--accent-color)]" weight="bold" />
                 <span>{t.autoArrangeTB || "上下分行"}</span>
               </button>
             </div>
           </div>
 
           {/* 6 Quick Alignment Pills */}
-          <div className="grid grid-cols-6 gap-1">
+          <div className="grid grid-cols-6 gap-1 pr-1">
             <button
               type="button"
               onClick={() => triggerAlign("left")}
-              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+              className="bp-btn flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors cursor-pointer"
             >
               <ArrowLeftIcon className="h-3 w-3" />
               <span>靠左</span>
@@ -478,7 +478,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
             <button
               type="button"
               onClick={() => triggerAlign("autoH")}
-              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+              className="bp-btn flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors cursor-pointer"
             >
               <ArrowsHorizontalIcon className="h-3 w-3" />
               <span>自适应H</span>
@@ -486,7 +486,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
             <button
               type="button"
               onClick={() => triggerAlign("right")}
-              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+              className="bp-btn flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors cursor-pointer"
             >
               <ArrowRightIcon className="h-3 w-3" />
               <span>靠右</span>
@@ -494,7 +494,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
             <button
               type="button"
               onClick={() => triggerAlign("top")}
-              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+              className="bp-btn flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors cursor-pointer"
             >
               <ArrowUpIcon className="h-3 w-3" />
               <span>靠顶</span>
@@ -502,7 +502,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
             <button
               type="button"
               onClick={() => triggerAlign("autoV")}
-              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+              className="bp-btn flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors cursor-pointer"
             >
               <ArrowsVerticalIcon className="h-3 w-3" />
               <span>自适应V</span>
@@ -510,7 +510,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
             <button
               type="button"
               onClick={() => triggerAlign("bottom")}
-              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-sky-400 hover:text-sky-600 transition"
+              className="bp-btn flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors cursor-pointer"
             >
               <ArrowDownIcon className="h-3 w-3" />
               <span>靠底</span>
@@ -518,13 +518,13 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
           </div>
 
           {/* Card Scale, Locked Aspect Ratio Base Width, and X/Y Sliders */}
-          <div className="space-y-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/50 p-3 border border-slate-200/60 dark:border-slate-800">
+          <div className="bp-subcard space-y-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/50 p-3 border border-slate-200/60 dark:border-slate-800">
             <div className="space-y-1">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="font-bold text-slate-600 dark:text-slate-300">
                   {t.cardSize || "色卡缩放"}
                 </span>
-                <span className="font-mono font-bold text-sky-600 dark:text-sky-400">
+                <span className="font-mono font-bold text-[var(--accent-color)]">
                   {Math.round(effectiveScale * 100)}%
                 </span>
               </div>
@@ -535,7 +535,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                 step={0.02}
                 value={effectiveScale}
                 onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
-                className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+                className="bp-range-slider w-full accent-[var(--accent-color)] h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
               />
             </div>
 
@@ -560,7 +560,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                     cardBaseWidth: parseInt(e.target.value, 10),
                   }))
                 }
-                className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+                className="bp-range-slider w-full accent-[var(--accent-color)] h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
               />
             </div>
 
@@ -580,7 +580,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                     step={0.005}
                     value={Math.min(curNx, maxX)}
                     onChange={(e) => handlePosChange("x", parseFloat(e.target.value))}
-                    className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+                    className="bp-range-slider w-full accent-[var(--accent-color)] h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
                   />
                 </div>
 
@@ -598,7 +598,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                     step={0.005}
                     value={Math.min(curNy, maxY)}
                     onChange={(e) => handlePosChange("y", parseFloat(e.target.value))}
-                    className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+                    className="bp-range-slider w-full accent-[var(--accent-color)] h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
                   />
                 </div>
               </>
@@ -607,7 +607,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
 
           {/* Leader Line Style & Width */}
           <div className="space-y-2.5 pt-1 border-t border-slate-100 dark:border-slate-800">
-            <div className="grid grid-cols-4 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <div className="bp-segmented grid grid-cols-4 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
               {lineStyles.map((item) => {
                 const active = settings.lineStyle === item.id;
                 return (
@@ -615,9 +615,9 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                     key={item.id}
                     type="button"
                     onClick={() => updateSettings((prev) => ({ ...prev, lineStyle: item.id }))}
-                    className={`flex items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-bold transition ${
+                    className={`bp-segmented-item flex items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-bold transition-colors cursor-pointer ${
                       active
-                        ? "bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-xs"
+                        ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-[var(--accent-color)] shadow-xs"
                         : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
                     }`}
                   >
@@ -649,12 +649,12 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                     lineWidth: parseFloat(e.target.value),
                   }))
                 }
-                className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+                className="bp-range-slider w-full accent-[var(--accent-color)] h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
-              <label className="flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 px-2.5 py-2 cursor-pointer">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5 pr-1">
+              <label className="bp-subcard flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 px-2.5 py-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={settings.lineMatchPaintColor}
@@ -664,14 +664,14 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                       lineMatchPaintColor: e.target.checked,
                     }))
                   }
-                  className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  className="rounded border-slate-300 text-[var(--accent-color)] focus:ring-[var(--accent-color)]"
                 />
                 <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
                   {t.lineMatchColor || "线条跟随油漆色"}
                 </span>
               </label>
 
-              <label className="flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 px-2.5 py-2 cursor-pointer">
+              <label className="bp-subcard flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 px-2.5 py-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={settings.cardGlassEffect}
@@ -681,10 +681,10 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                       cardGlassEffect: e.target.checked,
                     }))
                   }
-                  className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  className="rounded border-slate-300 text-[var(--accent-color)] focus:ring-[var(--accent-color)]"
                 />
                 <span className="flex items-center gap-1 text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                  <SparkleIcon className="w-3.5 h-3.5 text-sky-500" weight="fill" />
+                  <SparkleIcon className="w-3.5 h-3.5 text-[var(--accent-color)]" weight="fill" />
                   <span>{t.cardGlass || "液态玻璃效果"}</span>
                 </span>
               </label>

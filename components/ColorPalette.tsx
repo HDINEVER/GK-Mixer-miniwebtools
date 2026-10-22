@@ -213,7 +213,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           {/* HEX Input Toggle Button */}
           <button 
               onClick={() => setShowHexInput(!showHexInput)}
-              className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 border rounded-full transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 border rounded-full transition-colors whitespace-nowrap ${
                 showHexInput
                   ? 'bp-pill-active border-accent bg-accent text-white cursor-pointer shadow-sm'
                   : 'bp-pill border-accent/50 text-accent hover:bg-accent hover:text-white cursor-pointer'
@@ -260,11 +260,11 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
 
       {/* HEX Input Panel */}
       {showHexInput && (
-        <div className="hex-input-container mb-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-accent/30 dark:border-accent/40 shadow-md animate-in slide-in-from-top duration-300">
+        <div className="hex-input-container bp-subcard-lg mb-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-accent/30 dark:border-accent/40 shadow-md animate-in slide-in-from-top duration-300">
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             {/* Color Preview */}
             <div 
-              className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-white shadow-md transition-all duration-300 flex-shrink-0 self-center"
+              className="bp-swatch w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-white shadow-md transition-colors duration-200 flex-shrink-0 self-center"
               style={{ 
                 backgroundColor: previewColor || '#E2E8F0',
                 boxShadow: previewColor ? `0 4px 20px ${previewColor}40` : 'none'
@@ -286,7 +286,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                 onKeyDown={handleKeyPress}
                 placeholder={t.hexPlaceholder}
                 maxLength={7}
-                className={`w-full px-3 py-2 sm:py-2.5 rounded-lg border-2 font-mono text-sm sm:text-base uppercase transition-all duration-300 outline-none
+                className={`bp-input w-full px-3 py-2 sm:py-2.5 rounded-lg border-2 font-mono text-sm sm:text-base uppercase transition-colors duration-200 outline-none
                   ${isHexInputValid 
                     ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300' 
                     : hexInput && !isHexInputValid
@@ -312,7 +312,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
             <button
               onClick={handleAddHexColor}
               disabled={!isHexInputValid}
-              className={`px-4 py-2 sm:py-2.5 rounded-lg font-bold text-sm transition-all duration-300 flex items-center gap-1.5 justify-center whitespace-nowrap ${
+              className={`bp-btn px-4 py-2 sm:py-2.5 rounded-lg font-bold text-sm transition-colors duration-200 flex items-center gap-1.5 justify-center whitespace-nowrap ${
                 isHexInputValid
                   ? 'bg-accent hover:bg-accent-hover text-white hover:shadow-md cursor-pointer'
                   : 'bg-slate-200 dark:bg-slate-600 text-slate-400 cursor-not-allowed'
@@ -333,7 +333,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                   setIsHexInputValid(true);
                   setPreviewColor(quickHex);
                 }}
-                className="w-6 h-6 rounded-full border-2 border-white shadow-sm hover:scale-125 hover:shadow-lg transition-all duration-200"
+                className="bp-swatch w-6 h-6 rounded-full border-2 border-white shadow-sm hover:scale-125 hover:shadow-lg transition-transform duration-150"
                 style={{ backgroundColor: quickHex }}
                 title={quickHex}
               />
@@ -363,8 +363,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
             key={c.id || `swatch-${idx}`}
             onClick={() => onColorSelect(c)}
             className={`
-              color-card bp-subcard bp-subcard-interactive relative flex flex-col justify-between p-2 sm:p-3 rounded-xl border-2 cursor-pointer transition-all duration-150 group
-              ${selectedColorId === c.id ? 'bp-subcard-active shadow-md transform -translate-y-0.5' : 'border-slate-100 dark:border-slate-700 hover:border-accent/50'}
+              color-card bp-extracted-card relative flex-col flex justify-between p-2 sm:p-3 rounded-xl border-2 cursor-pointer transition-colors duration-150 group
+              ${selectedColorId === c.id ? 'bp-extracted-card-active shadow-md transform -translate-y-0.5' : 'border-slate-100 dark:border-slate-700 hover:border-accent/50'}
             `}
             style={selectedColorId === c.id ? { borderColor: safeHex, boxShadow: `0 4px 12px -2px ${safeHex}40` } : undefined}
           >
@@ -406,7 +406,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                       {selectedColorId === c.id && (
                           <div 
                             ref={selectionIndicatorRef}
-                            className="w-4 h-4 rounded-full bg-accent border border-white dark:border-slate-600 shadow-md flex items-center justify-center flex-shrink-0"
+                            className="bp-dot w-4 h-4 rounded-full bg-accent border border-white dark:border-slate-600 shadow-md flex items-center justify-center flex-shrink-0"
                           >
                               <div className="w-1.5 h-1.5 bg-white rounded-full" />
                           </div>
@@ -419,7 +419,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/90">
               {paint ? (
                 /* 状态 B：已指派具体油漆 */
-                <div className="flex items-center justify-between gap-1 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 px-1.5 py-1">
+                <div className="bp-subcard flex items-center justify-between gap-1 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 px-1.5 py-1">
                   <div
                     className="flex items-center gap-1.5 min-w-0 flex-1"
                     onClick={(e) => {
@@ -428,7 +428,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                       onOpenQuickAssign?.(c, idx);
                     }}
                   >
-                    <div className="relative h-6 w-6 rounded border border-slate-200 dark:border-slate-600 overflow-hidden shrink-0 flex items-center justify-center bg-white">
+                    <div className="bp-swatch relative h-6 w-6 rounded border border-slate-200 dark:border-slate-600 overflow-hidden shrink-0 flex items-center justify-center bg-white">
                       <span className="absolute inset-0" style={{ backgroundColor: paint.hex }} />
                       <PaintBottleImg
                         brand={paint.brand}
@@ -453,7 +453,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                         onColorSelect(c);
                         onOpenQuickAssign?.(c, idx);
                       }}
-                      className="rounded px-1.5 py-0.5 text-[9px] font-bold bg-accent/12 text-accent dark:text-accent-light hover:bg-accent hover:text-white transition whitespace-nowrap cursor-pointer"
+                      className="bp-btn rounded px-1.5 py-0.5 text-[9px] font-bold bg-accent/12 text-accent dark:text-accent-light hover:bg-accent hover:text-white transition-colors whitespace-nowrap cursor-pointer"
                     >
                       {lang === 'zh' ? '更换' : 'Change'}
                     </button>
@@ -464,7 +464,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                           e.stopPropagation();
                           onUnassignPaint(c.id);
                         }}
-                        className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200/80 dark:bg-slate-700 text-[9px] font-bold text-slate-500 hover:bg-rose-500 hover:text-white transition cursor-pointer"
+                        className="bp-delete-btn flex h-4 w-4 items-center justify-center rounded-full bg-slate-200/80 dark:bg-slate-700 text-[9px] font-bold text-slate-500 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer"
                         title={lang === 'zh' ? '解除绑定' : 'Unassign'}
                       >
                         ✕
@@ -482,7 +482,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                       onColorSelect(c);
                       onOpenQuickAssign?.(c, idx);
                     }}
-                    className="flex-1 min-w-0 flex items-center justify-between gap-1 rounded-lg border border-dashed border-accent/45 bg-accent/8 hover:bg-accent hover:text-white hover:border-accent px-2 py-1 text-[10px] font-extrabold text-accent dark:text-accent-light transition cursor-pointer"
+                    className="bp-dashed-box flex-1 min-w-0 flex items-center justify-between gap-1 rounded-lg border border-dashed border-accent/45 bg-accent/8 hover:bg-accent hover:text-white hover:border-accent px-2 py-1 text-[10px] font-extrabold text-accent dark:text-accent-light transition-colors cursor-pointer"
                   >
                     <span className="flex items-center gap-1 min-w-0 truncate">
                       <TargetIcon className="w-3 h-3 shrink-0" weight="bold" />
@@ -500,7 +500,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                         onColorSelect(c);
                         onNavigateToMixer(c);
                       }}
-                      className="shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-accent hover:text-accent px-1.5 py-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 transition cursor-pointer whitespace-nowrap"
+                      className="bp-btn shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-accent hover:text-accent px-1.5 py-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-colors cursor-pointer whitespace-nowrap"
                       title={lang === 'zh' ? '分解混色配方' : 'Mix Recipe'}
                     >
                       <FlaskIcon className="w-3 h-3" weight="bold" />
@@ -514,7 +514,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
             <button
               type="button"
               onClick={(e) => handleDeleteWithAnimation(c.id, e)}
-              className="absolute top-2 right-2 w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-white/95 dark:bg-slate-700/95 border border-slate-200/80 dark:border-slate-600/80 text-slate-400 hover:text-red-500 hover:border-red-400 hover:bg-red-50 dark:hover:text-red-400 dark:hover:border-red-400 dark:hover:bg-red-900/30 flex items-center justify-center opacity-85 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-150 active:scale-90 shadow-xs cursor-pointer z-10"
+              className="bp-delete-btn absolute top-2 right-2 w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-white/95 dark:bg-slate-700/95 border border-slate-200/80 dark:border-slate-600/80 text-slate-400 hover:text-red-500 hover:border-red-400 hover:bg-red-50 dark:hover:text-red-400 dark:hover:border-red-400 dark:hover:bg-red-900/30 flex items-center justify-center opacity-85 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150 active:scale-90 shadow-xs cursor-pointer z-10"
               title={t.deleteColor}
               aria-label={t.deleteColor}
             >

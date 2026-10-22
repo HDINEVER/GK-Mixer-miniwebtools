@@ -223,7 +223,16 @@ const App: React.FC = () => {
   const DESKTOP_TAB_ORDER: DesktopPanelTab[] = ['mixer', 'chroma', 'custom', 'basic', 'brands', 'coloring', 'studio', 'catalog'];
   const MOBILE_TAB_ORDER: MobileMainTab[] = ['workbench', 'tuning', 'coloring', 'studio', 'catalog'];
 
+  const resetPageScrollInstant = useCallback(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, []);
+
   const handleSwitchMobileTab = useCallback((tab: MobileMainTab) => {
+    resetPageScrollInstant();
     // If re-tapping the active workbench tab while on mixer/chroma, cycle back to extract (iOS UX pattern)
     if (tab === mobileMainTab && tab === 'workbench' && workbenchSubpage !== 'extract') {
       setTabTransitionDir('backward');
@@ -234,61 +243,65 @@ const App: React.FC = () => {
     const nextIdx = MOBILE_TAB_ORDER.indexOf(tab);
     setTabTransitionDir(nextIdx >= prevIdx ? 'forward' : 'backward');
     setMobileMainTab(tab);
-    if (tab === 'workbench') {
-      setDesktopTab(workbenchSubpage === 'extract' ? 'mixer' : workbenchSubpage);
-    } else if (tab === 'tuning') {
-      setDesktopTab(tuningSubpage);
-    } else if (tab === 'coloring') {
-      setDesktopTab('coloring');
-    } else if (tab === 'studio') {
-      setDesktopTab('studio');
-    } else if (tab === 'catalog') {
-      setDesktopTab('catalog');
-    }
-  }, [mobileMainTab, workbenchSubpage, tuningSubpage]);
+    const nextDesktop: DesktopPanelTab =
+      tab === 'workbench'
+        ? workbenchSubpage === 'extract'
+          ? 'mixer'
+          : workbenchSubpage
+        : tab === 'tuning'
+        ? tuningSubpage
+        : tab === 'coloring'
+        ? 'coloring'
+        : tab === 'studio'
+        ? 'studio'
+        : 'catalog';
+    setDesktopTabUI(nextDesktop);
+    setDesktopTab(nextDesktop);
+  }, [mobileMainTab, workbenchSubpage, tuningSubpage, resetPageScrollInstant]);
 
   const handleSwitchWorkbenchSubpage = useCallback((sub: WorkbenchSubpage) => {
+    resetPageScrollInstant();
     const order: WorkbenchSubpage[] = ['extract', 'mixer', 'chroma'];
     setTabTransitionDir(order.indexOf(sub) >= order.indexOf(workbenchSubpage) ? 'forward' : 'backward');
     setMobileMainTab('workbench');
     setWorkbenchSubpage(sub);
     if (sub !== 'extract') {
+      setDesktopTabUI(sub);
       setDesktopTab(sub);
     }
-  }, [workbenchSubpage]);
+  }, [workbenchSubpage, resetPageScrollInstant]);
 
   const handleSwitchTuningSubpage = useCallback((sub: TuningSubpage) => {
+    resetPageScrollInstant();
     const order: TuningSubpage[] = ['custom', 'basic', 'brands'];
     setTabTransitionDir(order.indexOf(sub) >= order.indexOf(tuningSubpage) ? 'forward' : 'backward');
     setMobileMainTab('tuning');
     setTuningSubpage(sub);
+    setDesktopTabUI(sub);
     setDesktopTab(sub);
-  }, [tuningSubpage]);
+  }, [tuningSubpage, resetPageScrollInstant]);
 
   const handleSwitchDesktopTab = useCallback((tab: DesktopPanelTab) => {
-    // 1) Urgent: pill highlight & directional transition
+    resetPageScrollInstant();
     const prevIdx = DESKTOP_TAB_ORDER.indexOf(desktopTabUI);
     const nextIdx = DESKTOP_TAB_ORDER.indexOf(tab);
     setTabTransitionDir(nextIdx >= prevIdx ? 'forward' : 'backward');
     setDesktopTabUI(tab);
-    // 2) Non-blocking: panel swap + mirrored mobile state
-    startTransition(() => {
-      setDesktopTab(tab);
-      if (tab === 'mixer' || tab === 'chroma') {
-        setMobileMainTab('workbench');
-        setWorkbenchSubpage(tab);
-      } else if (tab === 'custom' || tab === 'basic' || tab === 'brands') {
-        setMobileMainTab('tuning');
-        setTuningSubpage(tab);
-      } else if (tab === 'coloring') {
-        setMobileMainTab('coloring');
-      } else if (tab === 'studio') {
-        setMobileMainTab('studio');
-      } else if (tab === 'catalog') {
-        setMobileMainTab('catalog');
-      }
-    });
-  }, [desktopTabUI]);
+    setDesktopTab(tab);
+    if (tab === 'mixer' || tab === 'chroma') {
+      setMobileMainTab('workbench');
+      setWorkbenchSubpage(tab);
+    } else if (tab === 'custom' || tab === 'basic' || tab === 'brands') {
+      setMobileMainTab('tuning');
+      setTuningSubpage(tab);
+    } else if (tab === 'coloring') {
+      setMobileMainTab('coloring');
+    } else if (tab === 'studio') {
+      setMobileMainTab('studio');
+    } else if (tab === 'catalog') {
+      setMobileMainTab('catalog');
+    }
+  }, [desktopTabUI, resetPageScrollInstant]);
 
   const handleSendImageToColoring = useCallback(
     (url: string, label?: string) => {
@@ -2188,42 +2201,44 @@ const App: React.FC = () => {
                   </ErrorBoundary>
                 </KeepAlivePanel>
 
-                <KeepAlivePanel active={desktopTab === 'catalog'} direction={tabTransitionDir}>
-                  <ErrorBoundary fallbackTitle="数据库视图遇到渲染异常">
-                    <PaintCatalogBrowser
-                        lang={lang}
-                        onPickHex={handleAddColor}
-                        onAssignCatalog={handleAssignCatalogPaint}
-                        activeSampleColor={selectedColor || colors[0] || null}
-                    />
-                  </ErrorBoundary>
-                </KeepAlivePanel>
-
-                <KeepAlivePanel active={desktopTab === 'studio'} direction={tabTransitionDir}>
-                  <ErrorBoundary fallbackTitle="涂装库视图遇到渲染异常">
-                    <ProjectLibraryView
-                        projects={projects}
-                        onChangeProjects={setProjects}
-                        categories={categories}
-                        onChangeCategories={setCategories}
-                        savedColors={savedColors}
-                        onChangeSavedColors={setSavedColors}
-                        catalogPaints={catalogPaints}
-                        swatchSettings={swatchSettings}
-                        onUpdateSwatchSettings={setSwatchSettings}
-                        lang={lang}
-                        isWideMode={isWideVisualizer}
-                        onToggleWideMode={() => startTransition(() => setIsWideVisualizer((v) => !v))}
-                        focusProjectId={focusProjectId}
-                        onClearFocusProject={() => setFocusProjectId(null)}
-                        onSendImageToColoring={handleSendImageToColoring}
-                        onSendColorToWorkbench={(hex) => {
-                          handleAddColor(hex);
-                          handleSwitchWorkbenchSubpage('mixer');
-                        }}
-                    />
-                  </ErrorBoundary>
-                </KeepAlivePanel>
+                {desktopTab === 'catalog' ? (
+                  <div key="tab-catalog" translate="no" className="notranslate gk-tab-transition">
+                    <ErrorBoundary fallbackTitle="数据库视图遇到渲染异常">
+                      <PaintCatalogBrowser
+                          lang={lang}
+                          onPickHex={handleAddColor}
+                          onAssignCatalog={handleAssignCatalogPaint}
+                          activeSampleColor={selectedColor || colors[0] || null}
+                      />
+                    </ErrorBoundary>
+                  </div>
+                ) : desktopTab === 'studio' ? (
+                  <div key="tab-studio" translate="no" className="notranslate gk-tab-transition">
+                    <ErrorBoundary fallbackTitle="涂装库视图遇到渲染异常">
+                      <ProjectLibraryView
+                          projects={projects}
+                          onChangeProjects={setProjects}
+                          categories={categories}
+                          onChangeCategories={setCategories}
+                          savedColors={savedColors}
+                          onChangeSavedColors={setSavedColors}
+                          catalogPaints={catalogPaints}
+                          swatchSettings={swatchSettings}
+                          onUpdateSwatchSettings={setSwatchSettings}
+                          lang={lang}
+                          isWideMode={isWideVisualizer}
+                          onToggleWideMode={() => setIsWideVisualizer((v) => !v)}
+                          focusProjectId={focusProjectId}
+                          onClearFocusProject={() => setFocusProjectId(null)}
+                          onSendImageToColoring={handleSendImageToColoring}
+                          onSendColorToWorkbench={(hex) => {
+                            handleAddColor(hex);
+                            handleSwitchWorkbenchSubpage('mixer');
+                          }}
+                      />
+                    </ErrorBoundary>
+                  </div>
+                ) : null}
            </div>
         </div>
 

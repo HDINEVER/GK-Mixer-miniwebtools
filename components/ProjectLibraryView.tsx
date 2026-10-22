@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   CatalogPaint,
   Language,
@@ -113,6 +114,13 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
   const [newColorName, setNewColorName] = useState<string>("");
   const [copiedHex, setCopiedHex] = useState<string>("");
   const [cardMenuId, setCardMenuId] = useState<string | null>(null);
+  const [cardMenuAnchor, setCardMenuAnchor] = useState<{
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+    isMobile: boolean;
+  } | null>(null);
 
   const [customCoverTargetProj, setCustomCoverTargetProj] = useState<PaintProject | null>(null);
   const [partCoverPickerProject, setPartCoverPickerProject] = useState<PaintProject | null>(null);
@@ -120,22 +128,6 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
   const gkmixInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const customCoverInputRef = useRef<HTMLInputElement>(null);
-  const lastScrollYRef = useRef<number>(0);
-
-  // Auto-collapse lightweight category bar on downward window/container scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      const y = window.scrollY || 0;
-      if (y > lastScrollYRef.current + 18 && y > 100) {
-        setIsCategoryBarCollapsed(true);
-      } else if (y < lastScrollYRef.current - 12 || y <= 60) {
-        setIsCategoryBarCollapsed(false);
-      }
-      lastScrollYRef.current = y;
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
 
@@ -521,15 +513,49 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
               const cat = categories.find((c) => c.id === proj.categoryId);
               const allNodes = proj.parts.flatMap((pt) => pt.nodes);
               const coverUrl = getEffectiveProjectCover(proj);
+              const isMenuOpen = cardMenuId === proj.id;
 
               return (
                 <div
                   key={proj.id}
                   onClick={() => setActiveProjectId(proj.id)}
-                  className="bp-project-card group relative flex flex-col rounded-2xl sm:rounded-3xl border border-slate-200/85 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs hover:shadow-lg hover:border-accent/50 transition cursor-pointer"
+                  className={`bp-project-card group relative ${
+                    isMenuOpen ? "z-50" : "z-10"
+                  } flex flex-col rounded-2xl sm:rounded-3xl border border-slate-200/85 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:shadow-lg hover:border-accent/50 transition cursor-pointer`}
                 >
+                  {/* Top-Level Quick Card Menu Trigger (outside cover overflow-hidden) */}
+                  <div
+                    className="absolute right-2 top-2 sm:right-2.5 sm:top-2.5 z-30"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (cardMenuId === proj.id) {
+                          setCardMenuId(null);
+                          setCardMenuAnchor(null);
+                        } else {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setCardMenuAnchor({
+                            top: rect.top,
+                            bottom: rect.bottom,
+                            left: rect.left,
+                            right: rect.right,
+                            isMobile: window.innerWidth < 768,
+                          });
+                          setCardMenuId(proj.id);
+                        }
+                      }}
+                      className="bp-badge flex h-7 w-7 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-slate-900/80 text-white backdrop-blur-md hover:bg-slate-900 shadow-sm cursor-pointer"
+                      aria-label="更多操作"
+                    >
+                      <DotsThreeIcon className="h-4 w-4" weight="bold" />
+                    </button>
+                  </div>
+
                   {/* Cover Preview (4:3 on mobile 2-col grid, h-40 on sm+ desktop) */}
-                  <div className="relative aspect-[4/3] sm:aspect-auto sm:h-40 w-full bg-slate-950 overflow-hidden">
+                  <div className="bp-cover-top relative aspect-[4/3] sm:aspect-auto sm:h-40 w-full rounded-t-2xl sm:rounded-t-3xl bg-slate-950 overflow-hidden">
                     {coverUrl ? (
                       <img
                         src={coverUrl}
@@ -544,7 +570,7 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/15 to-transparent" />
 
                     {/* Top badges */}
-                    <div className="absolute left-2 top-2 sm:left-3 sm:top-3 flex items-center gap-1 max-w-[calc(100%-40px)] overflow-hidden">
+                    <div className="absolute left-2 top-2 sm:left-3 sm:top-3 flex items-center gap-1 max-w-[calc(100%-44px)] overflow-hidden">
                       <span className="bp-badge rounded-full bg-slate-900/75 backdrop-blur-md border border-white/15 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-white whitespace-nowrap shrink-0 tabular-nums">
                         {proj.parts.length} 个零件
                       </span>
@@ -552,89 +578,6 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
                         <span className="bp-badge hidden sm:inline-block rounded-full bg-accent/90 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-white truncate">
                           {cat.name}
                         </span>
-                      )}
-                    </div>
-
-                    {/* Quick Card Menu */}
-                    <div
-                      className="absolute right-2 top-2 sm:right-2.5 sm:top-2.5 z-10"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCardMenuId(cardMenuId === proj.id ? null : proj.id)
-                        }
-                        className="bp-badge flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-slate-900/75 text-white backdrop-blur-md hover:bg-slate-900"
-                      >
-                        <DotsThreeIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" weight="bold" />
-                      </button>
-
-                      {cardMenuId === proj.id && (
-                        <div className="bp-subcard-lg absolute right-0 top-full mt-1 w-44 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1 shadow-xl z-20 space-y-0.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCardMenuId(null);
-                              setCustomCoverTargetProj(proj);
-                              customCoverInputRef.current?.click();
-                            }}
-                            className="w-full flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
-                          >
-                            <ImageSquareIcon className="h-3.5 w-3.5 text-accent shrink-0" weight="bold" />
-                            <span>上传成品封面...</span>
-                          </button>
-
-                          {proj.parts.some((p) => Boolean(p.sourceImageDataUrl)) && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCardMenuId(null);
-                                setPartCoverPickerProject(proj);
-                              }}
-                              className="w-full flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
-                            >
-                              <StackIcon className="h-3.5 w-3.5 text-accent shrink-0" weight="bold" />
-                              <span>从零件图中选择...</span>
-                            </button>
-                          )}
-
-                          {proj.customCoverImageDataUrl && (
-                            <button
-                              type="button"
-                              onClick={() => handleResetCoverToDefault(proj)}
-                              className="w-full flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
-                            >
-                              <ArrowCounterClockwiseIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" weight="bold" />
-                              <span>恢复默认零件封面</span>
-                            </button>
-                          )}
-
-                          <div className="h-px bg-slate-100 dark:bg-slate-800 my-0.5" />
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCardMenuId(null);
-                              exportGKMixArchive(proj);
-                            }}
-                            className="w-full flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
-                          >
-                            <DownloadSimpleIcon className="h-3.5 w-3.5 text-accent shrink-0" />
-                            <span>导出 .gkmix</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCardMenuId(null);
-                              onChangeProjects(projects.filter((p) => p.id !== proj.id));
-                            }}
-                            className="w-full flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 whitespace-nowrap"
-                          >
-                            <TrashIcon className="h-3.5 w-3.5 shrink-0" />
-                            <span>删除工程</span>
-                          </button>
-                        </div>
                       )}
                     </div>
 
@@ -659,7 +602,7 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
                   </div>
 
                   {/* Card Info Footer */}
-                  <div className="bp-top-divider p-2.5 sm:p-3.5 flex flex-col justify-between gap-0.5">
+                  <div className="bp-top-divider bp-card-bottom rounded-b-2xl sm:rounded-b-3xl bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 flex flex-col justify-between gap-0.5">
                     <div className="flex items-center justify-between gap-1.5 min-w-0">
                       <h4 className="truncate text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-accent transition">
                         {proj.title}
@@ -1177,6 +1120,216 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
           </div>
         </div>
       </ResponsiveSheet>
+
+      {/* Portal Card Quick Menu (Mobile Action Sheet + Desktop Unclipped Fixed Popover) */}
+      {(() => {
+        const menuProject = cardMenuId ? projects.find((p) => p.id === cardMenuId) : null;
+        if (!menuProject || typeof document === "undefined") return null;
+        const closeMenu = () => {
+          setCardMenuId(null);
+          setCardMenuAnchor(null);
+        };
+        const isMobileSheet = cardMenuAnchor ? cardMenuAnchor.isMobile : window.innerWidth < 768;
+
+        if (isMobileSheet) {
+          return createPortal(
+            <div
+              translate="no"
+              className="notranslate fixed inset-0 z-[999] flex items-end justify-center bg-slate-950/45 backdrop-blur-[2px] p-3 pb-[max(0.85rem,env(safe-area-inset-bottom,0.85rem))]"
+              onClick={closeMenu}
+            >
+              <div
+                className="bp-subcard-lg w-full max-w-sm rounded-3xl border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-2xl space-y-1.5 animate-fadeIn"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bp-dashed-header flex items-center justify-between px-2.5 pt-1 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      工程快捷操作
+                    </div>
+                    <div className="truncate text-sm font-black text-slate-900 dark:text-white">
+                      {menuProject.title}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeMenu}
+                    className="bp-badge flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                  >
+                    <XIcon className="h-3.5 w-3.5" weight="bold" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMenu();
+                    setCustomCoverTargetProj(menuProject);
+                    customCoverInputRef.current?.click();
+                  }}
+                  className="w-full flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-left text-xs font-extrabold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
+                >
+                  <ImageSquareIcon className="h-4 w-4 text-accent shrink-0" weight="bold" />
+                  <span>上传成品封面...</span>
+                </button>
+
+                {menuProject.parts.some((p) => Boolean(p.sourceImageDataUrl)) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeMenu();
+                      setPartCoverPickerProject(menuProject);
+                    }}
+                    className="w-full flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-left text-xs font-extrabold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
+                  >
+                    <StackIcon className="h-4 w-4 text-accent shrink-0" weight="bold" />
+                    <span>从零件图中选择封面...</span>
+                  </button>
+                )}
+
+                {menuProject.customCoverImageDataUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeMenu();
+                      handleResetCoverToDefault(menuProject);
+                    }}
+                    className="w-full flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-left text-xs font-extrabold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
+                  >
+                    <ArrowCounterClockwiseIcon className="h-4 w-4 text-slate-400 shrink-0" weight="bold" />
+                    <span>恢复默认零件封面</span>
+                  </button>
+                )}
+
+                <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMenu();
+                    exportGKMixArchive(menuProject);
+                  }}
+                  className="w-full flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-left text-xs font-extrabold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
+                >
+                  <DownloadSimpleIcon className="h-4 w-4 text-accent shrink-0" weight="bold" />
+                  <span>导出 .gkmix 工程文件</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMenu();
+                    onChangeProjects(projects.filter((p) => p.id !== menuProject.id));
+                  }}
+                  className="w-full flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-left text-xs font-extrabold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 whitespace-nowrap"
+                >
+                  <TrashIcon className="h-4 w-4 shrink-0" weight="bold" />
+                  <span>删除工程</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeMenu}
+                  className="bp-btn mt-1 w-full rounded-2xl bg-slate-100 dark:bg-slate-800 py-2.5 text-center text-xs font-extrabold text-slate-600 dark:text-slate-300"
+                >
+                  取消
+                </button>
+              </div>
+            </div>,
+            document.body
+          );
+        }
+
+        const popTop = Math.min(
+          window.innerHeight - 230,
+          Math.max(12, (cardMenuAnchor?.bottom ?? 120) + 6)
+        );
+        const popLeft = Math.min(
+          window.innerWidth - 220,
+          Math.max(12, (cardMenuAnchor?.right ?? 240) - 208)
+        );
+
+        return createPortal(
+          <div
+            translate="no"
+            className="notranslate fixed inset-0 z-[999]"
+            onClick={closeMenu}
+          >
+            <div
+              style={{ top: `${popTop}px`, left: `${popLeft}px` }}
+              className="bp-subcard-lg fixed w-52 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-2xl space-y-0.5 animate-fadeIn"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  closeMenu();
+                  setCustomCoverTargetProj(menuProject);
+                  customCoverInputRef.current?.click();
+                }}
+                className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap cursor-pointer"
+              >
+                <ImageSquareIcon className="h-3.5 w-3.5 text-accent shrink-0" weight="bold" />
+                <span>上传成品封面...</span>
+              </button>
+
+              {menuProject.parts.some((p) => Boolean(p.sourceImageDataUrl)) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMenu();
+                    setPartCoverPickerProject(menuProject);
+                  }}
+                  className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap cursor-pointer"
+                >
+                  <StackIcon className="h-3.5 w-3.5 text-accent shrink-0" weight="bold" />
+                  <span>从零件图中选择...</span>
+                </button>
+              )}
+
+              {menuProject.customCoverImageDataUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMenu();
+                    handleResetCoverToDefault(menuProject);
+                  }}
+                  className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap cursor-pointer"
+                >
+                  <ArrowCounterClockwiseIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" weight="bold" />
+                  <span>恢复默认零件封面</span>
+                </button>
+              )}
+
+              <div className="h-px bg-slate-100 dark:bg-slate-800 my-0.5" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  closeMenu();
+                  exportGKMixArchive(menuProject);
+                }}
+                className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap cursor-pointer"
+              >
+                <DownloadSimpleIcon className="h-3.5 w-3.5 text-accent shrink-0" weight="bold" />
+                <span>导出 .gkmix</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  closeMenu();
+                  onChangeProjects(projects.filter((p) => p.id !== menuProject.id));
+                }}
+                className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 whitespace-nowrap cursor-pointer"
+              >
+                <TrashIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                <span>删除工程</span>
+              </button>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
 
       <input
         ref={customCoverInputRef}

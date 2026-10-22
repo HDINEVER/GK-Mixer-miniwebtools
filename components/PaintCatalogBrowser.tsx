@@ -24,10 +24,14 @@ import {
 
 interface PaintCatalogBrowserProps {
   lang: Language;
+  initialPaints?: CatalogPaint[];
   onPickHex?: (hex: string) => void;
   onAssignCatalog?: (paint: CatalogPaint) => void;
   activeSampleColor?: ColorData | null;
 }
+
+const INITIAL_GROUP_BATCH = 6;
+const GROUP_BATCH_STEP = 8;
 
 const FINISH_LABELS: Record<string, { zh: string; colorClass: string }> = {
   standard: { zh: "标准实色", colorClass: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
@@ -48,11 +52,15 @@ const QUICK_CHIPS = [
 
 const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   lang,
+  initialPaints,
   onPickHex,
   onAssignCatalog,
   activeSampleColor,
 }) => {
-  const [paints, setPaints] = useState<CatalogPaint[]>([]);
+  const [paints, setPaints] = useState<CatalogPaint[]>(() =>
+    initialPaints && initialPaints.length > 0 ? initialPaints : []
+  );
+  const [isReady, setIsReady] = useState<boolean>(false);
   const [brand, setBrand] = useState<string>("ALL");
   const [search, setSearch] = useState<string>("");
   const [solidsOnly, setSolidsOnly] = useState<boolean>(false);
@@ -62,29 +70,34 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   const [viewMode, setViewMode] = useState<"gallery" | "compact">("gallery");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [openFilterMenu, setOpenFilterMenu] = useState<"series" | "finish" | null>(null);
-  const [isFilterBarCollapsed, setIsFilterBarCollapsed] = useState<boolean>(false);
-  const lastScrollYRef = useRef<number>(0);
+  const [visibleGroupLimit, setVisibleGroupLimit] = useState<number>(INITIAL_GROUP_BATCH);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    loadPaintCatalog().then((loaded) => {
-      setPaints(loaded);
+    if (initialPaints && initialPaints.length > 0) {
+      setPaints(initialPaints);
+    } else {
+      loadPaintCatalog().then((loaded) => {
+        setPaints(loaded);
+      });
+    }
+    // Defer heavy card list mount by 1 animation frame so tab switch paints instantaneously
+    let timer: number | undefined;
+    const raf = window.requestAnimationFrame(() => {
+      timer = window.setTimeout(() => {
+        setIsReady(true);
+      }, 24);
     });
-  }, []);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const y = window.scrollY || 0;
-      if (y > lastScrollYRef.current + 20 && y > 120) {
-        setIsFilterBarCollapsed(true);
-        setOpenFilterMenu(null);
-      } else if (y < lastScrollYRef.current - 12 || y <= 70) {
-        setIsFilterBarCollapsed(false);
-      }
-      lastScrollYRef.current = y;
+    return () => {
+      window.cancelAnimationFrame(raf);
+      if (timer !== undefined) window.clearTimeout(timer);
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [initialPaints]);
+
+  // Reset progressive window when filters change
+  useEffect(() => {
+    setVisibleGroupLimit(INITIAL_GROUP_BATCH);
+  }, [brand, solidsOnly, finishFilter, prefix, search, activeQuickChip, viewMode]);
 
   const brands = useMemo(() => {
     const unique = Array.from(new Set<string>(paints.map((paint) => paint.brand)));
@@ -96,6 +109,18 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
       if (left !== right) return left - right;
       return lhs.localeCompare(rhs);
     });
+  }, [paints]);
+
+  // Pre-build search haystack once per catalog load
+  const searchMetaMap = useMemo(() => {
+    const map = new Map<string, { pfx: string; hay: string }>();
+    for (const paint of paints) {
+      const pfx = paintPrefix(paint);
+      const localizedB = localizedBrand(paint.brand, "zh").toLowerCase();
+      const hay = `${paint.brand} ${localizedB} ${paint.code} ${paint.name} ${paint.hex} ${paint.set} ${paint.finish}`.toLowerCase();
+      map.set(paint.id, { pfx, hay });
+    }
+    return map;
   }, [paints]);
 
   // Space-separated multi-keyword matching + Notion-style filters
@@ -114,11 +139,13 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
       if (solidsOnly && paint.finish !== "standard") return false;
       if (finishFilter && paint.finish !== finishFilter) return false;
 
-      const pfx = paintPrefix(paint);
+      const meta = searchMetaMap.get(paint.id);
+      const pfx = meta ? meta.pfx : paintPrefix(paint);
       if (prefix && pfx !== prefix) return false;
 
-      const localizedB = localizedBrand(paint.brand, "zh").toLowerCase();
-      const hay = `${paint.brand} ${localizedB} ${paint.code} ${paint.name} ${paint.hex} ${paint.set} ${paint.finish}`.toLowerCase();
+      const hay =
+        meta?.hay ??
+        `${paint.brand} ${localizedBrand(paint.brand, "zh")} ${paint.code} ${paint.name} ${paint.hex} ${paint.set} ${paint.finish}`.toLowerCase();
 
       if (tokens.length > 0) {
         for (const tk of tokens) {
@@ -134,24 +161,25 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
 
       return true;
     });
-  }, [paints, brand, solidsOnly, finishFilter, prefix, search, activeQuickChip]);
+  }, [paints, searchMetaMap, brand, solidsOnly, finishFilter, prefix, search, activeQuickChip]);
 
   const availablePrefixes = useMemo(() => {
     const scope = brand === "ALL" ? paints : paints.filter((p) => p.brand === brand);
     const set = new Set<string>();
     for (const p of scope) {
-      set.add(paintPrefix(p));
+      set.add(searchMetaMap.get(p.id)?.pfx ?? paintPrefix(p));
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [paints, brand]);
+  }, [paints, searchMetaMap, brand]);
 
   const groups = useMemo(() => {
     const bucket = new Map<string, CatalogPaint[]>();
     for (const paint of filteredPaints) {
+      const pfx = searchMetaMap.get(paint.id)?.pfx ?? paintPrefix(paint);
       const key =
         brand === "ALL"
-          ? `${localizedBrand(paint.brand, lang)} · ${paintPrefix(paint)}`
-          : paintPrefix(paint);
+          ? `${localizedBrand(paint.brand, lang)} · ${pfx}`
+          : pfx;
       const list = bucket.get(key) ?? [];
       list.push(paint);
       bucket.set(key, list);
@@ -160,7 +188,30 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
       prefix: grpKey,
       paints: sortPaints(list),
     }));
-  }, [filteredPaints, brand, lang]);
+  }, [filteredPaints, searchMetaMap, brand, lang]);
+
+  const visibleGroups = useMemo(
+    () => groups.slice(0, visibleGroupLimit),
+    [groups, visibleGroupLimit]
+  );
+  const hasMoreGroups = visibleGroupLimit < groups.length;
+
+  // Automatically expand visible groups when scrolling near the sentinel
+  useEffect(() => {
+    if (!isReady || !hasMoreGroups) return;
+    const node = loadMoreSentinelRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisibleGroupLimit((prev) => Math.min(groups.length, prev + GROUP_BATCH_STEP));
+        }
+      },
+      { rootMargin: "360px 0px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isReady, hasMoreGroups, groups.length]);
 
   const toggleCollapse = (key: string) => {
     setCollapsed((prev) => {
@@ -249,12 +300,8 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
           </div>
         </div>
 
-        {/* Auto-Collapsible Notion-Style Filter Pills + Quick Chips + View Mode Switcher */}
-        <div
-          className={`space-y-2 transition-all duration-200 ${
-            isFilterBarCollapsed ? "max-h-0 opacity-0 overflow-hidden pointer-events-none" : "max-h-48 opacity-100"
-          }`}
-        >
+        {/* Notion-Style Filter Pills + Quick Chips + View Mode Switcher */}
+        <div className="space-y-2">
           {/* Quick Filter Chips Row */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5 pb-1.5 pr-1.5">
             {QUICK_CHIPS.map((chip) => {
@@ -461,9 +508,33 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
         </div>
       </div>
 
-      {/* 2. Catalog Results: Gallery Grid vs Notion Compact List (56px high-density rows) */}
+      {/* 2. Catalog Results: Gallery Grid vs Notion Compact List (with instant non-blocking loading animation + progressive batching) */}
+      {!isReady || paints.length === 0 ? (
+        <div className="space-y-3 pr-1.5 pb-4 pt-2 animate-fadeIn">
+          <div className="bp-subcard-lg flex items-center justify-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 py-8 px-4 shadow-2xs">
+            <span className="h-5 w-5 rounded-full border-2 border-accent border-t-transparent animate-spin shrink-0" />
+            <span className="text-xs font-extrabold text-slate-600 dark:text-slate-300">
+              {lang === "zh" ? "正在加载模型漆数据库..." : "Loading paint database..."}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2, 3, 4, 5].map((idx) => (
+              <div
+                key={idx}
+                className="bp-subcard flex items-center gap-3 rounded-2xl border border-slate-200/70 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-3 animate-pulse"
+              >
+                <div className="bp-swatch h-11 w-11 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 w-2/3 rounded bg-slate-200 dark:bg-slate-800" />
+                  <div className="h-2.5 w-1/2 rounded bg-slate-100 dark:bg-slate-800/70" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
       <div className="space-y-2.5 pr-1.5 pb-1.5">
-        {groups.map((group) => {
+        {visibleGroups.map((group) => {
           const isCollapsed = collapsed.has(group.prefix);
           return (
             <div
@@ -667,12 +738,42 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
           );
         })}
 
+        {hasMoreGroups && (
+          <div
+            ref={loadMoreSentinelRef}
+            className="flex flex-wrap items-center justify-center gap-2.5 py-4 text-xs"
+          >
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleGroupLimit((prev) => Math.min(groups.length, prev + GROUP_BATCH_STEP))
+              }
+              className="bp-pill inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-accent hover:text-accent transition cursor-pointer"
+            >
+              <span className="h-3.5 w-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin shrink-0" />
+              <span>
+                {lang === "zh"
+                  ? `向下滚动自动加载更多 (${visibleGroups.length}/${groups.length} 组)`
+                  : `Scroll to load more (${visibleGroups.length}/${groups.length})`}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleGroupLimit(groups.length)}
+              className="bp-pill inline-flex items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-accent transition cursor-pointer"
+            >
+              <span>{lang === "zh" ? "展开全部" : "Show All"}</span>
+            </button>
+          </div>
+        )}
+
         {groups.length === 0 && (
           <div className="py-12 text-center text-xs text-slate-400">
             {lang === "zh" ? "没有找到匹配的模型漆" : "No matching paints found"}
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };

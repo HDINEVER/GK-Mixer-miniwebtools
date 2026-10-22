@@ -461,16 +461,24 @@ html[data-ui-style="blueprint"] .gk-tab-pill-active:not(:disabled):active {
   box-shadow: 0px 0px 0px !important;
 }
 
-/* Tab bar container & inactive tabs in blueprint mode */
+/* Tab bar container & inactive tabs in blueprint mode (single-row compact layout matching glass mode) */
 html[data-ui-style="blueprint"] .gk-tab-bar {
   border-radius: 6px !important;
   border: 1.5px solid #0F172A !important;
   background-color: #F1F5F9 !important;
-  padding: 3px !important;
+  padding: 4px !important;
+  flex-wrap: nowrap !important;
+}
+html[data-ui-style="blueprint"] .gk-tab-bar .tech-prefix {
+  display: none !important;
 }
 html.dark[data-ui-style="blueprint"] .gk-tab-bar {
   border-color: #334155 !important;
   background-color: #0F172A !important;
+}
+html[data-ui-style="blueprint"] .gk-tab-pill {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
 }
 html[data-ui-style="blueprint"] .gk-tab-pill:not(.gk-tab-pill-active) {
   border-radius: 4px !important;

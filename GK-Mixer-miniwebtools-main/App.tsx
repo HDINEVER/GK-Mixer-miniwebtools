@@ -1995,18 +1995,18 @@ const App: React.FC = () => {
 
                 {/* Desktop Tabs Bar */}
                 <div className="hidden lg:flex w-full items-center mb-6" translate="no">
-                    <div className="gk-tab-bar w-full flex items-center bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-full p-1 gap-1 flex-wrap border border-slate-200/60 dark:border-slate-700/60">
+                    <div className="gk-tab-bar w-full flex items-center flex-nowrap overflow-x-auto no-scrollbar bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-full p-1 gap-1 border border-slate-200/60 dark:border-slate-700/60">
                         {/* 混色台组 */}
                         <button 
                             onClick={() => handleSwitchDesktopTab('mixer')}
-                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'mixer' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'mixer' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <FlaskIcon className="w-3.5 h-3.5 shrink-0" />
-                            <span><span className="tech-prefix">[WORKFLOW]</span>{lang === 'zh' ? '调色分解' : 'Mixer'}</span>
+                            <span>{lang === 'zh' ? '调色分解' : 'Mixer'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('chroma')}
-                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'chroma' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'chroma' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <SquaresFourIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '明度色卡' : 'Chroma Matrix'}</span>
@@ -2017,21 +2017,21 @@ const App: React.FC = () => {
                         {/* 调色台组 */}
                         <button 
                             onClick={() => handleSwitchDesktopTab('custom')}
-                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'custom' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'custom' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <SlidersHorizontalIcon className="w-3.5 h-3.5 shrink-0" />
-                            <span><span className="tech-prefix">[PALETTE]</span>{lang === 'zh' ? '自选调色' : 'Custom'}</span>
+                            <span>{lang === 'zh' ? '自选调色' : 'Custom'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('basic')}
-                            className={`gk-tab-pill flex-1 justify-center px-2.5 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'basic' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-2.5 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'basic' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <DropIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '基础色' : 'Basic'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('brands')}
-                            className={`gk-tab-pill flex-1 justify-center px-2.5 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'brands' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-2.5 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'brands' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <TagIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '品牌近邻' : 'Brand Matches'}</span>
@@ -2042,25 +2042,25 @@ const App: React.FC = () => {
                         {/* 试色台、涂装库与数据库 */}
                         <button 
                             onClick={() => handleSwitchDesktopTab('coloring')}
-                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'coloring' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'coloring' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                             title="GKMixer STUDIO · AI 智能分件试色台 (COLOR STUDIO)"
                         >
                             <PaletteIcon className="w-3.5 h-3.5 shrink-0" />
-                            <span><span className="tech-prefix">[STUDIO]</span>🎨 {lang === 'zh' ? '试色台' : 'Color Studio'}</span>
+                            <span>🎨 {lang === 'zh' ? '试色台' : 'Color Studio'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('studio')}
-                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'studio' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'studio' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <StackIcon className="w-3.5 h-3.5 shrink-0" />
-                            <span><span className="tech-prefix">[LIBRARY]</span>{lang === 'zh' ? '涂装库' : 'Paint Library'}</span>
+                            <span>{lang === 'zh' ? '涂装库' : 'Paint Library'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('catalog')}
-                            className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ease-out flex items-center gap-1.5 whitespace-nowrap ${desktopTabUI === 'catalog' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'catalog' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <DatabaseIcon className="w-3.5 h-3.5 shrink-0" />
-                            <span><span className="tech-prefix">[DATABASE]</span>{lang === 'zh' ? '数据库' : 'Catalog'}</span>
+                            <span>{lang === 'zh' ? '数据库' : 'Catalog'}</span>
                         </button>
                     </div>
                 </div>
@@ -2206,6 +2206,7 @@ const App: React.FC = () => {
                     <ErrorBoundary fallbackTitle="数据库视图遇到渲染异常">
                       <PaintCatalogBrowser
                           lang={lang}
+                          initialPaints={catalogPaints}
                           onPickHex={handleAddColor}
                           onAssignCatalog={handleAssignCatalogPaint}
                           activeSampleColor={selectedColor || colors[0] || null}

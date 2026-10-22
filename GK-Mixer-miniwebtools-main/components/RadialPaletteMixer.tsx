@@ -1023,7 +1023,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
   }));
   
   return (
-    <div className="w-full max-w-full h-full flex flex-col items-center justify-start px-1 sm:px-3 py-2 space-y-3 overflow-x-hidden overflow-y-auto">
+    <div className="w-full max-w-full h-full flex flex-col items-center justify-start px-1 sm:px-3 py-2 pr-2 pb-3 space-y-3 overflow-x-hidden overflow-y-auto">
       {/* Hidden native color picker input */}
       <input
         ref={colorInputRef}
@@ -1038,7 +1038,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
       />
 
       {/* Top Header with Title and Mode Switcher */}
-      <div className="flex items-center justify-between gap-2 flex-wrap w-full pb-2 border-b border-slate-100 dark:border-slate-800">
+      <div className="bp-dashed-header flex items-center justify-between gap-2 flex-wrap w-full pb-2 border-b border-slate-100 dark:border-slate-800">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
             <PaletteIcon className="w-5 h-5 text-accent shrink-0" />
@@ -1047,13 +1047,13 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         </div>
 
         {/* View Mode Toggle: [ 色板模式 ] / [ 轮盘模式 ] */}
-        <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs shadow-xs">
+        <div className="bp-segmented inline-flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs shadow-xs">
           <button
             type="button"
             onClick={() => setViewMode('ios')}
-            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            className={`bp-segmented-item px-3 py-1 rounded-lg font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               viewMode === 'ios'
-                ? 'bg-white dark:bg-slate-700 text-accent dark:text-accent-light shadow-sm'
+                ? 'bp-segmented-item-active bg-white dark:bg-slate-700 text-accent dark:text-accent-light shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
             }`}
           >
@@ -1063,9 +1063,9 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
           <button
             type="button"
             onClick={() => setViewMode('radial')}
-            className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            className={`bp-segmented-item px-3 py-1 rounded-lg font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               viewMode === 'radial'
-                ? 'bg-white dark:bg-slate-700 text-accent dark:text-accent-light shadow-sm'
+                ? 'bp-segmented-item-active bg-white dark:bg-slate-700 text-accent dark:text-accent-light shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
             }`}
           >
@@ -1080,9 +1080,9 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         /* Mobile: stacked (result → custom colors → recipe). Desktop lg+: left 7 cols (custom colors) / right 5 cols (sticky result + recipe dashboard) */
         <div className="flex flex-col gap-3.5 w-full lg:grid lg:grid-cols-12 lg:gap-6 lg:items-start">
           {/* 1. 自选颜色调音台 (左栏，占 7 列) */}
-          <div className="order-2 lg:order-1 lg:col-span-7 bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
+          <div className="bp-subcard-lg order-2 lg:order-1 lg:col-span-7 bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
             {/* 标题与拾色工具栏 */}
-            <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+            <div className="bp-dashed-header flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
               <div className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <PaletteIcon className="w-4 h-4 text-accent" />
                 <span>{lang === 'zh' ? '自选颜色' : lang === 'ja' ? '選択色' : 'Custom Colors'}</span>
@@ -1093,7 +1093,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                 <button
                   type="button"
                   onClick={() => colorInputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-xs font-medium text-slate-700 dark:text-slate-200 shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
+                  className="bp-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
                 >
                   <EyedropperIcon className="w-3.5 h-3.5 text-accent flex-shrink-0" weight="bold" />
                   <span>{lang === 'zh' ? '拾色' : lang === 'ja' ? '色選択' : 'Pick'}</span>
@@ -1102,7 +1102,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                 <button
                   type="button"
                   onClick={() => colorInputRef.current?.click()}
-                  className="flex items-center gap-1 px-3.5 py-1 rounded-full bg-accent hover:bg-accent-hover text-white font-bold text-xs shadow-sm active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                  className="bp-pill-active flex items-center gap-1 px-3.5 py-1 rounded-full bg-accent hover:bg-accent-hover text-white font-bold text-xs shadow-sm active:scale-95 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <PlusIcon className="w-3.5 h-3.5" weight="bold" />
                   <span>{lang === 'zh' ? '添加' : lang === 'ja' ? '追加' : 'Add'}</span>
@@ -1115,7 +1115,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               <button
                 type="button"
                 onClick={handleAddCMY}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-95 shadow-xs cursor-pointer whitespace-nowrap"
+                className="bp-btn px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-1 active:scale-95 shadow-xs cursor-pointer whitespace-nowrap"
               >
                 <PlusIcon className="w-3.5 h-3.5" weight="bold" />
                 <span>{lang === 'zh' ? 'CMY 三原色' : lang === 'ja' ? 'CMY 三原色' : 'CMY Primaries'}</span>
@@ -1124,7 +1124,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               <button
                 type="button"
                 onClick={handleAddBW}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-95 shadow-xs cursor-pointer whitespace-nowrap"
+                className="bp-btn px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-1 active:scale-95 shadow-xs cursor-pointer whitespace-nowrap"
               >
                 <PlusIcon className="w-3.5 h-3.5" weight="bold" />
                 <span>{lang === 'zh' ? '黑白' : lang === 'ja' ? '白黒' : 'Black & White'}</span>
@@ -1132,7 +1132,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
 
               {/* 从图片取色点快捷添加 */}
               {availableColors && availableColors.length > 0 && (
-                <div className="flex items-center gap-1.5 ml-auto overflow-x-auto no-scrollbar py-1">
+                <div className="flex items-center gap-1.5 ml-auto overflow-x-auto no-scrollbar py-1 pr-1">
                   <span className="text-[10px] text-slate-400 whitespace-nowrap">
                     {lang === 'zh' ? '取色点:' : 'Extracted:'}
                   </span>
@@ -1144,7 +1144,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                         type="button"
                         onClick={() => handleAddCustomColor(c.hex)}
                         disabled={exists}
-                        className={`w-5 h-5 rounded-full border border-black/15 shadow-sm flex items-center justify-center transition-all cursor-pointer ${
+                        className={`bp-swatch w-5 h-5 rounded-full border border-black/15 shadow-sm flex items-center justify-center transition-transform cursor-pointer ${
                           exists ? 'opacity-40 cursor-default' : 'hover:scale-110 active:scale-95'
                         }`}
                         style={{ backgroundColor: c.hex }}
@@ -1160,7 +1160,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
 
             {/* 颜色列表 */}
             {sliders.length > 0 ? (
-              <div className="divide-y divide-slate-100 dark:divide-slate-700/60 pt-1">
+              <div className="bp-slider-list divide-y divide-slate-100 dark:divide-slate-700/60 pt-1">
                 {(() => {
                   const totalWeight = sliders.reduce((sum, s) => sum + (s.weight || 0), 0);
                   return sliders.map((s, index) => {
@@ -1182,7 +1182,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                 })()}
               </div>
             ) : (
-              <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+              <div className="bp-dashed-box py-6 px-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-center text-xs text-slate-400 dark:text-slate-500">
                 {lang === 'zh'
                   ? '已选颜色会出现在这里。可点击「+ CMY 三原色」或使用上方拾色器添加颜色。'
                   : lang === 'ja'
@@ -1195,18 +1195,18 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
           {/* 2. 实时看板 (右栏，占 5 列，桌面吸顶) */}
           <div className="contents lg:flex lg:flex-col lg:col-span-5 lg:sticky lg:top-4 lg:gap-5 lg:order-2">
             {/* 上层卡片：「🧪 混合结果」 */}
-            <div className="order-1 lg:order-none bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+            <div className="bp-subcard-lg order-1 lg:order-none bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
               <div className="flex items-center justify-between mb-2.5">
                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <FlaskIcon className="w-4 h-4 text-accent" />
                   <span>{lang === 'zh' ? '混合结果' : lang === 'ja' ? 'ミックス結果' : 'Mixed Result'}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   {sliders.length > 0 && (
                     <button
                       type="button"
                       onClick={handleReset}
-                      className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                      className="bp-pill px-2 py-0.5 rounded-full text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
                     >
                       {lang === 'zh' ? '归零' : lang === 'ja' ? 'ゼロ' : 'Zero'}
                     </button>
@@ -1215,7 +1215,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                     <button
                       type="button"
                       onClick={handleClearAll}
-                      className="text-xs text-rose-500 hover:text-rose-700 transition-colors cursor-pointer"
+                      className="bp-pill px-2 py-0.5 rounded-full text-xs font-bold text-rose-500 hover:text-rose-700 transition-colors cursor-pointer"
                     >
                       {lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}
                     </button>
@@ -1227,7 +1227,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                 <div className="space-y-3">
                   {/* 大色块展示 (Pantone 卡式预览，高度 h-28) */}
                   <div
-                    className="w-full h-28 rounded-2xl relative shadow-inner border border-black/10 dark:border-white/10 overflow-hidden"
+                    className="bp-mixed-preview w-full h-28 rounded-2xl relative shadow-inner border border-black/10 dark:border-white/10 overflow-hidden"
                     style={{ backgroundColor: mixedColor }}
                   >
                     {/* 可复制 Hex 标签 */}
@@ -1235,7 +1235,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                       <button
                         type="button"
                         onClick={() => handleCopyHex(mixedColor)}
-                        className="bg-white/85 dark:bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-bold text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/15 shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="bp-pill bg-white/85 dark:bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-bold text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/15 shadow-sm hover:scale-105 active:scale-95 transition-transform flex items-center gap-1.5 cursor-pointer"
                         title="点击复制 Hex 色号"
                       >
                         <span>{mixedColor.toUpperCase()}</span>
@@ -1253,7 +1253,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                   </div>
 
                   {/* RAL 近似色与目标色对比 */}
-                  <div className="flex flex-col gap-1.5 pt-1 px-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <div className="bp-dashed-header flex flex-col gap-1.5 pt-1 px-1 border-t border-slate-200/60 dark:border-slate-700/60">
                     {ralMatch && (
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-500 dark:text-slate-400 font-medium">
@@ -1277,7 +1277,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                         </span>
                         <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
                           <span
-                            className="w-3 h-3 rounded-full border border-black/15 shadow-sm"
+                            className="bp-dot w-3 h-3 rounded-full border border-black/15 shadow-sm"
                             style={{ backgroundColor: targetColor.hex }}
                           />
                           <span>{targetColor.hex}</span>
@@ -1291,7 +1291,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                     <button
                       type="button"
                       onClick={() => onNavigateToBrands(mixedColor)}
-                      className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-700/60 hover:bg-accent hover:text-white dark:hover:bg-accent text-slate-700 dark:text-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 group active:scale-[0.98] border border-slate-200/60 dark:border-slate-600/60 shadow-xs cursor-pointer whitespace-nowrap"
+                      className="bp-btn w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-700/60 hover:bg-accent hover:text-white dark:hover:bg-accent text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 group active:scale-[0.98] border border-slate-200/60 dark:border-slate-600/60 shadow-xs cursor-pointer whitespace-nowrap"
                     >
                       <span>{lang === 'zh' ? '去近邻查找平替' : lang === 'ja' ? '代替色を探す' : 'Find Brand Alternatives'}</span>
                       <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" weight="bold" />
@@ -1299,7 +1299,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                   )}
                 </div>
               ) : (
-                <div className="w-full h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1.5 text-slate-400">
+                <div className="bp-dashed-box w-full h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1.5 text-slate-400">
                   <PaletteIcon className="w-8 h-8 opacity-60 text-slate-400" />
                   <span className="text-xs">
                     {sliders.length === 0
@@ -1315,7 +1315,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
             </div>
 
             {/* 下层卡片：「📋 混合配方」 */}
-            <div className="order-3 lg:order-none bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
+            <div className="bp-subcard-lg order-3 lg:order-none bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-3">
               <div className="space-y-2">
                 {/* 卡片头部与整合总量输入框 */}
                 <div className="flex items-center justify-between">
@@ -1329,7 +1329,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                       type="number"
                       value={targetVolume}
                       onChange={(e) => setTargetVolume(Math.max(1, Math.min(200, parseInt(e.target.value, 10) || 20)))}
-                      className="w-12 px-1.5 py-0.5 text-xs text-center font-mono font-bold border border-slate-300/80 dark:border-slate-600/80 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 outline-none tabular-nums"
+                      className="bp-input w-12 px-1.5 py-0.5 text-xs text-center font-mono font-bold border border-slate-300/80 dark:border-slate-600/80 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 outline-none tabular-nums"
                       min="1"
                       max="200"
                     />
@@ -1338,15 +1338,15 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                 </div>
 
                 {/* 快速容量预设 - 等宽 6 列网格杜绝截断 */}
-                <div className="p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-xl grid grid-cols-6 gap-1 shadow-inner">
+                <div className="bp-segmented p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-xl grid grid-cols-6 gap-1 shadow-inner">
                   {volumePresets.map((v) => (
                     <button
                       key={v}
                       type="button"
                       onClick={() => setTargetVolume(v)}
-                      className={`h-8 rounded-lg text-xs font-mono font-bold transition-all duration-150 active:scale-[0.95] flex items-center justify-center cursor-pointer whitespace-nowrap ${
+                      className={`bp-segmented-item h-8 rounded-lg text-xs font-mono font-bold transition-colors duration-150 active:scale-[0.95] flex items-center justify-center cursor-pointer whitespace-nowrap ${
                         targetVolume === v
-                          ? 'bg-accent text-white shadow-xs ring-1 ring-white/20'
+                          ? 'bp-segmented-item-active bg-accent text-white shadow-xs ring-1 ring-white/20'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
                       }`}
                     >
@@ -1365,17 +1365,17 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                     multiplier={dropMultiplier}
                     onMultiplierChange={setDropMultiplier}
                   />
-                  <div className="space-y-1 pt-1 max-h-[220px] overflow-y-auto no-scrollbar">
+                  <div className="space-y-1.5 pt-1 pr-1 pb-1 max-h-[220px] overflow-y-auto no-scrollbar">
                     {volumes.map((vol, index) => {
                       const info = getPaintDisplayName(vol.hex);
                       return (
                         <div
                           key={index}
-                          className="flex items-center justify-between text-xs p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
+                          className="bp-subcard flex items-center justify-between text-xs p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <div
-                              className="w-4 h-4 rounded-full border border-black/15 shadow-sm flex-shrink-0"
+                              className="bp-dot w-4 h-4 rounded-full border border-black/15 shadow-sm flex-shrink-0"
                               style={{ backgroundColor: vol.hex }}
                             />
                             <span className="font-semibold text-slate-700 dark:text-slate-200 truncate">
@@ -1402,7 +1402,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                     })}
                   </div>
 
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <div className="bp-dashed-header pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                     <BrandMatchPanel
                       hex={mixedColor}
                       lang={lang}
@@ -1417,7 +1417,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                <div className="bp-dashed-box py-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-center text-xs text-slate-400 dark:text-slate-500">
                   {lang === 'zh' ? '暂无混合配方' : 'No active formula'}
                 </div>
               )}
@@ -1426,7 +1426,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
         </div>
       ) : (
         /* ==================== 经典 Canvas 轮盘模式 ==================== */
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 w-full">
           {/* 轮盘模式提示标头 */}
           <div className="text-center my-0.5">
             <h3 className="text-sm font-bold text-accent dark:text-accent-light mb-0.5">
@@ -1450,7 +1450,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
           </div>
 
           {/* Readout Panel */}
-          <div className="w-full flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+          <div className="bp-subcard-lg w-full flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
             <div className="flex items-center gap-2">
               <div className="flex flex-col items-end">
                 <span className="text-[9px] font-bold text-slate-400 uppercase">
@@ -1467,7 +1467,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                 </span>
               </div>
               <div
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner flex-shrink-0"
+                className="bp-swatch w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner flex-shrink-0"
                 style={{
                   backgroundColor: mixedColor || 'transparent',
                   backgroundImage:
@@ -1483,7 +1483,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
 
             <div className="flex items-center gap-2">
               <div
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner flex-shrink-0"
+                className="bp-swatch w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-slate-100 dark:border-slate-600 shadow-inner flex-shrink-0"
                 style={{ backgroundColor: targetColor?.hex || 'transparent' }}
               />
               <div className="flex flex-col">
@@ -1509,12 +1509,12 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                   max="100"
                   value={targetVolume}
                   onChange={(e) => setTargetVolume(Math.max(1, parseInt(e.target.value) || 20))}
-                  className="w-14 sm:w-16 px-1.5 py-0.5 text-center font-mono text-xs font-bold border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
+                  className="bp-input w-14 sm:w-16 px-1.5 py-0.5 text-center font-mono text-xs font-bold border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
                 />
               </div>
               <button
                 onClick={handleReset}
-                className="px-2.5 py-1 bg-accent hover:bg-accent-hover text-white rounded-md text-xs font-medium transition-colors shadow-sm flex items-center gap-1 whitespace-nowrap"
+                className="bp-btn px-2.5 py-1 bg-accent hover:bg-accent-hover text-white rounded-md text-xs font-bold transition-colors shadow-sm flex items-center gap-1 whitespace-nowrap"
               >
                 <ArrowCounterClockwiseIcon className="w-3.5 h-3.5" />
                 <span>{lang === 'zh' ? '重置' : lang === 'ja' ? 'リセット' : 'Reset'}</span>
@@ -1525,7 +1525,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               <button
                 onClick={handleAddCMY}
                 disabled={cmyAdded}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm flex items-center gap-1 whitespace-nowrap ${
+                className={`bp-btn px-2.5 py-1 text-xs font-bold rounded-md transition-colors shadow-sm flex items-center gap-1 whitespace-nowrap ${
                   cmyAdded
                     ? 'bg-emerald-500 text-white cursor-default'
                     : 'bg-accent text-white hover:bg-accent-hover active:scale-95'
@@ -1547,7 +1547,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
               <button
                 onClick={handleAddBW}
                 disabled={bwAdded}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all shadow-sm flex items-center gap-1 whitespace-nowrap ${
+                className={`bp-btn px-2.5 py-1 text-xs font-bold rounded-md transition-colors shadow-sm flex items-center gap-1 whitespace-nowrap ${
                   bwAdded
                     ? 'bg-emerald-500 text-white cursor-default'
                     : 'bg-slate-600 hover:bg-slate-700 text-white active:scale-95'
@@ -1647,7 +1647,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
 
           {/* Recipe Display */}
           {volumes.length > 0 && (
-            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="bp-subcard-lg p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
               <h4 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1.5 flex items-center gap-1">
                 <ChartBarIcon className="w-3.5 h-3.5 text-accent" />
                 <span>{lang === 'zh' ? '混合配方' : lang === 'ja' ? 'レシピ' : 'RECIPE'}</span>
@@ -1658,15 +1658,15 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                 multiplier={dropMultiplier}
                 onMultiplierChange={setDropMultiplier}
               />
-              <div className="space-y-1 max-h-36 overflow-y-auto">
+              <div className="space-y-1.5 mt-2 pr-1 pb-1 max-h-36 overflow-y-auto">
                 {volumes.map((vol, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between text-[10px] bg-white dark:bg-slate-700 p-1.5 rounded border border-slate-200 dark:border-slate-600"
+                    className="bp-subcard flex items-center justify-between text-[10px] bg-white dark:bg-slate-700 p-1.5 rounded border border-slate-200 dark:border-slate-600"
                   >
                     <div className="flex items-center space-x-1.5">
                       <div
-                        className="w-5 h-5 rounded border border-slate-300 dark:border-slate-500"
+                        className="bp-swatch w-5 h-5 rounded border border-slate-300 dark:border-slate-500"
                         style={{ backgroundColor: vol.hex }}
                       />
                       <span className="font-mono text-slate-700 dark:text-slate-300">{vol.hex}</span>
@@ -1681,7 +1681,7 @@ const RadialPaletteMixer: React.FC<RadialPaletteMixerProps> = ({
                       <span className="font-bold text-accent dark:text-accent-light">
                         {vol.percentage.toFixed(1)}%
                       </span>
-                      <span className="font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                      <span className="bp-badge font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
                         {vol.volume.toFixed(2)} ml
                       </span>
                     </div>

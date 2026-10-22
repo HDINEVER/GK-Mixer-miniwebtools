@@ -108,7 +108,7 @@ export const ResponsiveSheet: React.FC<ResponsiveSheetProps> = ({
       <button
         type="button"
         onClick={onClose}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition"
+        className="bp-btn flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition"
         aria-label="关闭"
       >
         <XIcon className="h-4 w-4" weight="bold" />
@@ -127,7 +127,7 @@ export const ResponsiveSheet: React.FC<ResponsiveSheetProps> = ({
       />
       <div
         ref={panelRef}
-        className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-3xl bg-white dark:bg-slate-900 px-5 pt-2.5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(15,23,42,0.14)]"
+        className="bp-modal-shell absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-3xl bg-white dark:bg-slate-900 px-5 pt-2.5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(15,23,42,0.14)]"
         style={{
           transform: visible ? "translate3d(0,0,0)" : "translate3d(0,100%,0)",
           transition: `transform ${ANIM_MS}ms cubic-bezier(0.32, 0.72, 0, 1)`,
@@ -153,7 +153,7 @@ export const ResponsiveSheet: React.FC<ResponsiveSheetProps> = ({
       {/* Transparent click-catcher: closes on outside click without dimming the page */}
       <div className="absolute inset-0 pointer-events-auto" onClick={onClose} />
       <div
-        className={`pointer-events-auto absolute rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 shadow-[0_16px_48px_rgba(15,23,42,0.16)] max-h-[calc(100dvh-8rem)] overflow-y-auto ${
+        className={`bp-modal-shell pointer-events-auto absolute rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 shadow-[0_16px_48px_rgba(15,23,42,0.16)] max-h-[calc(100dvh-8rem)] overflow-y-auto ${
           desktopPlacement === "fab" ? "bottom-24 right-6 origin-bottom-right" : "left-1/2 top-1/2"
         }`}
         style={{

@@ -36,12 +36,12 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
 
   return (
     <div
-      className={`w-full max-w-full overflow-hidden min-w-0 p-2.5 sm:p-3 rounded-xl border border-sky-200/70 dark:border-slate-700 bg-white/95 dark:bg-slate-900/90 shadow-xs backdrop-blur-sm transition-all ${className}`}
+      className={`bp-subcard w-full max-w-full overflow-hidden min-w-0 p-2.5 sm:p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/95 dark:bg-slate-900/90 shadow-xs backdrop-blur-sm ${className}`}
     >
       {/* Header: Title + Multiplier Stepper */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+      <div className="bp-dashed-header flex flex-wrap items-center justify-between gap-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-1.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-500 text-white shadow-2xs">
+          <div className="bp-swatch flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--accent-color)] text-white shadow-2xs">
             <DropIcon className="h-3.5 w-3.5" weight="fill" />
           </div>
           <div>
@@ -49,7 +49,7 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-wide">
                 {t.dropRatio || (lang === 'zh' ? '滴数比配方' : 'Drop Ratio')}
               </span>
-              <span className="rounded-full bg-sky-50 dark:bg-sky-950/60 border border-sky-200/80 dark:border-sky-800/80 px-1.5 py-0.25 font-mono text-[10px] font-bold text-sky-600 dark:text-sky-300">
+              <span className="bp-badge rounded-full bg-accent/10 border border-accent/30 px-1.5 py-0.25 font-mono text-[10px] font-bold text-accent">
                 {lang === 'zh' ? `共 ${totalDrops} 滴` : lang === 'ja' ? `計 ${totalDrops} 滴` : `${totalDrops} drops`}
               </span>
             </div>
@@ -66,7 +66,7 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
         </div>
 
         {!isPure && (
-          <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+          <div className="bp-segmented flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
             <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 px-1">
               {t.dropMultiplier || (lang === 'zh' ? '倍数' : 'Multiplier')}
             </span>
@@ -74,7 +74,7 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
               type="button"
               onClick={() => onMultiplierChange(clamped - 1)}
               disabled={clamped <= 1}
-              className="flex h-6 w-6 items-center justify-center rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs border border-slate-200/80 dark:border-slate-600 disabled:opacity-30 active:scale-95 transition-all cursor-pointer"
+              className="bp-btn flex h-6 w-6 items-center justify-center rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs border border-slate-200/80 dark:border-slate-600 disabled:opacity-30 active:scale-95 transition-transform cursor-pointer"
               aria-label="减少倍率"
             >
               <MinusIcon className="w-3 h-3" weight="bold" />
@@ -86,7 +86,7 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
               type="button"
               onClick={() => onMultiplierChange(clamped + 1)}
               disabled={clamped >= 8}
-              className="flex h-6 w-6 items-center justify-center rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs border border-slate-200/80 dark:border-slate-600 disabled:opacity-30 active:scale-95 transition-all cursor-pointer"
+              className="bp-btn flex h-6 w-6 items-center justify-center rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs border border-slate-200/80 dark:border-slate-600 disabled:opacity-30 active:scale-95 transition-transform cursor-pointer"
               aria-label="增加倍率"
             >
               <PlusIcon className="w-3 h-3" weight="bold" />
@@ -100,7 +100,7 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
         <div className="py-3 text-center">
           <div className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2">
             <span
-              className="w-3.5 h-3.5 rounded-full border border-black/20 shadow-2xs"
+              className="bp-dot w-3.5 h-3.5 rounded-full border border-black/20 shadow-2xs"
               style={{ backgroundColor: visible[0].color }}
             />
             <span>{t.dropPure || (lang === 'zh' ? '纯色，无需混合' : 'Pure color, no mixing required')}</span>
@@ -112,7 +112,7 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
       ) : (
         <div className="my-2 sm:my-2.5">
           {/* Visual Ratio Cards Track - Scrolls cleanly without breaking colons */}
-          <div className={`w-full max-w-full flex items-center ${visible.length <= 4 ? 'justify-start sm:justify-center' : 'justify-start'} gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar touch-pan-x py-1 px-0.5 min-w-0`}>
+          <div className={`w-full max-w-full flex items-center ${visible.length <= 4 ? 'justify-start sm:justify-center' : 'justify-start'} gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar touch-pan-x py-1.5 px-1 min-w-0`}>
             {visible.map((part, index) => {
               const partDrops = part.drops * clamped;
               const percent = totalUnitDrops > 0 ? Math.round((part.drops / totalUnitDrops) * 100) : 0;
@@ -123,9 +123,9 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
                       :
                     </div>
                   )}
-                  <div className="flex-shrink-0 flex flex-col items-center justify-center p-1.5 sm:p-2 min-w-[2.75rem] sm:min-w-[3.25rem] max-w-[3.75rem] rounded-xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 shadow-2xs group hover:border-sky-400/50 transition-all">
+                  <div className="bp-subcard flex-shrink-0 flex flex-col items-center justify-center p-1.5 sm:p-2 min-w-[2.75rem] sm:min-w-[3.25rem] max-w-[3.75rem] rounded-xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 shadow-2xs group hover:border-accent/50 transition-colors">
                     <div
-                      className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full border border-black/15 dark:border-white/20 shadow-2xs mb-1 transition-transform group-hover:scale-105"
+                      className="bp-dot w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full border border-black/15 dark:border-white/20 shadow-2xs mb-1 transition-transform group-hover:scale-105"
                       style={{ backgroundColor: part.color }}
                     />
                     <div className="flex items-baseline gap-0.5">
@@ -151,7 +151,7 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
           </div>
 
           {/* Inline Formula Summary Line */}
-          <div className="mt-2 px-2.5 py-1 rounded-lg bg-slate-100/70 dark:bg-slate-800/60 flex items-center justify-center gap-1.5 flex-wrap">
+          <div className="bp-dashed-box mt-2 px-2.5 py-1 rounded-lg bg-slate-100/70 dark:bg-slate-800/60 flex items-center justify-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-bold text-slate-400 shrink-0">
               {lang === 'zh' ? '配方速记:' : lang === 'ja' ? 'レシピ比:' : 'Formula:'}
             </span>
@@ -160,7 +160,7 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
                 <span key={idx} className="flex items-center gap-1">
                   {idx > 0 && <span className="text-slate-400 select-none">:</span>}
                   <span
-                    className="w-2 h-2 rounded-full border border-black/15 shadow-2xs inline-block"
+                    className="bp-dot w-2 h-2 rounded-full border border-black/15 shadow-2xs inline-block"
                     style={{ backgroundColor: p.color }}
                   />
                   <span>{p.name} {p.drops * clamped}</span>

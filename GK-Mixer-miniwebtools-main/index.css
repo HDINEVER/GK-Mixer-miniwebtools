@@ -855,4 +855,222 @@ html.dark[data-ui-style="blueprint"] .bp-center-dashed-divider {
   border-left-color: #94A3B8 !important;
 }
 
+/* 7. Modals, Sheets, and Canvas Stages (SwatchEditorModal / QuickPaintAssignSheet / ResponsiveSheet) */
+html[data-ui-style="blueprint"] .bp-modal-shell {
+  border-radius: 6px !important;
+  border: 2px solid #0F172A !important;
+  background-color: #F8FAFC !important;
+  box-shadow: 5px 5px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-modal-shell {
+  border-color: #475569 !important;
+  background-color: #0B0F19 !important;
+  box-shadow: 5px 5px 0px #020617 !important;
+}
+
+html[data-ui-style="blueprint"] .bp-modal-header {
+  background-color: #FFFFFF !important;
+  border-bottom: 1.5px solid #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-modal-header {
+  background-color: #111827 !important;
+  border-bottom: 1.5px solid #475569 !important;
+}
+
+html[data-ui-style="blueprint"] .bp-canvas-stage {
+  border-radius: 6px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #0F172A !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-canvas-stage {
+  border-color: #475569 !important;
+  background-color: #020617 !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+}
+
+/* 8. Floating Swatch Tags & Sample Pin Dots on Canvas (ExtractMarkerOverlay) */
+html[data-ui-style="blueprint"] .bp-pin-dot {
+  border-radius: 3px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-floating-swatch {
+  border-radius: 4px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-floating-swatch {
+  border-color: #64748B !important;
+  background-color: #0F172A !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-floating-swatch-active {
+  border: 2px solid var(--accent-color) !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+  outline: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-floating-swatch-active {
+  border: 2px solid var(--accent-color) !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-floating-swatch-body {
+  border-top-left-radius: 2.5px !important;
+  border-top-right-radius: 2.5px !important;
+}
+html[data-ui-style="blueprint"] .bp-floating-swatch-thumb {
+  border-bottom-left-radius: 2.5px !important;
+  border-right: 1.5px solid #0F172A !important;
+  background-color: #F8FAFC !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-floating-swatch-thumb {
+  border-right-color: #475569 !important;
+  background-color: #1E293B !important;
+}
+html[data-ui-style="blueprint"] .bp-floating-swatch-tonal {
+  border-bottom-left-radius: 2.5px !important;
+  border-bottom-right-radius: 2.5px !important;
+  border-top: 1.5px solid #0F172A !important;
+}
+
+/* 9. Extracted Color Cards & Delete Buttons (ColorPalette) */
+html[data-ui-style="blueprint"] .bp-extracted-card {
+  border-radius: 6px !important;
+  border: 2px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-extracted-card {
+  border-color: #475569 !important;
+  background-color: #111827 !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-extracted-card-active {
+  border: 2px solid var(--accent-color) !important;
+  background-color: var(--accent-soft) !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-extracted-card-active {
+  border: 2px solid var(--accent-color) !important;
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-delete-btn {
+  border-radius: 4px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-delete-btn {
+  border-color: #64748B !important;
+  background-color: #1E293B !important;
+  color: #F1F5F9 !important;
+  box-shadow: 1.5px 1.5px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-delete-btn:hover {
+  background-color: #EF4444 !important;
+  border-color: #0F172A !important;
+  color: #FFFFFF !important;
+}
+
+/* 10. Mix Ratio Sliders, Pigments Rows, and Mixed Result Preview (IOSColorSlider / Mixers) */
+html[data-ui-style="blueprint"] .bp-slider-list > :not([hidden]) ~ :not([hidden]) {
+  border-top-width: 0px !important;
+}
+html[data-ui-style="blueprint"] .bp-slider-row {
+  border-radius: 5px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+  padding: 6px 10px !important;
+  margin-bottom: 6px !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-slider-row {
+  border-color: #475569 !important;
+  background-color: #1E293B !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-slider-row-active {
+  border: 2px solid var(--accent-color) !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-slider-row-active {
+  border: 2px solid var(--accent-color) !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-slider-track {
+  border-radius: 2px !important;
+  border: 1.5px solid #0F172A !important;
+  height: 10px !important;
+  background-color: #F1F5F9 !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-slider-track {
+  border-color: #64748B !important;
+  background-color: #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-slider-fill {
+  border-radius: 1px !important;
+  border-right: 1.5px solid #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-slider-thumb-knob {
+  border-radius: 3px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-slider-thumb-knob {
+  border-color: #94A3B8 !important;
+  background-color: #F8FAFC !important;
+  box-shadow: 1.5px 1.5px 0px #020617 !important;
+}
+
+/* Native Range Sliders in SwatchStudioControls */
+html[data-ui-style="blueprint"] input[type="range"].bp-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px !important;
+  border-radius: 2px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #E2E8F0 !important;
+}
+html.dark[data-ui-style="blueprint"] input[type="range"].bp-range-slider {
+  border-color: #64748B !important;
+  background-color: #0F172A !important;
+}
+html[data-ui-style="blueprint"] input[type="range"].bp-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: var(--accent-color) !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+  cursor: pointer;
+}
+html[data-ui-style="blueprint"] input[type="range"].bp-range-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: var(--accent-color) !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+  cursor: pointer;
+}
+
+/* Mixed Result Preview Large Block */
+html[data-ui-style="blueprint"] .bp-mixed-preview {
+  border-radius: 6px !important;
+  border: 2px solid #0F172A !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-mixed-preview {
+  border-color: #64748B !important;
+  box-shadow: 3px 3px 0px #020617 !important;
+}
+
+
 

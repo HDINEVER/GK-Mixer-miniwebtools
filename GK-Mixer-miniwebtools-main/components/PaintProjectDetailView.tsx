@@ -543,7 +543,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
       {/* 2. Upper Zone: 1:1 Export Aspect Ratio Preview & Multi-Part Horizontal Paging (Drag locked to prevent gesture conflict) */}
       {activePart && (
         <div
-          className="lg:col-span-6 xl:col-span-5 lg:sticky lg:top-4 min-w-0 rounded-3xl border border-slate-200/85 dark:border-slate-800 bg-slate-950 p-3 sm:p-4 shadow-lg space-y-3"
+          className="bp-canvas-stage lg:col-span-6 xl:col-span-5 lg:sticky lg:top-4 min-w-0 rounded-3xl border border-slate-200/85 dark:border-slate-800 bg-slate-950 p-3 sm:p-4 shadow-lg space-y-3"
           onTouchStart={(e) => {
             touchStartXRef.current = e.touches[0]?.clientX ?? null;
           }}
@@ -564,7 +564,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           {/* Part Switcher Header */}
           <div className="flex flex-wrap items-center justify-between gap-2 px-1">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="rounded-full bg-coral/20 border border-coral/40 px-2.5 py-0.5 font-mono text-[11px] font-black text-coral whitespace-nowrap shrink-0 tabular-nums">
+              <span className="bp-badge rounded-full bg-coral/20 border border-coral/40 px-2.5 py-0.5 font-mono text-[11px] font-black text-coral whitespace-nowrap shrink-0 tabular-nums">
                 零件 {safePartIdx + 1}/{project.parts.length}
               </span>
               {isEditingPartName ? (
@@ -575,7 +575,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                   onBlur={handleSavePartName}
                   onKeyDown={(e) => e.key === "Enter" && handleSavePartName()}
                   autoFocus
-                  className="rounded-lg border border-coral bg-slate-900 px-2 py-0.5 text-xs font-bold text-white focus:outline-none"
+                  className="bp-input rounded-lg border border-coral bg-slate-900 px-2 py-0.5 text-xs font-bold text-white focus:outline-none"
                 />
               ) : (
                 <button
@@ -590,7 +590,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
             </div>
 
             {/* Part Paging Controls */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-0.5 pr-0.5">
               {project.parts.map((partItem, pIdx) => (
                 <button
                   key={partItem.id}
@@ -598,8 +598,8 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                   onClick={() => setActivePartIndex(pIdx)}
                   className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
                     pIdx === safePartIdx
-                      ? "bg-white text-slate-950 shadow-xs"
-                      : "bg-white/10 text-slate-300 hover:bg-white/20"
+                      ? "bp-pill-active bg-white text-slate-950 shadow-xs"
+                      : "bp-pill bg-white/10 text-slate-300 hover:bg-white/20"
                   }`}
                 >
                   #{pIdx + 1} {partItem.partName.slice(0, 8)}
@@ -608,7 +608,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               <button
                 type="button"
                 onClick={() => addPartFileRef.current?.click()}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white hover:bg-coral transition cursor-pointer shrink-0"
+                className="bp-pill flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white hover:bg-coral transition cursor-pointer shrink-0"
                 title="添加新零件图"
               >
                 <PlusIcon className="h-3.5 w-3.5" weight="bold" />
@@ -617,12 +617,12 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           </div>
 
           {/* 1:1 Export Aspect Ratio Annotated Preview Stage (allowDrag={false}) */}
-          <div className="relative flex items-center justify-center min-h-[280px] sm:min-h-[360px] lg:min-h-[380px] lg:max-h-[calc(100dvh-220px)] rounded-2xl bg-slate-900/90 overflow-hidden p-2">
+          <div className="bp-canvas-stage relative flex items-center justify-center min-h-[280px] sm:min-h-[360px] lg:min-h-[380px] lg:max-h-[calc(100dvh-220px)] rounded-2xl bg-slate-900/90 overflow-hidden p-2">
             {project.parts.length > 1 && safePartIdx > 0 && (
               <button
                 type="button"
                 onClick={() => setActivePartIndex(safePartIdx - 1)}
-                className="absolute left-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
+                className="bp-btn absolute left-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
                 title="上一个零件"
               >
                 <CaretLeftIcon className="h-4 w-4" weight="bold" />
@@ -633,7 +633,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               <img
                 src={activePart.sourceImageDataUrl}
                 alt={activePart.partName}
-                className="block max-h-[46dvh] sm:max-h-[54dvh] lg:max-h-[calc(100dvh-260px)] w-auto max-w-full rounded-xl object-contain select-none"
+                className="bp-swatch block max-h-[46dvh] sm:max-h-[54dvh] lg:max-h-[calc(100dvh-260px)] w-auto max-w-full rounded-xl object-contain select-none"
                 draggable={false}
               />
               <ExtractMarkerOverlay
@@ -653,7 +653,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActivePartIndex(safePartIdx + 1)}
-                className="absolute right-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
+                className="bp-btn absolute right-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
                 title="下一个零件"
               >
                 <CaretRightIcon className="h-4 w-4" weight="bold" />

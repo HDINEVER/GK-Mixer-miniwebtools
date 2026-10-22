@@ -106,12 +106,13 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/65 backdrop-blur-md p-0 sm:p-4 animate-fadeIn">
-      <div className="relative flex flex-col w-full max-w-5xl max-h-[92dvh] sm:max-h-[88dvh] rounded-t-3xl sm:rounded-3xl bg-slate-50 dark:bg-slate-950 border border-white/30 dark:border-slate-800 shadow-2xl overflow-hidden">
+      <div className="bp-modal-shell relative flex flex-col w-full max-w-5xl max-h-[92dvh] sm:max-h-[88dvh] rounded-t-3xl sm:rounded-3xl bg-slate-50 dark:bg-slate-950 border border-white/30 dark:border-slate-800 shadow-2xl overflow-hidden">
         {/* Top Floating Liquid Glass Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/70 dark:border-slate-800 shrink-0">
+        <div className="bp-modal-header flex items-center justify-between px-4 sm:px-6 py-3.5 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/70 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="h-2.5 w-2.5 rounded-full bg-coral shrink-0" />
+            <span className="bp-dot h-2.5 w-2.5 rounded-full bg-[var(--accent-color)] shrink-0" />
             <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+              <span className="tech-prefix">[SWATCH STUDIO]</span>
               {title}
             </h2>
           </div>
@@ -122,7 +123,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                 type="button"
                 onClick={onExportImage}
                 disabled={isExporting}
-                className="inline-flex items-center gap-1.5 rounded-full bg-coral px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 disabled:opacity-50 transition"
+                className="bp-pill-active inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-color)] px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 <DownloadSimpleIcon className="h-3.5 w-3.5" />
                 <span>{isExporting ? "导出中…" : "导出 PNG"}</span>
@@ -131,7 +132,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-300 transition"
+              className="bp-btn flex h-8 w-8 items-center justify-center rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-300 transition-colors cursor-pointer"
               title="完成并关闭"
             >
               <XIcon className="h-4 w-4" />
@@ -142,13 +143,13 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
         {/* Body: Interactive Canvas + Controls */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left 7 cols: Interactive Dragging Canvas */}
-          <div className="lg:col-span-7 space-y-3 lg:sticky lg:top-0">
-            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-900/95 p-2 sm:p-3 shadow-inner flex items-center justify-center overflow-hidden">
+          <div className="lg:col-span-7 space-y-3 lg:sticky lg:top-0 pr-1.5 pb-1.5">
+            <div className="bp-canvas-stage rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-900/95 p-2 sm:p-3 shadow-inner flex items-center justify-center overflow-hidden">
               <div ref={imgContainerRef} className="relative inline-block max-w-full">
                 <img
                   src={imageSrc}
                   alt="Swatch Canvas"
-                  className="block max-h-[44dvh] lg:max-h-[62dvh] w-auto max-w-full rounded-xl object-contain select-none"
+                  className="bp-swatch block max-h-[44dvh] lg:max-h-[62dvh] w-auto max-w-full rounded-xl object-contain select-none"
                   draggable={false}
                 />
                 <ExtractMarkerOverlay
@@ -169,9 +170,9 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
 
             {/* Tonal Gradient Bar Toggle for Selected Card */}
             {activeAssigned && (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 shadow-2xs">
+              <div className="bp-subcard flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 shadow-2xs">
                 <div className="flex items-center gap-2 text-xs">
-                  <SparkleIcon className="h-4 w-4 text-coral shrink-0" />
+                  <SparkleIcon className="h-4 w-4 text-[var(--accent-color)] shrink-0" />
                   <span className="font-bold text-slate-700 dark:text-slate-200">
                     悬浮色卡明暗三阶色条 (高光 / 主色 / 阴影)
                   </span>
@@ -179,10 +180,10 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                 <button
                   type="button"
                   onClick={toggleActiveTonalGradient}
-                  className={`rounded-full px-3 py-1 text-xs font-extrabold transition ${
+                  className={`rounded-full px-3 py-1 text-xs font-extrabold transition-colors cursor-pointer ${
                     hasTonal
-                      ? "bg-coral text-white shadow-xs"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                      ? "bp-pill-active bg-[var(--accent-color)] text-white shadow-xs"
+                      : "bp-pill bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
                   }`}
                 >
                   {hasTonal ? "已开启明暗条" : "开启明暗条"}
@@ -192,7 +193,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
           </div>
 
           {/* Right 5 cols: SwatchStudioControls */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-5 pr-1.5 pb-1.5">
             <SwatchStudioControls
               colors={colors}
               selectedColor={activeAssigned || selectedColor}

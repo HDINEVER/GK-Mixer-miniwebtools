@@ -1598,10 +1598,10 @@ const App: React.FC = () => {
                                   setIsContinuousPicking(false);
                                   hideLoupe();
                                 }}
-                                className="absolute top-4 left-4 z-20 flex items-center gap-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs px-3 py-1 font-medium shadow-md backdrop-blur-sm transition-all active:scale-95 cursor-pointer"
+                                className="bp-pill-active absolute top-4 left-4 z-20 flex items-center gap-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs px-3 py-1 font-medium shadow-md backdrop-blur-sm transition-colors active:scale-95 cursor-pointer"
                                 title={lang === 'zh' ? '点击退出取色模式' : lang === 'ja' ? 'クリックして終了' : 'Click to exit pick mode'}
                             >
-                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                <span className="bp-dot w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                                 <span>{t.clickToPick}</span>
                                 <span className="ml-1 text-[11px] opacity-75 hover:opacity-100 font-bold">✕</span>
                             </button>
@@ -1611,7 +1611,7 @@ const App: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setIsSwatchEditorOpen(true)}
-                              className="flex items-center gap-1 rounded-lg bg-white/90 dark:bg-slate-800/90 px-2.5 py-1.5 text-[10px] font-bold text-slate-800 dark:text-slate-100 shadow-lg backdrop-blur-sm hover:bg-white border border-slate-200/70 dark:border-slate-700"
+                              className="bp-btn flex items-center gap-1 rounded-lg bg-white/90 dark:bg-slate-800/90 px-2.5 py-1.5 text-[10px] font-bold text-slate-800 dark:text-slate-100 shadow-lg backdrop-blur-sm hover:bg-white border border-slate-200/70 dark:border-slate-700 cursor-pointer"
                             >
                               <SwatchesIcon className="h-3.5 w-3.5 text-accent" />
                               {lang === 'zh' ? '编辑色卡' : 'Edit Swatches'}
@@ -1621,7 +1621,7 @@ const App: React.FC = () => {
                             type="button"
                             onClick={handleExportAnnotated}
                             disabled={!extractMarkers.some((marker) => marker.paint) || isExporting}
-                            className="flex items-center gap-1.5 rounded-lg bg-slate-900/80 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg backdrop-blur-sm hover:bg-slate-900 disabled:opacity-40"
+                            className="bp-btn flex items-center gap-1.5 rounded-lg bg-slate-900/80 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg backdrop-blur-sm hover:bg-slate-900 disabled:opacity-40 cursor-pointer"
                           >
                             <DownloadSimpleIcon className="h-3.5 w-3.5" />
                             {isExporting ? t.exporting : t.exportAnnotated}
@@ -1642,7 +1642,7 @@ const App: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setIsSourceActionMenuOpen((v) => !v)}
-                          className="w-11 h-11 flex items-center justify-center text-accent hover:opacity-80 active:scale-95 transition-all cursor-pointer"
+                          className="w-11 h-11 flex items-center justify-center text-accent hover:opacity-80 active:scale-95 transition-opacity cursor-pointer"
                           title={lang === 'zh' ? '更多操作' : 'More Actions'}
                           aria-label="More Actions"
                         >
@@ -1650,7 +1650,7 @@ const App: React.FC = () => {
                         </button>
 
                         {isSourceActionMenuOpen && (
-                          <div className="absolute right-0 bottom-11 w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xl py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
+                          <div className="bp-subcard-lg absolute right-0 bottom-11 w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xl py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
                             <button
                               type="button"
                               disabled={!assignedMarkers.length || isExporting}

@@ -697,179 +697,141 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                                 {layer.volume.toFixed(1)}ml
                              </span>
                          </div>
-                     ))}
-                </div>
-             </div>
-        </div>
+                      ))}
+                 </div>
+              </div>
 
-        {/* Right: Selection & AI */}
-        <div className="min-w-0 w-full flex flex-col gap-5 pr-1.5 pb-1.5">
-            
-            <BrandMatchPanel
-              hex={color.hex}
-              lang={lang}
-              selectable
-              selectedId={selectedBasePaint?.id}
-              assignedId={color.assignedPaint?.id}
-              hasSamplePoint={typeof color.sampleX === "number" && typeof color.sampleY === "number"}
-              onSelect={handleBasePaintToggle}
-              onAssignCatalog={onAssignCatalogPaint}
-            />
-
-            {/* RAL Color Match */}
-            {ralMatch && (
-                <div>
-                    <h3 className="text-xs font-bold text-orange-500 tracking-wider mb-3">
-                        {t.ralStandard || 'RAL Standard'}
-                    </h3>
-                    <div className="bp-subcard-lg bg-gradient-to-br from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-700 p-4 rounded-lg border-2 border-orange-200 dark:border-orange-900/30 shadow-sm">
-                        <div className="flex items-center gap-4">
-                            <div 
-                                className="bp-swatch w-16 h-16 rounded-lg border-2 border-white dark:border-slate-600 shadow-md flex-shrink-0" 
-                                style={{ backgroundColor: ralMatch.hex }}
-                            />
-                            <div className="flex-1">
-                                <div className="flex items-baseline gap-2 mb-1">
-                                    <span className="font-mono text-lg font-bold text-orange-600 dark:text-orange-400">
-                                        RAL {ralMatch.ral}
-                                    </span>
-                                    <span className="bp-badge text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded">
-                                        {t.industryStandard || 'Industry Standard'}
-                                    </span>
-                                </div>
-                                <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
-                                    {ralMatch.name}
-                                </div>
-                                <div className="flex gap-4 text-[10px] text-slate-500 dark:text-slate-400">
-                                    <div>
-                                        <span className="font-mono">{t.ralLrv || 'LRV'}:</span> {ralMatch.lrv.toFixed(1)}%
-                                    </div>
-                                    <div>
-                                        <span className="font-mono">HEX:</span> {ralMatch.hex}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Professional Recipe Analysis */}
-            {professionalRecipe && (
-            <div className="flex-1 flex flex-col">
-                <h3 className="text-xs font-bold text-macaron-green tracking-wider mb-3 flex justify-between items-center">
-                  {lang === 'zh' ? '专业配方分析' : lang === 'ja' ? 'プロレシピ分析' : 'Professional Recipe'}
-                  <span className="bp-badge text-[10px] font-normal opacity-50 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-500">
-                     HSB+LAB
-                  </span>
-                </h3>
-                
-                {
-                  /* Professional Mode Display */
-                  <div className="bp-subcard-lg flex-1 font-mono text-xs text-slate-600 dark:text-slate-300 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-700 p-4 rounded-lg border-2 border-purple-200 dark:border-purple-900/30 overflow-y-auto max-h-[400px] custom-scrollbar space-y-3">
-                    
-                    {/* Strategy Badge */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className={`px-2 py-1 rounded text-xs font-bold inline-flex items-center gap-1 ${
-                        professionalRecipe.strategy === 'high-brightness' 
-                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
-                          : professionalRecipe.strategy === 'mid-brightness'
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                          : 'bg-slate-700 text-white dark:bg-slate-600'
-                      }`}>
-                        {professionalRecipe.strategy === 'high-brightness' && (
-                          <>
-                            <SunIcon className="w-3.5 h-3.5" />
-                            <span>高明度</span>
-                          </>
-                        )}
-                        {professionalRecipe.strategy === 'mid-brightness' && (
-                          <>
-                            <PaletteIcon className="w-3.5 h-3.5" />
-                            <span>中明度</span>
-                          </>
-                        )}
-                        {professionalRecipe.strategy === 'low-brightness' && (
-                          <>
-                            <MoonIcon className="w-3.5 h-3.5" />
-                            <span>低明度</span>
-                          </>
-                        )}
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        B={professionalRecipe.hsb.b}%
-                      </span>
-                    </div>
-                    
-                    {/* HSB & LAB Analysis */}
-                    <div className="grid grid-cols-2 gap-3 p-3 bg-white/50 dark:bg-slate-900/30 rounded border border-purple-100 dark:border-purple-900/20">
-                      <div>
-                        <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mb-1">HSB 分析</div>
-                        <div className="space-y-0.5 text-[10px]">
-                          <div>H: {professionalRecipe.hsb.h}° ({professionalRecipe.hsb.h >= 0 && professionalRecipe.hsb.h < 60 ? '红-橙' : professionalRecipe.hsb.h < 120 ? '黄-绿' : professionalRecipe.hsb.h < 180 ? '绿-青' : professionalRecipe.hsb.h < 240 ? '青-蓝' : professionalRecipe.hsb.h < 300 ? '蓝-紫' : '紫-红'})</div>
-                          <div>S: {professionalRecipe.hsb.s}%</div>
-                          <div>B: {professionalRecipe.hsb.b}%</div>
+              {/* Compact Side-by-Side Cards: RAL Standard + Simplified HSB/LAB Analysis (Eliminates Left Column Bottom Void) */}
+              {(ralMatch || professionalRecipe) && (
+                <div className="w-full mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
+                  {/* 1. Compact RAL Color Match Card */}
+                  {ralMatch && (
+                    <div className="flex flex-col">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <h3 className="text-[11px] font-bold text-orange-500 tracking-wider">
+                          {t.ralStandard || 'RAL 工业标准色'}
+                        </h3>
+                        <span className="bp-badge text-[9px] bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded font-bold">
+                          {t.industryStandard || '工业标准色系统'}
+                        </span>
+                      </div>
+                      <div className="bp-subcard-lg flex-1 flex items-center gap-3 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-700 p-2.5 rounded-lg border border-orange-200 dark:border-orange-900/30 shadow-xs">
+                        <div
+                          className="bp-swatch w-11 h-11 rounded-lg border-2 border-white dark:border-slate-600 shadow-sm flex-shrink-0"
+                          style={{ backgroundColor: ralMatch.hex }}
+                        />
+                        <div className="min-w-0 flex-1 leading-tight">
+                          <div className="font-mono text-sm font-black text-orange-600 dark:text-orange-400 truncate">
+                            RAL {ralMatch.ral}
+                          </div>
+                          <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate mt-0.5">
+                            {ralMatch.name}
+                          </div>
+                          <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-1">
+                            <span>LRV: {ralMatch.lrv.toFixed(1)}%</span>
+                            <span>HEX: {ralMatch.hex}</span>
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <div className="text-[10px] text-pink-600 dark:text-pink-400 font-bold mb-1">LAB 分析</div>
-                        <div className="space-y-0.5 text-[10px]">
+                    </div>
+                  )}
+
+                  {/* 2. Compact HSB + LAB Analysis Card */}
+                  {professionalRecipe && (
+                    <div className="flex flex-col">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <h3 className="text-[11px] font-bold text-macaron-green tracking-wider">
+                          {lang === 'zh' ? '专业色彩分析' : lang === 'ja' ? '色彩パラメータ分析' : 'Color Analysis'}
+                        </h3>
+                        <div className="flex items-center gap-1">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold inline-flex items-center gap-0.5 ${
+                              professionalRecipe.strategy === 'high-brightness'
+                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                : professionalRecipe.strategy === 'mid-brightness'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                : 'bg-slate-700 text-white dark:bg-slate-600'
+                            }`}
+                          >
+                            {professionalRecipe.strategy === 'high-brightness' && (
+                              <>
+                                <SunIcon className="w-2.5 h-2.5" />
+                                <span>高明度</span>
+                              </>
+                            )}
+                            {professionalRecipe.strategy === 'mid-brightness' && (
+                              <>
+                                <PaletteIcon className="w-2.5 h-2.5" />
+                                <span>中明度</span>
+                              </>
+                            )}
+                            {professionalRecipe.strategy === 'low-brightness' && (
+                              <>
+                                <MoonIcon className="w-2.5 h-2.5" />
+                                <span>低明度</span>
+                              </>
+                            )}
+                          </span>
+                          <span className="bp-badge text-[9px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
+                            HSB+LAB
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="bp-subcard-lg flex-1 grid grid-cols-2 gap-2 font-mono text-[10px] text-slate-700 dark:text-slate-200 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-700 p-2.5 rounded-lg border border-purple-200 dark:border-purple-900/30 shadow-xs">
+                        <div className="space-y-0.5">
+                          <div className="text-[10px] text-purple-600 dark:text-purple-400 font-extrabold">
+                            HSB 分析
+                          </div>
+                          <div className="truncate">
+                            H: {professionalRecipe.hsb.h}° (
+                            {professionalRecipe.hsb.h >= 0 && professionalRecipe.hsb.h < 60
+                              ? '红-橙'
+                              : professionalRecipe.hsb.h < 120
+                              ? '黄-绿'
+                              : professionalRecipe.hsb.h < 180
+                              ? '绿-青'
+                              : professionalRecipe.hsb.h < 240
+                              ? '青-蓝'
+                              : professionalRecipe.hsb.h < 300
+                              ? '蓝-紫'
+                              : '紫-红'}
+                            )
+                          </div>
+                          <div>
+                            S: {professionalRecipe.hsb.s}% · B: {professionalRecipe.hsb.b}%
+                          </div>
+                        </div>
+
+                        <div className="space-y-0.5 border-l border-purple-200/60 dark:border-slate-600/60 pl-2">
+                          <div className="text-[10px] text-pink-600 dark:text-pink-400 font-extrabold">
+                            LAB 分析
+                          </div>
                           <div>L*: {professionalRecipe.lab.l.toFixed(1)}</div>
-                          <div>a*: {professionalRecipe.lab.a.toFixed(1)}</div>
-                          <div>b*: {professionalRecipe.lab.b.toFixed(1)}</div>
+                          <div>
+                            a*: {professionalRecipe.lab.a.toFixed(1)} · b*: {professionalRecipe.lab.b.toFixed(1)}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Mixing Steps */}
-                    <div>
-                      <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mb-2 flex items-center gap-1">
-                        <ClipboardTextIcon className="w-3.5 h-3.5" />
-                        <span>调色步骤</span>
-                      </div>
-                      <div className="space-y-1.5 text-[10px] leading-relaxed">
-                        {professionalRecipe.steps.map((step, idx) => (
-                          <div key={idx} className={step.trim().match(/^\d+\./) ? 'font-semibold mt-2' : 'pl-4 text-slate-600 dark:text-slate-400'}>
-                            {step}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Ratios Summary */}
-                    <div className="p-3 bg-purple-100/50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
-                      <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mb-2 flex items-center gap-1">
-                        <ScalesIcon className="w-3.5 h-3.5" />
-                        <span>配比总结</span>
-                      </div>
-                      {(() => {
-                        const dropCounts = toDropRatio(professionalRecipe.ratios.map(item => item.percentage));
-                        const line = formatDropRatioLine(
-                          professionalRecipe.ratios.map((ratio, idx) => ({
-                            name: ratio.color.split(' ')[0],
-                            drops: dropCounts[idx] ?? 0,
-                          }))
-                        );
-                        return line ? (
-                          <div className="mb-2 font-mono text-xs font-bold text-purple-700 dark:text-purple-300">
-                            {line}
-                          </div>
-                        ) : null;
-                      })()}
-                      <div className="space-y-1">
-                        {professionalRecipe.ratios.map((ratio, idx) => (
-                          <div key={idx} className="flex justify-between items-center text-[10px]">
-                            <span className="font-mono">{ratio.color}</span>
-                            <span className="font-bold text-purple-600 dark:text-purple-400">{ratio.percentage.toFixed(1)}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                }
-            </div>
-            )}
-        </div>
+                  )}
+                </div>
+              )}
+         </div>
+
+         {/* Right: Selection & Brand Matches */}
+         <div className="min-w-0 w-full flex flex-col gap-5 pr-1.5 pb-1.5">
+             <BrandMatchPanel
+               hex={color.hex}
+               lang={lang}
+               selectable
+               selectedId={selectedBasePaint?.id}
+               assignedId={color.assignedPaint?.id}
+               hasSamplePoint={typeof color.sampleX === "number" && typeof color.sampleY === "number"}
+               onSelect={handleBasePaintToggle}
+               onAssignCatalog={onAssignCatalogPaint}
+             />
+         </div>
       </div>
     </div>
   );

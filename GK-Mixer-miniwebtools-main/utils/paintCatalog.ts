@@ -7,13 +7,18 @@ export const FEATURED_BRANDS = [
   "Hobby Mio",
   "Night Works",
   "Sunin7",
-  "QNC",
   "Gunze",
   "Mr.Hobby",
   "Tamiya",
   "Vallejo",
   "Citadel",
   "AK",
+  "AK Real Colors",
+  "Army Painter",
+  "Golden",
+  "Green Stuff World",
+  "Kimera Kolors",
+  "Scale75",
 ];
 
 export const localizedBrand = (brand: string, lang: "en" | "zh" | "ja") => {

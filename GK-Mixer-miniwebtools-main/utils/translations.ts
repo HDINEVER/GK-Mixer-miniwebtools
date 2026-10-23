@@ -2,7 +2,7 @@ import { Language } from "../types";
 
 export const translations = {
   en: {
-    title: 'GK_Mixer.exe',
+    title: 'GK-Mixer',
     analyzeMode: '1. ANALYZE & EXTRACT',
     sourceInput: 'SOURCE INPUT',
     dragDrop: 'DRAG & DROP REFERENCE IMAGE',
@@ -102,7 +102,7 @@ export const translations = {
     cardGlass: 'Liquid Glass'
   },
   zh: {
-    title: 'GK_混色模拟器.exe',
+    title: 'GK-Mixer',
     analyzeMode: '1. 提取 & 分析',
     sourceInput: '源图像输入',
     dragDrop: '拖入参考图片',
@@ -202,7 +202,7 @@ export const translations = {
     cardGlass: '液态玻璃效果'
   },
   ja: {
-    title: 'GK_調色シミュレーター.exe',
+    title: 'GK-Mixer',
     analyzeMode: '1. 分析と抽出',
     sourceInput: 'ソース入力',
     dragDrop: '参考画像をドロップ',

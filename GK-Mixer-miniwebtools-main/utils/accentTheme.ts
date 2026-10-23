@@ -96,6 +96,13 @@ const STORAGE_KEY = 'gk-accent-theme';
 export type UIStyle = 'glass' | 'blueprint';
 export const DEFAULT_UI_STYLE: UIStyle = 'glass';
 const UI_STYLE_STORAGE_KEY = 'gk-ui-style';
+
+export type WorkflowMode = 'pro' | 'beginner';
+export const DEFAULT_WORKFLOW_MODE: WorkflowMode = 'pro';
+const WORKFLOW_MODE_STORAGE_KEY = 'gk-workflow-mode';
+
+const HIDE_TOP_BAR_STORAGE_KEY = 'gk-hide-top-bar';
+
 export const THEME_SYNC_EVENT = 'gk-theme-sync';
 
 const emitThemeSync = () => {
@@ -179,6 +186,44 @@ export const saveUIStyle = (uiStyle: UIStyle) => {
     /* storage unavailable */
   }
   applyUIStyle(uiStyle);
+  emitThemeSync();
+};
+
+export const loadWorkflowMode = (): WorkflowMode => {
+  try {
+    const raw = localStorage.getItem(WORKFLOW_MODE_STORAGE_KEY);
+    return raw === 'beginner' || raw === 'pro' ? raw : DEFAULT_WORKFLOW_MODE;
+  } catch {
+    return DEFAULT_WORKFLOW_MODE;
+  }
+};
+
+export const saveWorkflowMode = (mode: WorkflowMode) => {
+  try {
+    localStorage.setItem(WORKFLOW_MODE_STORAGE_KEY, mode);
+  } catch {
+    /* storage unavailable */
+  }
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.workflowMode = mode;
+  }
+  emitThemeSync();
+};
+
+export const loadHideTopBar = (): boolean => {
+  try {
+    return localStorage.getItem(HIDE_TOP_BAR_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+export const saveHideTopBar = (hide: boolean) => {
+  try {
+    localStorage.setItem(HIDE_TOP_BAR_STORAGE_KEY, hide ? '1' : '0');
+  } catch {
+    /* storage unavailable */
+  }
   emitThemeSync();
 };
 

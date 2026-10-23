@@ -8,14 +8,22 @@ const HOSTS = [
 const BRAND_SLUG: Record<string, string> = {
   Gaia: "gaianotes",
   Gaianotes: "gaianotes",
+  盖亚: "gaianotes",
   Jumpwind: "jumpwind",
+  匠域: "jumpwind",
   "Hobby Mio": "hobby-mio",
+  喵匠: "hobby-mio",
   "Night Works": "nightworks",
+  夜之工坊: "nightworks",
   Sunin7: "sunin7",
+  星影: "sunin7",
   "Mr.Hobby": "mr-color",
   "Mr Color": "mr-color",
   "Mr. Color": "mr-color",
+  Gunze: "mr-color",
+  郡士: "mr-color",
   Tamiya: "tamiya",
+  田宫: "tamiya",
 };
 
 const codeCandidates = (brand: string, code: string): string[] => {
@@ -24,11 +32,11 @@ const codeCandidates = (brand: string, code: string): string[] => {
   const compact = raw.replace(/\s+/g, "");
   const preferred: string[] = [];
 
-  if (brand === "Jumpwind") {
+  if (brand === "Jumpwind" || brand === "匠域") {
     const mc = compact.match(/^MC\.?(\d+)$/i);
     if (mc) preferred.push(`MC${mc[1]}`);
   }
-  if (brand === "Mr.Hobby" || brand === "Gunze") {
+  if (brand === "Mr.Hobby" || brand === "Gunze" || brand === "郡士") {
     const digits = compact.match(/^C?(\d+[A-Za-z]?)$/i);
     if (digits) preferred.push(`C${digits[1]}`);
   }

@@ -21,6 +21,60 @@ import {
   matchQuality,
   matchQualityLabel,
 } from "../utils/paintCatalog";
+import { computeBrandTintRecipe } from "../utils/brandTintRecipe";
+
+function shiftHexLightness(hex: string, deltaLPct: number): string {
+  if (deltaLPct === 0) return hex.toUpperCase();
+  const clean = hex.replace("#", "").trim();
+  const num = parseInt(clean, 16);
+  if (Number.isNaN(num)) return hex.toUpperCase();
+  let r = ((num >> 16) & 255) / 255;
+  let g = ((num >> 8) & 255) / 255;
+  let b = (num & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  let l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+  l = Math.max(0.08, Math.min(0.95, l + deltaLPct / 100));
+  const hue2rgb = (p: number, q: number, t: number) => {
+    let tt = t;
+    if (tt < 0) tt += 1;
+    if (tt > 1) tt -= 1;
+    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+    if (tt < 1 / 2) return q;
+    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+    return p;
+  };
+  let nr = l;
+  let ng = l;
+  let nb = l;
+  if (s !== 0) {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    nr = hue2rgb(p, q, h + 1 / 3);
+    ng = hue2rgb(p, q, h);
+    nb = hue2rgb(p, q, h - 1 / 3);
+  }
+  const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, "0");
+  return `#${toHex(nr)}${toHex(ng)}${toHex(nb)}`.toUpperCase();
+}
 
 export interface BrandMatchPanelProps {
   hex: string | null;
@@ -37,6 +91,7 @@ export interface BrandMatchPanelProps {
   standaloneMode?: boolean;
   onChangeHex?: (hex: string) => void;
   onSyncToWorkbench?: (hex: string) => void;
+  onOpenChromaMatrix?: (hex: string) => void;
   sourceOptions?: {
     workbenchHex?: string | null;
     customMixHex?: string | null;
@@ -59,6 +114,7 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
   standaloneMode = false,
   onChangeHex,
   onSyncToWorkbench,
+  onOpenChromaMatrix,
   sourceOptions,
 }) => {
   const [localHex, setLocalHex] = useState<string>(hexProp || "#3B6EE4");
@@ -66,10 +122,14 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
   const [showSourceMenu, setShowSourceMenu] = useState(false);
   const [showBrandPopover, setShowBrandPopover] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const [tintDeltaL, setTintDeltaL] = useState<number>(0);
+  const [selectedTintBaseIdx, setSelectedTintBaseIdx] = useState<number>(0);
 
   useEffect(() => {
     if (hexProp) {
       setLocalHex(hexProp.toUpperCase());
+      setTintDeltaL(0);
+      setSelectedTintBaseIdx(0);
     }
   }, [hexProp]);
 
@@ -129,6 +189,22 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
     flat.sort((a, b) => a.deltaE - b.deltaE);
     return flat.slice(0, 6);
   }, [groups]);
+
+  const tintedTargetHex = useMemo(
+    () => (hex ? shiftHexLightness(hex, tintDeltaL) : "#3B6EE4"),
+    [hex, tintDeltaL]
+  );
+
+  const activeTintBasePaint = useMemo(() => {
+    if (top6Matches.length === 0) return null;
+    const safeIdx = Math.min(selectedTintBaseIdx, Math.min(2, top6Matches.length - 1));
+    return top6Matches[safeIdx]?.paint || top6Matches[0].paint;
+  }, [top6Matches, selectedTintBaseIdx]);
+
+  const activeTintRecipe = useMemo(() => {
+    if (!activeTintBasePaint || !tintedTargetHex) return null;
+    return computeBrandTintRecipe(tintedTargetHex, activeTintBasePaint, lang);
+  }, [activeTintBasePaint, tintedTargetHex, lang]);
 
   const toggleBrand = (brand: string) => {
     setSelectedBrands((prev) => {
@@ -314,6 +390,177 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
         </button>
       </div>
       </div>
+
+      {/* 2.5. 现成品牌漆 + 明度微调补正助手 (Smart Tint Corrector) */}
+      {standaloneMode && activeTintRecipe && (
+        <div className="bp-subcard-lg rounded-2xl border border-slate-200/85 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 p-3.5 shadow-xs space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="bp-badge px-2 py-0.5 rounded-md bg-accent/15 text-accent dark:text-white text-[10px] font-black font-mono">
+                🍼 滴数微调助手
+              </span>
+              <span className="text-xs font-black text-slate-900 dark:text-white">
+                现成品牌漆 + 几滴微调补正配方 (Smart Tint Corrector)
+              </span>
+            </div>
+            {onOpenChromaMatrix && (
+              <button
+                type="button"
+                onClick={() => onOpenChromaMatrix(tintedTargetHex)}
+                className="bp-pill flex items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:border-accent transition cursor-pointer"
+              >
+                <SquaresFourIcon className="h-3.5 w-3.5 text-accent" />
+                <span>打开完整 7×7 明度色卡</span>
+              </button>
+            )}
+          </div>
+
+          {/* 5 阶快捷明暗微调条 + 候选基底漆切换 */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
+            <div className="lg:col-span-5 space-y-1">
+              <div className="text-[10px] font-bold text-slate-400 flex items-center justify-between">
+                <span>① 点选期望明暗变化（或保持 0%L 原色）：</span>
+                <span className="font-mono text-slate-600 dark:text-slate-300">目标 {tintedTargetHex}</span>
+              </div>
+              <div className="grid grid-cols-5 gap-1">
+                {[
+                  { dL: -16, label: "-16%L 阴影" },
+                  { dL: -8, label: "-8%L 微暗" },
+                  { dL: 0, label: "0%L 原目标" },
+                  { dL: 8, label: "+8%L 提亮" },
+                  { dL: 16, label: "+16%L 高光" },
+                ].map((step) => {
+                  const stepHex = shiftHexLightness(hex, step.dL);
+                  const active = tintDeltaL === step.dL;
+                  return (
+                    <button
+                      key={step.dL}
+                      type="button"
+                      onClick={() => setTintDeltaL(step.dL)}
+                      className={`bp-swatch flex flex-col items-center justify-between p-1.5 rounded-lg border text-center transition cursor-pointer ${
+                        active
+                          ? "border-accent ring-2 ring-accent/40 scale-[1.02]"
+                          : "border-slate-200 dark:border-slate-700 opacity-85 hover:opacity-100"
+                      }`}
+                      style={{ backgroundColor: stepHex }}
+                    >
+                      <span className="px-1 py-0.5 rounded bg-black/45 text-white font-mono text-[8px] font-black leading-none whitespace-nowrap">
+                        {step.label}
+                      </span>
+                      <span className="mt-1 font-mono text-[8px] font-bold px-1 rounded bg-white/85 text-slate-900 leading-tight">
+                        {stepHex}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 space-y-2">
+              {/* 选择手头/想买的主品牌漆 */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400 mr-1">② 选择主基底品牌漆：</span>
+                {top6Matches.slice(0, 3).map((m, idx) => {
+                  const brandZh = localizedBrand(m.paint.brand, lang);
+                  const active = idx === selectedTintBaseIdx;
+                  return (
+                    <button
+                      key={m.paint.id}
+                      type="button"
+                      onClick={() => setSelectedTintBaseIdx(idx)}
+                      className={`bp-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold border transition cursor-pointer ${
+                        active
+                          ? "bp-pill-active border-accent bg-accent text-white shadow-2xs"
+                          : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-accent"
+                      }`}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full border border-white/60 shrink-0"
+                        style={{ backgroundColor: m.paint.hex }}
+                      />
+                      <span>
+                        {brandZh} {m.paint.code} {m.paint.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 滴数补正结果区 */}
+              {activeTintRecipe.isDirectMatch ? (
+                <div className="bp-subcard rounded-xl border border-emerald-500/40 bg-emerald-500/10 dark:bg-emerald-950/50 px-3 py-2 flex items-center justify-between gap-3">
+                  <div className="text-xs font-extrabold text-emerald-900 dark:text-emerald-100 leading-snug">
+                    {activeTintRecipe.spokenTip}
+                  </div>
+                  <span
+                    className="bp-swatch w-8 h-8 rounded-lg border border-black/15 shrink-0"
+                    style={{ backgroundColor: activeTintRecipe.basePaint.hex }}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    <div className="bp-subcard flex items-center justify-between gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-2.5 py-1.5 text-[11px]">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span
+                          className="w-4 h-4 rounded border border-black/15 shrink-0"
+                          style={{ backgroundColor: activeTintRecipe.basePaint.hex }}
+                        />
+                        <span className="font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                          🧴 主漆：【{activeTintRecipe.basePaint.brandZh} {activeTintRecipe.basePaint.code}】
+                        </span>
+                      </div>
+                      <span className="font-mono font-black text-accent shrink-0">
+                        {activeTintRecipe.basePct}% (约{activeTintRecipe.baseDrops}滴)
+                      </span>
+                    </div>
+
+                    {activeTintRecipe.modifier && (
+                      <div className="bp-subcard flex items-center justify-between gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-2.5 py-1.5 text-[11px]">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className="w-4 h-4 rounded border border-slate-300 dark:border-slate-600 shrink-0"
+                            style={{ backgroundColor: activeTintRecipe.modifier.hex }}
+                          />
+                          <span className="font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                            ➕ 补正：【{activeTintRecipe.modifier.name.split(" ")[0]}】
+                          </span>
+                        </div>
+                        <span className="font-mono font-black text-amber-600 dark:text-amber-400 shrink-0">
+                          {activeTintRecipe.modifier.pct}% (约{activeTintRecipe.modifier.drops}滴)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 零接缝对比条 + 口诀 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="bp-swatch grid grid-cols-2 h-7 sm:w-44 shrink-0 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 text-[9px] font-mono font-bold">
+                      <div
+                        className="px-2 flex items-center justify-between text-white"
+                        style={{ backgroundColor: activeTintRecipe.basePaint.hex }}
+                      >
+                        <span>原漆</span>
+                        <span>{activeTintRecipe.basePaint.code}</span>
+                      </div>
+                      <div
+                        className="px-2 flex items-center justify-between text-white"
+                        style={{ backgroundColor: activeTintRecipe.targetHex }}
+                      >
+                        <span>目标</span>
+                        <span>{activeTintRecipe.effectTag}</span>
+                      </div>
+                    </div>
+                    <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-snug flex-1">
+                      {activeTintRecipe.spokenTip}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3. Merged Results Header Row: Left [匹配结果 XX 款], Center [🎨 品牌 (N) ⌄], Right [色卡 | 列表] */}
       <div className="relative flex flex-wrap items-center justify-between gap-2 pt-0.5 pr-1.5 pb-0.5">

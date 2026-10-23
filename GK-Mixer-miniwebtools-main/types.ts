@@ -198,6 +198,8 @@ export interface FloatingSwatchNode {
   paintCode: string;
   paintName: string;
   hex: string;
+  basePaintHex?: string; // Original commercial bottle paint HEX when fine-tuned
+  tintBadgeText?: string; // Compact drop-in modifier formula badge (e.g. "NDL033 (90%) + 白 (10%) · [+9%L 提亮]")
   mixRatio?: string;
   lightness?: number;
   chroma?: number;

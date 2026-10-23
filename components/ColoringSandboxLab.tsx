@@ -3214,30 +3214,51 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     <div
       className={
         isFullscreen
-          ? `fixed inset-0 z-[105] w-screen h-screen overflow-hidden p-2 sm:p-3 flex flex-col select-none notranslate ${
+          ? `fixed inset-0 z-[100] w-full h-full overflow-hidden p-2.5 sm:p-3.5 flex flex-col select-none notranslate ${
               isBlueprint
-                ? "bg-[#F8FAFC] dark:bg-[#0B0F19] engineering-viewport-grid"
+                ? "bg-[#F8FAFC] dark:bg-[#0B0F19]"
                 : "bg-slate-100/95 dark:bg-slate-950/95 backdrop-blur-xl"
             }`
           : "w-full select-none notranslate"
+      }
+      style={
+        isFullscreen
+          ? {
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: "100%",
+              height: "100%",
+              zIndex: 100,
+              ...(isBlueprint
+                ? {
+                    backgroundImage:
+                      "linear-gradient(to right, rgba(148, 163, 184, 0.14) 1px, transparent 1px), linear-gradient(to bottom, rgba(148, 163, 184, 0.14) 1px, transparent 1px)",
+                    backgroundSize: "24px 24px",
+                  }
+                : {}),
+            }
+          : undefined
       }
       translate="no"
     >
       {/* Main 12-Column Responsive Split Workspace */}
       <div
-        className={`grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch w-full ${
+        className={`grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch w-full max-w-full min-w-0 ${
           isFullscreen ? "flex-1 min-h-0 h-full" : ""
         }`}
       >
-        {/* LEFT WORKSPACE: Interactive Sticky Canvas (Desktop 8-col / XL 9-col, or 12-col when palette collapsed) */}
+        {/* LEFT WORKSPACE: Interactive Sticky Canvas (Desktop 8-col, or 12-col when palette collapsed) */}
         <div
           className={`${
-            isDesktopPaletteCollapsed ? "lg:col-span-12" : "lg:col-span-8 xl:col-span-9"
+            isDesktopPaletteCollapsed ? "lg:col-span-12" : "lg:col-span-8"
           } ${
             isFullscreen
               ? "h-full min-h-0"
               : "lg:h-[calc(100vh-204px)] lg:min-h-[540px]"
-          } flex flex-col overflow-hidden ${cardSurfaceClass}`}
+          } min-w-0 flex flex-col overflow-hidden ${cardSurfaceClass}`}
         >
           {/* Row 1: Upload / Line Mode / Compare / Undo-Redo / Collapse Palette / Fullscreen */}
           <div className={`shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 ${dividerBottomClass}`}>
@@ -3739,15 +3760,15 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
           </div>
         </div>
 
-        {/* RIGHT CONTROL PANEL (Desktop >= 1024px: 4-col / XL 3-col, Independent Internal Scroll) */}
+        {/* RIGHT CONTROL PANEL (Desktop >= 1024px: 4-col, Independent Internal Scroll) */}
         <div
           className={`${
-            isDesktopPaletteCollapsed ? "hidden" : "hidden lg:flex lg:col-span-4 xl:col-span-3"
+            isDesktopPaletteCollapsed ? "hidden" : "hidden lg:flex lg:col-span-4"
           } ${
             isFullscreen
               ? "h-full min-h-0"
               : "lg:h-[calc(100vh-204px)] lg:min-h-[540px]"
-          } min-h-0 flex-col overflow-hidden ${cardSurfaceClass}`}
+          } min-w-0 min-h-0 flex-col overflow-hidden ${cardSurfaceClass}`}
           translate="no"
         >
           <div

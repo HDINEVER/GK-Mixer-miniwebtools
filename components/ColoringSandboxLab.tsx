@@ -262,6 +262,9 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [isComparingOriginal, setIsComparingOriginal] = useState(false);
   const [mobileDrawer, setMobileDrawer] = useState<"palette" | "params" | "used" | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isDesktopPaletteCollapsed, setIsDesktopPaletteCollapsed] = useState(false);
+  const [hideCanvasHint, setHideCanvasHint] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState("AI 试色方案");
   const [newPartName, setNewPartName] = useState("主外甲试色总成");
@@ -1194,6 +1197,17 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (showConvertModal) {
+          setShowConvertModal(false);
+          return;
+        }
+        if (isFullscreen) {
+          e.preventDefault();
+          setIsFullscreen(false);
+          return;
+        }
+      }
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
       if (e.code === "Space") {
         e.preventDefault();
@@ -1205,6 +1219,9 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         else undoRef.current();
       } else if (e.key === "0" && !e.metaKey && !e.ctrlKey) {
         focusRegion(activeCropRef.current, true);
+      } else if (e.key.toLowerCase() === "f" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setIsFullscreen((v) => !v);
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -1219,7 +1236,23 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [focusRegion]);
+  }, [focusRegion, isFullscreen, showConvertModal]);
+
+  // Lock page scroll while in fullscreen studio mode & re-fit canvas smoothly on layout change
+  useEffect(() => {
+    if (isFullscreen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const t = window.setTimeout(() => focusRegion(activeCropRef.current, true), 45);
+      return () => {
+        document.body.style.overflow = prevOverflow;
+        window.clearTimeout(t);
+      };
+    } else {
+      const t = window.setTimeout(() => focusRegion(activeCropRef.current, true), 45);
+      return () => window.clearTimeout(t);
+    }
+  }, [isFullscreen, isDesktopPaletteCollapsed, focusRegion]);
 
   // ---------------------------------------------------------------------------
   // Paint application (recolor selected regions)
@@ -3178,15 +3211,36 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   );
 
   return (
-    <div className="w-full select-none notranslate" translate="no">
+    <div
+      className={
+        isFullscreen
+          ? `fixed inset-0 z-[105] w-screen h-screen overflow-hidden p-2 sm:p-3 flex flex-col select-none notranslate ${
+              isBlueprint
+                ? "bg-[#F8FAFC] dark:bg-[#0B0F19] engineering-viewport-grid"
+                : "bg-slate-100/95 dark:bg-slate-950/95 backdrop-blur-xl"
+            }`
+          : "w-full select-none notranslate"
+      }
+      translate="no"
+    >
       {/* Main 12-Column Responsive Split Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start w-full">
-        {/* LEFT WORKSPACE: Interactive Sticky Canvas (Desktop 8-col / XL 9-col) */}
+      <div
+        className={`grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch w-full ${
+          isFullscreen ? "flex-1 min-h-0 h-full" : ""
+        }`}
+      >
+        {/* LEFT WORKSPACE: Interactive Sticky Canvas (Desktop 8-col / XL 9-col, or 12-col when palette collapsed) */}
         <div
-          className={`lg:col-span-8 xl:col-span-9 lg:sticky lg:top-20 lg:h-[calc(100vh-108px)] flex flex-col overflow-hidden ${cardSurfaceClass}`}
+          className={`${
+            isDesktopPaletteCollapsed ? "lg:col-span-12" : "lg:col-span-8 xl:col-span-9"
+          } ${
+            isFullscreen
+              ? "h-full min-h-0"
+              : "lg:h-[calc(100vh-204px)] lg:min-h-[540px]"
+          } flex flex-col overflow-hidden ${cardSurfaceClass}`}
         >
-          {/* Row 1: Upload / Line Mode / Compare / Undo-Redo */}
-          <div className={`shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 ${dividerBottomClass}`}>
+          {/* Row 1: Upload / Line Mode / Compare / Undo-Redo / Collapse Palette / Fullscreen */}
+          <div className={`shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 ${dividerBottomClass}`}>
             <div className="flex flex-wrap items-center gap-2">
               <span className="tech-prefix text-slate-500 dark:text-slate-400">[STUDIO_CANVAS]</span>
               <button
@@ -3226,7 +3280,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {/* Hold / Toggle Compare Original */}
               <button
                 type="button"
@@ -3270,16 +3324,44 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               >
                 ↷ 重做 ({redoCount})
               </button>
+
+              {/* Desktop Collapse / Expand Right Palette Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsDesktopPaletteCollapsed((v) => !v)}
+                className={`hidden lg:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-extrabold transition cursor-pointer ${
+                  isDesktopPaletteCollapsed ? primaryActionBtnClass : secondaryActionBtnClass
+                }`}
+                title={isDesktopPaletteCollapsed ? "展开右侧四维调色引擎面板" : "收起右侧调色面板，画布 100% 满宽显示"}
+              >
+                <span>{isDesktopPaletteCollapsed ? "⇤ 展开色板" : "⇥ 收起色板"}</span>
+              </button>
+
+              {/* Fullscreen Immersion Studio Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsFullscreen((v) => !v)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-extrabold transition cursor-pointer ${
+                  isFullscreen
+                    ? primaryActionBtnClass
+                    : isBlueprint
+                    ? "gk-mech-btn rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-[var(--accent-soft)] text-[var(--accent-color)] dark:text-white shadow-[2px_2px_0px_#0F172A]"
+                    : "rounded-xl border border-[var(--accent-color)]/40 bg-[var(--accent-soft)] text-[var(--accent-color)] dark:text-white hover:bg-[var(--accent-color)] hover:text-white shadow-xs"
+                }`}
+                title={isFullscreen ? "退出全屏沉浸模式 (快捷键 Esc / F)" : "进入全屏沉浸操作模式，彻底消除顶栏与边缘遮挡 (快捷键 F)"}
+              >
+                <span>{isFullscreen ? "🗗 退出全屏 (Esc)" : "⛶ 全屏操作"}</span>
+              </button>
             </div>
           </div>
 
           {/* Row 2: Shading Mode Switcher */}
           <div
-            className={`shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-slate-50/80 dark:bg-slate-900/60 ${dividerBottomClass}`}
+            className={`shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-1 bg-slate-50/80 dark:bg-slate-900/60 ${dividerBottomClass}`}
           >
             <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
               <span className="tech-prefix">[SHADING]</span>
-              <span>AI 智能分件试色视口</span>
+              <span>{isFullscreen ? "AI 智能分件全屏沉浸视口 (按 Esc 退出全屏)" : "AI 智能分件试色视口"}</span>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">光影合成：</span>
@@ -3335,7 +3417,11 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             onTouchCancel={handleTouchEnd}
             onDoubleClick={handleDoubleClick}
             onContextMenu={(e) => e.preventDefault()}
-            className={`gk-canvas-backdrop engineering-viewport-grid relative w-full h-[50vh] min-h-[320px] max-h-[500px] lg:h-auto lg:max-h-none lg:min-h-0 lg:flex-1 overflow-hidden select-none ${
+            className={`gk-canvas-backdrop engineering-viewport-grid relative w-full ${
+              isFullscreen
+                ? "flex-1 min-h-0"
+                : "h-[50vh] min-h-[320px] max-h-[500px] lg:h-auto lg:max-h-none lg:min-h-0 lg:flex-1"
+            } overflow-hidden select-none ${
               isFocusAnimating ? "gk-studio-focus-anim" : ""
             } ${
               isSpacePressed || activeTool === "pan"
@@ -3435,14 +3521,99 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               </div>
             )}
 
-            <div className="pointer-events-none hidden sm:block absolute bottom-2 right-3 rounded-md bg-slate-900/80 px-2.5 py-1 text-[10px] font-bold text-white">
-              按住左键/单指划过可连续合并填色 · 双指或按住空格平移 · ⌘/Ctrl+滚轮缩放
-            </div>
+            {/* Floating Quick Tool Dock when Desktop Right Palette is Collapsed */}
+            {isDesktopPaletteCollapsed && (
+              <div
+                onPointerDown={(e) => e.stopPropagation()}
+                className={`hidden lg:flex items-center gap-1.5 absolute top-3 right-3 z-20 p-1.5 ${
+                  isBlueprint
+                    ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-600 bg-white/95 dark:bg-slate-900/95 shadow-[3px_3px_0px_#0F172A]"
+                    : "rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsDesktopPaletteCollapsed(false)}
+                  title={`当前喷涂色 ${activeHex}（点击展开调色盘）`}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[11px] font-mono font-black text-slate-800 dark:text-slate-100 cursor-pointer"
+                >
+                  <span
+                    className="h-3.5 w-3.5 rounded-xs border border-black/20 shrink-0"
+                    style={{ backgroundColor: activeHex }}
+                  />
+                  <span>{activeHex}</span>
+                </button>
+                <ToolButton
+                  active={activeTool === "fill"}
+                  onClick={() => setActiveTool("fill")}
+                  label="🪣 填色"
+                  isBlueprint={isBlueprint}
+                />
+                <ToolButton
+                  active={activeTool === "eraser"}
+                  onClick={() => setActiveTool("eraser")}
+                  label="🧽 橡皮"
+                  isBlueprint={isBlueprint}
+                />
+                <ToolButton
+                  active={activeTool === "pan"}
+                  onClick={() => setActiveTool("pan")}
+                  label="✋ 平移"
+                  isBlueprint={isBlueprint}
+                />
+                <ToolButton
+                  active={activeTool === "select"}
+                  onClick={() => setActiveTool("select")}
+                  label="🎯 多选"
+                  isBlueprint={isBlueprint}
+                />
+                <ToolButton
+                  active={activeTool === "pen"}
+                  onClick={() => setActiveTool("pen")}
+                  label="✏️ 补线"
+                  isBlueprint={isBlueprint}
+                />
+                <ToolButton
+                  active={activeTool === "lineEraser"}
+                  onClick={() => setActiveTool("lineEraser")}
+                  label="✂️ 擦线"
+                  isBlueprint={isBlueprint}
+                />
+              </div>
+            )}
+
+            {/* Dismissible / Restorable Compact Gesture Hint Pill */}
+            {!hideCanvasHint ? (
+              <div
+                onPointerDown={(e) => e.stopPropagation()}
+                className="hidden sm:flex items-center gap-2 absolute bottom-2 right-2.5 z-10 rounded-md bg-slate-900/75 backdrop-blur-xs px-2.5 py-1 text-[10px] font-bold text-white/95 shadow-sm"
+              >
+                <span>按住左键/单指划过可连续合并填色 · 双指或按住空格平移 · ⌘/Ctrl+滚轮缩放</span>
+                <button
+                  type="button"
+                  onClick={() => setHideCanvasHint(true)}
+                  title="隐藏操作提示"
+                  className="ml-0.5 rounded px-1 text-[10px] text-white/70 hover:text-white hover:bg-white/15 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => setHideCanvasHint(false)}
+                title="显示操作提示"
+                className="hidden sm:flex items-center justify-center absolute bottom-2 right-2.5 z-10 h-6 w-6 rounded-full bg-slate-900/65 hover:bg-slate-900/85 text-[10px] font-black text-white shadow-sm cursor-pointer"
+              >
+                ?
+              </button>
+            )}
           </div>
 
           {/* Row 4: Zoom bar + Status */}
           <div
-            className={`shrink-0 flex flex-wrap items-center justify-between gap-2 bg-slate-50/90 dark:bg-slate-900/80 px-3 py-2 ${dividerTopClass}`}
+            className={`shrink-0 flex flex-wrap items-center justify-between gap-2 bg-slate-50/90 dark:bg-slate-900/80 px-3 py-1.5 ${dividerTopClass}`}
           >
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
               <button
@@ -3482,7 +3653,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
           </div>
 
           {/* Row 5 (Mobile < 1024px Only): Compact Tool Strip + Bottom Sheet Triggers */}
-          <div className={`lg:hidden shrink-0 bg-white dark:bg-slate-900 p-2.5 space-y-2 ${dividerTopClass}`} translate="no">
+          <div className={`lg:hidden shrink-0 bg-white dark:bg-slate-900 p-2 space-y-1.5 ${dividerTopClass}`} translate="no">
             {/* Mobile Tools Row */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
               <ToolButton
@@ -3570,36 +3741,52 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
 
         {/* RIGHT CONTROL PANEL (Desktop >= 1024px: 4-col / XL 3-col, Independent Internal Scroll) */}
         <div
-          className={`hidden lg:flex lg:col-span-4 xl:col-span-3 lg:h-[calc(100vh-108px)] min-h-0 flex-col overflow-hidden ${cardSurfaceClass}`}
+          className={`${
+            isDesktopPaletteCollapsed ? "hidden" : "hidden lg:flex lg:col-span-4 xl:col-span-3"
+          } ${
+            isFullscreen
+              ? "h-full min-h-0"
+              : "lg:h-[calc(100vh-204px)] lg:min-h-[540px]"
+          } min-h-0 flex-col overflow-hidden ${cardSurfaceClass}`}
           translate="no"
         >
           <div
-            className={`shrink-0 flex items-center justify-between px-4 py-2.5 ${dividerBottomClass}`}
+            className={`shrink-0 flex items-center justify-between px-3.5 py-2 ${dividerBottomClass}`}
             style={{ backgroundColor: "var(--accent-soft)" }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <span>🎨</span>
-              <span className="text-sm font-black text-slate-900 dark:text-white">
+              <span className="text-xs xl:text-sm font-black text-slate-900 dark:text-white truncate">
                 <span className="tech-prefix">[PALETTE]</span>
                 GKMixer 四维专业调色引擎
               </span>
             </div>
-            <span
-              className="text-[10px] font-black tracking-widest uppercase italic"
-              style={{ color: "var(--accent-color)" }}
-            >
-              COLOR STUDIO
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className="text-[10px] font-black tracking-widest uppercase italic hidden xl:inline"
+                style={{ color: "var(--accent-color)" }}
+              >
+                COLOR STUDIO
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsDesktopPaletteCollapsed(true)}
+                title="收起调色盘，让左侧画布 100% 满宽显示"
+                className="rounded px-1.5 py-0.5 text-[10px] font-extrabold text-slate-600 dark:text-slate-300 hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
+              >
+                ⇥ 收起
+              </button>
+            </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-3.5 space-y-3.5">
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
             {renderPaletteSection()}
-            <div className={`pt-3 ${dividerTopClass}`}>{renderUsedPaintsSection()}</div>
-            <div className={`pt-3 ${dividerTopClass}`}>{renderAlgorithmSection(false)}</div>
+            <div className={`pt-2.5 ${dividerTopClass}`}>{renderUsedPaintsSection()}</div>
+            <div className={`pt-2.5 ${dividerTopClass}`}>{renderAlgorithmSection(false)}</div>
           </div>
 
-          {/* Desktop 6-Grid Tools & Export Footer */}
-          <div className={`shrink-0 bg-white/90 dark:bg-slate-900/90 p-3 space-y-2 ${dividerTopClass}`} translate="no">
+          {/* Desktop 6-Grid Tools & Export Footer (Compact Zero-Occlusion Dock) */}
+          <div className={`shrink-0 bg-white/95 dark:bg-slate-900/95 p-2.5 space-y-1.5 ${dividerTopClass}`} translate="no">
             <div className="grid grid-cols-3 gap-1.5">
               <ToolButton
                 active={activeTool === "fill"}
@@ -3646,11 +3833,11 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                 title="擦除多余的噪点黑线"
               />
             </div>
-            <div className="grid grid-cols-12 gap-2 pt-1">
+            <div className="grid grid-cols-12 gap-1.5 pt-0.5">
               <button
                 type="button"
                 onClick={handleExportCompositePng}
-                className={`col-span-7 flex items-center justify-between px-3.5 py-2 text-xs font-black transition cursor-pointer ${primaryActionBtnClass}`}
+                className={`col-span-7 flex items-center justify-between px-3 py-1.5 text-xs font-black transition cursor-pointer ${primaryActionBtnClass}`}
               >
                 <span>📥 保存高清 PNG</span>
                 <span>↓</span>
@@ -3658,7 +3845,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               <button
                 type="button"
                 onClick={handleResetAllFills}
-                className={`col-span-5 py-2 text-xs font-extrabold transition cursor-pointer ${secondaryActionBtnClass}`}
+                className={`col-span-5 py-1.5 text-xs font-extrabold transition cursor-pointer ${secondaryActionBtnClass}`}
               >
                 一键清空重绘
               </button>
@@ -3852,7 +4039,7 @@ const ToolButton: React.FC<{
     onClick={onClick}
     title={title}
     className={`notranslate font-extrabold transition cursor-pointer whitespace-nowrap px-2 ${
-      primary ? "py-2 text-xs" : "py-1.5 text-[11px]"
+      primary ? "py-1.5 text-xs" : "py-1 text-[11px]"
     } ${
       active
         ? isBlueprint

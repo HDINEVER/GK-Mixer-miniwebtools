@@ -2046,7 +2046,7 @@ const App: React.FC = () => {
                             title="GKMixer STUDIO · AI 智能分件试色台 (COLOR STUDIO)"
                         >
                             <PaletteIcon className="w-3.5 h-3.5 shrink-0" />
-                            <span>🎨 {lang === 'zh' ? '试色台' : 'Color Studio'}</span>
+                            <span>{lang === 'zh' ? '试色台' : 'Color Studio'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('studio')}

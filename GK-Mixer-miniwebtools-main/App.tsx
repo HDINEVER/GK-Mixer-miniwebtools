@@ -37,7 +37,7 @@ import { ProjectLibraryView } from './components/ProjectLibraryView';
 import { SwatchEditorModal } from './components/SwatchEditorModal';
 import { SaveToProjectModal } from './components/SaveToProjectModal';
 import QuickPaintAssignSheet from './components/QuickPaintAssignSheet';
-import ColoringSandboxLab from './components/ColoringSandboxLab';
+import ColoringSandboxLab, { SandboxSyncPayload } from './components/ColoringSandboxLab';
 import ColorLoupe, { ColorLoupeHandle, sampleCanvasAtClient } from './components/ColorLoupe';
 import ExtractMarkerOverlay from './components/ExtractMarkerOverlay';
 import SwatchStudioControls from './components/SwatchStudioControls';
@@ -76,6 +76,7 @@ import {
   saveColorsToDB,
   colorsToFloatingNodes,
 } from './utils/projectStore';
+import { inferStepsFromNodes } from './utils/projectSharing';
 import {
   SwatchSettings,
   DEFAULT_SWATCH_SETTINGS,
@@ -234,6 +235,16 @@ const App: React.FC = () => {
     token: number;
   } | null>(null);
   const [focusProjectId, setFocusProjectId] = useState<string | null>(null);
+  // Beginner Mode Sandbox -> Brand & Tint synced state
+  const [sandboxSyncState, setSandboxSyncState] = useState<SandboxSyncPayload | null>(null);
+  const [sandboxColors, setSandboxColors] = useState<ColorData[]>([]);
+  const [selectedSandboxColorId, setSelectedSandboxColorId] = useState<string | null>(null);
+  const [externalSandboxAssign, setExternalSandboxAssign] = useState<{
+    targetHex: string;
+    paint: CatalogPaint;
+    token: number;
+  } | null>(null);
+  const [swatchEditorMode, setSwatchEditorMode] = useState<'pro' | 'sandbox'>('pro');
   // Urgent UI state for the desktop tab pill: updates synchronously on click so the
   // highlight responds instantly, while the heavy panel swap runs in a transition.
   const [desktopTabUI, setDesktopTabUI] = useState<DesktopPanelTab>(() =>
@@ -941,6 +952,163 @@ const App: React.FC = () => {
     }
   };
 
+  const selectedSandboxColor = useMemo(
+    () =>
+      sandboxColors.find((c) => c.id === selectedSandboxColorId) ||
+      sandboxColors[0] ||
+      null,
+    [sandboxColors, selectedSandboxColorId]
+  );
+
+  const handleSyncSandboxState = useCallback(
+    (payload: SandboxSyncPayload) => {
+      setSandboxSyncState(payload);
+      setSandboxColors((prev) => {
+        const next: ColorData[] = payload.syncedSwatches.map((sw) => {
+          const existing = prev.find(
+            (c) => c.id === sw.id || c.hex.toUpperCase() === sw.hex.toUpperCase()
+          );
+          const rgb = hexToRgb(sw.hex) || { r: 128, g: 128, b: 128 };
+          return {
+            id: sw.id,
+            hex: sw.hex.toUpperCase(),
+            rgb,
+            cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
+            hsb: rgbToHsb(rgb.r, rgb.g, rgb.b),
+            lab: rgbToLab(rgb.r, rgb.g, rgb.b),
+            source: 'manual',
+            colorSpace,
+            sampleX: sw.anchorX,
+            sampleY: sw.anchorY,
+            labelNx: existing?.labelNx ?? sw.offsetX,
+            labelNy: existing?.labelNy ?? sw.offsetY,
+            labelScale: existing?.labelScale,
+            assignedPaint: sw.assignedPaint || existing?.assignedPaint,
+            tonalGradient: existing?.tonalGradient ?? [
+              { id: `hl-${sw.hex}`, hex: sw.highlightHex, label: '高光', role: 'highlight' },
+              { id: `base-${sw.hex}`, hex: sw.hex, label: '主色', role: 'base' },
+              { id: `sh-${sw.hex}`, hex: sw.shadeHex, label: '阴影', role: 'shadow' },
+            ],
+          };
+        });
+        return next;
+      });
+      setSelectedSandboxColorId((prevId) => {
+        if (prevId && payload.syncedSwatches.some((sw) => sw.id === prevId)) {
+          return prevId;
+        }
+        const byActive = payload.syncedSwatches.find(
+          (sw) => sw.hex.toUpperCase() === payload.activeHex.toUpperCase()
+        );
+        return byActive?.id || payload.syncedSwatches[0]?.id || null;
+      });
+    },
+    [colorSpace]
+  );
+
+  const handleAssignSandboxCatalogPaint = useCallback(
+    (paint: CatalogPaint) => {
+      const target = selectedSandboxColor || sandboxColors[0];
+      const brandLabel = localizedBrand(paint.brand, lang);
+      if (!target) {
+        handleAssignCatalogPaint(paint);
+        return;
+      }
+      const localizedPaint: CatalogPaint = {
+        ...paint,
+        brand: brandLabel,
+      };
+      setSandboxColors((prev) =>
+        prev.map((c) =>
+          c.id === target.id
+            ? {
+                ...c,
+                assignedPaint: localizedPaint,
+              }
+            : c
+        )
+      );
+      setExternalSandboxAssign({
+        targetHex: target.hex,
+        paint,
+        token: Date.now(),
+      });
+      showToast(
+        lang === 'zh'
+          ? `✅ 已将 ${brandLabel} ${paint.code} 锁定至试色台色卡 (${target.hex})`
+          : `✅ Assigned ${brandLabel} ${paint.code} to sandbox swatch`
+      );
+    },
+    [selectedSandboxColor, sandboxColors, lang, handleAssignCatalogPaint, showToast]
+  );
+
+  const handleExportSandboxAnnotated = async () => {
+    const dataUrl = sandboxSyncState?.compositeDataUrl;
+    if (!dataUrl || sandboxColors.length === 0) return;
+    setIsExporting(true);
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load sandbox composite image'));
+        img.src = dataUrl;
+      });
+      const markers = colorsToMarkers(sandboxColors);
+      const res = await exportAnnotatedImage(img, markers, swatchSettings);
+      if (res) {
+        setExportResult(res);
+        setIsExportModalOpen(true);
+      }
+    } catch (err) {
+      console.error('[Export] Failed to export sandbox annotated image:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleSaveSandboxToProject = useCallback(() => {
+    const dataUrl = sandboxSyncState?.compositeDataUrl;
+    if (!dataUrl || sandboxColors.length === 0) return;
+    const nodes = colorsToFloatingNodes(sandboxColors).map((node) => {
+      const swMeta = sandboxSyncState?.syncedSwatches.find(
+        (s) => s.id === node.id || s.hex.toUpperCase() === node.hex.toUpperCase()
+      );
+      return {
+        ...node,
+        basePaintHex: swMeta?.basePaintHex,
+        tintBadgeText: swMeta?.tintBadgeText,
+        recipeSummary: swMeta?.recipeSummary,
+      };
+    });
+    const steps = inferStepsFromNodes(nodes);
+    const now = Date.now();
+    const part: PartCanvas = {
+      id: `part-${now}`,
+      partName: '试色与微调总成',
+      sourceImageDataUrl: dataUrl,
+      nodes,
+      steps,
+      createdAt: now,
+    };
+    const newProj: PaintProject = {
+      id: `proj-sandbox-${now}`,
+      title: '试色与选漆微调方案',
+      coverImageDataUrl: dataUrl,
+      createdAt: now,
+      updatedAt: now,
+      parts: [part],
+    };
+    setProjects((prev) => [newProj, ...prev]);
+    setFocusProjectId(newProj.id);
+    handleSwitchDesktopTab('studio');
+    showToast(
+      lang === 'zh'
+        ? `✅ 已存入涂装库工程「${newProj.title}」并生成 ${nodes.length} 个悬浮色卡`
+        : `Saved project ${newProj.title}`
+    );
+  }, [sandboxSyncState, sandboxColors, handleSwitchDesktopTab, lang, showToast]);
+
   const assignedMarkers = extractMarkers.filter((marker) => marker.paint);
 
   const handleCopyAssignments = async () => {
@@ -1642,7 +1810,10 @@ const App: React.FC = () => {
                           {assignedMarkers.length > 0 && (
                             <button
                               type="button"
-                              onClick={() => setIsSwatchEditorOpen(true)}
+                              onClick={() => {
+                                setSwatchEditorMode('pro');
+                                setIsSwatchEditorOpen(true);
+                              }}
                               className="bp-btn flex items-center gap-1 rounded-lg bg-white/90 dark:bg-slate-800/90 px-2.5 py-1.5 text-[10px] font-bold text-slate-800 dark:text-slate-100 shadow-lg backdrop-blur-sm hover:bg-white border border-slate-200/70 dark:border-slate-700 cursor-pointer"
                             >
                               <SwatchesIcon className="h-3.5 w-3.5 text-accent" />
@@ -1810,7 +1981,10 @@ const App: React.FC = () => {
                     {/* Prominent UI Button to open SwatchEditorModal (Screenshot 2) */}
                     <button
                       type="button"
-                      onClick={() => setIsSwatchEditorOpen(true)}
+                      onClick={() => {
+                        setSwatchEditorMode('pro');
+                        setIsSwatchEditorOpen(true);
+                      }}
                       className="bp-pill-active gk-btn-primary w-full flex items-center justify-center gap-2 rounded-xl bg-accent hover:bg-accent-hover px-3.5 py-2.5 text-xs font-extrabold text-white shadow-sm transition-all active:scale-[0.98] cursor-pointer"
                     >
                       <SlidersHorizontalIcon className="w-4 h-4 shrink-0" weight="bold" />
@@ -2341,7 +2515,225 @@ const App: React.FC = () => {
 
                 <KeepAlivePanel active={desktopTab === 'brands'} direction={tabTransitionDir}>
                   <ErrorBoundary fallbackTitle="品牌近邻视图遇到渲染异常">
-                    <BrandMatchPanel
+                    {workflowMode === 'beginner' ? (
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                        {/* Left Column: 色卡预览图 (色卡编辑导出预览图) + 右侧竖置试色台选中颜色列表 */}
+                        <div className="lg:col-span-5 xl:col-span-5 lg:sticky lg:top-4 min-w-0">
+                          <div className="bp-subcard-lg rounded-2xl border border-slate-200/85 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 p-3 sm:p-3.5 shadow-xs space-y-3">
+                            {/* Header Bar */}
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
+                                  <span className="tech-prefix">[PREVIEW]</span>
+                                  色卡编辑预览图
+                                </span>
+                                <span className="bp-badge px-2 py-0.5 rounded-full bg-accent/12 text-accent dark:text-white text-[10px] font-extrabold font-mono shrink-0">
+                                  {sandboxColors.length} 色
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  disabled={!sandboxSyncState?.compositeDataUrl || sandboxColors.length === 0 || isExporting}
+                                  onClick={handleExportSandboxAnnotated}
+                                  className="bp-btn flex items-center gap-1 rounded-lg bg-slate-900 dark:bg-slate-700 px-2.5 py-1.5 text-[10px] font-extrabold text-white shadow-xs hover:opacity-95 disabled:opacity-40 cursor-pointer"
+                                >
+                                  <DownloadSimpleIcon className="h-3.5 w-3.5" />
+                                  <span>{isExporting ? '导出中…' : '导出 PNG'}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!sandboxSyncState?.compositeDataUrl || sandboxColors.length === 0}
+                                  onClick={handleSaveSandboxToProject}
+                                  className="bp-btn flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-[10px] font-extrabold text-slate-700 dark:text-slate-200 hover:border-accent disabled:opacity-40 cursor-pointer"
+                                >
+                                  <FolderPlusIcon className="h-3.5 w-3.5 text-accent" />
+                                  <span>存入涂装库</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Side-by-Side Stage: Left = 色卡编辑导出预览图, Right = 竖置摆放的模拟试色台已上色备选色 */}
+                            <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
+                              {/* Left: 色卡编辑导出的预览图 */}
+                              <div className="bp-canvas-stage flex-1 min-w-0 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-950 p-2 flex items-center justify-center relative overflow-hidden min-h-[260px] sm:min-h-[340px]">
+                                {sandboxSyncState?.compositeDataUrl ? (
+                                  <div className="relative inline-block max-w-full">
+                                    <img
+                                      src={sandboxSyncState.compositeDataUrl}
+                                      alt="色卡编辑预览图"
+                                      className="bp-swatch block max-h-[42dvh] lg:max-h-[48dvh] w-auto max-w-full rounded-xl object-contain select-none"
+                                      draggable={false}
+                                    />
+                                    {sandboxColors.length > 0 && (
+                                      <ExtractMarkerOverlay
+                                        colors={sandboxColors}
+                                        selectedId={selectedSandboxColor?.id || null}
+                                        onSelect={(cOrId) => {
+                                          const id = typeof cOrId === 'string' ? cOrId : cOrId?.id;
+                                          if (id) setSelectedSandboxColorId(id);
+                                        }}
+                                        onUpdatePosition={(id, nx, ny) => {
+                                          setSandboxColors((prev) =>
+                                            prev.map((c) => (c.id === id ? { ...c, labelNx: nx, labelNy: ny } : c))
+                                          );
+                                        }}
+                                        settings={swatchSettings}
+                                        interactive={true}
+                                        allowDrag={true}
+                                      />
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center text-center p-6 space-y-2.5">
+                                    <PaletteIcon className="w-8 h-8 text-slate-500" />
+                                    <div className="text-xs font-bold text-slate-300">
+                                      请先在「模拟试色台」上传模型图并涂抹备选色
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSwitchDesktopTab('coloring')}
+                                      className="bp-pill-active gk-btn-primary rounded-full bg-accent px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm cursor-pointer"
+                                    >
+                                      前往模拟试色台涂色 →
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Right of Preview Image: 竖置摆放的试色台已上色备选色列 */}
+                              <div className="w-full sm:w-[136px] xl:w-[148px] shrink-0 flex flex-col gap-1.5">
+                                <div className="flex items-center justify-between px-1">
+                                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    📌 试色台用色
+                                  </span>
+                                  <span className="text-[10px] font-mono font-bold text-slate-400">
+                                    {sandboxColors.length} 项
+                                  </span>
+                                </div>
+
+                                <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[42dvh] lg:max-h-[48dvh] p-0.5 pr-1.5 pb-1.5">
+                                  {sandboxColors.length > 0 ? (
+                                    sandboxColors.map((sc) => {
+                                      const isSelected = selectedSandboxColor?.id === sc.id;
+                                      const swMeta = sandboxSyncState?.syncedSwatches.find(
+                                        (s) => s.id === sc.id || s.hex.toUpperCase() === sc.hex.toUpperCase()
+                                      );
+                                      const paint = sc.assignedPaint;
+                                      const labelText = paint
+                                        ? `${paint.brand} ${paint.code}`
+                                        : swMeta
+                                        ? `${swMeta.brand} ${swMeta.code}`
+                                        : sc.hex;
+                                      const subName = paint?.name || swMeta?.name || sc.hex;
+                                      return (
+                                        <button
+                                          key={sc.id}
+                                          type="button"
+                                          onClick={() => setSelectedSandboxColorId(sc.id)}
+                                          className={`bp-subcard group shrink-0 w-36 sm:w-full flex flex-col gap-1 rounded-xl border p-2 text-left transition cursor-pointer ${
+                                            isSelected
+                                              ? 'bp-subcard-active border-accent bg-accent/10 dark:bg-accent/20 shadow-xs'
+                                              : 'border-slate-200 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/80 hover:border-accent/60'
+                                          }`}
+                                          title="点击在右侧匹配品牌油漆或微调滴数，指派后实时更新左侧色卡预览图"
+                                        >
+                                          <div className="flex items-center gap-1.5">
+                                            <span
+                                              className="bp-swatch h-5 flex-1 rounded-md border border-black/15 relative overflow-hidden"
+                                              style={{ backgroundColor: sc.hex }}
+                                            />
+                                            {swMeta && (
+                                              <span className="px-1 py-0.5 rounded bg-slate-200/80 dark:bg-slate-700 text-[9px] font-mono font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                                                {swMeta.regionCount}处
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="truncate text-[11px] font-black text-slate-800 dark:text-slate-100 leading-tight">
+                                            {labelText}
+                                          </div>
+                                          <div className="flex items-center justify-between gap-1 text-[9px] font-mono text-slate-400">
+                                            <span className="truncate">{subName}</span>
+                                            <span>{sc.hex}</span>
+                                          </div>
+                                        </button>
+                                      );
+                                    })
+                                  ) : (
+                                    <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-3 text-center text-[11px] text-slate-400 space-y-1.5">
+                                      <div>暂无已上色备选色</div>
+                                      <div className="text-[10px]">
+                                        在「模拟试色台」选好备选色并涂抹到模型上后，会自动同步至此列表
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Prominent UI Button to open SwatchEditorModal (进入排版工作台) */}
+                            <button
+                              type="button"
+                              disabled={!sandboxSyncState?.compositeDataUrl || sandboxColors.length === 0}
+                              onClick={() => {
+                                setSwatchEditorMode('sandbox');
+                                setIsSwatchEditorOpen(true);
+                              }}
+                              className="bp-pill-active gk-btn-primary w-full flex items-center justify-center gap-2 rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-40 px-3.5 py-2.5 text-xs font-extrabold text-white shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                            >
+                              <SlidersHorizontalIcon className="w-4 h-4 shrink-0" weight="bold" />
+                              <span>
+                                {lang === 'zh'
+                                  ? `进入排版工作台 (${sandboxColors.length} 个色卡) →`
+                                  : `Open Swatch Layout Studio (${sandboxColors.length}) →`}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Right Column: 选漆与微调 (BrandMatchPanel) */}
+                        <div className="lg:col-span-7 xl:col-span-7 min-w-0">
+                          <BrandMatchPanel
+                            hex={
+                              selectedSandboxColor?.hex ||
+                              sandboxSyncState?.activeHex ||
+                              selectedColor?.hex ||
+                              colors[0]?.hex ||
+                              '#4A7BD0'
+                            }
+                            lang={lang}
+                            standaloneMode={true}
+                            beginnerSandboxMode={true}
+                            sandboxSwatches={sandboxSyncState?.syncedSwatches || []}
+                            onSelectSandboxSwatch={(_hex, id) => {
+                              setSelectedSandboxColorId(id);
+                            }}
+                            onNavigateToSandbox={() => handleSwitchDesktopTab('coloring')}
+                            hasSamplePoint={!!selectedSandboxColor}
+                            assignedId={selectedSandboxColor?.assignedPaint?.id || null}
+                            onAssignCatalog={handleAssignSandboxCatalogPaint}
+                            onChangeHex={(newHex) => {
+                              if (selectedSandboxColor) {
+                                setSandboxColors((prev) =>
+                                  prev.map((c) =>
+                                    c.id === selectedSandboxColor.id
+                                      ? { ...c, hex: newHex.toUpperCase() }
+                                      : c
+                                  )
+                                );
+                              } else {
+                                handleAddColor(newHex);
+                              }
+                            }}
+                            sourceOptions={{
+                              workbenchHex: selectedSandboxColor?.hex || sandboxSyncState?.activeHex || null,
+                              libraryHex: savedColors[0]?.hex || null,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <BrandMatchPanel
                         hex={selectedColor?.hex || colors[0]?.hex || '#4A7BD0'}
                         lang={lang}
                         standaloneMode={true}
@@ -2359,7 +2751,8 @@ const App: React.FC = () => {
                           basicMixHex: basicMixerCache.baseColors[0]?.hex || null,
                           libraryHex: savedColors[0]?.hex || null,
                         }}
-                    />
+                      />
+                    )}
                   </ErrorBoundary>
                 </KeepAlivePanel>
 
@@ -2371,6 +2764,9 @@ const App: React.FC = () => {
                         setTheme={setTheme}
                         incomingImage={coloringIncomingImage}
                         externalCatalogPaints={catalogPaints}
+                        isActiveTab={desktopTab === 'coloring'}
+                        onSyncSandboxState={handleSyncSandboxState}
+                        externalBrandAssignment={externalSandboxAssign}
                         onSendColorToMixer={(hex) => {
                           handleAddColor(hex);
                           handleSwitchWorkbenchSubpage('mixer');
@@ -2378,6 +2774,7 @@ const App: React.FC = () => {
                         }}
                         onNavigateToBrandTint={(hex) => {
                           handleAddColor(hex);
+                          setSelectedSandboxColorId(`sandbox-swatch-${hex.toUpperCase()}`);
                           handleSwitchDesktopTab('brands');
                           showToast(lang === 'zh' ? `已将试色 ${hex} 载入「选漆与微调」，可匹配现成品牌漆或查看几滴白/黑微调方案` : `Loaded ${hex} into Brand & Tint`);
                         }}
@@ -2439,19 +2836,33 @@ const App: React.FC = () => {
 
       </main>
 
-      {/* Shared Swatch Editor Modal (callable from Tab 1 Extract Workbench) */}
+      {/* Shared Swatch Editor Modal (callable from Tab 1 Extract Workbench OR Beginner Mode Brand & Tint Preview) */}
       <SwatchEditorModal
         isOpen={isSwatchEditorOpen}
         onClose={() => setIsSwatchEditorOpen(false)}
-        imageSrc={sourceImage || ''}
-        colors={colors}
-        selectedColor={selectedColor}
-        onSelectColor={(c) => setSelectedColorId(c.id)}
-        onUpdateColors={setColors}
+        imageSrc={
+          swatchEditorMode === 'sandbox'
+            ? sandboxSyncState?.compositeDataUrl || ''
+            : sourceImage || ''
+        }
+        colors={swatchEditorMode === 'sandbox' ? sandboxColors : colors}
+        selectedColor={swatchEditorMode === 'sandbox' ? selectedSandboxColor : selectedColor}
+        onSelectColor={(c) => {
+          if (swatchEditorMode === 'sandbox') {
+            setSelectedSandboxColorId(c.id);
+          } else {
+            setSelectedColorId(c.id);
+          }
+        }}
+        onUpdateColors={swatchEditorMode === 'sandbox' ? setSandboxColors : setColors}
         settings={swatchSettings}
         onUpdateSettings={setSwatchSettings}
         lang={lang}
-        onExportImage={handleExportAnnotated}
+        onExportImage={
+          swatchEditorMode === 'sandbox'
+            ? handleExportSandboxAnnotated
+            : handleExportAnnotated
+        }
         isExporting={isExporting}
       />
 

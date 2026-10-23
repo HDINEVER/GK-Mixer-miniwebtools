@@ -63,13 +63,20 @@ export interface ColorData {
 
 export type PaintType = 'hobby' | 'ral' | 'pantone';
 
+export type PigmentRole = 'base' | 'primary' | 'cmy' | 'secondary';
+
 export interface PaintBrand {
   id: string;
   brand: string;
   code: string;
+  displayCode?: string;
   name: string;
   hex: string;
   type?: PaintType;
+  role?: PigmentRole;
+  roleLabel?: string;
+  propertyLabel?: string;
+  isSecondary?: boolean;
 }
 
 export type PaintFinish =
@@ -159,6 +166,7 @@ export interface BaseColor {
 export interface MixerResultCache {
   mixingMode: MixingMode;
   bottleVolume: number;
+  useSecondaryColors?: boolean;
 }
 
 export interface RadialMixerCache {

@@ -727,67 +727,288 @@ export const BASE_MIXING_COLORS: PaintBrand[] = [
 
 /**
  * Extended Mixing Colors (8-color system for better color coverage)
- * Adds Cyan, Magenta, Orange to cover more hues accurately
- * Used for advanced color matching when 5-color system is insufficient
+ * Adds Cyan, Magenta, Orange to cover more hues accurately.
+ * Note: `code` keeps 001..008 for legacy snapshot ID compatibility (`legacy-001`..`legacy-008`),
+ * while `displayCode` reflects the real Gaia catalog code (`034` Magenta, `033` Cyan, `015` Orange).
  */
 export const EXTENDED_MIXING_COLORS: PaintBrand[] = [
   {
     id: 'gaia-001',
     brand: 'Gaia',
     code: '001',
+    displayCode: '001',
     name: '纯白',
-    hex: '#FFFFFF'
+    hex: '#FFFFFF',
+    role: 'base',
+    roleLabel: '底漆',
+    propertyLabel: '光泽白 (实色底漆)',
+    isSecondary: false,
   },
   {
     id: 'gaia-002',
     brand: 'Gaia',
     code: '002',
+    displayCode: '002',
     name: '纯黑',
-    hex: '#000000'
+    hex: '#000000',
+    role: 'base',
+    roleLabel: '底漆',
+    propertyLabel: '光泽黑 (实色消色)',
+    isSecondary: false,
   },
   {
     id: 'gaia-003',
     brand: 'Gaia',
     code: '003',
+    displayCode: '003',
     name: '红色',
-    hex: '#FF0000'
+    hex: '#FF0000',
+    role: 'primary',
+    roleLabel: '主色',
+    propertyLabel: '光泽红 (实色主色)',
+    isSecondary: false,
   },
   {
     id: 'gaia-006',
     brand: 'Gaia',
     code: '006',
+    displayCode: '034',
     name: '品红',
-    hex: '#FF00FF'
+    hex: '#FF00FF',
+    role: 'cmy',
+    roleLabel: '色源',
+    propertyLabel: '色源品红 (CMY半透明)',
+    isSecondary: false,
   },
   {
     id: 'gaia-004',
     brand: 'Gaia',
     code: '004',
+    displayCode: '004',
     name: '蓝色',
-    hex: '#0000FF'
+    hex: '#0000FF',
+    role: 'primary',
+    roleLabel: '主色',
+    propertyLabel: '光泽蓝 (实色主色)',
+    isSecondary: false,
   },
   {
     id: 'gaia-007',
     brand: 'Gaia',
     code: '007',
+    displayCode: '033',
     name: '青色',
-    hex: '#00FFFF'
+    hex: '#00FFFF',
+    role: 'cmy',
+    roleLabel: '色源',
+    propertyLabel: '色源青 (CMY半透明)',
+    isSecondary: false,
   },
   {
     id: 'gaia-005',
     brand: 'Gaia',
     code: '005',
+    displayCode: '005',
     name: '黄色',
-    hex: '#FFFF00'
+    hex: '#FFFF00',
+    role: 'primary',
+    roleLabel: '主色',
+    propertyLabel: '光泽黄 (实色/色源)',
+    isSecondary: false,
   },
   {
     id: 'gaia-008',
     brand: 'Gaia',
     code: '008',
+    displayCode: '015',
     name: '橙色',
-    hex: '#FF8000'
-  }
+    hex: '#FF8000',
+    role: 'secondary',
+    roleLabel: '间色',
+    propertyLabel: '色源橙 (半透明间色)',
+    isSecondary: true,
+  },
 ];
+
+/**
+ * Full 10-Color Mixing System (includes all 3 Secondary Translucent Color Sources:
+ * Orange #FF8000, Green #00FF00, Purple #8000FF).
+ * When `useSecondaryColors` is enabled, Orange replaces Red+Yellow, Green replaces Cyan+Yellow,
+ * and Purple replaces Blue+Magenta ("以一顶二").
+ */
+export const FULL_MIXING_COLORS: PaintBrand[] = [
+  ...EXTENDED_MIXING_COLORS,
+  {
+    id: 'gaia-009',
+    brand: 'Gaia',
+    code: '009',
+    displayCode: '036',
+    name: '绿色',
+    hex: '#00FF00',
+    role: 'secondary',
+    roleLabel: '间色',
+    propertyLabel: '色源绿 (半透明间色)',
+    isSecondary: true,
+  },
+  {
+    id: 'gaia-010',
+    brand: 'Gaia',
+    code: '010',
+    displayCode: '037',
+    name: '紫色',
+    hex: '#8000FF',
+    role: 'secondary',
+    roleLabel: '间色',
+    propertyLabel: '色源紫 (半透明间色)',
+    isSecondary: true,
+  },
+];
+
+export interface MixingPigmentDescriptor {
+  code: string;
+  displayCode: string;
+  shortName: string;
+  fullName: string;
+  role: 'base' | 'primary' | 'cmy' | 'secondary';
+  roleBadge: string;
+  propertyHint: string;
+  isSecondary: boolean;
+}
+
+const PIGMENT_DESCRIPTORS_BY_HEX: Record<
+  string,
+  {
+    code: string;
+    displayCode: string;
+    zh: { shortName: string; fullName: string; roleBadge: string; propertyHint: string };
+    en: { shortName: string; fullName: string; roleBadge: string; propertyHint: string };
+    ja: { shortName: string; fullName: string; roleBadge: string; propertyHint: string };
+    role: 'base' | 'primary' | 'cmy' | 'secondary';
+    isSecondary: boolean;
+  }
+> = {
+  '#FFFFFF': {
+    code: '001',
+    displayCode: '001',
+    role: 'base',
+    isSecondary: false,
+    zh: { shortName: '白', fullName: '光泽白', roleBadge: '底漆', propertyHint: '实色遮盖底漆' },
+    en: { shortName: 'White', fullName: 'Gloss White', roleBadge: 'Base', propertyHint: 'Opaque Base' },
+    ja: { shortName: '白', fullName: 'ピュアホワイト', roleBadge: '下地', propertyHint: '隠蔽ベース' },
+  },
+  '#000000': {
+    code: '002',
+    displayCode: '002',
+    role: 'base',
+    isSecondary: false,
+    zh: { shortName: '黑', fullName: '光泽黑', roleBadge: '底漆', propertyHint: '实色压暗底漆' },
+    en: { shortName: 'Black', fullName: 'Gloss Black', roleBadge: 'Base', propertyHint: 'Opaque Shade' },
+    ja: { shortName: '黒', fullName: 'ピュアブラック', roleBadge: '下地', propertyHint: '暗色ベース' },
+  },
+  '#FF0000': {
+    code: '003',
+    displayCode: '003',
+    role: 'primary',
+    isSecondary: false,
+    zh: { shortName: '红', fullName: '光泽红', roleBadge: '主色', propertyHint: '实色基础色' },
+    en: { shortName: 'Red', fullName: 'Bright Red', roleBadge: 'Primary', propertyHint: 'Solid Primary' },
+    ja: { shortName: '赤', fullName: 'ブライトレッド', roleBadge: '主色', propertyHint: 'ソリッド原色' },
+  },
+  '#FF00FF': {
+    code: '006',
+    displayCode: '034',
+    role: 'cmy',
+    isSecondary: false,
+    zh: { shortName: '品红', fullName: '色源品红', roleBadge: '色源', propertyHint: 'CMY半透明色源' },
+    en: { shortName: 'Magenta', fullName: 'Primary Magenta', roleBadge: 'CMY', propertyHint: 'Translucent CMY' },
+    ja: { shortName: 'マゼンタ', fullName: '純色マゼンタ', roleBadge: '色源', propertyHint: 'CMY半透明' },
+  },
+  '#0000FF': {
+    code: '004',
+    displayCode: '004',
+    role: 'primary',
+    isSecondary: false,
+    zh: { shortName: '蓝', fullName: '光泽蓝', roleBadge: '主色', propertyHint: '实色基础色' },
+    en: { shortName: 'Blue', fullName: 'Ultra Blue', roleBadge: 'Primary', propertyHint: 'Solid Primary' },
+    ja: { shortName: '青', fullName: 'ウルトラブルー', roleBadge: '主色', propertyHint: 'ソリッド原色' },
+  },
+  '#00FFFF': {
+    code: '007',
+    displayCode: '033',
+    role: 'cmy',
+    isSecondary: false,
+    zh: { shortName: '青', fullName: '色源青', roleBadge: '色源', propertyHint: 'CMY半透明色源' },
+    en: { shortName: 'Cyan', fullName: 'Primary Cyan', roleBadge: 'CMY', propertyHint: 'Translucent CMY' },
+    ja: { shortName: 'シアン', fullName: '純色シアン', roleBadge: '色源', propertyHint: 'CMY半透明' },
+  },
+  '#FFFF00': {
+    code: '005',
+    displayCode: '005',
+    role: 'primary',
+    isSecondary: false,
+    zh: { shortName: '黄', fullName: '光泽黄', roleBadge: '主色', propertyHint: '实色/色源黄' },
+    en: { shortName: 'Yellow', fullName: 'Sunshine Yellow', roleBadge: 'Primary', propertyHint: 'Primary Yellow' },
+    ja: { shortName: '黄', fullName: 'サンシャインイエロー', roleBadge: '主色', propertyHint: '原色イエロー' },
+  },
+  '#FF8000': {
+    code: '008',
+    displayCode: '015',
+    role: 'secondary',
+    isSecondary: true,
+    zh: { shortName: '色源橙', fullName: '色源橙', roleBadge: '间色', propertyHint: '半透明间色 (替红+黄)' },
+    en: { shortName: 'Orange', fullName: 'Source Orange', roleBadge: 'Secondary', propertyHint: 'Replaces Red+Yellow' },
+    ja: { shortName: '橙', fullName: '純色オレンジ', roleBadge: '間色', propertyHint: '赤+黄の代替' },
+  },
+  '#00FF00': {
+    code: '009',
+    displayCode: '036',
+    role: 'secondary',
+    isSecondary: true,
+    zh: { shortName: '色源绿', fullName: '色源绿', roleBadge: '间色', propertyHint: '半透明间色 (替青+黄)' },
+    en: { shortName: 'Green', fullName: 'Source Green', roleBadge: 'Secondary', propertyHint: 'Replaces Cyan+Yellow' },
+    ja: { shortName: '緑', fullName: '純色グリーン', roleBadge: '間色', propertyHint: '青+黄の代替' },
+  },
+  '#8000FF': {
+    code: '010',
+    displayCode: '037',
+    role: 'secondary',
+    isSecondary: true,
+    zh: { shortName: '色源紫', fullName: '色源紫', roleBadge: '间色', propertyHint: '半透明间色 (替蓝+品红)' },
+    en: { shortName: 'Purple', fullName: 'Source Violet', roleBadge: 'Secondary', propertyHint: 'Replaces Blue+Magenta' },
+    ja: { shortName: '紫', fullName: '純色バイオレット', roleBadge: '間色', propertyHint: '青+マゼンタの代替' },
+  },
+};
+
+export const getMixingPigmentInfo = (
+  hex: string,
+  lang: 'zh' | 'en' | 'ja' = 'zh',
+  fallbackLabel?: string
+): MixingPigmentDescriptor => {
+  const entry = PIGMENT_DESCRIPTORS_BY_HEX[hex.toUpperCase()];
+  if (entry) {
+    const loc = entry[lang] ?? entry.zh;
+    return {
+      code: entry.code,
+      displayCode: entry.displayCode,
+      shortName: loc.shortName,
+      fullName: loc.fullName,
+      role: entry.role,
+      roleBadge: loc.roleBadge,
+      propertyHint: loc.propertyHint,
+      isSecondary: entry.isSecondary,
+    };
+  }
+  return {
+    code: fallbackLabel ?? hex,
+    displayCode: fallbackLabel ?? hex,
+    shortName: fallbackLabel ?? hex,
+    fullName: fallbackLabel ?? hex,
+    role: 'primary',
+    roleBadge: lang === 'zh' ? '主色' : lang === 'ja' ? '主色' : 'Paint',
+    propertyHint: '',
+    isSecondary: false,
+  };
+};
 
 export const findNearestPaints = (targetHex: string, count: number = 3): PaintBrand[] => {
   const targetRgb = hexToRgb(targetHex);
@@ -975,8 +1196,26 @@ export const PROFESSIONAL_RATIO_THRESHOLD = 0.5;
 /** Mixbox inverse beaker shows smaller residual pigments. */
 export const MIXBOX_INVERSE_RATIO_THRESHOLD = 0.3;
 
-const emptyPaletteWeights = (useExtendedPalette: boolean): number[] =>
-  useExtendedPalette ? [0, 0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+export interface MixboxSolveOptions {
+  /** Whether secondary translucent color sources (Orange, Green, Purple) are enabled. Default: true */
+  useSecondaryColors?: boolean;
+  /** Whether to use the 10-color FULL_MIXING_COLORS palette (including Green & Purple). Default: false */
+  includeFullSecondaryPalette?: boolean;
+}
+
+const resolvePalette = (
+  useExtendedPalette: boolean,
+  options?: MixboxSolveOptions
+): PaintBrand[] => {
+  if (!useExtendedPalette) return BASE_MIXING_COLORS;
+  if (options?.includeFullSecondaryPalette) return FULL_MIXING_COLORS;
+  return EXTENDED_MIXING_COLORS;
+};
+
+const emptyPaletteWeights = (
+  useExtendedPalette: boolean,
+  options?: MixboxSolveOptions
+): number[] => new Array(resolvePalette(useExtendedPalette, options).length).fill(0);
 
 const rgbHueDegrees = (r: number, g: number, b: number): number => {
   const rNorm = r / 255;
@@ -995,13 +1234,209 @@ const rgbHueDegrees = (r: number, g: number, b: number): number => {
   return ((rNorm - gNorm) / delta + 4) * 60;
 };
 
-const normalizeSimplex = (weights: number[]): number[] => {
-  const values = weights.map(weight => Math.max(0, Number.isFinite(weight) ? weight : 0));
+const normalizeSimplex = (weights: number[], allowedMask?: boolean[]): number[] => {
+  const values = weights.map((weight, idx) => {
+    if (allowedMask && !allowedMask[idx]) return 0;
+    return Math.max(0, Number.isFinite(weight) ? weight : 0);
+  });
   const sum = values.reduce((total, weight) => total + weight, 0);
   if (sum <= 1e-12) {
+    if (allowedMask) {
+      const allowedCount = allowedMask.filter(Boolean).length || 1;
+      return values.map((_, idx) => (allowedMask[idx] ? 1 / allowedCount : 0));
+    }
     return values.map(() => 1 / Math.max(1, values.length));
   }
   return values.map(weight => weight / sum);
+};
+
+/**
+ * Build candidate active index subsets for a given target hue (0..360°),
+ * enforcing:
+ * 1. Hue-neighborhood isolation: opposite-hemisphere pigments (e.g. Orange/Yellow in Blue/Purple/Green) are strictly 0.
+ * 2. Intermediate Color Replacement ("以一顶二"):
+ *    - When `useSecondaryColors` is true:
+ *      * In the Orange sector (12°..55°), Orange (7) replaces Red+Yellow (never Red + Yellow + Orange all 3 together).
+ *      * In the Green sector (75°..170°), Green (8) replaces Cyan+Yellow (never Cyan + Yellow + Green all 3 together).
+ *      * In the Purple sector (252°..315°), Purple (9) replaces Blue+Magenta (never Blue + Magenta + Purple all 3 together).
+ *    - When `useSecondaryColors` is false: secondary indices (7, 8, 9) are strictly 0.
+ */
+const getCandidateActiveSubsets = (
+  hue: number,
+  paletteLength: number,
+  useSecondaryColors: boolean = true
+): number[][] => {
+  if (paletteLength <= 5) {
+    return [[0, 1, 2, 3, 4]];
+  }
+  const hasOrange = paletteLength > 7 && useSecondaryColors;
+  const hasGreen = paletteLength > 8 && useSecondaryColors;
+  const hasPurple = paletteLength > 9 && useSecondaryColors;
+
+  // 1. Orange Zone (12°..55°): Intermediate Orange (7) replaces Red (2)/Magenta (3) + Yellow (6)
+  if (hue >= 12 && hue < 55) {
+    if (hasOrange) {
+      return [
+        [0, 1, 7],
+        [0, 1, 7, 2],
+        [0, 1, 7, 6],
+      ];
+    }
+    return [
+      [0, 1, 2, 6],
+      [0, 1, 3, 6],
+    ];
+  }
+
+  // 2. Red / Warm-Red Zone (345°..360° or 0°..12°)
+  if (hue >= 345 || hue < 12) {
+    if (hasOrange) {
+      return [
+        [0, 1, 2, 3],
+        [0, 1, 2, 7],
+      ];
+    }
+    return [
+      [0, 1, 2, 3],
+      [0, 1, 2, 6],
+    ];
+  }
+
+  // 3. Yellow Zone (55°..75°)
+  if (hue >= 55 && hue < 75) {
+    const subsets: number[][] = [
+      [0, 1, 6],
+      [0, 1, 6, 5],
+    ];
+    if (hasOrange) {
+      subsets.push([0, 1, 6, 7]);
+    } else {
+      subsets.push([0, 1, 6, 2]);
+    }
+    if (hasGreen) {
+      subsets.push([0, 1, 6, 8]);
+    }
+    return subsets;
+  }
+
+  // 4. Green Zone (75°..170°): Intermediate Green (8) replaces Cyan (5) + Yellow (6)
+  if (hue >= 75 && hue < 170) {
+    if (hasGreen) {
+      return [
+        [0, 1, 8],
+        [0, 1, 8, 6],
+        [0, 1, 8, 5],
+        [0, 1, 8, 4],
+      ];
+    }
+    return [
+      [0, 1, 5, 6],
+      [0, 1, 4, 5, 6],
+    ];
+  }
+
+  // 5. Cyan / Teal Zone (170°..205°)
+  if (hue >= 170 && hue < 205) {
+    if (hasGreen) {
+      return [
+        [0, 1, 4, 5],
+        [0, 1, 5, 8],
+      ];
+    }
+    return [
+      [0, 1, 4, 5],
+      [0, 1, 5, 6],
+    ];
+  }
+
+  // 6. Sky Blue / Cobalt / Cornflower / Periwinkle Zone (205°..252°)
+  if (hue >= 205 && hue < 252) {
+    // Allow Blue (4) + Cyan (5) + Red (2) for periwinkle/warm-blue compensation;
+    // strictly forbid Yellow (6), Orange (7), Green (8), and prevent Red (2) + Magenta (3) co-existence.
+    return [
+      [0, 1, 2, 4, 5],
+    ];
+  }
+
+  // 7. Purple / Violet Zone (252°..315°): Intermediate Purple (9) replaces Blue (4) + Magenta (3)
+  if (hue >= 252 && hue < 315) {
+    if (hasPurple) {
+      return [
+        [0, 1, 9],
+        [0, 1, 9, 4],
+        [0, 1, 9, 3],
+        [0, 1, 9, 2],
+      ];
+    }
+    return [
+      [0, 1, 3, 4],
+      [0, 1, 2, 4],
+    ];
+  }
+
+  // 8. Magenta / Rose Zone (315°..345°)
+  if (hasPurple) {
+    return [
+      [0, 1, 2, 3],
+      [0, 1, 3, 9],
+    ];
+  }
+  return [
+    [0, 1, 2, 3],
+    [0, 1, 3, 4],
+  ];
+};
+
+const subsetToMask = (subset: number[], paletteLength: number): boolean[] => {
+  const mask = new Array(paletteLength).fill(false);
+  for (const idx of subset) {
+    if (idx >= 0 && idx < paletteLength) {
+      mask[idx] = true;
+    }
+  }
+  return mask;
+};
+
+const getPrimarySchemeAMask = (
+  hue: number,
+  paletteLength: number,
+  useSecondaryColors: boolean = true
+): boolean[] => {
+  if (paletteLength <= 5) {
+    return [true, true, true, true, true];
+  }
+  const hasOrange = paletteLength > 7 && useSecondaryColors;
+  const hasGreen = paletteLength > 8 && useSecondaryColors;
+  const hasPurple = paletteLength > 9 && useSecondaryColors;
+
+  if (hue >= 12 && hue < 55) {
+    if (hasOrange) {
+      // Intermediate Replacement: Orange + at most ONE flanking primary (Red or Yellow, never both)
+      return subsetToMask(hue < 34 ? [0, 1, 2, 7] : [0, 1, 6, 7], paletteLength);
+    }
+    return subsetToMask([0, 1, 2, 6], paletteLength);
+  }
+  if (hue >= 75 && hue < 170) {
+    if (hasGreen) {
+      // Intermediate Replacement: Green + at most ONE flanking primary (Yellow or Cyan, never both)
+      return subsetToMask(hue < 122 ? [0, 1, 6, 8] : [0, 1, 5, 8], paletteLength);
+    }
+    return subsetToMask([0, 1, 5, 6], paletteLength);
+  }
+  if (hue >= 252 && hue < 315) {
+    if (hasPurple) {
+      // Intermediate Replacement: Purple + at most ONE flanking primary (Blue or Magenta, never both)
+      return subsetToMask(hue < 282 ? [0, 1, 4, 9] : [0, 1, 3, 9], paletteLength);
+    }
+    return subsetToMask([0, 1, 3, 4], paletteLength);
+  }
+
+  const subsets = getCandidateActiveSubsets(hue, paletteLength, useSecondaryColors);
+  // Union of candidate subsets for non-replacement zones, except for 205..252 where it's already [0,1,2,4,5]
+  if (hue >= 205 && hue < 252) {
+    return subsetToMask([0, 1, 2, 4, 5], paletteLength);
+  }
+  return subsetToMask(subsets[0], paletteLength);
 };
 
 const loadBaseLatents = (palette: PaintBrand[]): number[][] | null => {
@@ -1038,9 +1473,10 @@ const refineWeightsToLatent = (
   weights: number[],
   baseLatents: number[][],
   targetLatent: number[],
-  iterations = 80
+  iterations = 80,
+  allowedMask?: boolean[]
 ): number[] => {
-  let current = normalizeSimplex(weights);
+  let current = normalizeSimplex(weights, allowedMask);
   let learningRate = 0.15;
   for (let iter = 0; iter < iterations; iter++) {
     const mixed = mixLatents(baseLatents, current);
@@ -1051,14 +1487,19 @@ const refineWeightsToLatent = (
     for (let j = 0; j < 7; j++) {
       const diff = mixed[j] - targetLatent[j];
       for (let i = 0; i < current.length; i++) {
+        if (allowedMask && !allowedMask[i]) continue;
         gradient[i] += 2 * diff * baseLatents[i][j];
       }
     }
 
     for (let i = 0; i < current.length; i++) {
-      current[i] = Math.max(0, current[i] - learningRate * gradient[i]);
+      if (allowedMask && !allowedMask[i]) {
+        current[i] = 0;
+      } else {
+        current[i] = Math.max(0, current[i] - learningRate * gradient[i]);
+      }
     }
-    current = normalizeSimplex(current);
+    current = normalizeSimplex(current, allowedMask);
     if (iter > 20) {
       learningRate = Math.max(0.01, learningRate * 0.96);
     }
@@ -1118,9 +1559,10 @@ const pairwiseCoordinateDescent = (
   start: number[],
   baseLatents: number[][],
   targetRgb01: { r: number; g: number; b: number },
-  targetLab: { l: number; a: number; b: number }
+  targetLab: { l: number; a: number; b: number },
+  allowedMask?: boolean[]
 ): number[] => {
-  let weights = normalizeSimplex(start);
+  let weights = normalizeSimplex(start, allowedMask);
   let currentError = inverseObjective(weights, baseLatents, targetRgb01, targetLab);
   let step = 0.25;
   while (step >= 1 / 4096) {
@@ -1128,11 +1570,13 @@ const pairwiseCoordinateDescent = (
       let bestTrial: number[] | null = null;
       let bestError = currentError;
       for (let donor = 0; donor < weights.length; donor++) {
+        if (allowedMask && !allowedMask[donor]) continue;
         if (weights[donor] <= 0) continue;
         const amount = Math.min(step, weights[donor]);
         if (amount <= 0) continue;
         for (let receiver = 0; receiver < weights.length; receiver++) {
           if (receiver === donor) continue;
+          if (allowedMask && !allowedMask[receiver]) continue;
           const trial = weights.slice();
           trial[donor] -= amount;
           trial[receiver] += amount;
@@ -1149,38 +1593,144 @@ const pairwiseCoordinateDescent = (
     }
     step *= 0.5;
   }
-  return normalizeSimplex(weights);
+  return normalizeSimplex(weights, allowedMask);
 };
 
-const extendedChromaInit = (hue: number): number[] => {
-  // [red, magenta, blue, cyan, yellow, orange]
-  if (hue >= 345 || hue < 15) return [0.9, 0.05, 0.0, 0.0, 0.0, 0.05];
-  if (hue >= 15 && hue < 30) return [0.6, 0.0, 0.0, 0.0, 0.0, 0.4];
-  if (hue >= 30 && hue < 45) return [0.3, 0.0, 0.0, 0.0, 0.0, 0.7];
-  if (hue >= 45 && hue < 60) return [0.0, 0.0, 0.0, 0.0, 0.9, 0.1];
-  if (hue >= 60 && hue < 75) return [0.0, 0.0, 0.0, 0.0, 0.95, 0.05];
-  if (hue >= 75 && hue < 120) return [0.0, 0.0, 0.0, 0.3, 0.7, 0.0];
-  if (hue >= 120 && hue < 165) return [0.0, 0.0, 0.0, 0.6, 0.4, 0.0];
-  if (hue >= 165 && hue < 195) return [0.0, 0.0, 0.0, 0.9, 0.1, 0.0];
-  if (hue >= 195 && hue < 210) return [0.0, 0.0, 0.7, 0.3, 0.0, 0.0];
-  if (hue >= 210 && hue < 225) return [0.0, 0.05, 0.7, 0.25, 0.0, 0.0];
-  if (hue >= 225 && hue < 250) return [0.0, 0.05, 0.85, 0.10, 0.0, 0.0];
-  if (hue >= 250 && hue < 255) return [0.0, 0.0, 0.9, 0.1, 0.0, 0.0];
-  if (hue >= 255 && hue < 285) return [0.0, 0.6, 0.4, 0.0, 0.0, 0.0];
-  if (hue >= 285 && hue < 315) return [0.0, 0.9, 0.1, 0.0, 0.0, 0.0];
-  return [0.5, 0.5, 0.0, 0.0, 0.0, 0.0];
+const extendedChromaInit = (
+  hue: number,
+  numChromatic: number = 6,
+  useSecondaryColors: boolean = true
+): number[] => {
+  // Chromatic indices relative to palette index 2:
+  // [0:red(2), 1:magenta(3), 2:blue(4), 3:cyan(5), 4:yellow(6), 5:orange(7), 6:green(8), 7:purple(9)]
+  const init = new Array(numChromatic).fill(0);
+  const hasOrange = numChromatic >= 6 && useSecondaryColors;
+  const hasGreen = numChromatic >= 7 && useSecondaryColors;
+  const hasPurple = numChromatic >= 8 && useSecondaryColors;
+
+  if (hue >= 345 || hue < 12) {
+    init[0] = 0.9;
+    init[1] = 0.05;
+    if (hasOrange) init[5] = 0.05;
+    else init[4] = 0.05;
+  } else if (hue >= 12 && hue < 34) {
+    if (hasOrange) {
+      init[0] = 0.35;
+      init[5] = 0.65;
+    } else {
+      init[0] = 0.65;
+      init[4] = 0.35;
+    }
+  } else if (hue >= 34 && hue < 55) {
+    if (hasOrange) {
+      init[4] = 0.35;
+      init[5] = 0.65;
+    } else {
+      init[0] = 0.35;
+      init[4] = 0.65;
+    }
+  } else if (hue >= 55 && hue < 75) {
+    init[4] = 0.92;
+    if (hasOrange) init[5] = 0.08;
+    else init[0] = 0.08;
+  } else if (hue >= 75 && hue < 122) {
+    if (hasGreen) {
+      init[6] = 0.7;
+      init[4] = 0.3;
+    } else {
+      init[3] = 0.3;
+      init[4] = 0.7;
+    }
+  } else if (hue >= 122 && hue < 170) {
+    if (hasGreen) {
+      init[6] = 0.7;
+      init[3] = 0.3;
+    } else {
+      init[3] = 0.6;
+      init[4] = 0.4;
+    }
+  } else if (hue >= 170 && hue < 195) {
+    init[3] = 0.9;
+    if (hasGreen) init[6] = 0.1;
+    else init[4] = 0.1;
+  } else if (hue >= 195 && hue < 205) {
+    init[2] = 0.7;
+    init[3] = 0.3;
+  } else if (hue >= 205 && hue < 225) {
+    init[0] = 0.05;
+    init[2] = 0.7;
+    init[3] = 0.25;
+  } else if (hue >= 225 && hue < 252) {
+    init[0] = 0.05;
+    init[2] = 0.85;
+    init[3] = 0.1;
+  } else if (hue >= 252 && hue < 282) {
+    if (hasPurple) {
+      init[7] = 0.75;
+      init[2] = 0.25;
+    } else {
+      init[1] = 0.6;
+      init[2] = 0.4;
+    }
+  } else if (hue >= 282 && hue < 315) {
+    if (hasPurple) {
+      init[7] = 0.75;
+      init[1] = 0.25;
+    } else {
+      init[1] = 0.85;
+      init[2] = 0.15;
+    }
+  } else {
+    init[0] = 0.5;
+    init[1] = 0.5;
+  }
+  return init;
 };
 
-const extendedLowSatChroma = (hue: number): number[] => {
-  if (hue >= 345 || hue < 22.5) return [1, 0, 0, 0, 0, 0];
-  if (hue >= 22.5 && hue < 45) return [0, 0, 0, 0, 0, 1];
-  if (hue >= 45 && hue < 75) return [0, 0, 0, 0, 1, 0];
-  if (hue >= 75 && hue < 150) return [0, 0, 0, 0.3, 1, 0];
-  if (hue >= 150 && hue < 195) return [0, 0, 0, 1, 0, 0];
-  if (hue >= 195 && hue < 210) return [0, 0, 1, 0, 0, 0];
-  if (hue >= 210 && hue < 240) return [0, 0.05, 1, 0, 0, 0];
-  if (hue >= 240 && hue < 300) return [0, 1, 0.3, 0, 0, 0];
-  return [0.5, 1, 0, 0, 0, 0];
+const extendedLowSatChroma = (
+  hue: number,
+  numChromatic: number = 6,
+  useSecondaryColors: boolean = true
+): number[] => {
+  const init = new Array(numChromatic).fill(0);
+  const hasOrange = numChromatic >= 6 && useSecondaryColors;
+  const hasGreen = numChromatic >= 7 && useSecondaryColors;
+  const hasPurple = numChromatic >= 8 && useSecondaryColors;
+
+  if (hue >= 345 || hue < 20) {
+    init[0] = 1;
+  } else if (hue >= 20 && hue < 50) {
+    if (hasOrange) init[5] = 1;
+    else {
+      init[0] = 0.5;
+      init[4] = 0.5;
+    }
+  } else if (hue >= 50 && hue < 75) {
+    init[4] = 1;
+  } else if (hue >= 75 && hue < 160) {
+    if (hasGreen) init[6] = 1;
+    else {
+      init[3] = 0.35;
+      init[4] = 0.65;
+    }
+  } else if (hue >= 160 && hue < 195) {
+    init[3] = 1;
+  } else if (hue >= 195 && hue < 210) {
+    init[2] = 1;
+  } else if (hue >= 210 && hue < 252) {
+    init[0] = 0.08;
+    init[2] = 0.92;
+  } else if (hue >= 252 && hue < 310) {
+    if (hasPurple) init[7] = 1;
+    else {
+      init[1] = 0.7;
+      init[2] = 0.3;
+    }
+  } else {
+    init[0] = 0.5;
+    init[1] = 0.5;
+  }
+  return init;
 };
 
 const desaturatedChromaticTarget = (targetRgb: RGB, minChannel: number, hue: number): RGB => {
@@ -1200,14 +1750,16 @@ const desaturatedChromaticTarget = (targetRgb: RGB, minChannel: number, hue: num
 };
 
 const EXTENDED_RATIO_LABELS = [
-  '白色 (Gaia 001)',
-  '黑色 (Gaia 002)',
-  '红色 (Gaia 003)',
-  '品红 (Gaia 006)',
-  '蓝色 (Gaia 004)',
-  '青色 (Gaia 007)',
-  '黄色 (Gaia 005)',
-  '橙色 (Gaia 008)',
+  '光泽白 (Gaia 001 · 底漆)',
+  '光泽黑 (Gaia 002 · 底漆)',
+  '光泽红 (Gaia 003 · 主色)',
+  '色源品红 (Gaia 034 · 色源)',
+  '光泽蓝 (Gaia 004 · 主色)',
+  '色源青 (Gaia 033 · 色源)',
+  '光泽黄 (Gaia 005 · 主色)',
+  '色源橙 (Gaia 015 · 间色)',
+  '色源绿 (Gaia 036 · 间色)',
+  '色源紫 (Gaia 037 · 间色)',
 ] as const;
 
 const percentagesToExtendedRatios = (
@@ -1223,7 +1775,7 @@ const percentagesToExtendedRatios = (
 );
 
 const chromaticSummary = (ratios: { color: string; percentage: number }[]): string => {
-  const chromatic = ratios.filter(item => !item.color.includes('白色') && !item.color.includes('黑色'));
+  const chromatic = ratios.filter(item => !item.color.includes('光泽白') && !item.color.includes('光泽黑') && !item.color.includes('白色') && !item.color.includes('黑色'));
   if (chromatic.length === 0) return '无';
   return chromatic
     .map(item => `${item.color.split(' ')[0]}${item.percentage.toFixed(1)}%`)
@@ -1232,16 +1784,19 @@ const chromaticSummary = (ratios: { color: string; percentage: number }[]): stri
 
 /**
  * Professional / HSB Mixbox ratios (scheme A).
- * Two-step HSB initialization, then 8-weight latent refinement against the real target.
+ * Two-step HSB initialization, then hue-masked latent refinement against the real target.
  *
  * @returns Array of weights [white, black, ...chromatic colors] as percentages
  */
 export const calculateMixboxRatios = (
   targetHex: string, 
   colorSpace: ColorSpace = 'srgb',
-  useExtendedPalette: boolean = false
+  useExtendedPalette: boolean = false,
+  options?: MixboxSolveOptions
 ): number[] => {
-  const zeros = emptyPaletteWeights(useExtendedPalette);
+  const useSecondaryColors = options?.useSecondaryColors ?? true;
+  const palette = resolvePalette(useExtendedPalette, options);
+  const zeros = emptyPaletteWeights(useExtendedPalette, options);
   let targetRgb = hexToRgb(targetHex);
 
   if (colorSpace !== 'srgb') {
@@ -1251,7 +1806,6 @@ export const calculateMixboxRatios = (
   const targetLatent = mixbox.rgbToLatent(targetRgb.r, targetRgb.g, targetRgb.b);
   if (!targetLatent) return zeros;
 
-  const palette = useExtendedPalette ? EXTENDED_MIXING_COLORS : BASE_MIXING_COLORS;
   const baseLatents = loadBaseLatents(palette);
   if (!baseLatents) return zeros;
 
@@ -1273,6 +1827,8 @@ export const calculateMixboxRatios = (
     return toPercentages([white, 1 - white, ...new Array(palette.length - 2).fill(0)]);
   }
 
+  const allowedMask = getPrimarySchemeAMask(hue, palette.length, useSecondaryColors);
+  const chromaAllowedMask = allowedMask.slice(2);
   let weights: number[];
 
   if (saturation < 0.12) {
@@ -1281,7 +1837,10 @@ export const calculateMixboxRatios = (
     const colorRatio = saturation;
 
     if (useExtendedPalette) {
-      const chroma = normalizeSimplex(extendedLowSatChroma(hue));
+      const chroma = normalizeSimplex(
+        extendedLowSatChroma(hue, palette.length - 2, useSecondaryColors),
+        chromaAllowedMask
+      );
       weights = [whiteRatio, blackRatio, ...chroma.map(weight => weight * colorRatio)];
     } else {
       let red = 0;
@@ -1307,10 +1866,10 @@ export const calculateMixboxRatios = (
     );
     if (!pureHueLatent) return zeros;
 
-    const numChromatic = useExtendedPalette ? 6 : 3;
+    const numChromatic = palette.length - 2;
     const chromaStartIdx = 2;
     let chromaWeights = useExtendedPalette
-      ? extendedChromaInit(hue)
+      ? extendedChromaInit(hue, numChromatic, useSecondaryColors)
       : (hue >= 345 || hue < 15)
         ? [0.8, 0.1, 0.1]
         : hue < 45
@@ -1327,12 +1886,13 @@ export const calculateMixboxRatios = (
                     ? [0.4, 0.6, 0.0]
                     : [0.55, 0.45, 0.0];
 
-    chromaWeights = normalizeSimplex(chromaWeights);
+    chromaWeights = normalizeSimplex(chromaWeights, chromaAllowedMask);
 
     let learningRate = 0.2;
     for (let iter = 0; iter < 100; iter++) {
       const mixedLatent = [0, 0, 0, 0, 0, 0, 0];
       for (let i = 0; i < numChromatic; i++) {
+        if (chromaAllowedMask && !chromaAllowedMask[i]) continue;
         for (let j = 0; j < 7; j++) {
           mixedLatent[j] += baseLatents[chromaStartIdx + i][j] * chromaWeights[i];
         }
@@ -1344,15 +1904,20 @@ export const calculateMixboxRatios = (
         const diff = mixedLatent[j] - pureHueLatent[j];
         error += diff * diff;
         for (let i = 0; i < numChromatic; i++) {
+          if (chromaAllowedMask && !chromaAllowedMask[i]) continue;
           gradient[i] += 2 * diff * baseLatents[chromaStartIdx + i][j];
         }
       }
       if (error < 0.0001) break;
 
       for (let i = 0; i < numChromatic; i++) {
-        chromaWeights[i] = Math.max(0, chromaWeights[i] - learningRate * gradient[i]);
+        if (chromaAllowedMask && !chromaAllowedMask[i]) {
+          chromaWeights[i] = 0;
+        } else {
+          chromaWeights[i] = Math.max(0, chromaWeights[i] - learningRate * gradient[i]);
+        }
       }
-      chromaWeights = normalizeSimplex(chromaWeights);
+      chromaWeights = normalizeSimplex(chromaWeights, chromaAllowedMask);
       if (iter > 20) {
         learningRate = Math.max(0.01, learningRate * 0.95);
       }
@@ -1367,29 +1932,34 @@ export const calculateMixboxRatios = (
     ];
   }
 
-  return toPercentages(refineWeightsToLatent(weights, baseLatents, targetLatent));
+  return toPercentages(refineWeightsToLatent(weights, baseLatents, targetLatent, 80, allowedMask));
 };
 
 /**
- * True Mixbox inverse (scheme B): simplex search matching Mixbox forward OKLab.
- * Does not use HSB hue buckets. Returns percentages for the chosen palette.
+ * True Mixbox inverse (scheme B): simplex search matching Mixbox forward OKLab
+ * within the target hue's active pigment subsets, enforcing Intermediate Color Replacement ("以一顶二").
  */
 export const calculateMixboxInverseRatios = (
   targetHex: string,
   colorSpace: ColorSpace = 'srgb',
-  useExtendedPalette: boolean = true
+  useExtendedPalette: boolean = true,
+  options?: MixboxSolveOptions
 ): number[] => {
-  const zeros = emptyPaletteWeights(useExtendedPalette);
+  const useSecondaryColors = options?.useSecondaryColors ?? true;
+  const palette = resolvePalette(useExtendedPalette, options);
+  const zeros = emptyPaletteWeights(useExtendedPalette, options);
   let targetRgb = hexToRgb(targetHex);
   if (colorSpace !== 'srgb') {
     targetRgb = convertToWorkingSpace(targetRgb, colorSpace);
   }
 
-  const palette = useExtendedPalette ? EXTENDED_MIXING_COLORS : BASE_MIXING_COLORS;
   const baseLatents = loadBaseLatents(palette);
   if (!baseLatents) return zeros;
 
-  const exactIndex = palette.findIndex(color => color.hex.toUpperCase() === targetHex.toUpperCase());
+  const exactIndex = palette.findIndex((color, idx) => {
+    if (!useSecondaryColors && color.isSecondary) return false;
+    return color.hex.toUpperCase() === targetHex.toUpperCase();
+  });
   if (exactIndex >= 0) {
     const oneHot = zeros.slice();
     oneHot[exactIndex] = 100;
@@ -1405,41 +1975,66 @@ export const calculateMixboxInverseRatios = (
   const minChannel = Math.min(targetRgb.r, targetRgb.g, targetRgb.b);
   const saturation = maxChannel === 0 ? 0 : (maxChannel - minChannel) / maxChannel;
   if (saturation < 0.05) {
-    return calculateMixboxRatios(targetHex, colorSpace, useExtendedPalette);
+    return calculateMixboxRatios(targetHex, colorSpace, useExtendedPalette, options);
   }
+  const hue = rgbHueDegrees(targetRgb.r, targetRgb.g, targetRgb.b);
   const targetLab = rgb01ToOkLab(targetRgb01.r, targetRgb01.g, targetRgb01.b);
   const count = palette.length;
 
-  const nearest = palette.reduce((best, color, index) => {
-    const rgb = hexToRgb(color.hex);
-    const dist =
-      (rgb.r - targetRgb.r) ** 2 +
-      (rgb.g - targetRgb.g) ** 2 +
-      (rgb.b - targetRgb.b) ** 2;
-    return dist < best.dist ? { index, dist } : best;
-  }, { index: 0, dist: Number.POSITIVE_INFINITY }).index;
-
-  const oneHot = zeros.map((_, index) => (index === nearest ? 1 : 0));
+  const candidateSubsets = getCandidateActiveSubsets(hue, count, useSecondaryColors);
   const luminance = 0.2126 * targetRgb01.r + 0.7152 * targetRgb01.g + 0.0722 * targetRgb01.b;
   const grayscale = zeros.map((_, index) => (
     index === 0 ? luminance : index === 1 ? 1 - luminance : 0
   ));
-  const warmStart = calculateMixboxRatios(targetHex, colorSpace, useExtendedPalette)
+  const warmStart = calculateMixboxRatios(targetHex, colorSpace, useExtendedPalette, options)
     .map(percent => percent / 100);
 
-  const starts = [warmStart, oneHot, grayscale];
-  let bestWeights = normalizeSimplex(warmStart);
-  let bestError = inverseObjective(bestWeights, baseLatents, targetRgb01, targetLab);
+  let globalBestWeights: number[] | null = null;
+  let globalBestScore = Number.POSITIVE_INFINITY;
 
-  for (const start of starts) {
-    const candidate = pairwiseCoordinateDescent(start, baseLatents, targetRgb01, targetLab);
-    const error = inverseObjective(candidate, baseLatents, targetRgb01, targetLab);
-    if (error < bestError) {
-      bestWeights = candidate;
-      bestError = error;
+  for (const subset of candidateSubsets) {
+    const mask = subsetToMask(subset, count);
+    // Find nearest allowed chromatic pigment in this subset
+    const nearestInSubset = subset.reduce(
+      (best, idx) => {
+        const rgb = hexToRgb(palette[idx].hex);
+        const dist =
+          (rgb.r - targetRgb.r) ** 2 +
+          (rgb.g - targetRgb.g) ** 2 +
+          (rgb.b - targetRgb.b) ** 2;
+        return dist < best.dist ? { index: idx, dist } : best;
+      },
+      { index: subset[subset.length - 1] ?? 0, dist: Number.POSITIVE_INFINITY }
+    ).index;
+
+    const oneHot = zeros.map((_, index) => (index === nearestInSubset ? 1 : 0));
+    const subsetUniform = normalizeSimplex(zeros.map((_, idx) => (mask[idx] ? 1 : 0)), mask);
+    const maskedWarmStart = normalizeSimplex(warmStart, mask);
+
+    const starts = [maskedWarmStart, subsetUniform, oneHot, grayscale];
+    let subsetBest = maskedWarmStart;
+    let subsetBestError = inverseObjective(subsetBest, baseLatents, targetRgb01, targetLab);
+
+    for (const start of starts) {
+      const candidate = pairwiseCoordinateDescent(start, baseLatents, targetRgb01, targetLab, mask);
+      const error = inverseObjective(candidate, baseLatents, targetRgb01, targetLab);
+      if (error < subsetBestError) {
+        subsetBest = candidate;
+        subsetBestError = error;
+      }
+    }
+
+    // Parsimony tie-breaker: slightly prefer subsets with fewer active chromatic pigments
+    // (e.g. pure intermediate color [0, 1, 7] when accuracy is virtually identical).
+    const activeChromaticCount = subsetBest.slice(2).filter(w => w > 0.005).length;
+    const score = subsetBestError + activeChromaticCount * 1e-5;
+    if (score < globalBestScore) {
+      globalBestScore = score;
+      globalBestWeights = subsetBest;
     }
   }
 
+  const bestWeights = globalBestWeights ?? normalizeSimplex(warmStart);
   const padded = bestWeights.length >= count
     ? bestWeights.slice(0, count)
     : [...bestWeights, ...new Array(count - bestWeights.length).fill(0)];
@@ -1451,14 +2046,18 @@ export const calculateMixboxInverseRatios = (
  * Based on real-world spray painting experience
  * 
  * Workflow:
- * - High Brightness (B > 70%): White-base spray workflow, 8-color scheme A ratios
- * - Mid Brightness (30% < B ≤ 70%): Standard mixing with all 8 colors
- * - Low Brightness (B ≤ 30%): Black-base workflow, 8-color scheme A ratios
+ * - High Brightness (B > 70%): White-base spray workflow, scheme A ratios
+ * - Mid Brightness (30% < B ≤ 70%): Standard mixing
+ * - Low Brightness (B ≤ 30%): Black-base workflow, scheme A ratios
  * 
  * @param targetHex Target color hex string
+ * @param options Optional secondary color settings
  * @returns Mixing recipe with HSB/LAB analysis and step-by-step instructions
  */
-export const calculateProfessionalRecipe = (targetHex: string): {
+export const calculateProfessionalRecipe = (
+  targetHex: string,
+  options?: MixboxSolveOptions
+): {
   hsb: { h: number; s: number; b: number };
   lab: { l: number; a: number; b: number };
   strategy: 'high-brightness' | 'mid-brightness' | 'low-brightness';
@@ -1486,14 +2085,14 @@ export const calculateProfessionalRecipe = (targetHex: string): {
     const blackPercent = 100 - hsb.b;
     
     ratios = [
-      { color: '白色 (Gaia 001)', percentage: Math.round(whitePercent * 10) / 10 },
-      { color: '黑色 (Gaia 002)', percentage: Math.round(blackPercent * 10) / 10 }
+      { color: '光泽白 (Gaia 001 · 底漆)', percentage: Math.round(whitePercent * 10) / 10 },
+      { color: '光泽黑 (Gaia 002 · 底漆)', percentage: Math.round(blackPercent * 10) / 10 }
     ].filter(r => r.percentage > 0);
     
     steps = [
       `1. 色彩分析: 纯灰色 (饱和度 < 5%)`,
       `2. 明度分析: B=${hsb.b.toFixed(1)}% → ${strategy === 'high-brightness' ? '浅灰色' : '深灰色'}`,
-      `3. 配方: 白色 ${whitePercent.toFixed(1)}% + 黑色 ${blackPercent.toFixed(1)}%`,
+      `3. 配方: 光泽白 ${whitePercent.toFixed(1)}% + 光泽黑 ${blackPercent.toFixed(1)}%`,
       `4. 调色步骤:`,
       `   a) 准备基础白色和黑色`,
       `   b) 按比例混合，确保均匀`,
@@ -1504,7 +2103,7 @@ export const calculateProfessionalRecipe = (targetHex: string): {
     return { hsb, lab, strategy, steps, ratios };
   }
 
-  const mixboxRatios = calculateMixboxRatios(targetHex, 'srgb', true);
+  const mixboxRatios = calculateMixboxRatios(targetHex, 'srgb', true, options);
   ratios = percentagesToExtendedRatios(mixboxRatios);
   const whiteAmount = mixboxRatios[0] ?? 0;
   const blackAmount = mixboxRatios[1] ?? 0;
@@ -1515,7 +2114,7 @@ export const calculateProfessionalRecipe = (targetHex: string): {
     steps = [
       `1. 明度分析: B=${hsb.b}% (高明度) → 采用"白底调色"策略`,
       `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
-      `3. 饱和度分析: S=${hsb.s}% → 八色联合微调后白色约 ${whiteAmount.toFixed(1)}%`,
+      `3. 饱和度分析: S=${hsb.s}% → 联合微调后白色底漆约 ${whiteAmount.toFixed(1)}%`,
       `4. 调色步骤:`,
       `   a) 准备白色底漆 ${whiteAmount.toFixed(1)}%`,
       `   b) 混合色相颜料: ${chromaText}`,
@@ -1527,9 +2126,9 @@ export const calculateProfessionalRecipe = (targetHex: string): {
     steps = [
       `1. 明度分析: B=${hsb.b}% (中等明度) → 采用"标准混合"策略`,
       `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
-      `3. HSB 初始化 + Mixbox 潜空间八色联合微调`,
+      `3. HSB 初始化 + Mixbox 潜空间色相扇区微调`,
       `4. 调色步骤:`,
-      `   a) 按比例准备八种基础色`,
+      `   a) 按比例准备对应色区颜料`,
       `   b) 先混合主色相 (占比最大的颜色)`,
       `   c) 逐步加入其他颜色,充分搅拌`,
       `   d) 使用分光光度计或色卡进行对比校准`,

@@ -1,6 +1,7 @@
 import { ColorSpace } from '../types';
 import {
   EXTENDED_MIXING_COLORS,
+  FULL_MIXING_COLORS,
   calculateMixboxRatios,
   calculateMixboxInverseRatios,
   getRALByNumber,
@@ -21,10 +22,17 @@ const BASIC_COLORS = [
   { id: 'sourceMagenta', name: '色源品红', hex: '#FF0090' },
 ] as const;
 
+type DecomposePayload = {
+  hex: string;
+  colorSpace?: 'srgb' | 'p3' | 'adobe-rgb';
+  useSecondaryColors?: boolean;
+  includeFullSecondaryPalette?: boolean;
+};
+
 type Request =
   | { method: 'bundleVersion'; payload?: undefined }
-  | { method: 'decompose8'; payload: { hex: string; colorSpace?: 'srgb' | 'p3' | 'adobe-rgb' } }
-  | { method: 'decomposeMixboxInverse'; payload: { hex: string; colorSpace?: 'srgb' | 'p3' | 'adobe-rgb' } }
+  | { method: 'decompose8'; payload: DecomposePayload }
+  | { method: 'decomposeMixboxInverse'; payload: DecomposePayload }
   | { method: 'mixBasic'; payload: { weights: number[] } }
   | { method: 'mixMulti'; payload: { colors: { hex: string; weight: number }[] } }
   | { method: 'findNearestRAL'; payload: { hex: string } };
@@ -35,9 +43,11 @@ const assertHex = (hex: string) => {
   }
 };
 
-const mapExtendedWeights = (raw: number[]) => {
-  const weights = [...raw, ...new Array(Math.max(0, 8 - raw.length)).fill(0)].slice(0, 8);
-  return EXTENDED_MIXING_COLORS.map((color, index) => ({
+const mapPaletteWeights = (raw: number[], includeFullSecondaryPalette: boolean = false) => {
+  const palette = includeFullSecondaryPalette ? FULL_MIXING_COLORS : EXTENDED_MIXING_COLORS;
+  const count = palette.length;
+  const weights = [...raw, ...new Array(Math.max(0, count - raw.length)).fill(0)].slice(0, count);
+  return palette.map((color, index) => ({
     id: `legacy-${color.code}`,
     name: color.name,
     hex: color.hex.toUpperCase(),
@@ -49,17 +59,30 @@ const toColorSpace = (
   colorSpace: 'srgb' | 'p3' | 'adobe-rgb' = 'srgb'
 ): ColorSpace => (colorSpace === 'p3' ? 'display-p3' : colorSpace);
 
-const decompose8 = (hex: string, colorSpace: 'srgb' | 'p3' | 'adobe-rgb' = 'srgb') => {
-  assertHex(hex);
-  return mapExtendedWeights(calculateMixboxRatios(hex, toColorSpace(colorSpace), true));
+const decompose8 = (payload: DecomposePayload) => {
+  assertHex(payload.hex);
+  const includeFull = Boolean(payload.includeFullSecondaryPalette);
+  const useSecondary = payload.useSecondaryColors ?? true;
+  return mapPaletteWeights(
+    calculateMixboxRatios(payload.hex, toColorSpace(payload.colorSpace), true, {
+      useSecondaryColors: useSecondary,
+      includeFullSecondaryPalette: includeFull,
+    }),
+    includeFull
+  );
 };
 
-const decomposeMixboxInverse = (
-  hex: string,
-  colorSpace: 'srgb' | 'p3' | 'adobe-rgb' = 'srgb'
-) => {
-  assertHex(hex);
-  return mapExtendedWeights(calculateMixboxInverseRatios(hex, toColorSpace(colorSpace), true));
+const decomposeMixboxInverse = (payload: DecomposePayload) => {
+  assertHex(payload.hex);
+  const includeFull = Boolean(payload.includeFullSecondaryPalette);
+  const useSecondary = payload.useSecondaryColors ?? true;
+  return mapPaletteWeights(
+    calculateMixboxInverseRatios(payload.hex, toColorSpace(payload.colorSpace), true, {
+      useSecondaryColors: useSecondary,
+      includeFullSecondaryPalette: includeFull,
+    }),
+    includeFull
+  );
 };
 
 const mixBasic = (weights: number[]) => {
@@ -163,10 +186,10 @@ const invoke = (requestJSON: string): string => {
         value = BUNDLE_VERSION;
         break;
       case 'decompose8':
-        value = decompose8(request.payload.hex, request.payload.colorSpace);
+        value = decompose8(request.payload);
         break;
       case 'decomposeMixboxInverse':
-        value = decomposeMixboxInverse(request.payload.hex, request.payload.colorSpace);
+        value = decomposeMixboxInverse(request.payload);
         break;
       case 'mixBasic':
         value = mixBasic(request.payload.weights);

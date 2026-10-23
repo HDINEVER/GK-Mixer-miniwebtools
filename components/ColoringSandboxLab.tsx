@@ -104,8 +104,38 @@ export interface StagedSwatchItem {
   pinned?: boolean;
 }
 
+export interface SandboxSyncedSwatch {
+  id: string;
+  hex: string;
+  shadeHex: string;
+  highlightHex: string;
+  brand: string;
+  code: string;
+  name: string;
+  isConfirmed: boolean;
+  regionCount: number;
+  anchorX: number;
+  anchorY: number;
+  offsetX: number;
+  offsetY: number;
+  assignedPaint?: CatalogPaint;
+  basePaintHex?: string;
+  tintBadgeText?: string;
+  recipeSummary?: string;
+}
+
+export interface SandboxSyncPayload {
+  compositeDataUrl: string | null;
+  /** Colors in 备选缓存盘 AND painted on the model */
+  syncedSwatches: SandboxSyncedSwatch[];
+  /** All colors in 备选缓存盘 */
+  stagedSwatches: StagedSwatchItem[];
+  activeHex: string;
+  hasLoadedImage: boolean;
+}
+
 const STAGED_TRAY_STORAGE_KEY = "gk_coloring_staged_tray_v1";
-const MAX_STAGED_SWATCHES = 10;
+const MAX_STAGED_SWATCHES = 30;
 
 const DEFAULT_STAGED_SWATCHES: StagedSwatchItem[] = [
   { hex: "#2563EB", brand: "盖亚", code: "004", name: "纯正蓝", pinned: true },
@@ -511,6 +541,13 @@ interface ColoringSandboxLabProps {
   onNavigateToBrandTint?: (hex: string) => void;
   onCreatePaintProject?: (project: PaintProject) => void;
   externalCatalogPaints?: CatalogPaint[];
+  isActiveTab?: boolean;
+  onSyncSandboxState?: (payload: SandboxSyncPayload) => void;
+  externalBrandAssignment?: {
+    targetHex: string;
+    paint: CatalogPaint;
+    token: number;
+  } | null;
 }
 
 export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
@@ -520,6 +557,9 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   onNavigateToBrandTint,
   onCreatePaintProject,
   externalCatalogPaints,
+  isActiveTab = true,
+  onSyncSandboxState,
+  externalBrandAssignment,
 }) => {
   const brandLang = (lang === "en" || lang === "ja" ? lang : "zh") as "en" | "zh" | "ja";
 
@@ -837,7 +877,26 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             : item.name,
           pinned: item.pinned ?? existing?.pinned,
         };
-        const next = [merged, ...filtered].slice(0, MAX_STAGED_SWATCHES);
+        const combined = [merged, ...filtered];
+        if (combined.length <= MAX_STAGED_SWATCHES) {
+          try {
+            window.localStorage.setItem(STAGED_TRAY_STORAGE_KEY, JSON.stringify(combined));
+          } catch {
+            /* ignore */
+          }
+          return combined;
+        }
+        // When exceeding MAX_STAGED_SWATCHES, never evict colors currently painted on the model canvas
+        const paintedHexes = new Set<string>();
+        for (const r of regionsRef.current.values()) {
+          paintedHexes.add(r.baseHex.toUpperCase());
+        }
+        const next: StagedSwatchItem[] = [];
+        for (const itemSw of combined) {
+          if (next.length < MAX_STAGED_SWATCHES || paintedHexes.has(itemSw.hex.toUpperCase())) {
+            next.push(itemSw);
+          }
+        }
         try {
           window.localStorage.setItem(STAGED_TRAY_STORAGE_KEY, JSON.stringify(next));
         } catch {
@@ -1892,6 +1951,15 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     }
     renderFillFull();
     setUsedRegionsVersion((v) => v + 1);
+    pushSwatchToTray(
+      {
+        hex: triad.baseHex,
+        brand: meta?.brand || "Custom",
+        code: meta?.code || "HEX",
+        name: meta?.name || triad.baseHex,
+      },
+      false
+    );
     setStatusMessage(`已为 ${selectedRegionIds.length} 个选中分区应用 ${meta?.name || triad.baseHex}`);
   };
 
@@ -3159,6 +3227,219 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     setStatusMessage(`已创建涂装库工程「${project.title}」并自动生成 ${nodes.length} 个悬浮色卡与 ${steps.length} 步标准工序`);
   };
 
+  // Handle external brand paint assignments coming from Beginner Mode's「选漆与微调」tab
+  const lastExternalAssignTokenRef = useRef<number>(0);
+  useEffect(() => {
+    if (!externalBrandAssignment || externalBrandAssignment.token === lastExternalAssignTokenRef.current) {
+      return;
+    }
+    lastExternalAssignTokenRef.current = externalBrandAssignment.token;
+    const { targetHex, paint } = externalBrandAssignment;
+    const brandZh = localizedBrand(paint.brand, brandLang);
+    assignBrandPaintToHexRegions(targetHex, paint, brandZh, false);
+  }, [externalBrandAssignment, brandLang]);
+
+  // Sync live composite image & staged+painted model swatches to App.tsx for Beginner Mode's「选漆与微调」tab
+  useEffect(() => {
+    if (!onSyncSandboxState) return;
+    const delay = isActiveTab ? 180 : 10;
+    const timer = window.setTimeout(() => {
+      const { w, h } = dimsRef.current;
+      const hasLoadedImage = w > 0 && h > 0;
+      const compositeDataUrl = hasLoadedImage ? buildCompositePngDataUrl(false) : null;
+
+      // Group painted regions on the model by baseHex
+      const groupedByHex = new Map<string, ColoredRegion[]>();
+      for (const reg of regionsRef.current.values()) {
+        const key = reg.baseHex.toUpperCase();
+        const arr = groupedByHex.get(key) || [];
+        arr.push(reg);
+        groupedByHex.set(key, arr);
+      }
+
+      // Filter colors that are BOTH in [STAGING] 备选缓存盘 AND painted on the model (ordered by stagedSwatches)
+      const stagedHexOrder = stagedSwatches
+        .map((s) => s.hex.toUpperCase())
+        .filter((hx) => groupedByHex.has(hx));
+
+      // If any painted region was manually removed from staging tray, only fallback if intersection is empty
+      const targetHexList =
+        stagedHexOrder.length > 0 ? stagedHexOrder : Array.from(groupedByHex.keys());
+
+      const rawItems: Omit<SandboxSyncedSwatch, "offsetX" | "offsetY">[] = [];
+      targetHexList.forEach((hexKey) => {
+        const regs = groupedByHex.get(hexKey);
+        if (!regs || regs.length === 0) return;
+
+        let primary = regs[0];
+        for (const r of regs) {
+          if (r.pixels.length > primary.pixels.length) primary = r;
+        }
+        const px = primary.pixels;
+        let sumX = 0;
+        let sumY = 0;
+        const step = Math.max(1, (px.length / 600) | 0);
+        let count = 0;
+        for (let i = 0; i < px.length; i += step) {
+          const p = px[i];
+          const y = (p / Math.max(1, w)) | 0;
+          const x = p - y * w;
+          sumX += x;
+          sumY += y;
+          count++;
+        }
+        const avgX = count > 0 ? sumX / count : w / 2;
+        const avgY = count > 0 ? sumY / count : h / 2;
+
+        let bestX = avgX;
+        let bestY = avgY;
+        let bestDistSq = Infinity;
+        for (let i = 0; i < px.length; i += step) {
+          const p = px[i];
+          const y = (p / Math.max(1, w)) | 0;
+          const x = p - y * w;
+          const dSq = (x - avgX) * (x - avgX) + (y - avgY) * (y - avgY);
+          if (dSq < bestDistSq) {
+            bestDistSq = dSq;
+            bestX = x;
+            bestY = y;
+          }
+        }
+
+        const anchorX = w > 0 ? Math.min(0.94, Math.max(0.06, (bestX + 0.5) / w)) : 0.5;
+        const anchorY = h > 0 ? Math.min(0.94, Math.max(0.06, (bestY + 0.5) / h)) : 0.5;
+
+        const stagedMeta = stagedSwatches.find((s) => s.hex.toUpperCase() === hexKey);
+        const confirmed =
+          isConfirmedBrandPaint(primary.paintBrand, primary.paintCode) ||
+          (stagedMeta ? isConfirmedBrandPaint(stagedMeta.brand, stagedMeta.code) : false);
+        const rawBrand = isConfirmedBrandPaint(primary.paintBrand, primary.paintCode)
+          ? primary.paintBrand!
+          : stagedMeta?.brand || primary.paintBrand || "Custom";
+        const rawCode = isConfirmedBrandPaint(primary.paintBrand, primary.paintCode)
+          ? primary.paintCode!
+          : stagedMeta?.code || primary.paintCode || "HEX";
+        const rawName = isConfirmedBrandPaint(primary.paintBrand, primary.paintCode)
+          ? primary.paintName!
+          : stagedMeta?.name || primary.paintName || hexKey;
+
+        const fallbackClosest = !confirmed ? findClosestCatalogPaint(hexKey) : null;
+        const exactCatalogPaint = confirmed ? findCatalogPaintByCode(rawCode) : null;
+        const baseCatalogPaint = exactCatalogPaint || fallbackClosest?.paint || null;
+        const tintRecipe = baseCatalogPaint
+          ? computeBrandTintRecipe(hexKey, baseCatalogPaint, brandLang)
+          : null;
+
+        const effectiveBrand = confirmed
+          ? rawBrand
+          : fallbackClosest
+          ? `≈ ${fallbackClosest.brandZh}`
+          : rawBrand;
+        const effectiveCode = confirmed
+          ? rawCode
+          : fallbackClosest?.paint.code || rawCode;
+        const effectiveName = confirmed
+          ? rawName
+          : fallbackClosest?.paint.name || rawName;
+
+        const resolvedAssignedPaint: CatalogPaint = exactCatalogPaint
+          ? { ...exactCatalogPaint, brand: rawBrand }
+          : confirmed
+          ? {
+              id: `sandbox-confirmed-${hexKey}`,
+              brand: rawBrand,
+              code: rawCode,
+              name: rawName,
+              hex: hexKey,
+              finish: "gloss",
+            }
+          : fallbackClosest?.paint
+          ? {
+              ...fallbackClosest.paint,
+              brand: `≈ ${fallbackClosest.brandZh}`,
+            }
+          : {
+              id: `sandbox-custom-${hexKey}`,
+              brand: "试色自定义",
+              code: hexKey,
+              name: rawName,
+              hex: hexKey,
+              finish: "gloss",
+            };
+
+        rawItems.push({
+          id: `sandbox-swatch-${hexKey}`,
+          hex: hexKey,
+          shadeHex: primary.shadeHex,
+          highlightHex: primary.highlightHex,
+          brand: effectiveBrand,
+          code: effectiveCode,
+          name: effectiveName,
+          isConfirmed: confirmed,
+          regionCount: regs.length,
+          anchorX,
+          anchorY,
+          assignedPaint: resolvedAssignedPaint,
+          basePaintHex: tintRecipe && !tintRecipe.isDirectSpray ? tintRecipe.basePaint.hex : undefined,
+          tintBadgeText: tintRecipe ? tintRecipe.compactBadgeText : undefined,
+          recipeSummary: tintRecipe ? tintRecipe.spokenInstruction : undefined,
+        });
+      });
+
+      const leftSide = rawItems.filter((n) => n.anchorX < 0.5).sort((a, b) => a.anchorY - b.anchorY);
+      const rightSide = rawItems.filter((n) => n.anchorX >= 0.5).sort((a, b) => a.anchorY - b.anchorY);
+
+      const assignSideCoords = (
+        items: typeof rawItems,
+        offsetX: number
+      ): SandboxSyncedSwatch[] =>
+        items.map((item, idx) => {
+          const count = items.length;
+          const offsetY =
+            count === 1
+              ? Math.min(0.84, Math.max(0.14, item.anchorY))
+              : 0.12 + (idx / Math.max(1, count - 1)) * 0.72;
+          return {
+            ...item,
+            offsetX,
+            offsetY,
+          };
+        });
+
+      const positionedMap = new Map<string, SandboxSyncedSwatch>();
+      for (const s of [...assignSideCoords(leftSide, 0.04), ...assignSideCoords(rightSide, 0.72)]) {
+        positionedMap.set(s.hex, s);
+      }
+      // Preserve staging tray order for the vertical list
+      const syncedSwatches = rawItems
+        .map((r) => positionedMap.get(r.hex))
+        .filter(Boolean) as SandboxSyncedSwatch[];
+
+      onSyncSandboxState({
+        compositeDataUrl,
+        syncedSwatches,
+        stagedSwatches,
+        activeHex: activeHex.toUpperCase(),
+        hasLoadedImage,
+      });
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    usedRegionsVersion,
+    stagedSwatches,
+    imageToken,
+    lineOpacity,
+    renderMode,
+    activeHex,
+    isActiveTab,
+    catalogPaints,
+    brandLang,
+    findClosestCatalogPaint,
+    findCatalogPaintByCode,
+    onSyncSandboxState,
+  ]);
+
   const handleUploadFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -3476,12 +3757,12 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         )}
       </div>
 
-      {/* 3. PERSISTENT ACTIVE PALETTE TRAY (📌 备选与最近用色缓存栏，容量 10 槽位) */}
+      {/* 3. PERSISTENT ACTIVE PALETTE TRAY (📌 备选与最近用色缓存栏，容量扩充至 30+ 槽位，已上色槽位自动保护不淘汰) */}
       <div className={`space-y-1.5 pt-2 shrink-0 ${dividerTopClass}`}>
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100">
             <span className="tech-prefix">[STAGING]</span>
-            📌 备选与最近用色缓存盘 ({stagedSwatches.length}/{MAX_STAGED_SWATCHES})
+            📌 备选与最近用色缓存盘 ({stagedSwatches.length}/{Math.max(MAX_STAGED_SWATCHES, stagedSwatches.length)})
           </span>
           <div className="flex items-center gap-2">
             {stagedSwatches.length > 1 && (
@@ -3497,7 +3778,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-5 gap-1.5 shrink-0">
+        <div className="grid grid-cols-5 gap-1.5 shrink-0 max-h-[176px] overflow-y-auto p-0.5 pr-1.5 pb-1.5">
           {stagedSwatches.map((sw) => {
             const isSelected = activeHex.toUpperCase() === sw.hex.toUpperCase();
             const isHarmonyBase = stagingAnchor.hex.toUpperCase() === sw.hex.toUpperCase();

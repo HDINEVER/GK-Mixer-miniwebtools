@@ -98,6 +98,19 @@ export interface BrandMatchPanelProps {
     basicMixHex?: string | null;
     libraryHex?: string | null;
   };
+  // Beginner Mode Sandbox Sync props
+  beginnerSandboxMode?: boolean;
+  sandboxSwatches?: {
+    id: string;
+    hex: string;
+    brand: string;
+    code: string;
+    name: string;
+    isConfirmed: boolean;
+    regionCount: number;
+  }[];
+  onSelectSandboxSwatch?: (hex: string, id: string) => void;
+  onNavigateToSandbox?: () => void;
 }
 
 export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
@@ -116,9 +129,15 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
   onSyncToWorkbench,
   onOpenChromaMatrix,
   sourceOptions,
+  beginnerSandboxMode = false,
+  sandboxSwatches = [],
+  onSelectSandboxSwatch,
+  onNavigateToSandbox,
 }) => {
   const [localHex, setLocalHex] = useState<string>(hexProp || "#3B6EE4");
-  const [activeSourceLabel, setActiveSourceLabel] = useState<string>("混色台");
+  const [activeSourceLabel, setActiveSourceLabel] = useState<string>(
+    beginnerSandboxMode ? "模拟试色台 · 已上色备选" : "混色台"
+  );
   const [showSourceMenu, setShowSourceMenu] = useState(false);
   const [showBrandPopover, setShowBrandPopover] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
@@ -130,8 +149,11 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
       setLocalHex(hexProp.toUpperCase());
       setTintDeltaL(0);
       setSelectedTintBaseIdx(0);
+      if (beginnerSandboxMode) {
+        setActiveSourceLabel("模拟试色台 · 已上色备选");
+      }
     }
-  }, [hexProp]);
+  }, [hexProp, beginnerSandboxMode]);
 
   const hex = standaloneMode ? localHex : hexProp;
 
@@ -276,7 +298,7 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
             </div>
           </label>
 
-          {/* Right: Single-line [🔄 来源] Dropdown Pill + [🧪 同步混色台] Solid Accent Pill */}
+          {/* Right: Single-line [🔄 来源] Dropdown Pill + Sync/Assign Action Pill */}
           <div className="flex items-center gap-1.5 shrink-0">
             <div className="relative">
               <button
@@ -285,48 +307,143 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                 className="bp-pill flex items-center gap-1 rounded-full border border-slate-200/90 dark:border-slate-700 bg-slate-100/90 dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 transition cursor-pointer whitespace-nowrap"
               >
                 <ArrowsClockwiseIcon className="h-3.5 w-3.5 text-slate-500" weight="bold" />
-                <span>来源</span>
+                <span>{beginnerSandboxMode ? `试色来源 (${sandboxSwatches.length})` : "来源"}</span>
                 <CaretDownIcon className="h-3 w-3 opacity-70" />
               </button>
 
               {showSourceMenu && (
-                <div className="bp-subcard-lg absolute right-0 top-full mt-1.5 z-40 w-44 rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-1.5 shadow-xl space-y-0.5">
-                  {[
-                    { label: "混色台拾色", hexVal: sourceOptions?.workbenchHex || hexProp },
-                    { label: "自选调色结果", hexVal: sourceOptions?.customMixHex },
-                    { label: "基础混色结果", hexVal: sourceOptions?.basicMixHex },
-                    { label: "涂装库色卡", hexVal: sourceOptions?.libraryHex },
-                  ].map((item) => (
-                    <button
-                      key={item.label}
-                      type="button"
-                      disabled={!item.hexVal}
-                      onClick={() => handleSelectSource(item.label, item.hexVal)}
-                      className="w-full flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition"
-                    >
-                      <span className="truncate">{item.label}</span>
-                      {item.hexVal && (
-                        <span
-                          className="bp-dot h-3.5 w-3.5 rounded-full border border-black/15 shrink-0"
-                          style={{ backgroundColor: item.hexVal }}
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setShowSourceMenu(false)}
+                  />
+                  <div className="bp-subcard-lg absolute right-0 top-full mt-1.5 z-40 w-60 rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-1.5 shadow-xl space-y-1 max-h-72 overflow-y-auto">
+                    {beginnerSandboxMode ? (
+                      <>
+                        <div className="px-2.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                          🎨 模拟试色台（备选且已上色）
+                        </div>
+                        {sandboxSwatches.length > 0 ? (
+                          sandboxSwatches.map((sw) => {
+                            const isCurrent = sw.hex.toUpperCase() === hex.toUpperCase();
+                            return (
+                              <button
+                                key={sw.id}
+                                type="button"
+                                onClick={() => {
+                                  setShowSourceMenu(false);
+                                  setActiveSourceLabel(`试色台 · ${sw.brand} ${sw.code}`);
+                                  setLocalHex(sw.hex.toUpperCase());
+                                  onSelectSandboxSwatch?.(sw.hex.toUpperCase(), sw.id);
+                                }}
+                                className={`w-full flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-bold transition cursor-pointer ${
+                                  isCurrent
+                                    ? "bg-accent/15 text-accent dark:text-white"
+                                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span
+                                    className="bp-dot h-4 w-4 rounded-md border border-black/15 shrink-0"
+                                    style={{ backgroundColor: sw.hex }}
+                                  />
+                                  <div className="min-w-0">
+                                    <div className="truncate font-extrabold leading-tight">
+                                      {sw.brand} {sw.code} {sw.name !== sw.hex ? sw.name : ""}
+                                    </div>
+                                    <div className="text-[10px] font-mono text-slate-400">
+                                      {sw.hex} · {sw.regionCount}处分区
+                                    </div>
+                                  </div>
+                                </div>
+                                {isCurrent && (
+                                  <CheckIcon className="w-3.5 h-3.5 text-accent shrink-0" weight="bold" />
+                                )}
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowSourceMenu(false);
+                              onNavigateToSandbox?.();
+                            }}
+                            className="w-full rounded-xl px-2.5 py-2 text-left text-xs font-bold text-accent hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                          >
+                            暂无已上色备选 ➔ 前往模拟试色台涂色
+                          </button>
+                        )}
+                        {sourceOptions?.libraryHex && (
+                          <>
+                            <div className="h-[1px] bg-slate-100 dark:bg-slate-800 my-1" />
+                            <button
+                              type="button"
+                              onClick={() => handleSelectSource("涂装库色卡", sourceOptions.libraryHex)}
+                              className="w-full flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                            >
+                              <span className="truncate">涂装库色卡</span>
+                              <span
+                                className="bp-dot h-3.5 w-3.5 rounded-full border border-black/15 shrink-0"
+                                style={{ backgroundColor: sourceOptions.libraryHex }}
+                              />
+                            </button>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      [
+                        { label: "混色台拾色", hexVal: sourceOptions?.workbenchHex || hexProp },
+                        { label: "自选调色结果", hexVal: sourceOptions?.customMixHex },
+                        { label: "基础混色结果", hexVal: sourceOptions?.basicMixHex },
+                        { label: "涂装库色卡", hexVal: sourceOptions?.libraryHex },
+                      ].map((item) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          disabled={!item.hexVal}
+                          onClick={() => handleSelectSource(item.label, item.hexVal)}
+                          className="w-full flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition"
+                        >
+                          <span className="truncate">{item.label}</span>
+                          {item.hexVal && (
+                            <span
+                              className="bp-dot h-3.5 w-3.5 rounded-full border border-black/15 shrink-0"
+                              style={{ backgroundColor: item.hexVal }}
+                            />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </>
               )}
             </div>
 
-            {onSyncToWorkbench && (
-              <button
-                type="button"
-                onClick={() => onSyncToWorkbench(hex)}
-                className="bp-pill-active flex items-center gap-1 rounded-full bg-coral px-3 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 active:scale-95 transition cursor-pointer whitespace-nowrap"
-                title="将该颜色同步至混色台进行配方分解"
-              >
-                <FlaskIcon className="h-3.5 w-3.5" weight="bold" />
-                <span>同步混色台</span>
-              </button>
+            {beginnerSandboxMode ? (
+              activeTintBasePaint && onAssignCatalog && (
+                <button
+                  type="button"
+                  onClick={() => onAssignCatalog(activeTintBasePaint)}
+                  className="bp-pill-active flex items-center gap-1 rounded-full bg-coral px-3 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 active:scale-95 transition cursor-pointer whitespace-nowrap"
+                  title="将当前选中基底品牌漆同步锁定至左侧试色台色卡预览图"
+                >
+                  <CheckIcon className="h-3.5 w-3.5" weight="bold" />
+                  <span>同步至色卡预览</span>
+                </button>
+              )
+            ) : (
+              onSyncToWorkbench && (
+                <button
+                  type="button"
+                  onClick={() => onSyncToWorkbench(hex)}
+                  className="bp-pill-active flex items-center gap-1 rounded-full bg-coral px-3 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 active:scale-95 transition cursor-pointer whitespace-nowrap"
+                  title="将该颜色同步至混色台进行配方分解"
+                >
+                  <FlaskIcon className="h-3.5 w-3.5" weight="bold" />
+                  <span>同步混色台</span>
+                </button>
+              )
             )}
           </div>
         </div>

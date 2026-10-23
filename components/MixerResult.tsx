@@ -14,7 +14,7 @@ import {
   ScalesIcon,
 } from '@phosphor-icons/react';
 import { ColorData, PaintBrand, RALColor, Language, ColorSpace, MixerResultCache, MixingMode, CatalogPaint } from '../types';
-import { findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, calculateMixboxRatios, calculateMixboxInverseRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS, EXTENDED_MIXING_COLORS, FULL_MIXING_COLORS, getMixingPigmentInfo, PROFESSIONAL_RATIO_THRESHOLD, MIXBOX_INVERSE_RATIO_THRESHOLD } from '../utils/colorUtils';
+import { findNearestRAL, hexToRgb, rgbToCmyk, mixboxBlend, mixboxMultiBlend, calculateMixboxRatios, calculateMixboxInverseRatios, calculateProfessionalRecipe, BASE_MIXING_COLORS, EXTENDED_MIXING_COLORS, FULL_MIXING_COLORS, getMixingPigmentInfo, PROFESSIONAL_RATIO_THRESHOLD, MIXBOX_INVERSE_RATIO_THRESHOLD } from '../utils/colorUtils';
 import BrandMatchPanel from './BrandMatchPanel';
 import { translations } from '../utils/translations';
 import { formatDropRatioLine, toDropRatio } from '../utils/dropRatio';
@@ -124,14 +124,14 @@ const PIGMENT_SHORT_NAME: Record<string, Record<Language, string>> = {
   '#FF00FF': { zh: '色源品红', en: 'Magenta', ja: 'マゼンタ' },
   '#0000FF': { zh: '光泽蓝', en: 'Blue', ja: '青' },
   '#00FFFF': { zh: '色源青', en: 'Cyan', ja: 'シアン' },
-  '#FFFF00': { zh: '光泽黄', en: 'Yellow', ja: '黄' },
+  '#FFFF00': { zh: '色源黄', en: 'Source Yellow', ja: 'ソースイエロー' },
   '#FF8000': { zh: '色源橙', en: 'Orange', ja: 'オレンジ' },
   '#00FF00': { zh: '色源绿', en: 'Green', ja: 'グリーン' },
   '#8000FF': { zh: '色源紫', en: 'Purple', ja: 'バイオレット' },
 };
 
 const shortLayerName = (layer: Layer, lang: Language): string =>
-  PIGMENT_SHORT_NAME[layer.color.toUpperCase()]?.[lang] ?? layer.fullName ?? layer.label;
+  layer.fullName || PIGMENT_SHORT_NAME[layer.color.toUpperCase()]?.[lang] || layer.label;
 
 const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colorSpaceProp, onAddColor, cache, onCacheUpdate, onAssignCatalogPaint, onNavigateToExtract, forcedMode }) => {
   const colorSpace: ColorSpace =
@@ -202,22 +202,18 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
 
       const layers: Layer[] = [];
       const baseColors = FULL_MIXING_COLORS; // 10-color palette (includes Orange, Green, Purple secondary sources)
+      const isPureColorSourceMode = mixingMode === 'professional';
       const solveOpts = {
         useSecondaryColors,
         includeFullSecondaryPalette: true,
+        pureColorSourceOnly: isPureColorSourceMode,
       };
       
       if (selectedBasePaint) {
         // --- BASE PAINT MODE ---
-        // Use Mixbox to calculate how to mix from selected base paint to target
-        
         const baseRgb = hexToRgb(selectedBasePaint.hex);
-        const ratios = mixingMode === 'mixbox'
-          ? calculateMixboxInverseRatios(color.hex, colorSpace, true, solveOpts)
-          : calculateMixboxRatios(color.hex, colorSpace, true, solveOpts);
-        const visibleThreshold = mixingMode === 'mixbox'
-          ? MIXBOX_INVERSE_RATIO_THRESHOLD
-          : PROFESSIONAL_RATIO_THRESHOLD;
+        const ratios = calculateMixboxInverseRatios(color.hex, colorSpace, true, solveOpts);
+        const visibleThreshold = MIXBOX_INVERSE_RATIO_THRESHOLD;
         
         // Find which base color index matches our selected paint best
         let basePaintIndex = 0;
@@ -264,7 +260,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
         otherRatios.forEach((ratio, index) => {
           if (ratio > visibleThreshold) {
             const baseColor = baseColors[index];
-            const info = getMixingPigmentInfo(baseColor.hex, lang, baseColor.code);
+            const info = getMixingPigmentInfo(baseColor.hex, lang, baseColor.code, isPureColorSourceMode);
             layers.push({
               color: baseColor.hex,
               heightPercent: getH(ratio),
@@ -283,25 +279,41 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
         });
 
       } else {
-        // --- PURE MIXING MODE (No Base Paint Selected) ---
+        // --- MIXING MODE:
+        // - 'mixbox' (普通 Mixbox): 带红/蓝/黄普通实色 (003/004/005) + 黑白 + CMY/间色
+        // - 'professional' (HSB 纯色源): 不带红/蓝/黄实色，仅用黑白 (001/002) + CMY色源 (033/034/035) + 间色 (015/036/037)
+        const weights = calculateMixboxInverseRatios(color.hex, colorSpace, true, solveOpts);
+        const totalWeight = weights.reduce((a, b) => a + b, 0);
         
-        if (mixingMode === 'professional') {
-          // Professional mode uses HSB analysis
-          const recipe = calculateProfessionalRecipe(color.hex, solveOpts);
-
-          // Use ratios from professional recipe
-          const totalWeight = recipe.ratios.reduce((sum, r) => sum + r.percentage, 0);
+        if (totalWeight < 0.1) {
+          layers.push({
+            color: '#808080',
+            heightPercent: 100,
+            volume: bottleVolume,
+            label: 'Gray',
+            bottleBadge: 'Gray',
+            displayCode: 'Gray',
+            fullName: 'Gray',
+            role: 'base',
+            roleBadge: lang === 'zh' ? '底漆' : 'Base',
+            propertyHint: '',
+            textColor: '#fff',
+            isBase: true
+          });
+        } else {
+          const getVol = (weight: number) => (weight / totalWeight) * bottleVolume;
+          const getH = (weight: number) => (weight / totalWeight) * 100;
           
-          recipe.ratios.forEach(item => {
-            const weight = item.percentage;
-            if (weight > PROFESSIONAL_RATIO_THRESHOLD) {
-              const hex = recipeLabelToHex(item.color);
-              const info = getMixingPigmentInfo(hex, lang, item.color);
+          weights.forEach((weight, index) => {
+            if (weight > MIXBOX_INVERSE_RATIO_THRESHOLD && index < baseColors.length) {
+              const baseColor = baseColors[index];
+              const info = getMixingPigmentInfo(baseColor.hex, lang, baseColor.code, isPureColorSourceMode);
+              const isLightText = baseColor.hex === '#FFFFFF' || baseColor.hex === '#FFFF00';
               
               layers.push({
-                color: hex,
-                heightPercent: (weight / totalWeight) * 100,
-                volume: (weight / totalWeight) * bottleVolume,
+                color: baseColor.hex,
+                heightPercent: getH(weight),
+                volume: getVol(weight),
                 label: info.displayCode,
                 bottleBadge: `${info.displayCode} ${info.shortName}`,
                 displayCode: info.displayCode,
@@ -309,59 +321,11 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                 role: info.role,
                 roleBadge: info.roleBadge,
                 propertyHint: info.propertyHint,
-                textColor: hex === '#FFFFFF' || hex === '#FFFF00' ? '#000' : '#fff',
-                isBase: hex === '#FFFFFF' || hex === '#000000'
+                textColor: isLightText ? '#000' : '#fff',
+                isBase: index < 2
               });
             }
           });
-          
-        } else {
-          // Mixbox mode uses Hue-Sector Active Set + Intermediate Replacement solver
-          const weights = calculateMixboxInverseRatios(color.hex, colorSpace, true, solveOpts);
-          const totalWeight = weights.reduce((a, b) => a + b, 0);
-          
-          if (totalWeight < 0.1) {
-            layers.push({
-              color: '#808080',
-              heightPercent: 100,
-              volume: bottleVolume,
-              label: 'Gray',
-              bottleBadge: 'Gray',
-              displayCode: 'Gray',
-              fullName: 'Gray',
-              role: 'base',
-              roleBadge: lang === 'zh' ? '底漆' : 'Base',
-              propertyHint: '',
-              textColor: '#fff',
-              isBase: true
-            });
-          } else {
-            const getVol = (weight: number) => (weight / totalWeight) * bottleVolume;
-            const getH = (weight: number) => (weight / totalWeight) * 100;
-            
-            weights.forEach((weight, index) => {
-              if (weight > MIXBOX_INVERSE_RATIO_THRESHOLD && index < baseColors.length) {
-                const baseColor = baseColors[index];
-                const info = getMixingPigmentInfo(baseColor.hex, lang, baseColor.code);
-                const isLightText = baseColor.hex === '#FFFFFF' || baseColor.hex === '#FFFF00';
-                
-                layers.push({
-                  color: baseColor.hex,
-                  heightPercent: getH(weight),
-                  volume: getVol(weight),
-                  label: info.displayCode,
-                  bottleBadge: `${info.displayCode} ${info.shortName}`,
-                  displayCode: info.displayCode,
-                  fullName: info.fullName,
-                  role: info.role,
-                  roleBadge: info.roleBadge,
-                  propertyHint: info.propertyHint,
-                  textColor: isLightText ? '#000' : '#fff',
-                  isBase: index < 2
-                });
-              }
-            });
-          }
         }
       }
 
@@ -437,10 +401,6 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
 
   return (
     <div className="bp-subcard-lg bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-sm p-4 md:p-6 overflow-hidden transition-colors duration-300">
-      
-
-
-
       {/* Mixing Mode Selector: Hidden when forcedMode is active (mode is selected via top tabs/desktop bar) */}
       {!forcedMode && (
         <div className="bp-subcard flex items-center justify-between gap-2 bg-slate-100/90 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 mb-6">
@@ -458,10 +418,10 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                   ? 'bp-segmented-item-active bg-accent text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
-              title="Mixbox 物理混色算法 (真实颜料仿真，蓝+黄=绿)"
+              title="Mixbox 物理混色 (含 003红 / 004蓝 / 005黄 普通实色 + 黑白 + 色源)"
             >
               <PaletteIcon className="w-3.5 h-3.5 shrink-0" weight="bold" />
-              <span>Mixbox (物理)</span>
+              <span>{lang === 'zh' ? 'Mixbox (含红黄蓝实色)' : 'Mixbox (Solid+CMY)'}</span>
             </button>
 
             <button
@@ -472,10 +432,10 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                   ? 'bp-segmented-item-active bg-accent text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
-              title="HSB 专业喷涂分解 (色相饱和度与 LAB 色差分析)"
+              title="HSB 纯色源体系 (无红黄蓝实色，仅黑白 001/002 + CMY色源 033/034/035 + 间色 015/036/037)"
             >
               <SparkleIcon className="w-3.5 h-3.5 shrink-0" weight="bold" />
-              <span>HSB (专业)</span>
+              <span>{lang === 'zh' ? 'HSB (纯色源·无实色)' : 'HSB (Pure CMY)'}</span>
             </button>
           </div>
         </div>
@@ -531,17 +491,21 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                          </span>
                       </div>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                         {useSecondaryColors
-                           ? lang === 'zh'
-                             ? '已启用「以一顶二」：半透明间色直接替代双原色混配（橙替红+黄、绿替青+黄、紫替蓝+品红）'
-                             : lang === 'ja'
-                             ? '半透明の中間色が2原色の混合を直接代替します'
-                             : 'Secondary translucent sources replace two-primary mixes directly'
-                           : lang === 'zh'
-                             ? '已关闭间色：仅使用基础实色 (红/蓝/黄) + CMY 三原色源 (青/品红) 混配'
-                             : lang === 'ja'
-                             ? '基本ソリッド色 + CMY原色ソースのみで調合します'
-                             : 'Using solid base paints + CMY primary sources only'}
+                         {mixingMode === 'professional'
+                           ? useSecondaryColors
+                             ? lang === 'zh'
+                               ? 'HSB纯色源（无红黄蓝实色）：黑白(001/002) + CMY(033青/034品红/035黄) + 间色(015橙/036绿/037紫)'
+                               : 'Pure Color Source (No Solid R/B/Y): Base B/W + CMY (033/034/035) + Secondary (015/036/037)'
+                             : lang === 'zh'
+                               ? 'HSB纯色源（已关间色）：仅使用黑白底漆(001/002) + CMY三原色源(033青/034品红/035黄)'
+                               : 'Pure Color Source: Base B/W (001/002) + CMY (033/034/035) only'
+                           : useSecondaryColors
+                             ? lang === 'zh'
+                               ? 'Mixbox模式（含红黄蓝实色）：黑白(001/002) + 实色(003红/004蓝/005黄) + CMY/间色色源'
+                               : 'Mixbox (With Solid R/B/Y): Base B/W + Solid R/B/Y (003/004/005) + CMY & Secondary'
+                             : lang === 'zh'
+                               ? 'Mixbox模式（已关间色）：使用黑白(001/002) + 实色(003红/004蓝/005黄) + CMY色源(033青/034品红)'
+                               : 'Mixbox: Base B/W + Solid R/B/Y (003/004/005) + CMY (033/034)'}
                       </p>
                    </div>
                    <button
@@ -633,169 +597,62 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                         <span className="text-accent">{selectedBasePaint ? 'BASE MODE' : 'PURE MODE'}</span>
                      </div>
                      
-                     {/* Color Analysis Section: Full Recipe Mix & Chromatic Masterbatch */}
+                     {/* 色相准确度验证（已按需求移除上方冗余的「配方还原色 + 母液小字 + 添加到色板」行） */}
                      {mixLayers.length > 0 && (() => {
-                         const blendSubset = (subset: Layer[]): string => {
-                             if (subset.length === 0) return '#808080';
-                             let totalW = 0;
-                             const latentMix = [0, 0, 0, 0, 0, 0, 0];
-                             subset.forEach(layer => {
-                                 const w = layer.volume;
-                                 totalW += w;
-                                 const rgb = hexToRgb(layer.color);
-                                 if (rgb) {
-                                     const latent = mixbox.rgbToLatent(rgb.r, rgb.g, rgb.b);
-                                     if (latent) {
-                                         for (let k = 0; k < latent.length; k++) {
-                                             latentMix[k] += latent[k] * w;
-                                         }
-                                     }
-                                 }
-                             });
-                             if (totalW <= 0) return '#808080';
-                             for (let k = 0; k < latentMix.length; k++) {
-                                 latentMix[k] /= totalW;
-                             }
-                             const mixedRgb = mixbox.latentToRgb(latentMix);
-                             if (!mixedRgb) return '#808080';
-                             const r = Math.round(mixedRgb[0]).toString(16).padStart(2, '0');
-                             const g = Math.round(mixedRgb[1]).toString(16).padStart(2, '0');
-                             const b = Math.round(mixedRgb[2]).toString(16).padStart(2, '0');
-                             return `#${r}${g}${b}`.toUpperCase();
-                         };
-
-                         // 1. 完整配方最终成色（含黑白底漆，用于真实的色相与还原度验证）
-                         const fullMixedHex = blendSubset(mixLayers);
-                         // 2. 纯彩色母液（不含黑白底漆，仅供调色师观察色相基底）
-                         const colorLayers = mixLayers.filter(l => !l.isBase);
-                         const chromaticMasterHex = colorLayers.length > 0 ? blendSubset(colorLayers) : fullMixedHex;
-                         
-                         return (
-                             <>
-                                 <div className="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200/80 dark:border-slate-700 mb-2">
-                                     <div className="flex items-center gap-2">
-                                         <div 
-                                             className="w-8 h-8 rounded border-2 border-white dark:border-slate-600 shadow-sm flex-shrink-0" 
-                                             style={{ backgroundColor: fullMixedHex }}
-                                             title={lang === 'zh' ? '完整配方混色成色' : 'Full Recipe Mix'}
-                                         />
-                                         {colorLayers.length > 0 && colorLayers.length < mixLayers.length && (
-                                             <div 
-                                                 className="w-6 h-6 rounded border border-white dark:border-slate-600 shadow-xs flex-shrink-0" 
-                                                 style={{ backgroundColor: chromaticMasterHex }}
-                                                 title={lang === 'zh' ? `纯色母液 (未加底漆): ${chromaticMasterHex}` : `Chromatic Masterbatch: ${chromaticMasterHex}`}
-                                             />
-                                         )}
-                                         <div className="flex-1 min-w-0">
-                                             <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                                                 {lang === 'zh'
-                                                   ? '配方还原色 (左: 成色 / 右: 纯色母液)'
-                                                   : lang === 'ja'
-                                                   ? '調合シミュレーション (完成色 / 原色液)'
-                                                   : 'Simulated Mix (Final / Masterbatch)'}
-                                             </div>
-                                             <div className="font-mono text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                                                 <span>{fullMixedHex}</span>
-                                                 {colorLayers.length > 0 && colorLayers.length < mixLayers.length && (
-                                                     <span className="text-[10px] font-normal text-slate-400">
-                                                         ({lang === 'zh' ? '母液' : 'Base'} {chromaticMasterHex})
-                                                     </span>
-                                                 )}
-                                             </div>
-                                         </div>
-                                         {onAddColor && fullMixedHex !== '#808080' && (
-                                             <button
-                                                 onClick={() => {
-                                                     onAddColor(fullMixedHex);
-                                                     setAddedToPalette(true);
-                                                     setTimeout(() => setAddedToPalette(false), 2000);
-                                                 }}
-                                                 disabled={addedToPalette}
-                                                 className={`px-2 py-1 text-[10px] font-medium rounded transition-all whitespace-nowrap ${
-                                                     addedToPalette
-                                                         ? 'bg-emerald-500 text-white cursor-default'
-                                                         : 'bg-accent hover:bg-accent-hover text-white'
-                                                 }`}
-                                             >
-                                                 {addedToPalette ? (
-                                                    <span className="flex items-center gap-1">
-                                                        <CheckIcon className="w-3 h-3" weight="bold" />
-                                                        <span>{t.addedToPalette}</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className="flex items-center gap-1">
-                                                        <PlusIcon className="w-3 h-3" weight="bold" />
-                                                        <span>{t.addMixedToPalette}</span>
-                                                    </span>
-                                                )}
-                                             </button>
-                                         )}
-                                     </div>
-                                     
-                                     {/* 色相准确度验证：使用包含黑白底漆的完整混色结果验证，避免剥离白色引发的假色相偏移告警 */}
-                                     {(() => {
-                                         if (!color) return null;
-                                         
-                                         const targetRgb = hexToRgb(color.hex);
-                                         if (!targetRgb) return null;
-                                         
-                                         const targetHsb = rgbToHsb(targetRgb.r, targetRgb.g, targetRgb.b);
-                                         
-                                         if (targetHsb.s < 15) {
-                                             return (
-                                                 <div className="mt-2 px-2 py-1 rounded text-[10px] flex items-center justify-center bg-slate-50 dark:bg-slate-800/50">
-                                                     <span className="text-slate-400 dark:text-slate-500 font-medium">
-                                                         {lang === 'zh' ? '低饱和度 - 无需色相验证' : lang === 'ja' ? '低彩度 - 色相検証不要' : 'Low Saturation - No Hue Check'}
-                                                     </span>
-                                                 </div>
-                                             );
-                                         }
-                                         
-                                         const hueVerification = calculateHueAccuracy(color.hex, fullMixedHex);
-                                         
-                                         const statusConfig: Record<string, { icon: React.ReactNode; text: string; color: string; bgColor: string }> = {
-                                             excellent: {
-                                                 icon: <CheckCircleIcon className="w-3.5 h-3.5" weight="fill" />,
-                                                 text: lang === 'zh' ? '色相极准' : lang === 'ja' ? '色相精確' : 'Hue Excellent',
-                                                 color: 'text-green-600 dark:text-green-400',
-                                                 bgColor: 'bg-green-50 dark:bg-green-900/20'
-                                             },
-                                             good: {
-                                                 icon: <CheckCircleIcon className="w-3.5 h-3.5" weight="bold" />,
-                                                 text: lang === 'zh' ? '色相良好' : lang === 'ja' ? '色相良好' : 'Hue Good',
-                                                 color: 'text-blue-600 dark:text-blue-400',
-                                                 bgColor: 'bg-blue-50 dark:bg-blue-900/20'
-                                             },
-                                             fair: {
-                                                 icon: <WarningIcon className="w-3.5 h-3.5" weight="bold" />,
-                                                 text: lang === 'zh' ? '色相偏移' : lang === 'ja' ? '色相ずれ' : 'Hue Shift',
-                                                 color: 'text-yellow-600 dark:text-yellow-400',
-                                                 bgColor: 'bg-yellow-50 dark:bg-yellow-900/20'
-                                             },
-                                             poor: {
-                                                 icon: <XCircleIcon className="w-3.5 h-3.5" weight="bold" />,
-                                                 text: lang === 'zh' ? '色相偏差' : lang === 'ja' ? '色相偏差' : 'Hue Poor',
-                                                 color: 'text-red-600 dark:text-red-400',
-                                                 bgColor: 'bg-red-50 dark:bg-red-900/20'
-                                             }
-                                         };
-                                         
-                                         const config = statusConfig[hueVerification.status];
-                                         
-                                         return (
-                                             <div className={`mt-2 px-2 py-1 rounded text-[10px] flex items-center justify-between ${config.bgColor}`}>
-                                                 <span className={`flex items-center gap-1 font-medium ${config.color}`}>
-                                                     {config.icon}
-                                                     {config.text}
-                                                 </span>
-                                                 <span className={`font-mono ${config.color} opacity-80`}>
-                                                     {hueVerification.accuracy.toFixed(0)}% (Δ{hueVerification.hueDiff.toFixed(0)}°)
-                                                 </span>
-                                             </div>
-                                         );
-                                     })()}
+                         if (!color) return null;
+                         const targetRgb = hexToRgb(color.hex);
+                         if (!targetRgb) return null;
+                         const targetHsb = rgbToHsb(targetRgb.r, targetRgb.g, targetRgb.b);
+                         if (targetHsb.s < 15) {
+                             return (
+                                 <div className="mb-2 px-2 py-1 rounded text-[10px] flex items-center justify-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700">
+                                     <span className="text-slate-400 dark:text-slate-500 font-medium">
+                                         {lang === 'zh' ? '低饱和度 - 无需色相验证' : lang === 'ja' ? '低彩度 - 色相検証不要' : 'Low Saturation - No Hue Check'}
+                                     </span>
                                  </div>
-                             </>
+                             );
+                         }
+                         const fullMixedHex = mixboxMultiBlend(
+                             mixLayers.map(layer => ({ hex: layer.color, weight: layer.volume }))
+                         );
+                         const hueVerification = calculateHueAccuracy(color.hex, fullMixedHex);
+                         const statusConfig: Record<string, { icon: React.ReactNode; text: string; color: string; bgColor: string }> = {
+                             excellent: {
+                                 icon: <CheckCircleIcon className="w-3.5 h-3.5" weight="fill" />,
+                                 text: lang === 'zh' ? '色相极准' : lang === 'ja' ? '色相精確' : 'Hue Excellent',
+                                 color: 'text-green-600 dark:text-green-400',
+                                 bgColor: 'bg-green-50 dark:bg-green-900/20'
+                             },
+                             good: {
+                                 icon: <CheckCircleIcon className="w-3.5 h-3.5" weight="bold" />,
+                                 text: lang === 'zh' ? '色相良好' : lang === 'ja' ? '色相良好' : 'Hue Good',
+                                 color: 'text-blue-600 dark:text-blue-400',
+                                 bgColor: 'bg-blue-50 dark:bg-blue-900/20'
+                             },
+                             fair: {
+                                 icon: <WarningIcon className="w-3.5 h-3.5" weight="bold" />,
+                                 text: lang === 'zh' ? '色相偏移' : lang === 'ja' ? '色相ずれ' : 'Hue Shift',
+                                 color: 'text-yellow-600 dark:text-yellow-400',
+                                 bgColor: 'bg-yellow-50 dark:bg-yellow-900/20'
+                             },
+                             poor: {
+                                 icon: <XCircleIcon className="w-3.5 h-3.5" weight="bold" />,
+                                 text: lang === 'zh' ? '色相偏差' : lang === 'ja' ? '色相偏差' : 'Hue Poor',
+                                 color: 'text-red-600 dark:text-red-400',
+                                 bgColor: 'bg-red-50 dark:bg-red-900/20'
+                             }
+                         };
+                         const config = statusConfig[hueVerification.status];
+                         return (
+                             <div className={`mb-2 px-2.5 py-1.5 rounded-lg text-[10px] flex items-center justify-between ${config.bgColor}`}>
+                                 <span className={`flex items-center gap-1 font-medium ${config.color}`}>
+                                     {config.icon}
+                                     {config.text}
+                                 </span>
+                                 <span className={`font-mono ${config.color} opacity-80`}>
+                                     {hueVerification.accuracy.toFixed(0)}% (Δ{hueVerification.hueDiff.toFixed(0)}°)
+                                 </span>
+                             </div>
                          );
                      })()}
                      

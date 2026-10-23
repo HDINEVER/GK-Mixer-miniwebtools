@@ -985,8 +985,10 @@ html[data-ui-style="blueprint"] .bp-slider-row {
   border: 1.5px solid #0F172A !important;
   background-color: #FFFFFF !important;
   box-shadow: 2px 2px 0px #0F172A !important;
-  padding: 6px 10px !important;
+  padding: 6px 8px !important;
   margin-bottom: 6px !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-slider-row {
   border-color: #475569 !important;

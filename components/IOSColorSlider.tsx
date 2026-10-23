@@ -55,12 +55,12 @@ export const IOSColorSlider: React.FC<IOSColorSliderProps> = ({
     <div
       className={`bp-slider-row ${
         value > 0 ? 'bp-slider-row-active' : ''
-      } flex items-center gap-2 sm:gap-3 py-1.5 w-full select-none group min-h-[50px]`}
+      } flex items-center gap-1.5 sm:gap-3 py-1.5 w-full min-w-0 max-w-full box-border select-none group min-h-[50px]`}
     >
-      {/* 1. Left Color Identity (Fixed width 105px ~ 130px) */}
-      <div className="flex items-center gap-2 w-[105px] sm:w-[130px] flex-shrink-0">
+      {/* 1. Left Color Identity (Responsive width: 82px on mobile, 130px on sm+) */}
+      <div className="flex items-center gap-1.5 sm:gap-2 w-[82px] sm:w-[130px] min-w-0 flex-shrink-0">
         <div
-          className="bp-swatch w-8 h-8 rounded-full sm:rounded-xl flex-shrink-0 shadow-sm relative overflow-hidden transition-transform duration-150 group-hover:scale-105"
+          className="bp-swatch w-7 h-7 sm:w-8 sm:h-8 rounded-full sm:rounded-xl flex-shrink-0 shadow-sm relative overflow-hidden transition-transform duration-150 group-hover:scale-105"
           style={{
             backgroundColor: color,
             border: isWhite
@@ -87,8 +87,8 @@ export const IOSColorSlider: React.FC<IOSColorSliderProps> = ({
         </div>
       </div>
 
-      {/* 2. Middle Extra-Long Slider Track (flex-1 mx-2 sm:mx-4) */}
-      <div className="flex-1 min-w-[100px] mx-1 sm:mx-3 relative flex items-center h-8">
+      {/* 2. Middle Slider Track (flex-1 with mobile-safe min-w) */}
+      <div className="flex-1 min-w-[44px] sm:min-w-[100px] mx-0.5 sm:mx-3 relative flex items-center h-8">
         {/* Track Container */}
         <div className="bp-slider-track relative w-full h-2.5 rounded-full overflow-hidden bg-slate-200/90 dark:bg-slate-700/80">
           {/* Active colored fill */}
@@ -110,7 +110,7 @@ export const IOSColorSlider: React.FC<IOSColorSliderProps> = ({
             willChange: 'left, transform',
           }}
         >
-          <div className="bp-slider-thumb-knob w-6 h-4 sm:w-7 sm:h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.22),0_1px_2px_rgba(0,0,0,0.1)] border border-black/[0.08] dark:border-white/20 active:scale-110 transition-transform duration-100" />
+          <div className="bp-slider-thumb-knob w-5 h-3.5 sm:w-7 sm:h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.22),0_1px_2px_rgba(0,0,0,0.1)] border border-black/[0.08] dark:border-white/20 active:scale-110 transition-transform duration-100" />
         </div>
 
         {/* Native Transparent Range Input Overlay */}
@@ -127,14 +127,14 @@ export const IOSColorSlider: React.FC<IOSColorSliderProps> = ({
         />
       </div>
 
-      {/* 3. Right Stepper Controls (Fixed width ~100px - 110px) */}
-      <div className="w-[100px] sm:w-[110px] flex-shrink-0 flex items-center justify-end gap-1">
+      {/* 3. Right Stepper Controls (Auto-sized flex-shrink-0 so 4 buttons never overflow row border) */}
+      <div className="flex-shrink-0 flex items-center justify-end gap-1">
         {/* [-] Stepper button */}
         <button
           type="button"
           disabled={disabled || value <= min}
           onClick={() => onChange(Math.max(min, value - step))}
-          className="bp-btn w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/80 dark:hover:bg-slate-600 disabled:opacity-30 disabled:pointer-events-none text-slate-600 dark:text-slate-300 flex items-center justify-center transition-transform active:scale-90"
+          className="bp-btn w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/80 dark:hover:bg-slate-600 disabled:opacity-30 disabled:pointer-events-none text-slate-600 dark:text-slate-300 flex items-center justify-center transition-transform active:scale-90 flex-shrink-0"
           title="减少数值"
           aria-label="减少数值"
         >
@@ -142,7 +142,7 @@ export const IOSColorSlider: React.FC<IOSColorSliderProps> = ({
         </button>
 
         {/* Number Input & Percentage Subscript */}
-        <div className="flex flex-col items-center justify-center min-w-[36px]">
+        <div className="flex flex-col items-center justify-center min-w-[32px] sm:min-w-[36px]">
           <input
             type="number"
             min={min}
@@ -158,7 +158,7 @@ export const IOSColorSlider: React.FC<IOSColorSliderProps> = ({
                 onChange(min);
               }
             }}
-            className={`bp-input w-9 h-6 text-center font-mono text-xs font-bold rounded-md border outline-none transition-colors tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+            className={`bp-input w-8 sm:w-9 h-6 text-center font-mono text-xs font-bold rounded-md border outline-none transition-colors tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
               value > 0
                 ? 'bg-white dark:bg-slate-800 border-accent/60 text-accent shadow-xs'
                 : 'bg-slate-100/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'
@@ -176,7 +176,7 @@ export const IOSColorSlider: React.FC<IOSColorSliderProps> = ({
           type="button"
           disabled={disabled || value >= max}
           onClick={() => onChange(Math.min(max, value + step))}
-          className="bp-btn w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/80 dark:hover:bg-slate-600 disabled:opacity-30 disabled:pointer-events-none text-slate-600 dark:text-slate-300 flex items-center justify-center transition-transform active:scale-90"
+          className="bp-btn w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/80 dark:hover:bg-slate-600 disabled:opacity-30 disabled:pointer-events-none text-slate-600 dark:text-slate-300 flex items-center justify-center transition-transform active:scale-90 flex-shrink-0"
           title="增加数值"
           aria-label="增加数值"
         >
@@ -188,7 +188,7 @@ export const IOSColorSlider: React.FC<IOSColorSliderProps> = ({
           <button
             type="button"
             onClick={onRemove}
-            className="bp-delete-btn w-5 h-5 rounded-full bg-slate-200 hover:bg-rose-500 text-slate-500 hover:text-white dark:bg-slate-700 dark:hover:bg-rose-500 dark:text-slate-300 flex items-center justify-center transition-colors active:scale-90 flex-shrink-0 ml-0.5"
+            className="bp-delete-btn w-5 h-5 rounded-full bg-slate-200 hover:bg-rose-500 text-slate-500 hover:text-white dark:bg-slate-700 dark:hover:bg-rose-500 dark:text-slate-300 flex items-center justify-center transition-colors active:scale-90 flex-shrink-0"
             title="移除此颜色"
             aria-label="移除此颜色"
           >

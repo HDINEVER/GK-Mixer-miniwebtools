@@ -808,12 +808,12 @@ export const EXTENDED_MIXING_COLORS: PaintBrand[] = [
     id: 'gaia-005',
     brand: 'Gaia',
     code: '005',
-    displayCode: '005',
-    name: '黄色',
+    displayCode: '035',
+    name: '色源黄',
     hex: '#FFFF00',
-    role: 'primary',
-    roleLabel: '主色',
-    propertyLabel: '光泽黄 (实色/色源)',
+    role: 'cmy',
+    roleLabel: '色源',
+    propertyLabel: '色源黄 (CMY半透明原色)',
     isSecondary: false,
   },
   {
@@ -831,10 +831,11 @@ export const EXTENDED_MIXING_COLORS: PaintBrand[] = [
 ];
 
 /**
- * Full 10-Color Mixing System (includes all 3 Secondary Translucent Color Sources:
- * Orange #FF8000, Green #00FF00, Purple #8000FF).
- * When `useSecondaryColors` is enabled, Orange replaces Red+Yellow, Green replaces Cyan+Yellow,
- * and Purple replaces Blue+Magenta ("以一顶二").
+ * Full Gaia Pure Color Source System:
+ * - Base Opaque Paints (2): 001 Gloss White (#FFFFFF), 002 Gloss Black (#000000)
+ * - CMY Primary Color Sources (3): 033 Cyan (#00FFFF), 034 Magenta (#FF00FF), 035 Yellow (#FFFF00)
+ * - Secondary Color Sources (3): 015 Orange (#FF8000), 036 Green (#00FF00), 037 Purple (#8000FF)
+ * (Slots 2 and 4 are kept in the 10-slot layout for snapshot compatibility with weight strictly 0.)
  */
 export const FULL_MIXING_COLORS: PaintBrand[] = [
   ...EXTENDED_MIXING_COLORS,
@@ -919,9 +920,9 @@ const PIGMENT_DESCRIPTORS_BY_HEX: Record<
     displayCode: '034',
     role: 'cmy',
     isSecondary: false,
-    zh: { shortName: '品红', fullName: '色源品红', roleBadge: '色源', propertyHint: 'CMY半透明色源' },
+    zh: { shortName: '色源品红', fullName: '色源品红', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
     en: { shortName: 'Magenta', fullName: 'Primary Magenta', roleBadge: 'CMY', propertyHint: 'Translucent CMY' },
-    ja: { shortName: 'マゼンタ', fullName: '純色マゼンタ', roleBadge: '色源', propertyHint: 'CMY半透明' },
+    ja: { shortName: 'マゼンタ', fullName: '純色マゼンタ', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
   },
   '#0000FF': {
     code: '004',
@@ -937,27 +938,36 @@ const PIGMENT_DESCRIPTORS_BY_HEX: Record<
     displayCode: '033',
     role: 'cmy',
     isSecondary: false,
-    zh: { shortName: '青', fullName: '色源青', roleBadge: '色源', propertyHint: 'CMY半透明色源' },
+    zh: { shortName: '色源青', fullName: '色源青', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
     en: { shortName: 'Cyan', fullName: 'Primary Cyan', roleBadge: 'CMY', propertyHint: 'Translucent CMY' },
-    ja: { shortName: 'シアン', fullName: '純色シアン', roleBadge: '色源', propertyHint: 'CMY半透明' },
+    ja: { shortName: 'シアン', fullName: '純色シアン', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
   },
   '#FFFF00': {
     code: '005',
     displayCode: '005',
     role: 'primary',
     isSecondary: false,
-    zh: { shortName: '黄', fullName: '光泽黄', roleBadge: '主色', propertyHint: '实色/色源黄' },
-    en: { shortName: 'Yellow', fullName: 'Sunshine Yellow', roleBadge: 'Primary', propertyHint: 'Primary Yellow' },
-    ja: { shortName: '黄', fullName: 'サンシャインイエロー', roleBadge: '主色', propertyHint: '原色イエロー' },
+    zh: { shortName: '光泽黄', fullName: '光泽黄', roleBadge: '主色', propertyHint: '实色基础色' },
+    en: { shortName: 'Yellow', fullName: 'Primary Yellow', roleBadge: 'Primary', propertyHint: 'Opaque Solid' },
+    ja: { shortName: '黄', fullName: 'ブライトイエロー', roleBadge: '主色', propertyHint: 'ソリッド基本色' },
+  },
+  '#FFEF00': {
+    code: '035',
+    displayCode: '035',
+    role: 'cmy',
+    isSecondary: false,
+    zh: { shortName: '色源黄', fullName: '色源黄', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
+    en: { shortName: 'Source Yellow', fullName: 'Source Yellow', roleBadge: 'CMY', propertyHint: 'Translucent CMY' },
+    ja: { shortName: 'ソースイエロー', fullName: '純色イエロー', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
   },
   '#FF8000': {
     code: '008',
     displayCode: '015',
     role: 'secondary',
     isSecondary: true,
-    zh: { shortName: '色源橙', fullName: '色源橙', roleBadge: '间色', propertyHint: '半透明间色 (替红+黄)' },
-    en: { shortName: 'Orange', fullName: 'Source Orange', roleBadge: 'Secondary', propertyHint: 'Replaces Red+Yellow' },
-    ja: { shortName: '橙', fullName: '純色オレンジ', roleBadge: '間色', propertyHint: '赤+黄の代替' },
+    zh: { shortName: '色源橙', fullName: '色源橙', roleBadge: '间色', propertyHint: '半透明间色 (替红/品红+黄)' },
+    en: { shortName: 'Orange', fullName: 'Source Orange', roleBadge: 'Secondary', propertyHint: 'Replaces Red/Magenta+Yellow' },
+    ja: { shortName: '橙', fullName: '純色オレンジ', roleBadge: '間色', propertyHint: '赤/マゼンタ+黄の代替' },
   },
   '#00FF00': {
     code: '009',
@@ -966,25 +976,28 @@ const PIGMENT_DESCRIPTORS_BY_HEX: Record<
     isSecondary: true,
     zh: { shortName: '色源绿', fullName: '色源绿', roleBadge: '间色', propertyHint: '半透明间色 (替青+黄)' },
     en: { shortName: 'Green', fullName: 'Source Green', roleBadge: 'Secondary', propertyHint: 'Replaces Cyan+Yellow' },
-    ja: { shortName: '緑', fullName: '純色グリーン', roleBadge: '間色', propertyHint: '青+黄の代替' },
+    ja: { shortName: '緑', fullName: '純色グリーン', roleBadge: '間色', propertyHint: 'シアン+黄の代替' },
   },
   '#8000FF': {
     code: '010',
     displayCode: '037',
     role: 'secondary',
     isSecondary: true,
-    zh: { shortName: '色源紫', fullName: '色源紫', roleBadge: '间色', propertyHint: '半透明间色 (替蓝+品红)' },
-    en: { shortName: 'Purple', fullName: 'Source Violet', roleBadge: 'Secondary', propertyHint: 'Replaces Blue+Magenta' },
-    ja: { shortName: '紫', fullName: '純色バイオレット', roleBadge: '間色', propertyHint: '青+マゼンタの代替' },
+    zh: { shortName: '色源紫', fullName: '色源紫', roleBadge: '间色', propertyHint: '半透明间色 (替蓝/青+品红)' },
+    en: { shortName: 'Purple', fullName: 'Source Violet', roleBadge: 'Secondary', propertyHint: 'Replaces Blue/Cyan+Magenta' },
+    ja: { shortName: '紫', fullName: '純色バイオレット', roleBadge: '間色', propertyHint: '青/シアン+マゼンタの代替' },
   },
 };
 
 export const getMixingPigmentInfo = (
   hex: string,
   lang: 'zh' | 'en' | 'ja' = 'zh',
-  fallbackLabel?: string
+  fallbackLabel?: string,
+  pureColorSourceOnly: boolean = false
 ): MixingPigmentDescriptor => {
-  const entry = PIGMENT_DESCRIPTORS_BY_HEX[hex.toUpperCase()];
+  const upper = hex.toUpperCase();
+  const lookupKey = pureColorSourceOnly && upper === '#FFFF00' ? '#FFEF00' : upper;
+  const entry = PIGMENT_DESCRIPTORS_BY_HEX[lookupKey];
   if (entry) {
     const loc = entry[lang] ?? entry.zh;
     return {
@@ -1140,6 +1153,111 @@ export const CMY_PRIMARIES = {
 };
 
 /**
+ * Expand Pure Color Source weights (CMY 033/034/035 + Secondary 015/036/037 + BW 001/002)
+ * by modeling the physical subtractive reaction of:
+ * - Magenta (#FF00FF) + Orange (#FF8000) -> Red (#FF0000)
+ * - Magenta (#FF00FF) + Yellow (#FFFF00) -> Red (#FF0000) / Orange
+ * - Cyan (#00FFFF) + Purple (#8000FF) -> Blue (#0000FF)
+ * - Cyan (#00FFFF) + Magenta (#FF00FF) -> Blue (#0000FF) / Purple
+ */
+export const expandPureColorSourceWeights = (
+  colorWeights: { hex: string; weight: number }[]
+): { hex: string; weight: number }[] => {
+  const byHex = new Map<string, number>();
+  for (const cw of colorWeights) {
+    if (cw.weight <= 1e-6) continue;
+    const rawHex = cw.hex.toUpperCase();
+    const h = rawHex === '#FFEF00' ? '#FFFF00' : rawHex;
+    byHex.set(h, (byHex.get(h) ?? 0) + cw.weight);
+  }
+
+  const wM = byHex.get('#FF00FF') ?? 0;
+  const wC = byHex.get('#00FFFF') ?? 0;
+  const wY = byHex.get('#FFFF00') ?? 0;
+  const wO = byHex.get('#FF8000') ?? 0;
+  const wP = byHex.get('#8000FF') ?? 0;
+  const wR = byHex.get('#FF0000') ?? 0;
+  const wB = byHex.get('#0000FF') ?? 0;
+
+  if (wR <= 1e-6) {
+    if (wM > 0 && wO > 0 && wY <= 1e-6 && wC <= 1e-6 && wP <= 1e-6) {
+      const react = Math.min(wM, wO);
+      byHex.set('#FF0000', (byHex.get('#FF0000') ?? 0) + 2 * react);
+      byHex.set('#FF00FF', wM - react);
+      byHex.set('#FF8000', wO - react);
+    } else if (wM > 0 && wY > 0 && wO <= 1e-6 && wC <= 1e-6) {
+      const react = Math.min(wM, wY);
+      byHex.set('#FF0000', (byHex.get('#FF0000') ?? 0) + 2 * react);
+      byHex.set('#FF00FF', wM - react);
+      byHex.set('#FFFF00', wY - react);
+    }
+  }
+
+  const wM2 = byHex.get('#FF00FF') ?? 0;
+  if (wB <= 1e-6) {
+    if (wC > 0 && wP > 0 && wM2 <= 1e-6) {
+      const react = Math.min(wC, wP);
+      byHex.set('#0000FF', (byHex.get('#0000FF') ?? 0) + 2 * react);
+      byHex.set('#00FFFF', wC - react);
+      byHex.set('#8000FF', wP - react);
+    } else if (wC > 0 && wM2 > 0 && wP <= 1e-6 && wY <= 1e-6) {
+      const react = Math.min(wC, wM2);
+      byHex.set('#0000FF', (byHex.get('#0000FF') ?? 0) + 2 * react);
+      byHex.set('#00FFFF', wC - react);
+      byHex.set('#FF00FF', wM2 - react);
+    }
+  }
+
+  return Array.from(byHex.entries())
+    .filter(([, weight]) => weight > 1e-6)
+    .map(([hex, weight]) => ({ hex, weight }));
+};
+
+/**
+ * Project internal 10-vertex weights [0:W, 1:K, 2:R_virt, 3:M, 4:B_virt, 5:C, 6:Y, 7:O, 8:G, 9:P]
+ * onto the 8-bottle Gaia Pure Color Source System by decomposing virtual Red (2) and Blue (4)
+ * into their exact CMY/Secondary pairs:
+ * - Red (2) -> 50% Magenta (3) + 50% Orange (7) [if secondary ON] or 50% Magenta (3) + 50% Yellow (6) [if secondary OFF]
+ * - Blue (4) -> 50% Cyan (5) + 50% Purple (9) [if secondary ON & 10-slot] or 50% Cyan (5) + 50% Magenta (3) [if secondary OFF]
+ */
+const projectToPureColorSourceWeights = (
+  weights: number[],
+  useSecondaryColors: boolean = true
+): number[] => {
+  if (weights.length <= 5) return weights;
+  const out = weights.slice();
+  const wRed = out[2] ?? 0;
+  const wBlue = out[4] ?? 0;
+  out[2] = 0;
+  out[4] = 0;
+
+  const hasOrange = out.length > 7 && useSecondaryColors;
+  const hasPurple = out.length > 9 && useSecondaryColors;
+
+  if (wRed > 0) {
+    if (hasOrange) {
+      out[3] = (out[3] ?? 0) + 0.5 * wRed;
+      out[7] = (out[7] ?? 0) + 0.5 * wRed;
+    } else {
+      out[3] = (out[3] ?? 0) + 0.5 * wRed;
+      out[6] = (out[6] ?? 0) + 0.5 * wRed;
+    }
+  }
+
+  if (wBlue > 0) {
+    if (hasPurple) {
+      out[5] = (out[5] ?? 0) + 0.5 * wBlue;
+      out[9] = (out[9] ?? 0) + 0.5 * wBlue;
+    } else {
+      out[5] = (out[5] ?? 0) + 0.5 * wBlue;
+      out[3] = (out[3] ?? 0) + 0.5 * wBlue;
+    }
+  }
+
+  return out;
+};
+
+/**
  * Multi-Color Mixbox Blending (Physical Paint Mixing)
  * Takes an array of colors with weights and uses Mixbox latent space
  * to mix them like real paint (subtractive mixing)
@@ -1158,12 +1276,15 @@ export const mixboxMultiBlend = (colorWeights: { hex: string; weight: number }[]
   if (filtered.length === 1) {
     return filtered[0].hex;
   }
+
+  // Apply Pure Color Source subtractive coupling (e.g. Magenta+Orange -> Red, Cyan+Purple -> Blue)
+  const effectiveWeights = expandPureColorSourceWeights(filtered);
   
   // Normalize weights
-  const totalWeight = filtered.reduce((sum, cw) => sum + cw.weight, 0);
+  const totalWeight = effectiveWeights.reduce((sum, cw) => sum + cw.weight, 0);
   
   // Convert all colors to latent space
-  const latents = filtered.map(cw => {
+  const latents = effectiveWeights.map(cw => {
     const rgb = hexToRgb(cw.hex);
     return {
       latent: mixbox.rgbToLatent(rgb.r, rgb.g, rgb.b),
@@ -1201,6 +1322,12 @@ export interface MixboxSolveOptions {
   useSecondaryColors?: boolean;
   /** Whether to use the 10-color FULL_MIXING_COLORS palette (including Green & Purple). Default: false */
   includeFullSecondaryPalette?: boolean;
+  /**
+   * When true (HSB / 纯色源 mode), removes the 3 solid primaries (003 Red, 004 Blue, 005 solid Yellow)
+   * and projects weights onto Pure Color Sources only: BW (001/002) + CMY (033/034/035) + Secondary (015/036/037).
+   * When false (Standard Mixbox mode), keeps solid Red (003), solid Blue (004), solid Yellow (005).
+   */
+  pureColorSourceOnly?: boolean;
 }
 
 const resolvePalette = (
@@ -1273,7 +1400,7 @@ const getCandidateActiveSubsets = (
   const hasGreen = paletteLength > 8 && useSecondaryColors;
   const hasPurple = paletteLength > 9 && useSecondaryColors;
 
-  // 1. Orange Zone (12°..55°): Intermediate Orange (7) replaces Red (2)/Magenta (3) + Yellow (6)
+  // 1. Orange Zone (12°..55°): Intermediate Orange (7) replaces Magenta/Red + Yellow (6)
   if (hue >= 12 && hue < 55) {
     if (hasOrange) {
       return [
@@ -1284,7 +1411,6 @@ const getCandidateActiveSubsets = (
     }
     return [
       [0, 1, 2, 6],
-      [0, 1, 3, 6],
     ];
   }
 
@@ -1326,12 +1452,10 @@ const getCandidateActiveSubsets = (
         [0, 1, 8],
         [0, 1, 8, 6],
         [0, 1, 8, 5],
-        [0, 1, 8, 4],
       ];
     }
     return [
       [0, 1, 5, 6],
-      [0, 1, 4, 5, 6],
     ];
   }
 
@@ -1339,11 +1463,13 @@ const getCandidateActiveSubsets = (
   if (hue >= 170 && hue < 205) {
     if (hasGreen) {
       return [
+        [0, 1, 5],
         [0, 1, 4, 5],
         [0, 1, 5, 8],
       ];
     }
     return [
+      [0, 1, 5],
       [0, 1, 4, 5],
       [0, 1, 5, 6],
     ];
@@ -1351,37 +1477,42 @@ const getCandidateActiveSubsets = (
 
   // 6. Sky Blue / Cobalt / Cornflower / Periwinkle Zone (205°..252°)
   if (hue >= 205 && hue < 252) {
-    // Allow Blue (4) + Cyan (5) + Red (2) for periwinkle/warm-blue compensation;
-    // strictly forbid Yellow (6), Orange (7), Green (8), and prevent Red (2) + Magenta (3) co-existence.
+    if (hasPurple) {
+      return [
+        [0, 1, 4, 5],
+        [0, 1, 4, 9],
+      ];
+    }
     return [
-      [0, 1, 2, 4, 5],
+      [0, 1, 4, 5],
+      [0, 1, 3, 4],
     ];
   }
 
-  // 7. Purple / Violet Zone (252°..315°): Intermediate Purple (9) replaces Blue (4) + Magenta (3)
+  // 7. Purple / Violet Zone (252°..315°): Intermediate Purple (9) replaces Cyan (5) + Magenta (3)
   if (hue >= 252 && hue < 315) {
     if (hasPurple) {
       return [
         [0, 1, 9],
         [0, 1, 9, 4],
         [0, 1, 9, 3],
-        [0, 1, 9, 2],
       ];
     }
     return [
       [0, 1, 3, 4],
-      [0, 1, 2, 4],
     ];
   }
 
   // 8. Magenta / Rose Zone (315°..345°)
   if (hasPurple) {
     return [
+      [0, 1, 3],
       [0, 1, 2, 3],
       [0, 1, 3, 9],
     ];
   }
   return [
+    [0, 1, 3],
     [0, 1, 2, 3],
     [0, 1, 3, 4],
   ];
@@ -1411,30 +1542,26 @@ const getPrimarySchemeAMask = (
 
   if (hue >= 12 && hue < 55) {
     if (hasOrange) {
-      // Intermediate Replacement: Orange + at most ONE flanking primary (Red or Yellow, never both)
       return subsetToMask(hue < 34 ? [0, 1, 2, 7] : [0, 1, 6, 7], paletteLength);
     }
     return subsetToMask([0, 1, 2, 6], paletteLength);
   }
   if (hue >= 75 && hue < 170) {
     if (hasGreen) {
-      // Intermediate Replacement: Green + at most ONE flanking primary (Yellow or Cyan, never both)
       return subsetToMask(hue < 122 ? [0, 1, 6, 8] : [0, 1, 5, 8], paletteLength);
     }
     return subsetToMask([0, 1, 5, 6], paletteLength);
   }
   if (hue >= 252 && hue < 315) {
     if (hasPurple) {
-      // Intermediate Replacement: Purple + at most ONE flanking primary (Blue or Magenta, never both)
       return subsetToMask(hue < 282 ? [0, 1, 4, 9] : [0, 1, 3, 9], paletteLength);
     }
     return subsetToMask([0, 1, 3, 4], paletteLength);
   }
 
   const subsets = getCandidateActiveSubsets(hue, paletteLength, useSecondaryColors);
-  // Union of candidate subsets for non-replacement zones, except for 205..252 where it's already [0,1,2,4,5]
   if (hue >= 205 && hue < 252) {
-    return subsetToMask([0, 1, 2, 4, 5], paletteLength);
+    return subsetToMask([0, 1, 4, 5], paletteLength);
   }
   return subsetToMask(subsets[0], paletteLength);
 };
@@ -1756,7 +1883,7 @@ const EXTENDED_RATIO_LABELS = [
   '色源品红 (Gaia 034 · 色源)',
   '光泽蓝 (Gaia 004 · 主色)',
   '色源青 (Gaia 033 · 色源)',
-  '光泽黄 (Gaia 005 · 主色)',
+  '色源黄 (Gaia 035 · 色源)',
   '色源橙 (Gaia 015 · 间色)',
   '色源绿 (Gaia 036 · 间色)',
   '色源紫 (Gaia 037 · 间色)',
@@ -1783,13 +1910,10 @@ const chromaticSummary = (ratios: { color: string; percentage: number }[]): stri
 };
 
 /**
- * Professional / HSB Mixbox ratios (scheme A).
- * Two-step HSB initialization, then hue-masked latent refinement against the real target.
- *
- * @returns Array of weights [white, black, ...chromatic colors] as percentages
+ * Internal unprojected Scheme A solver (used as warm-start inside the 10-vertex simplex).
  */
-export const calculateMixboxRatios = (
-  targetHex: string, 
+const solveMixboxRatiosRaw = (
+  targetHex: string,
   colorSpace: ColorSpace = 'srgb',
   useExtendedPalette: boolean = false,
   options?: MixboxSolveOptions
@@ -1936,8 +2060,29 @@ export const calculateMixboxRatios = (
 };
 
 /**
- * True Mixbox inverse (scheme B): simplex search matching Mixbox forward OKLab
+ * Pure Color Source Mixbox ratios (projected onto BW + CMY + OGP when extended palette is used).
+ *
+ * @returns Array of weights [white, black, ...chromatic colors] as percentages
+ */
+export const calculateMixboxRatios = (
+  targetHex: string, 
+  colorSpace: ColorSpace = 'srgb',
+  useExtendedPalette: boolean = false,
+  options?: MixboxSolveOptions
+): number[] => {
+  const useSecondaryColors = options?.useSecondaryColors ?? true;
+  const pureColorSourceOnly = options?.pureColorSourceOnly ?? true;
+  const raw = solveMixboxRatiosRaw(targetHex, colorSpace, useExtendedPalette, options);
+  return useExtendedPalette && pureColorSourceOnly
+    ? projectToPureColorSourceWeights(raw, useSecondaryColors)
+    : raw;
+};
+
+/**
+ * True Mixbox inverse: simplex search matching Mixbox forward OKLab
  * within the target hue's active pigment subsets, enforcing Intermediate Color Replacement ("以一顶二").
+ * - Standard Mixbox mode (`pureColorSourceOnly: false` default): includes solid Red (003), Blue (004), Yellow (005).
+ * - HSB / Pure Color Source mode (`pureColorSourceOnly: true`): removes solid Red/Blue/Yellow, using only BW + CMY (033/034/035) + Secondary (015/036/037).
  */
 export const calculateMixboxInverseRatios = (
   targetHex: string,
@@ -1946,6 +2091,7 @@ export const calculateMixboxInverseRatios = (
   options?: MixboxSolveOptions
 ): number[] => {
   const useSecondaryColors = options?.useSecondaryColors ?? true;
+  const pureColorSourceOnly = options?.pureColorSourceOnly ?? false;
   const palette = resolvePalette(useExtendedPalette, options);
   const zeros = emptyPaletteWeights(useExtendedPalette, options);
   let targetRgb = hexToRgb(targetHex);
@@ -1956,14 +2102,16 @@ export const calculateMixboxInverseRatios = (
   const baseLatents = loadBaseLatents(palette);
   if (!baseLatents) return zeros;
 
-  const exactIndex = palette.findIndex((color, idx) => {
+  const exactIndex = palette.findIndex((color) => {
     if (!useSecondaryColors && color.isSecondary) return false;
     return color.hex.toUpperCase() === targetHex.toUpperCase();
   });
   if (exactIndex >= 0) {
     const oneHot = zeros.slice();
     oneHot[exactIndex] = 100;
-    return oneHot;
+    return useExtendedPalette && pureColorSourceOnly
+      ? projectToPureColorSourceWeights(oneHot, useSecondaryColors)
+      : oneHot;
   }
 
   const targetRgb01 = {
@@ -1975,7 +2123,10 @@ export const calculateMixboxInverseRatios = (
   const minChannel = Math.min(targetRgb.r, targetRgb.g, targetRgb.b);
   const saturation = maxChannel === 0 ? 0 : (maxChannel - minChannel) / maxChannel;
   if (saturation < 0.05) {
-    return calculateMixboxRatios(targetHex, colorSpace, useExtendedPalette, options);
+    const rawGray = solveMixboxRatiosRaw(targetHex, colorSpace, useExtendedPalette, options);
+    return useExtendedPalette && pureColorSourceOnly
+      ? projectToPureColorSourceWeights(rawGray, useSecondaryColors)
+      : rawGray;
   }
   const hue = rgbHueDegrees(targetRgb.r, targetRgb.g, targetRgb.b);
   const targetLab = rgb01ToOkLab(targetRgb01.r, targetRgb01.g, targetRgb01.b);
@@ -1986,7 +2137,7 @@ export const calculateMixboxInverseRatios = (
   const grayscale = zeros.map((_, index) => (
     index === 0 ? luminance : index === 1 ? 1 - luminance : 0
   ));
-  const warmStart = calculateMixboxRatios(targetHex, colorSpace, useExtendedPalette, options)
+  const warmStart = solveMixboxRatiosRaw(targetHex, colorSpace, useExtendedPalette, options)
     .map(percent => percent / 100);
 
   let globalBestWeights: number[] | null = null;
@@ -2038,7 +2189,10 @@ export const calculateMixboxInverseRatios = (
   const padded = bestWeights.length >= count
     ? bestWeights.slice(0, count)
     : [...bestWeights, ...new Array(count - bestWeights.length).fill(0)];
-  return padded.map(weight => weight * 100);
+  const percentages = padded.map(weight => weight * 100);
+  return useExtendedPalette && pureColorSourceOnly
+    ? projectToPureColorSourceWeights(percentages, useSecondaryColors)
+    : percentages;
 };
 
 /**
@@ -2046,9 +2200,9 @@ export const calculateMixboxInverseRatios = (
  * Based on real-world spray painting experience
  * 
  * Workflow:
- * - High Brightness (B > 70%): White-base spray workflow, scheme A ratios
+ * - High Brightness (B > 70%): White-base spray workflow
  * - Mid Brightness (30% < B ≤ 70%): Standard mixing
- * - Low Brightness (B ≤ 30%): Black-base workflow, scheme A ratios
+ * - Low Brightness (B ≤ 30%): Black-base workflow
  * 
  * @param targetHex Target color hex string
  * @param options Optional secondary color settings
@@ -2103,8 +2257,12 @@ export const calculateProfessionalRecipe = (
     return { hsb, lab, strategy, steps, ratios };
   }
 
-  const mixboxRatios = calculateMixboxRatios(targetHex, 'srgb', true, options);
-  ratios = percentagesToExtendedRatios(mixboxRatios);
+  const mixboxRatios = calculateMixboxInverseRatios(targetHex, 'srgb', true, {
+    includeFullSecondaryPalette: true,
+    pureColorSourceOnly: true,
+    ...options,
+  });
+  ratios = percentagesToExtendedRatios(mixboxRatios, MIXBOX_INVERSE_RATIO_THRESHOLD);
   const whiteAmount = mixboxRatios[0] ?? 0;
   const blackAmount = mixboxRatios[1] ?? 0;
   const chromaText = chromaticSummary(ratios);

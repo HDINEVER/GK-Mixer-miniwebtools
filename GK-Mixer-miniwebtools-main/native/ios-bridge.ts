@@ -4,6 +4,7 @@ import {
   FULL_MIXING_COLORS,
   calculateMixboxRatios,
   calculateMixboxInverseRatios,
+  mixboxMultiBlend,
   getRALByNumber,
   hexToRAL,
 } from '../utils/colorUtils';
@@ -43,16 +44,23 @@ const assertHex = (hex: string) => {
   }
 };
 
-const mapPaletteWeights = (raw: number[], includeFullSecondaryPalette: boolean = false) => {
+const mapPaletteWeights = (
+  raw: number[],
+  includeFullSecondaryPalette: boolean = false,
+  pureColorSourceOnly: boolean = false
+) => {
   const palette = includeFullSecondaryPalette ? FULL_MIXING_COLORS : EXTENDED_MIXING_COLORS;
   const count = palette.length;
   const weights = [...raw, ...new Array(Math.max(0, count - raw.length)).fill(0)].slice(0, count);
-  return palette.map((color, index) => ({
-    id: `legacy-${color.code}`,
-    name: color.name,
-    hex: color.hex.toUpperCase(),
-    weight: Math.max(0, Number(weights[index] ?? 0)) / 100,
-  }));
+  return palette.map((color, index) => {
+    const isSourceYellow = pureColorSourceOnly && color.hex.toUpperCase() === '#FFFF00';
+    return {
+      id: `legacy-${color.code}`,
+      name: isSourceYellow ? '色源黄' : color.name,
+      hex: isSourceYellow ? '#FFEF00' : color.hex.toUpperCase(),
+      weight: Math.max(0, Number(weights[index] ?? 0)) / 100,
+    };
+  });
 };
 
 const toColorSpace = (
@@ -67,8 +75,10 @@ const decompose8 = (payload: DecomposePayload) => {
     calculateMixboxRatios(payload.hex, toColorSpace(payload.colorSpace), true, {
       useSecondaryColors: useSecondary,
       includeFullSecondaryPalette: includeFull,
+      pureColorSourceOnly: true,
     }),
-    includeFull
+    includeFull,
+    true
   );
 };
 
@@ -80,8 +90,10 @@ const decomposeMixboxInverse = (payload: DecomposePayload) => {
     calculateMixboxInverseRatios(payload.hex, toColorSpace(payload.colorSpace), true, {
       useSecondaryColors: useSecondary,
       includeFullSecondaryPalette: includeFull,
+      pureColorSourceOnly: false,
     }),
-    includeFull
+    includeFull,
+    false
   );
 };
 
@@ -122,7 +134,7 @@ const mixBasic = (weights: number[]) => {
   };
 };
 
-/** Arbitrary multi-color Mixbox blend — mirrors web `mixboxMultiBlend`. */
+/** Arbitrary multi-color Mixbox blend — mirrors web `mixboxMultiBlend` with Pure Color Source subtractive coupling. */
 const mixMulti = (colors: { hex: string; weight: number }[]) => {
   const filtered = colors
     .map(entry => ({
@@ -141,23 +153,7 @@ const mixMulti = (colors: { hex: string; weight: number }[]) => {
     return { hex: filtered[0].hex };
   }
 
-  const totalWeight = filtered.reduce((sum, entry) => sum + entry.weight, 0);
-  const latentMix = new Array(7).fill(0);
-  for (const entry of filtered) {
-    const latent = rgbToLatent(entry.hex);
-    if (!latent) throw new Error(`Unable to convert ${entry.hex} to Mixbox latent`);
-    const normalizedWeight = entry.weight / totalWeight;
-    latent.forEach((value, latentIndex) => {
-      latentMix[latentIndex] += value * normalizedWeight;
-    });
-  }
-
-  const rgb = latentToRgb(latentMix);
-  if (!rgb) throw new Error('Unable to convert mixed latent value to RGB');
-  const hex = `#${rgb.slice(0, 3).map(value =>
-    Math.round(value).toString(16).padStart(2, '0')
-  ).join('')}`.toUpperCase();
-  return { hex };
+  return { hex: mixboxMultiBlend(filtered) };
 };
 
 const findNearestRAL = (hex: string) => {

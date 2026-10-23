@@ -16,6 +16,7 @@ import { floatingNodesToColors } from "../utils/projectStore";
 import { encodeQRPayloadString, parseStepParams } from "../utils/projectSharing";
 import { embedPayloadInPngDataUrl, renderQRCodeToDataUrl } from "../utils/qrCode";
 import { localizedBrand } from "../utils/paintCatalog";
+import { computeBrandTintRecipe } from "../utils/brandTintRecipe";
 import { SwatchSettings } from "../utils/swatchLayout";
 import {
   XIcon,
@@ -351,11 +352,26 @@ export const ProjectSharePosterModal: React.FC<ProjectSharePosterModalProps> = (
           }
           ctx.restore();
 
+          const matchedCatalogPaint = catalogPaints.find(
+            (p) => p.code.trim().toUpperCase() === node.paintCode.trim().toUpperCase()
+          );
+          const liveTintRecipe = matchedCatalogPaint
+            ? computeBrandTintRecipe(node.hex, matchedCatalogPaint, lang)
+            : null;
+          const isFineTuned =
+            Boolean(node.basePaintHex && node.basePaintHex.toUpperCase() !== node.hex.toUpperCase()) ||
+            Boolean(liveTintRecipe && !liveTintRecipe.isDirectSpray);
+          const baseHexForBadge =
+            node.basePaintHex || (liveTintRecipe ? liveTintRecipe.basePaint.hex : undefined);
+          const compactBadge =
+            node.tintBadgeText ||
+            (liveTintRecipe && !liveTintRecipe.isDirectSpray ? liveTintRecipe.compactBadgeText : undefined);
+
           // Brand + Code + Full Name
           const bName = localizedBrand(node.paintBrand, lang);
           ctx.fillStyle = "#F8FAFC";
           ctx.font = "bold 14px ui-sans-serif, system-ui, sans-serif";
-          const titleLine = `${bName} ${node.paintCode} ${node.paintName}`;
+          const titleLine = `${bName} ${node.paintCode} ${node.paintName}${!isFineTuned ? " (直喷)" : ""}`;
           const maxTextW = paintColW - 108;
           ctx.fillText(
             fitTextWithEllipsis(titleLine, maxTextW),
@@ -363,15 +379,30 @@ export const ProjectSharePosterModal: React.FC<ProjectSharePosterModalProps> = (
             by + 23
           );
 
-          ctx.fillStyle = "#94A3B8";
-          ctx.font = "bold 11px ui-monospace, SFMono-Regular, Menlo, monospace";
-          ctx.fillText(node.hex.toUpperCase(), bx + 54, by + 41);
+          if (isFineTuned && compactBadge) {
+            ctx.fillStyle = "#FBBF24";
+            ctx.font = "bold 11px ui-monospace, SFMono-Regular, Menlo, monospace";
+            ctx.fillText(fitTextWithEllipsis(compactBadge, maxTextW), bx + 54, by + 41);
+          } else {
+            ctx.fillStyle = "#94A3B8";
+            ctx.font = "bold 11px ui-monospace, SFMono-Regular, Menlo, monospace";
+            ctx.fillText(`${node.hex.toUpperCase()} · 直喷免调`, bx + 54, by + 41);
+          }
 
-          // Right color dot
+          // Right color dot (with top-right original base paint dot if fine-tuned)
+          const dotX = bx + paintColW - 44;
+          const dotY = by + 15;
           ctx.fillStyle = node.hex;
           ctx.beginPath();
-          ctx.roundRect(bx + paintColW - 44, by + 15, 34, 22, 6);
+          ctx.roundRect(dotX, dotY, 34, 22, 6);
           ctx.fill();
+          if (isFineTuned && baseHexForBadge) {
+            ctx.fillStyle = baseHexForBadge;
+            ctx.fillRect(dotX + 22, dotY - 2, 12, 12);
+            ctx.strokeStyle = "#FFFFFF";
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(dotX + 22, dotY - 2, 12, 12);
+          }
           ctx.restore();
         });
 

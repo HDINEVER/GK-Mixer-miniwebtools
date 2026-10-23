@@ -22,7 +22,11 @@ import {
   Link,
   Plus
 } from '@phosphor-icons/react';
-import { ColorData, Language } from '../types';
+import { CatalogPaint, ColorData, Language } from '../types';
+import { loadPaintCatalog } from '../utils/paintCatalog';
+import { computeBrandTintRecipe, findTopBrandMatchesForHex } from '../utils/brandTintRecipe';
+import { loadWorkflowMode, THEME_SYNC_EVENT, WorkflowMode } from '../utils/accentTheme';
+import { PaintBottleImg } from './PaintBottleHover';
 
 // ==========================================
 // 色彩科学算法工具库 (HEX <-> RGB <-> HSL <-> OKLCH 感知均匀空间)
@@ -425,6 +429,33 @@ export const ChromaStudioPanel: React.FC<ChromaStudioPanelProps> = ({
 
   // 取色器抽屉状态
   const [showImageDrawer, setShowImageDrawer] = useState<boolean>(false);
+  const [catalogPaints, setCatalogPaints] = useState<CatalogPaint[]>([]);
+  const [workflowMode, setWorkflowMode] = useState<WorkflowMode>(() => loadWorkflowMode());
+  const [recipeTab, setRecipeTab] = useState<'brand-tint' | 'pigment'>(() =>
+    loadWorkflowMode() === 'beginner' ? 'brand-tint' : 'brand-tint'
+  );
+  const [selectedBasePaintIdx, setSelectedBasePaintIdx] = useState<number>(0);
+
+  useEffect(() => {
+    let active = true;
+    loadPaintCatalog().then((loaded) => {
+      if (active) setCatalogPaints(loaded);
+    });
+    const syncMode = () => {
+      const m = loadWorkflowMode();
+      setWorkflowMode(m);
+      if (m === 'beginner') setRecipeTab('brand-tint');
+    };
+    window.addEventListener(THEME_SYNC_EVENT, syncMode);
+    return () => {
+      active = false;
+      window.removeEventListener(THEME_SYNC_EVENT, syncMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSelectedBasePaintIdx(0);
+  }, [baseHex]);
   const [extractedPalette, setExtractedPalette] = useState<string[]>([
     '#3B6EE4',
     '#FF6B4A',
@@ -547,6 +578,35 @@ export const ChromaStudioPanel: React.FC<ChromaStudioPanelProps> = ({
       baseColorInfo.hsl.h
     );
   }, [baseColorInfo, activeInspectNode]);
+
+  // 现成品牌漆微调补正方案 (Brand Paint Tint Recipe)
+  const topBrandCandidates = useMemo(() => {
+    const matches = findTopBrandMatchesForHex(baseColorInfo.hex, catalogPaints, 3, lang);
+    if (color?.assignedPaint) {
+      const assigned = color.assignedPaint;
+      const filtered = matches.filter((m) => m.paint.id !== assigned.id);
+      return [
+        {
+          paint: assigned,
+          deltaE: 0,
+          brandZh: assigned.brand,
+        },
+        ...filtered.slice(0, 2),
+      ];
+    }
+    return matches;
+  }, [baseColorInfo.hex, catalogPaints, lang, color?.assignedPaint]);
+
+  const activeBaseBrandPaint = useMemo(() => {
+    if (topBrandCandidates.length === 0) return null;
+    const safeIdx = Math.min(selectedBasePaintIdx, topBrandCandidates.length - 1);
+    return topBrandCandidates[safeIdx]?.paint || topBrandCandidates[0].paint;
+  }, [topBrandCandidates, selectedBasePaintIdx]);
+
+  const brandTintRecipe = useMemo(() => {
+    if (!activeBaseBrandPaint) return null;
+    return computeBrandTintRecipe(activeInspectNode.hex, activeBaseBrandPaint, lang);
+  }, [activeInspectNode.hex, activeBaseBrandPaint, lang]);
 
   // 初始化内置示例画布
   useEffect(() => {
@@ -1442,50 +1502,269 @@ export const ChromaStudioPanel: React.FC<ChromaStudioPanelProps> = ({
             </div>
           </div>
 
-          {/* 卡片 2：实体颜料调配比换算 */}
+          {/* 卡片 2：现成品牌漆微调补正方案 (新手默认置顶) / 实体颜料配比换算 (专业) */}
           <div className="bp-subcard-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <h2 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                 <Drop className="w-4 h-4 text-accent" />
-                <span>实体颜料配比换算</span>
+                <span>
+                  {recipeTab === 'brand-tint' ? '🎯 现成品牌漆微调补正方案' : '实体颜料配比换算'}
+                </span>
               </h2>
               <span className="bp-badge text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                 目标 {activeInspectNode.hex}
               </span>
             </div>
 
-            {/* 比例条 */}
-            <div className="bp-swatch h-3 w-full rounded-full overflow-hidden flex border border-black/10 dark:border-white/10">
-              {pigmentRecipe.pigments.map((p, idx) => (
-                <div
-                  key={idx}
-                  style={{ width: `${p.pct}%`, backgroundColor: p.color }}
-                  title={`${p.name}: ${p.pct}%`}
-                  className="h-full transition-all duration-200"
-                />
-              ))}
+            {/* 模式切换器：[🍼 品牌漆滴数微调 | 🧪 色母从零混色] */}
+            <div className="bp-segmented grid grid-cols-2 rounded-xl bg-slate-100 dark:bg-slate-800 p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => setRecipeTab('brand-tint')}
+                className={`bp-segmented-item py-1.5 px-2 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                  recipeTab === 'brand-tint'
+                    ? 'bp-segmented-item-active bg-accent text-white shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                🍼 品牌漆滴数微调 {workflowMode === 'beginner' ? '(推荐)' : ''}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecipeTab('pigment')}
+                className={`bp-segmented-item py-1.5 px-2 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                  recipeTab === 'pigment'
+                    ? 'bp-segmented-item-active bg-accent text-white shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                🧪 色母从零混色
+              </button>
             </div>
 
-            {/* 明细清单 */}
-            <div className="space-y-1.5 pt-0.5">
-              {pigmentRecipe.pigments.map((p, idx) => (
-                <div
-                  key={idx}
-                  className="bp-subcard flex items-center justify-between text-[11px] bg-slate-50 dark:bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="bp-dot w-3 h-3 rounded-full border border-black/10 dark:border-white/20 shrink-0" style={{ backgroundColor: p.color }} />
-                    <span className="text-slate-700 dark:text-slate-300 font-medium">{p.name}</span>
+            {recipeTab === 'brand-tint' && brandTintRecipe ? (
+              <div className="space-y-2.5">
+                {/* 候选主品牌漆切换胶囊 */}
+                <div className="space-y-1">
+                  <div className="text-[10px] font-bold text-slate-400 flex items-center justify-between">
+                    <span>选择手头或想买的主基底漆：</span>
+                    <span className="font-mono">Top {topBrandCandidates.length} 近邻</span>
                   </div>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white">{p.pct}%</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {topBrandCandidates.map((cand, idx) => {
+                      const active = idx === selectedBasePaintIdx;
+                      return (
+                        <button
+                          key={cand.paint.id}
+                          type="button"
+                          onClick={() => setSelectedBasePaintIdx(idx)}
+                          className={`bp-pill flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-extrabold border transition cursor-pointer ${
+                            active
+                              ? 'bp-pill-active border-accent bg-accent/12 dark:bg-accent/25 text-accent dark:text-white ring-1 ring-accent/40'
+                              : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:border-accent/50'
+                          }`}
+                        >
+                          <span
+                            className="bp-dot w-3 h-3 rounded-xs border border-black/15 shrink-0"
+                            style={{ backgroundColor: cand.paint.hex }}
+                          />
+                          <span className="truncate max-w-[110px]">
+                            {cand.brandZh} {cand.paint.code}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              ))}
-            </div>
 
-            <div className="bp-dashed-box p-2.5 rounded-xl bg-accent/8 dark:bg-accent/15 border border-accent/20 dark:border-accent/30 text-[11px] text-slate-700 dark:text-slate-200 leading-snug flex gap-2">
-              <Info className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
-              <span>{pigmentRecipe.actionTip}</span>
-            </div>
+                {brandTintRecipe.isDirectMatch ? (
+                  /* 情况 1：色差极小 (ΔE <= 2.2) — 开瓶直喷 */
+                  <div className="bp-subcard rounded-xl border border-emerald-500/40 bg-emerald-500/10 dark:bg-emerald-950/50 p-3 space-y-2">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className="bp-swatch w-11 h-11 rounded-lg border border-black/15 shrink-0 bg-white overflow-hidden flex items-center justify-center"
+                        style={{ backgroundColor: brandTintRecipe.basePaint.hex }}
+                      >
+                        <PaintBottleImg
+                          brand={brandTintRecipe.basePaint.brand}
+                          code={brandTintRecipe.basePaint.code}
+                          className="w-full h-full object-contain p-0.5 bg-white/90"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-black text-emerald-800 dark:text-emerald-200 truncate">
+                          🧴 {brandTintRecipe.basePaint.brandZh} {brandTintRecipe.basePaint.code} {brandTintRecipe.basePaint.name}
+                        </div>
+                        <div className="text-[10px] font-mono font-bold text-emerald-700/85 dark:text-emerald-300/85 mt-0.5">
+                          原瓶色 {brandTintRecipe.basePaint.hex} · ΔE {brandTintRecipe.deltaE}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-[11px] font-extrabold text-emerald-900 dark:text-emerald-100 leading-snug">
+                      {brandTintRecipe.spokenTip}
+                    </div>
+                  </div>
+                ) : (
+                  /* 情况 2：需要提亮 / 压暗 / 降纯微调 (ΔE > 2.2) */
+                  <>
+                    {/* 混合比例进度条 */}
+                    <div className="bp-swatch h-3 w-full rounded-full overflow-hidden flex border border-black/10 dark:border-white/10">
+                      <div
+                        style={{
+                          width: `${brandTintRecipe.basePct}%`,
+                          backgroundColor: brandTintRecipe.basePaint.hex,
+                        }}
+                        title={`主漆基底 ${brandTintRecipe.basePct}%`}
+                        className="h-full transition-all duration-200"
+                      />
+                      {brandTintRecipe.modifier && (
+                        <div
+                          style={{
+                            width: `${brandTintRecipe.modifier.pct}%`,
+                            backgroundColor: brandTintRecipe.modifier.hex,
+                          }}
+                          title={`微调补正 ${brandTintRecipe.modifier.pct}%`}
+                          className="h-full transition-all duration-200"
+                        />
+                      )}
+                    </div>
+
+                    {/* 主基底油漆槽 + 微调添加剂槽 */}
+                    <div className="space-y-1.5">
+                      <div className="bp-subcard flex items-center justify-between gap-2 text-[11px] bg-slate-50 dark:bg-slate-950/60 px-2.5 py-2 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className="bp-swatch w-7 h-7 rounded-md border border-black/15 shrink-0 bg-white overflow-hidden flex items-center justify-center"
+                            style={{ backgroundColor: brandTintRecipe.basePaint.hex }}
+                          >
+                            <PaintBottleImg
+                              brand={brandTintRecipe.basePaint.brand}
+                              code={brandTintRecipe.basePaint.code}
+                              className="w-full h-full object-contain p-0.5 bg-white/90"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                              🧴 主漆基底：【{brandTintRecipe.basePaint.brandZh} {brandTintRecipe.basePaint.code} {brandTintRecipe.basePaint.name}】
+                            </div>
+                            <div className="text-[10px] font-mono text-slate-400">
+                              原瓶色 {brandTintRecipe.basePaint.hex}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="font-mono font-black text-slate-900 dark:text-white">
+                            {brandTintRecipe.basePct}%
+                          </div>
+                          <div className="text-[10px] font-mono font-bold text-accent">
+                            约 {brandTintRecipe.baseDrops} 滴
+                          </div>
+                        </div>
+                      </div>
+
+                      {brandTintRecipe.modifier && (
+                        <div className="bp-subcard flex items-center justify-between gap-2 text-[11px] bg-slate-50 dark:bg-slate-950/60 px-2.5 py-2 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="bp-dot w-7 h-7 rounded-md border border-slate-300 dark:border-slate-600 shrink-0 shadow-2xs"
+                              style={{ backgroundColor: brandTintRecipe.modifier.hex }}
+                            />
+                            <div className="min-w-0">
+                              <div className="font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                                ➕ 微调补正：加入【{brandTintRecipe.modifier.name}】
+                              </div>
+                              <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                作用：{brandTintRecipe.modifier.roleLabel}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="font-mono font-black text-slate-900 dark:text-white">
+                              {brandTintRecipe.modifier.pct}%
+                            </div>
+                            <div className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                              约 {brandTintRecipe.modifier.drops} 滴
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 混合预览零接缝对比条 (原瓶直喷色 vs 滴入微调后的目标色) */}
+                    <div className="bp-swatch relative grid grid-cols-2 h-11 rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-700">
+                      <div
+                        className="px-2.5 py-1 flex items-center justify-between text-[10px] font-bold"
+                        style={{
+                          backgroundColor: brandTintRecipe.basePaint.hex,
+                          color:
+                            getPerceivedLuminance(
+                              hexToRgb(brandTintRecipe.basePaint.hex).r,
+                              hexToRgb(brandTintRecipe.basePaint.hex).g,
+                              hexToRgb(brandTintRecipe.basePaint.hex).b
+                            ) <= 60
+                              ? '#FFF'
+                              : '#0F172A',
+                        }}
+                      >
+                        <span>🧴 原瓶直喷色</span>
+                        <span className="font-mono">{brandTintRecipe.basePaint.hex}</span>
+                      </div>
+                      <div
+                        className="px-2.5 py-1 flex items-center justify-between text-[10px] font-bold"
+                        style={{
+                          backgroundColor: brandTintRecipe.targetHex,
+                          color: activeInspectNode.perceivedL <= 60 ? '#FFF' : '#0F172A',
+                        }}
+                      >
+                        <span>✨ 微调后目标色</span>
+                        <span className="font-mono">{brandTintRecipe.effectTag}</span>
+                      </div>
+                    </div>
+
+                    {/* 傻瓜式滴数补正口诀 */}
+                    <div className="bp-dashed-box p-2.5 rounded-xl bg-accent/8 dark:bg-accent/15 border border-accent/20 dark:border-accent/30 text-[11px] font-bold text-slate-800 dark:text-slate-100 leading-snug">
+                      {brandTintRecipe.spokenTip}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              /* 专业模式：色母从零混色配方 */
+              <>
+                {/* 比例条 */}
+                <div className="bp-swatch h-3 w-full rounded-full overflow-hidden flex border border-black/10 dark:border-white/10">
+                  {pigmentRecipe.pigments.map((p, idx) => (
+                    <div
+                      key={idx}
+                      style={{ width: `${p.pct}%`, backgroundColor: p.color }}
+                      title={`${p.name}: ${p.pct}%`}
+                      className="h-full transition-all duration-200"
+                    />
+                  ))}
+                </div>
+
+                {/* 明细清单 */}
+                <div className="space-y-1.5 pt-0.5">
+                  {pigmentRecipe.pigments.map((p, idx) => (
+                    <div
+                      key={idx}
+                      className="bp-subcard flex items-center justify-between text-[11px] bg-slate-50 dark:bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="bp-dot w-3 h-3 rounded-full border border-black/10 dark:border-white/20 shrink-0" style={{ backgroundColor: p.color }} />
+                        <span className="text-slate-700 dark:text-slate-300 font-medium">{p.name}</span>
+                      </div>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white">{p.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bp-dashed-box p-2.5 rounded-xl bg-accent/8 dark:bg-accent/15 border border-accent/20 dark:border-accent/30 text-[11px] text-slate-700 dark:text-slate-200 leading-snug flex gap-2">
+                  <Info className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
+                  <span>{pigmentRecipe.actionTip}</span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* 卡片 3：灵感色卡收藏 */}

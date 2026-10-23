@@ -86,9 +86,13 @@ import {
 } from './utils/swatchLayout';
 import {
   UIStyle,
+  WorkflowMode,
   THEME_SYNC_EVENT,
   loadUIStyle,
   saveUIStyle,
+  loadWorkflowMode,
+  saveWorkflowMode,
+  loadHideTopBar,
 } from './utils/accentTheme';
 
 // Default base colors for BasicColorMixer
@@ -108,10 +112,25 @@ const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('zh');
   const [theme, setTheme] = useState<Theme>('light');
   const [uiStyle, setUiStyle] = useState<UIStyle>(() => loadUIStyle());
+  const [workflowMode, setWorkflowMode] = useState<WorkflowMode>(() => loadWorkflowMode());
+  const [hideTopBar, setHideTopBar] = useState<boolean>(() => loadHideTopBar());
+  const [showAdvancedNavMenu, setShowAdvancedNavMenu] = useState(false);
   const [colorSpace, setColorSpace] = useState<ColorSpace>('srgb');
 
   useEffect(() => {
-    const syncStyle = () => setUiStyle(loadUIStyle());
+    const syncStyle = () => {
+      setUiStyle(loadUIStyle());
+      setHideTopBar(loadHideTopBar());
+      const nextWf = loadWorkflowMode();
+      setWorkflowMode((prev) => {
+        if (prev !== nextWf && nextWf === 'beginner') {
+          setDesktopTabUI('coloring');
+          setDesktopTab('coloring');
+          setMobileMainTab('coloring');
+        }
+        return nextWf;
+      });
+    };
     window.addEventListener(THEME_SYNC_EVENT, syncStyle);
     return () => window.removeEventListener(THEME_SYNC_EVENT, syncStyle);
   }, []);
@@ -201,10 +220,14 @@ const App: React.FC = () => {
   type TuningSubpage = 'custom' | 'basic' | 'brands';
   type DesktopPanelTab = 'mixer' | 'chroma' | 'custom' | 'basic' | 'brands' | 'coloring' | 'studio' | 'catalog';
 
-  const [mobileMainTab, setMobileMainTab] = useState<MobileMainTab>('workbench');
+  const [mobileMainTab, setMobileMainTab] = useState<MobileMainTab>(() =>
+    loadWorkflowMode() === 'beginner' ? 'coloring' : 'workbench'
+  );
   const [workbenchSubpage, setWorkbenchSubpage] = useState<WorkbenchSubpage>('extract');
   const [tuningSubpage, setTuningSubpage] = useState<TuningSubpage>('custom');
-  const [desktopTab, setDesktopTab] = useState<DesktopPanelTab>('mixer');
+  const [desktopTab, setDesktopTab] = useState<DesktopPanelTab>(() =>
+    loadWorkflowMode() === 'beginner' ? 'coloring' : 'mixer'
+  );
   const [coloringIncomingImage, setColoringIncomingImage] = useState<{
     url: string;
     label?: string;
@@ -213,7 +236,9 @@ const App: React.FC = () => {
   const [focusProjectId, setFocusProjectId] = useState<string | null>(null);
   // Urgent UI state for the desktop tab pill: updates synchronously on click so the
   // highlight responds instantly, while the heavy panel swap runs in a transition.
-  const [desktopTabUI, setDesktopTabUI] = useState<DesktopPanelTab>('mixer');
+  const [desktopTabUI, setDesktopTabUI] = useState<DesktopPanelTab>(() =>
+    loadWorkflowMode() === 'beginner' ? 'coloring' : 'mixer'
+  );
   const [tabTransitionDir, setTabTransitionDir] = useState<'forward' | 'backward' | 'up'>('up');
   useEffect(() => {
     setDesktopTabUI(desktopTab);
@@ -283,6 +308,7 @@ const App: React.FC = () => {
 
   const handleSwitchDesktopTab = useCallback((tab: DesktopPanelTab) => {
     resetPageScrollInstant();
+    setShowAdvancedNavMenu(false);
     const prevIdx = DESKTOP_TAB_ORDER.indexOf(desktopTabUI);
     const nextIdx = DESKTOP_TAB_ORDER.indexOf(tab);
     setTabTransitionDir(nextIdx >= prevIdx ? 'forward' : 'backward');
@@ -302,6 +328,29 @@ const App: React.FC = () => {
       setMobileMainTab('catalog');
     }
   }, [desktopTabUI, resetPageScrollInstant]);
+
+  const handleSelectWorkflowMode = useCallback(
+    (nextMode: WorkflowMode) => {
+      saveWorkflowMode(nextMode);
+      setWorkflowMode(nextMode);
+      setShowAdvancedNavMenu(false);
+      if (nextMode === 'beginner') {
+        handleSwitchDesktopTab('coloring');
+        showToast(
+          lang === 'zh'
+            ? '🌱 已切换至「新手引导模式」：① 模拟试色 ➔ ② 选现成漆/微调 ➔ ③ 涂装库归档'
+            : '🌱 Switched to Beginner Guided Workflow'
+        );
+      } else {
+        showToast(
+          lang === 'zh'
+            ? '🛠️ 已切换至「专业喷涂模式」：完整 8 步硬核工作流已展开'
+            : '🛠️ Switched to Pro Airbrush Workflow'
+        );
+      }
+    },
+    [handleSwitchDesktopTab, lang, showToast]
+  );
 
   const handleSendImageToColoring = useCallback(
     (url: string, label?: string) => {
@@ -1258,96 +1307,79 @@ const App: React.FC = () => {
       safeAreas={false}
       className="min-h-screen bg-slate-50 dark:bg-slate-950 gk-page-bg transition-colors duration-300 flex flex-col overflow-x-hidden font-mono"
     >
-      {/* Header with iOS 26/27 Soft Progressive Blur Edge Effect (or Blueprint solid header) */}
-      <header className="gk-app-header gk-header sticky top-0 z-40 pt-[env(safe-area-inset-top,0px)] transition-all duration-300 bg-gradient-to-b from-white/90 via-white/65 to-transparent dark:from-slate-950/90 dark:via-slate-950/65 dark:to-transparent backdrop-blur-xl">
-        <div className="max-w-[1920px] mx-auto px-4 md:px-6 h-14 flex justify-between items-center gap-3">
-          <div className="flex items-center gap-2.5">
-            <img
-              src="/app-logo.png"
-              alt="GK-Mixer"
-              className="w-7 h-7 rounded-lg object-cover shadow-xs border border-slate-200/60 dark:border-slate-700/60"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
-              }}
-            />
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-macaron-pink"></div>
-              <div className="w-2.5 h-2.5 rounded-full bg-macaron-blue"></div>
-              <div className="w-2.5 h-2.5 rounded-full bg-macaron-green"></div>
+      {/* Header with iOS 26/27 Soft Progressive Blur Edge Effect (or Floating 3-Bar Square Button when Top Bar is Hidden) */}
+      {hideTopBar ? (
+        <button
+          type="button"
+          onClick={() => setIsSettingsOpen(true)}
+          className={`fixed top-3 right-3 z-50 flex h-10 w-10 items-center justify-center transition-all active:scale-95 cursor-pointer ${
+            uiStyle === 'blueprint'
+              ? 'rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-400 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-[3px_3px_0px_#0F172A] dark:shadow-[3px_3px_0px_#020617]'
+              : 'rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl text-slate-700 dark:text-slate-200 shadow-lg hover:bg-white dark:hover:bg-slate-800'
+          }`}
+          title={lang === 'zh' ? '打开软件设置 (当前已隐藏顶部栏)' : 'Open Settings'}
+          aria-label="Open Settings"
+        >
+          <ListIcon className="w-5 h-5" weight="bold" />
+        </button>
+      ) : (
+        <header className="gk-app-header gk-header sticky top-0 z-40 pt-[env(safe-area-inset-top,0px)] transition-all duration-300 bg-gradient-to-b from-white/90 via-white/65 to-transparent dark:from-slate-950/90 dark:via-slate-950/65 dark:to-transparent backdrop-blur-xl">
+          <div className="max-w-[1920px] mx-auto px-4 md:px-6 h-14 flex justify-between items-center gap-3">
+            <div className="flex items-center gap-2.5">
+              <img
+                src="/app-logo.png"
+                alt="GK-Mixer"
+                className="w-7 h-7 rounded-lg object-cover shadow-xs border border-slate-200/60 dark:border-slate-700/60"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
+              />
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-macaron-pink"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-macaron-blue"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-macaron-green"></div>
+              </div>
+              <h1 className="ml-0.5 font-bold text-slate-800 dark:text-slate-100 tracking-tight text-base sm:text-lg">
+                GK-Mixer
+              </h1>
             </div>
-            <h1 className="ml-0.5 font-bold text-slate-800 dark:text-slate-100 tracking-tight text-base sm:text-lg">
-              <span className="lg:hidden">GK-Mixer</span>
-              <span className="hidden lg:inline">{t.title}</span>
-            </h1>
-          </div>
-          
-          {/* Desktop Controls (hidden on mobile) */}
-          <div className="hidden lg:flex gap-3 items-center">
-             {/* Color Space Selector */}
-             <div className="gk-tab-bar flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
-                <button 
-                  onClick={() => setColorSpace('srgb')} 
-                  className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${colorSpace === 'srgb' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                  title={t.colorSpaceSrgb}
-                >
-                  sRGB
-                </button>
-                <button 
-                  onClick={() => setColorSpace('display-p3')} 
-                  className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${colorSpace === 'display-p3' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                  title={t.colorSpaceP3}
-                >
-                  P3
-                </button>
-                <button 
-                  onClick={() => setColorSpace('adobe-rgb')} 
-                  className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${colorSpace === 'adobe-rgb' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                  title={t.colorSpaceAdobe}
-                >
-                  Adobe
-                </button>
-             </div>
+            
+            {/* Desktop Controls (hidden on mobile): Theme + Settings (Workflow / Color Space / Language integrated inside SettingsModal) */}
+            <div className="hidden lg:flex gap-2.5 items-center">
+               <button 
+                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                  className="gk-mech-btn p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-yellow-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-[0.95] cursor-pointer"
+                  title="Toggle Theme"
+               >
+                  {theme === 'light' ? <MoonIcon className="w-4 h-4" /> : <SunIcon className="w-4 h-4" />}
+               </button>
 
-             {/* Language Selector */}
-             <div className="gk-tab-bar flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
-                <button onClick={() => setLang('en')} className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${lang === 'en' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>EN</button>
-                <button onClick={() => setLang('zh')} className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${lang === 'zh' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>中文</button>
-                <button onClick={() => setLang('ja')} className={`gk-tab-pill px-2 py-1 text-xs rounded transition-all active:scale-[0.97] ${lang === 'ja' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow-sm font-bold' : 'text-slate-500'}`}>日文</button>
-             </div>
+               <button
+                  type="button"
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="gk-mech-btn p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-[0.95] cursor-pointer"
+                  title={lang === 'zh' ? '设置与关于' : 'Settings & About'}
+                  aria-label="Settings & About"
+               >
+                  <GearIcon className="w-4 h-4" />
+               </button>
+            </div>
 
-             <button 
-                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                className="gk-mech-btn p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-yellow-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-[0.95]"
-                title="Toggle Theme"
-             >
-                {theme === 'light' ? <MoonIcon className="w-4 h-4" /> : <SunIcon className="w-4 h-4" />}
-             </button>
-
-             <button
+            {/* Mobile Hamburger Settings Button */}
+            <div className="flex lg:hidden items-center gap-1.5">
+              <button
                 type="button"
                 onClick={() => setIsSettingsOpen(true)}
-                className="gk-mech-btn p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-[0.95]"
-                title={lang === 'zh' ? '设置与关于' : 'Settings & About'}
-                aria-label="Settings & About"
-             >
-                <GearIcon className="w-4 h-4" />
-             </button>
+                className="gk-mech-btn p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all"
+                aria-label="Settings"
+                title="Settings"
+              >
+                <ListIcon className="w-6 h-6" />
+              </button>
+            </div>
           </div>
-
-          {/* Mobile Hamburger Settings Button */}
-          <div className="flex lg:hidden items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(true)}
-              className="gk-mech-btn p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all"
-              aria-label="Settings"
-              title="Settings"
-            >
-              <ListIcon className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Color Space Info Banner */}
       {colorSpace !== 'srgb' && (
@@ -1369,7 +1401,7 @@ const App: React.FC = () => {
         {/* Left Column: Image & Palette */}
         {/* Left column stays mounted in wide mode (hidden via class) to avoid costly canvas/image remounts */}
         {(
-          <div className={`flex flex-col gap-6 lg:col-span-5 xl:col-span-4 min-w-0 pr-1.5 pb-1.5 ${mobileMainTab === 'workbench' && workbenchSubpage === 'extract' ? 'block' : 'hidden'} ${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' ? 'lg:hidden' : 'lg:block'}`}>
+          <div className={`flex flex-col gap-6 lg:col-span-5 xl:col-span-4 min-w-0 pr-1.5 pb-1.5 ${mobileMainTab === 'workbench' && workbenchSubpage === 'extract' ? 'block' : 'hidden'} ${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' || (workflowMode === 'beginner' && (desktopTab === 'brands' || desktopTab === 'studio' || desktopTab === 'catalog')) ? 'lg:hidden' : 'lg:block'}`}>
             <div className="gk-panel-card gk-card bg-white dark:bg-slate-900 p-2.5 sm:p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors duration-300">
               {/* Mobile Top Segmented Control for Workbench (拾色 | 调色分解 | 明度色卡) */}
               <div className="lg:hidden mb-4">
@@ -1695,51 +1727,100 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {assignedMarkers.length > 0 && desktopTab !== 'studio' && (
-                <SwatchStudioControls
-                  settings={swatchSettings}
-                  onChangeSettings={setSwatchSettings}
-                  onAutoArrangeLR={handleAutoArrangeLR}
-                  onAutoArrangeTB={handleAutoArrangeTB}
-                  onAlign={handleAlign}
-                  onResetPositions={handleResetPositions}
-                  lang={lang}
-                  assignedCount={assignedMarkers.length}
-                  colors={colors}
-                  selectedColor={selectedColor}
-                  onSelectColor={(c) => setSelectedColorId(c.id)}
-                  onUpdateColors={setColors}
-                  canvasSize={{ w: canvasBox.width || 600, h: canvasBox.height || 450 }}
-                  className="mt-3"
-                />
+            {/* 1. Always keep Extracted Color Palette FIXED directly below the Source Image so assigning paints never pushes the palette down! */}
+            {(colors.length > 0 || sourceImage) && (
+                <div className="mt-4">
+                    {colors.length > 0 && (
+                        <div className="flex justify-between items-center mb-2 sm:mb-3">
+                            <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
+                                <span className="tech-prefix">[PALETTE]</span>
+                                {t.extractedColors || (lang === 'zh' ? '已提取颜色' : lang === 'ja' ? '抽出された色' : 'Extracted Colors')}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              {selectedColor && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartTonalReplace(selectedColor.id)}
+                                  className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-accent hover:underline"
+                                >
+                                  <SquaresFourIcon className="w-3.5 h-3.5" />
+                                  <span>{lang === 'zh' ? '明度色卡微调选中色' : 'Fine-tune Tone'}</span>
+                                </button>
+                              )}
+                              <button
+                                  onClick={() => {
+                                      setColors([]);
+                                      setSelectedColorId(null);
+                                  }}
+                                  className="flex items-center gap-1 text-[10px] sm:text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                  title={lang === 'zh' ? '清空所有颜色' : lang === 'ja' ? 'すべての色をクリア' : 'Clear all colors'}
+                              >
+                                  <TrashIcon className="w-3.5 h-3.5" />
+                                  <span>{lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}</span>
+                              </button>
+                            </div>
+                        </div>
+                    )}
+                    <ColorPalette 
+                        colors={colors} 
+                        onColorSelect={(c) => setSelectedColorId(c.id)}
+                        selectedColorId={selectedColorId || undefined}
+                        onAddManual={handleManualAdd}
+                        onContinuousPick={handleContinuousPick}
+                        onDeleteColor={handleDeleteColor}
+                        onAddColorByHex={handleAddColor}
+                        onOpenQuickAssign={(c) => {
+                          setSelectedColorId(c.id);
+                          setQuickAssignColorId(c.id);
+                        }}
+                        onUnassignPaint={handleUnassignPaint}
+                        onNavigateToMixer={(c) => {
+                          setSelectedColorId(c.id);
+                          handleSwitchWorkbenchSubpage('mixer');
+                        }}
+                        hasImage={!!sourceImage}
+                        isPicking={isPicking}
+                        isContinuousPicking={isContinuousPicking}
+                        lang={lang}
+                    />
+                </div>
             )}
 
+            {/* 2. Assigned Swatch List + Prominent Button to Open Swatch Studio Workbench Modal (Screenshot 2) */}
             {assignedMarkers.length > 0 && (
-                <div className="bp-subcard mt-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-                    <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="bp-subcard mt-4 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
                             <span className="tech-prefix">[WORKFLOW]</span>
-                            {lang === "zh" ? "油漆标注" : lang === "ja" ? "塗料割り当て" : "Paint Assignments"}
+                            {lang === "zh" ? "色卡制作与油漆标注" : lang === "ja" ? "塗料割り当て" : "Paint Assignments"}
                             <span className="ml-1 font-normal text-slate-400">
                                 · {assignedMarkers.length} {lang === "zh" ? "个色卡" : "markers"}
                             </span>
                         </span>
-                        <div className="flex gap-3 text-[11px] font-bold shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => setIsSwatchEditorOpen(true)}
-                              className="text-accent hover:underline whitespace-nowrap"
-                            >
-                              {lang === "zh" ? "色卡精修" : "Edit Layout"}
+                        <div className="flex items-center gap-2.5 text-[11px] font-bold shrink-0">
+                            <button type="button" onClick={handleCopyAssignments} className="text-accent hover:underline whitespace-nowrap cursor-pointer">
+                                {lang === "zh" ? "复制清单" : "Copy"}
                             </button>
-                            <button type="button" onClick={handleCopyAssignments} className="text-accent hover:underline whitespace-nowrap">
-                                {lang === "zh" ? "复制" : "Copy"}
-                            </button>
-                            <button type="button" onClick={handleClearAssignments} className="text-red-500 hover:underline whitespace-nowrap">
+                            <button type="button" onClick={handleClearAssignments} className="text-red-500 hover:underline whitespace-nowrap cursor-pointer">
                                 {lang === "zh" ? "全部清除" : "Clear all"}
                             </button>
                         </div>
                     </div>
+
+                    {/* Prominent UI Button to open SwatchEditorModal (Screenshot 2) */}
+                    <button
+                      type="button"
+                      onClick={() => setIsSwatchEditorOpen(true)}
+                      className="bp-pill-active gk-btn-primary w-full flex items-center justify-center gap-2 rounded-xl bg-accent hover:bg-accent-hover px-3.5 py-2.5 text-xs font-extrabold text-white shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                    >
+                      <SlidersHorizontalIcon className="w-4 h-4 shrink-0" weight="bold" />
+                      <span>
+                        {lang === "zh"
+                          ? `进入排版工作台 (${assignedMarkers.length} 个色卡) →`
+                          : `Open Swatch Layout Studio (${assignedMarkers.length}) →`}
+                      </span>
+                    </button>
+
                     <div className="space-y-1.5">
                         {assignedMarkers.map((marker) => {
                             const paint = marker.paint!;
@@ -1804,71 +1885,12 @@ const App: React.FC = () => {
                     </div>
                 </div>
             )}
-            
-            {/* Show color palette if colors exist OR if image is loaded (to allow manual picking) */}
-            {(colors.length > 0 || sourceImage) && (
-                <div className="mt-4 sm:mt-6">
-                    {colors.length > 0 && (
-                        <div className="flex justify-between items-center mb-2 sm:mb-3">
-                            <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
-                                <span className="tech-prefix">[PALETTE]</span>
-                                {t.extractedColors || (lang === 'zh' ? '已提取颜色' : lang === 'ja' ? '抽出された色' : 'Extracted Colors')}
-                            </span>
-                            <div className="flex items-center gap-3">
-                              {selectedColor && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartTonalReplace(selectedColor.id)}
-                                  className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-accent hover:underline"
-                                >
-                                  <SquaresFourIcon className="w-3.5 h-3.5" />
-                                  <span>{lang === 'zh' ? '明度色卡微调选中色' : 'Fine-tune Tone'}</span>
-                                </button>
-                              )}
-                              <button
-                                  onClick={() => {
-                                      setColors([]);
-                                      setSelectedColorId(null);
-                                  }}
-                                  className="flex items-center gap-1 text-[10px] sm:text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                                  title={lang === 'zh' ? '清空所有颜色' : lang === 'ja' ? 'すべての色をクリア' : 'Clear all colors'}
-                              >
-                                  <TrashIcon className="w-3.5 h-3.5" />
-                                  <span>{lang === 'zh' ? '清空' : lang === 'ja' ? 'クリア' : 'Clear'}</span>
-                              </button>
-                            </div>
-                        </div>
-                    )}
-                    <ColorPalette 
-                        colors={colors} 
-                        onColorSelect={(c) => setSelectedColorId(c.id)}
-                        selectedColorId={selectedColorId || undefined}
-                        onAddManual={handleManualAdd}
-                        onContinuousPick={handleContinuousPick}
-                        onDeleteColor={handleDeleteColor}
-                        onAddColorByHex={handleAddColor}
-                        onOpenQuickAssign={(c) => {
-                          setSelectedColorId(c.id);
-                          setQuickAssignColorId(c.id);
-                        }}
-                        onUnassignPaint={handleUnassignPaint}
-                        onNavigateToMixer={(c) => {
-                          setSelectedColorId(c.id);
-                          handleSwitchWorkbenchSubpage('mixer');
-                        }}
-                        hasImage={!!sourceImage}
-                        isPicking={isPicking}
-                        isContinuousPicking={isContinuousPicking}
-                        lang={lang}
-                    />
-                </div>
-            )}
           </div>
         </div>
         )}
 
         {/* Right Column: Tools & Output */}
-        <div className={`${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' ? "col-span-12" : "lg:col-span-7 xl:col-span-8"} ${!(mobileMainTab === 'workbench' && workbenchSubpage === 'extract') ? 'block' : 'hidden lg:block'} w-full max-w-full min-w-0 pr-1.5 pb-1.5`}>
+        <div className={`${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' || (workflowMode === 'beginner' && (desktopTab === 'brands' || desktopTab === 'studio' || desktopTab === 'catalog')) ? "col-span-12" : "lg:col-span-7 xl:col-span-8"} ${!(mobileMainTab === 'workbench' && workbenchSubpage === 'extract') ? 'block' : 'hidden lg:block'} w-full max-w-full min-w-0 pr-1.5 pb-1.5`}>
            <div className="gk-panel-card gk-card bg-white dark:bg-slate-900 p-2.5 sm:p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full flex flex-col w-full max-w-full min-w-0">
                 
                 {/* Mobile Top Segmented Control for Workbench (when on mobile in workbench: mixer or chroma) */}
@@ -1993,8 +2015,174 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {/* Desktop Tabs Bar */}
-                <div className="hidden lg:flex w-full items-center mb-6" translate="no">
+                {/* Desktop Tabs Bar: Dual Workflow Support (Beginner 4-Step Guided vs Pro 8-Tab Full) */}
+                <div className="hidden lg:flex w-full items-center mb-6 relative" translate="no">
+                  {workflowMode === 'beginner' ? (
+                    <div className="gk-tab-bar w-full flex items-center flex-nowrap bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-full p-1 gap-1.5 border border-slate-200/60 dark:border-slate-700/60">
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchDesktopTab('coloring')}
+                        className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-black rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                          desktopTabUI === 'coloring'
+                            ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white'
+                            : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                        }`}
+                        title="第1步：在模型/线稿图上自由换色，自动推导四层光影"
+                      >
+                        <PaletteIcon className="w-4 h-4 shrink-0" />
+                        <span>{lang === 'zh' ? '模拟试色台' : 'Color Studio'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchDesktopTab('brands')}
+                        className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-black rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                          desktopTabUI === 'brands'
+                            ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white'
+                            : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                        }`}
+                        title="第2步：查找最接近的现成品牌油漆，或获取『现成品牌漆 + 几滴白/黑微调』补正方案"
+                      >
+                        <TagIcon className="w-4 h-4 shrink-0" />
+                        <span>{lang === 'zh' ? '选漆与微调' : 'Brand & Tint'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchDesktopTab('studio')}
+                        className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-black rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                          desktopTabUI === 'studio'
+                            ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white'
+                            : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                        }`}
+                        title="第3步：查看涂装库工程、导出带微调色卡的分享海报与二维码名片"
+                      >
+                        <StackIcon className="w-4 h-4 shrink-0" />
+                        <span>{lang === 'zh' ? '涂装库与色卡' : 'Paint Library'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchDesktopTab('catalog')}
+                        className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-black rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                          desktopTabUI === 'catalog'
+                            ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white'
+                            : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                        }`}
+                        title="第4步：检索 10,999+ 款全球模型油漆完整数据库"
+                      >
+                        <DatabaseIcon className="w-4 h-4 shrink-0" />
+                        <span>{lang === 'zh' ? '油漆数据库' : 'Catalog'}</span>
+                      </button>
+
+                      <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5 shrink-0" />
+
+                      {/* Collapsible Advanced Mixing Dropdown for Beginners */}
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvancedNavMenu((v) => !v)}
+                          className={`gk-tab-pill px-3 py-1.5 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                            desktopTabUI === 'mixer' ||
+                            desktopTabUI === 'chroma' ||
+                            desktopTabUI === 'custom' ||
+                            desktopTabUI === 'basic'
+                              ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white'
+                              : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                          }`}
+                          title="展开专业进阶调色工具（调色分解 / 明度色卡 / 自选调色 / 基础色母）"
+                        >
+                          <FlaskIcon className="w-3.5 h-3.5 shrink-0" />
+                          <span>
+                            {lang === 'zh' ? '进阶调色' : 'Advanced'}{' '}
+                            {desktopTabUI === 'mixer'
+                              ? '· 调色分解'
+                              : desktopTabUI === 'chroma'
+                              ? '· 明度色卡'
+                              : desktopTabUI === 'custom'
+                              ? '· 自选调色'
+                              : desktopTabUI === 'basic'
+                              ? '· 基础色'
+                              : '▾'}
+                          </span>
+                        </button>
+
+                        {showAdvancedNavMenu && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-40"
+                              onClick={() => setShowAdvancedNavMenu(false)}
+                            />
+                            <div className="bp-subcard-lg absolute right-0 top-full mt-2 z-50 w-64 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-2xl space-y-1">
+                              <div className="px-2.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                🛠️ 进阶调色与取色工具
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleSwitchDesktopTab('chroma')}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                                  desktopTabUI === 'chroma'
+                                    ? 'bg-accent text-white'
+                                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                }`}
+                              >
+                                <SquaresFourIcon className="w-4 h-4 shrink-0" />
+                                <div>
+                                  <div>明度色卡与滴数微调</div>
+                                  <div className="text-[10px] opacity-75 font-normal">照片取色 + 品牌漆滴数微调</div>
+                                </div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSwitchDesktopTab('mixer')}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                                  desktopTabUI === 'mixer'
+                                    ? 'bg-accent text-white'
+                                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                }`}
+                              >
+                                <FlaskIcon className="w-4 h-4 shrink-0" />
+                                <div>
+                                  <div>调色分解 (CMYK/色母反推)</div>
+                                  <div className="text-[10px] opacity-75 font-normal">从零计算多瓶色母混色比例</div>
+                                </div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSwitchDesktopTab('custom')}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                                  desktopTabUI === 'custom'
+                                    ? 'bg-accent text-white'
+                                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                }`}
+                              >
+                                <SlidersHorizontalIcon className="w-4 h-4 shrink-0" />
+                                <div>
+                                  <div>自选调色 (环形混色盘)</div>
+                                  <div className="text-[10px] opacity-75 font-normal">自由组合手头已有的油漆混色</div>
+                                </div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSwitchDesktopTab('basic')}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                                  desktopTabUI === 'basic'
+                                    ? 'bg-accent text-white'
+                                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                }`}
+                              >
+                                <DropIcon className="w-4 h-4 shrink-0" />
+                                <div>
+                                  <div>基础色母调配</div>
+                                  <div className="text-[10px] opacity-75 font-normal">使用红黄蓝黑白基础色母实验</div>
+                                </div>
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
                     <div className="gk-tab-bar w-full flex items-center flex-nowrap overflow-x-auto no-scrollbar bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-full p-1 gap-1 border border-slate-200/60 dark:border-slate-700/60">
                         {/* 混色台组 */}
                         <button 
@@ -2063,6 +2251,7 @@ const App: React.FC = () => {
                             <span>{lang === 'zh' ? '数据库' : 'Catalog'}</span>
                         </button>
                     </div>
+                  )}
                 </div>
 
                 {/* Active Content Panel - Kept persistently mounted to eliminate unmount/remount lag during tab switching */}
@@ -2186,6 +2375,11 @@ const App: React.FC = () => {
                           handleAddColor(hex);
                           handleSwitchWorkbenchSubpage('mixer');
                           showToast(lang === 'zh' ? `已将试色油漆 ${hex} 发送至「调色分解」反推配方` : `Sent ${hex} to Mixer`);
+                        }}
+                        onNavigateToBrandTint={(hex) => {
+                          handleAddColor(hex);
+                          handleSwitchDesktopTab('brands');
+                          showToast(lang === 'zh' ? `已将试色 ${hex} 载入「选漆与微调」，可匹配现成品牌漆或查看几滴白/黑微调方案` : `Loaded ${hex} into Brand & Tint`);
                         }}
                         onCreatePaintProject={(newProj) => {
                           setProjects((prev) => [newProj, ...prev]);

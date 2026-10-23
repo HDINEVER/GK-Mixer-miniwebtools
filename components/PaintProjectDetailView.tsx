@@ -23,6 +23,7 @@ import {
   inferStepsFromNodes,
 } from "../utils/projectSharing";
 import { localizedBrand } from "../utils/paintCatalog";
+import { computeBrandTintRecipe } from "../utils/brandTintRecipe";
 import { exportAnnotatedImage } from "../utils/exportAnnotatedImage";
 import { SwatchSettings } from "../utils/swatchLayout";
 import {
@@ -661,14 +662,15 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-0.5 text-[11px] text-slate-400">
             <span className="truncate">左右滑动切换零件 · 点按画面色卡查看详情</span>
             <button
               type="button"
               onClick={() => setIsSwatchEditorOpen(true)}
-              className="font-bold text-coral hover:underline cursor-pointer whitespace-nowrap shrink-0"
+              className="bp-pill-active gk-btn-primary inline-flex items-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover px-3.5 py-2 text-xs font-extrabold text-white shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
             >
-              进入排版工作台 →
+              <SlidersHorizontalIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+              <span>进入排版工作台 →</span>
             </button>
           </div>
         </div>
@@ -724,6 +726,21 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               <div className="flex items-stretch gap-3 overflow-x-auto pb-1.5 pr-1.5 no-scrollbar lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:overflow-visible">
                 {activePart.nodes.map((node, idx) => {
                   const isSelected = selectedNode?.id === node.id;
+                  const matchedCatalogPaint = catalogPaints.find(
+                    (p) => p.code.trim().toUpperCase() === node.paintCode.trim().toUpperCase()
+                  );
+                  const liveTintRecipe = matchedCatalogPaint
+                    ? computeBrandTintRecipe(node.hex, matchedCatalogPaint, lang)
+                    : null;
+                  const isFineTuned =
+                    Boolean(node.basePaintHex && node.basePaintHex.toUpperCase() !== node.hex.toUpperCase()) ||
+                    Boolean(liveTintRecipe && !liveTintRecipe.isDirectSpray);
+                  const baseHexForBadge =
+                    node.basePaintHex || (liveTintRecipe ? liveTintRecipe.basePaint.hex : undefined);
+                  const compactBadge =
+                    node.tintBadgeText ||
+                    (liveTintRecipe && !liveTintRecipe.isDirectSpray ? liveTintRecipe.compactBadgeText : undefined);
+
                   return (
                     <button
                       key={node.id}
@@ -735,7 +752,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                           : "border-slate-200/85 dark:border-slate-800 bg-white/85 dark:bg-slate-900/80 hover:border-slate-300"
                       }`}
                     >
-                      {/* Real Bottle Thumbnail / Color Swatch */}
+                      {/* Real Bottle Thumbnail / Color Swatch + 16x16px Original Base Paint Corner Dot */}
                       <div
                         className="bp-swatch relative h-14 w-14 rounded-xl border border-black/10 dark:border-white/10 shrink-0 overflow-hidden flex items-center justify-center bg-slate-50 dark:bg-slate-800"
                         style={{ backgroundColor: node.hex }}
@@ -748,12 +765,20 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                         <span className="bp-badge absolute left-1 top-1 rounded bg-slate-900/80 px-1 py-px font-mono text-[9px] font-black text-white">
                           #{idx + 1}
                         </span>
+                        {isFineTuned && baseHexForBadge && (
+                          <span
+                            title={`基底主漆原瓶色 (${baseHexForBadge})`}
+                            className="absolute right-0.5 top-0.5 h-4 w-4 rounded-[3px] border-[1.5px] border-white shadow-sm"
+                            style={{ backgroundColor: baseHexForBadge }}
+                          />
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center justify-between gap-1">
                           <span className="truncate text-[11px] font-extrabold text-coral">
                             {localizedBrand(node.paintBrand, lang)} {node.paintCode}
+                            {!isFineTuned ? " (直喷)" : ""}
                           </span>
                           <span
                             className="bp-badge rounded px-1.5 py-0.5 font-mono text-[10px] font-bold text-white shadow-2xs"
@@ -765,9 +790,22 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                         <div className="truncate text-xs font-black text-slate-900 dark:text-white">
                           {node.paintName}
                         </div>
-                        <div className="text-[10px] text-slate-400">
-                          点击展开明度矩阵与近似色替换
-                        </div>
+                        {isFineTuned && compactBadge && baseHexForBadge ? (
+                          <div
+                            title={node.recipeSummary || liveTintRecipe?.spokenInstruction || compactBadge}
+                            className="inline-flex items-center gap-1 h-[18px] px-1.5 max-w-full rounded bg-amber-500/15 border border-amber-500/35 text-amber-800 dark:text-amber-200 truncate"
+                          >
+                            <span className="inline-flex h-2.5 w-4 shrink-0 overflow-hidden rounded-[2px] border border-black/30">
+                              <span className="flex-1 h-full" style={{ backgroundColor: baseHexForBadge }} />
+                              <span className="flex-1 h-full" style={{ backgroundColor: node.hex }} />
+                            </span>
+                            <span className="text-[9px] font-mono font-black truncate">{compactBadge}</span>
+                          </div>
+                        ) : (
+                          <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                            ✅ 现成品牌漆直喷 · 点击展开明度与微调
+                          </div>
+                        )}
                       </div>
                     </button>
                   );

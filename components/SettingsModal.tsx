@@ -23,11 +23,16 @@ import {
   ACCENT_THEMES,
   AccentThemeId,
   UIStyle,
+  WorkflowMode,
   THEME_SYNC_EVENT,
   loadAccentTheme,
   saveAccentTheme,
   loadUIStyle,
   saveUIStyle,
+  loadWorkflowMode,
+  saveWorkflowMode,
+  loadHideTopBar,
+  saveHideTopBar,
   themeSwatches,
 } from '../utils/accentTheme';
 
@@ -57,11 +62,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [copiedQQ, setCopiedQQ] = useState(false);
   const [accentTheme, setAccentTheme] = useState<AccentThemeId>(() => loadAccentTheme());
   const [uiStyle, setUiStyle] = useState<UIStyle>(() => loadUIStyle());
+  const [workflowMode, setWorkflowMode] = useState<WorkflowMode>(() => loadWorkflowMode());
+  const [hideTopBar, setHideTopBar] = useState<boolean>(() => loadHideTopBar());
 
   useEffect(() => {
     const sync = () => {
       setAccentTheme(loadAccentTheme());
       setUiStyle(loadUIStyle());
+      setWorkflowMode(loadWorkflowMode());
+      setHideTopBar(loadHideTopBar());
     };
     window.addEventListener(THEME_SYNC_EVENT, sync);
     return () => window.removeEventListener(THEME_SYNC_EVENT, sync);
@@ -75,6 +84,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleUiStyleChange = (style: UIStyle) => {
     setUiStyle(style);
     saveUIStyle(style);
+  };
+
+  const handleWorkflowModeChange = (mode: WorkflowMode) => {
+    setWorkflowMode(mode);
+    saveWorkflowMode(mode);
+  };
+
+  const handleHideTopBarChange = (nextHide: boolean) => {
+    setHideTopBar(nextHide);
+    saveHideTopBar(nextHide);
   };
 
   const handleCopyQQ = () => {
@@ -114,6 +133,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* Scrollable Content Body */}
           <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4 no-scrollbar">
+
+            {/* 0. 双人群工作流模式 / Dual Workflow Mode */}
+            <div>
+              <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <SparkleIcon className="h-3.5 w-3.5" /> {lang === 'zh' ? '工作流动线模式 (Workflow Mode)' : 'Workflow Mode'}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleWorkflowModeChange('pro')}
+                  className={`relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all active:scale-[0.97] ${
+                    workflowMode === 'pro'
+                      ? 'border-[var(--accent-color)] bg-[var(--accent-soft)] text-slate-900 ring-1 ring-[var(--accent-color)]/40 dark:text-white'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span className="text-xs font-extrabold">🛠️ 专业喷涂动线</span>
+                    {workflowMode === 'pro' && (
+                      <span
+                        className="flex h-4 w-4 items-center justify-center rounded-full text-white"
+                        style={{ backgroundColor: 'var(--accent-color)' }}
+                      >
+                        <CheckIcon className="h-2.5 w-2.5" weight="bold" />
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+                    参考图取色 ➔ 调色分解 ➔ 明度色卡 ➔ 自选混色 ➔ 试色台
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleWorkflowModeChange('beginner')}
+                  className={`relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all active:scale-[0.97] ${
+                    workflowMode === 'beginner'
+                      ? 'border-[var(--accent-color)] bg-[var(--accent-soft)] text-slate-900 ring-1 ring-[var(--accent-color)]/40 dark:text-white'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span className="text-xs font-extrabold">🌱 新手引导模式</span>
+                    {workflowMode === 'beginner' && (
+                      <span
+                        className="flex h-4 w-4 items-center justify-center rounded-full text-white"
+                        style={{ backgroundColor: 'var(--accent-color)' }}
+                      >
+                        <CheckIcon className="h-2.5 w-2.5" weight="bold" />
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+                    ① 模拟试色 ➔ ② 选品牌漆+几滴微调 ➔ ③ 导出色卡讨论/存库
+                  </span>
+                </button>
+              </div>
+            </div>
             
             {/* 1. 色彩空间 / Color Space */}
             <div>
@@ -237,6 +314,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 >
                   <MoonIcon className="h-4 w-4" />
                   <span>{lang === 'zh' ? '深色模式' : lang === 'ja' ? 'ダーク' : 'Dark Mode'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 3.2. 顶部栏显示与隐藏 / Top Header Bar Visibility */}
+            <div>
+              <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <SquaresFourIcon className="h-3.5 w-3.5" />{' '}
+                {lang === 'zh' ? '顶部品牌栏显示' : lang === 'ja' ? 'トップバー表示' : 'Top Header Bar'}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleHideTopBarChange(false)}
+                  aria-pressed={!hideTopBar}
+                  className={`flex flex-col items-start gap-0.5 rounded-xl border py-2.5 px-3 text-left text-xs font-medium transition-all active:scale-[0.97] ${
+                    !hideTopBar
+                      ? 'border-[var(--accent-color)] bg-[var(--accent-color)] font-bold text-white shadow-sm'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
+                  }`}
+                >
+                  <span>📌 {lang === 'zh' ? '显示顶部栏' : lang === 'ja' ? '表示する' : 'Show Top Bar'}</span>
+                  <span className="text-[10px] opacity-80 font-normal">
+                    {lang === 'zh' ? '常驻 GK-Mixer 标题与按钮' : 'Standard top header'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleHideTopBarChange(true)}
+                  aria-pressed={hideTopBar}
+                  className={`flex flex-col items-start gap-0.5 rounded-xl border py-2.5 px-3 text-left text-xs font-medium transition-all active:scale-[0.97] ${
+                    hideTopBar
+                      ? 'border-[var(--accent-color)] bg-[var(--accent-color)] font-bold text-white shadow-sm'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
+                  }`}
+                >
+                  <span>☰ {lang === 'zh' ? '隐藏顶部栏 (悬浮方块)' : lang === 'ja' ? '非表示 (フローティング)' : 'Hide (Floating Cube)'}</span>
+                  <span className="text-[10px] opacity-80 font-normal">
+                    {lang === 'zh' ? '右上角保留三横杠方块开设置' : 'Floating 3-bar button'}
+                  </span>
                 </button>
               </div>
             </div>
@@ -439,12 +556,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Special Thanks */}
-              <div className="mt-3 flex items-center justify-between text-[11px] text-pink-500 dark:text-pink-400">
-                <span className="flex items-center gap-1 font-semibold">
-                  <SparkleIcon className="h-3.5 w-3.5" weight="fill" />
-                  <span>{lang === 'zh' ? '特别鸣谢' : lang === 'ja' ? '特別感謝' : 'Special Thanks'}: スミレ</span>
-                </span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500">© 2025-2026 GK-Mixer</span>
+              <div className="mt-3.5 rounded-xl border border-pink-200/70 dark:border-pink-900/40 bg-pink-50/40 dark:bg-pink-950/20 p-2.5 space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-pink-500 dark:text-pink-400">
+                  <span className="flex items-center gap-1 font-bold">
+                    <SparkleIcon className="h-3.5 w-3.5" weight="fill" />
+                    <span>{lang === 'zh' ? '特别鸣谢' : lang === 'ja' ? '特別感謝' : 'Special Thanks'}</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">© 2025-2026 GK-Mixer</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2 rounded-xl border border-pink-200/60 dark:border-slate-700/80 bg-white/90 dark:bg-slate-800/80 px-2.5 py-1.5 shadow-2xs">
+                    <img
+                      src="/avatar-achuan.jpg"
+                      alt="スミレ 阿川"
+                      className="h-8 w-8 rounded-full object-cover border border-pink-300 dark:border-pink-700 shadow-xs shrink-0"
+                    />
+                    <div className="min-w-0 leading-tight">
+                      <div className="truncate text-xs font-extrabold text-slate-800 dark:text-slate-100">
+                        スミレ (阿川)
+                      </div>
+                      <div className="truncate text-[10px] text-pink-500 dark:text-pink-400 font-semibold">
+                        Special Thanks
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 rounded-xl border border-pink-200/60 dark:border-slate-700/80 bg-white/90 dark:bg-slate-800/80 px-2.5 py-1.5 shadow-2xs">
+                    <img
+                      src="/avatar-tornado.png"
+                      alt="tornado"
+                      className="h-8 w-8 rounded-full object-cover border border-pink-300 dark:border-pink-700 shadow-xs shrink-0"
+                    />
+                    <div className="min-w-0 leading-tight">
+                      <div className="truncate text-xs font-extrabold text-slate-800 dark:text-slate-100">
+                        tornado
+                      </div>
+                      <div className="truncate text-[10px] text-pink-500 dark:text-pink-400 font-semibold">
+                        Special Thanks
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Technology & Algorithms Credit */}

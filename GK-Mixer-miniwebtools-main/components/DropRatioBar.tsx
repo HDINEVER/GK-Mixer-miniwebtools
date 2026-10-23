@@ -123,7 +123,7 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
                       :
                     </div>
                   )}
-                  <div className="bp-subcard flex-shrink-0 flex flex-col items-center justify-center p-1.5 sm:p-2 min-w-[2.75rem] sm:min-w-[3.25rem] max-w-[3.75rem] rounded-xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 shadow-2xs group hover:border-accent/50 transition-colors">
+                  <div className="bp-subcard flex-shrink-0 flex flex-col items-center justify-center p-1.5 sm:p-2 min-w-[3.25rem] sm:min-w-[3.5rem] max-w-[4.25rem] rounded-xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 shadow-2xs group hover:border-accent/50 transition-colors">
                     <div
                       className="bp-dot w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full border border-black/15 dark:border-white/20 shadow-2xs mb-1 transition-transform group-hover:scale-105"
                       style={{ backgroundColor: part.color }}
@@ -137,7 +137,7 @@ const DropRatioBar: React.FC<DropRatioBarProps> = ({
                       </span>
                     </div>
                     <div className="mt-0.5 text-center w-full">
-                      <div className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate max-w-[2.75rem] sm:max-w-[3.25rem]" title={part.name}>
+                      <div className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate max-w-[3.5rem] sm:max-w-[3.75rem]" title={part.name}>
                         {part.name}
                       </div>
                       <div className="text-[9px] font-mono text-slate-400 dark:text-slate-500 leading-none mt-0.5">

@@ -1572,7 +1572,7 @@ const App: React.FC = () => {
           <div className={`flex flex-col gap-6 lg:col-span-5 xl:col-span-4 min-w-0 pr-1.5 pb-1.5 ${mobileMainTab === 'workbench' && workbenchSubpage === 'extract' ? 'block' : 'hidden'} ${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' || (workflowMode === 'beginner' && (desktopTab === 'brands' || desktopTab === 'studio' || desktopTab === 'catalog')) ? 'lg:hidden' : 'lg:block'}`}>
             <div className="gk-panel-card gk-card bg-white dark:bg-slate-900 p-2.5 sm:p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors duration-300">
               {/* Mobile Top Segmented Control for Workbench (拾色 | 调色分解 | 明度色卡) */}
-              <div className="lg:hidden mb-4">
+              <div className={`lg:hidden mb-4 ${hideTopBar ? 'pr-11' : ''}`}>
                 <div className="gk-tab-bar flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
                   <button
                     type="button"
@@ -2069,7 +2069,7 @@ const App: React.FC = () => {
                 
                 {/* Mobile Top Segmented Control for Workbench (when on mobile in workbench: mixer or chroma) */}
                 {mobileMainTab === 'workbench' && (
-                  <div className="lg:hidden mb-4">
+                  <div className={`lg:hidden mb-4 ${hideTopBar ? 'pr-11' : ''}`}>
                     <div className="gk-tab-bar flex bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
                       <button
                         type="button"
@@ -2118,7 +2118,7 @@ const App: React.FC = () => {
 
                 {/* Mobile Top Segmented Control for Tuning (自选 | 基础 | 近邻) */}
                 {mobileMainTab === 'tuning' && (
-                  <div className="lg:hidden mb-4">
+                  <div className={`lg:hidden mb-4 ${hideTopBar ? 'pr-11' : ''}`}>
                     <div className="gk-tab-bar flex bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
                       <button
                         type="button"

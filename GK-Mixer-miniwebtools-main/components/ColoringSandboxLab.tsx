@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Palette as PaletteIcon } from "@phosphor-icons/react";
 import { CatalogPaint, FloatingSwatchNode, Language, PaintProject, PartCanvas, Theme } from "../types";
 import { FEATURED_BRANDS, loadPaintCatalog, localizedBrand, nearestCatalogPaintWithDeltaE } from "../utils/paintCatalog";
 import { inferStepsFromNodes } from "../utils/projectSharing";
@@ -3776,7 +3777,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             style={{ backgroundColor: "var(--accent-soft)" }}
           >
             <div className="flex items-center gap-2 min-w-0">
-              <span>🎨</span>
+              <PaletteIcon className="w-4 h-4 shrink-0 text-[var(--accent-color)]" weight="bold" />
               <span className="text-xs xl:text-sm font-black text-slate-900 dark:text-white truncate">
                 <span className="tech-prefix">[PALETTE]</span>
                 GKMixer 四维专业调色引擎

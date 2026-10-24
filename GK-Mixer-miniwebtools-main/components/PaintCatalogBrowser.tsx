@@ -309,9 +309,9 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   return (
     <div className="flex min-h-[32rem] flex-col gap-3 select-none">
       {/* 1. Sticky Top Brand Rail + Collapsible Notion Filter Bar */}
-      <div className="sticky top-0 z-20 pt-1 pb-2.5 pr-11 lg:pr-0 space-y-2.5 bg-[#F8FAFC]/95 dark:bg-slate-900/95 backdrop-blur-md">
+      <div className="sticky top-0 z-20 pt-1 pb-2.5 space-y-2.5 bg-[#F8FAFC]/95 dark:bg-slate-900/95 backdrop-blur-md">
         {activeSampleColor && onAssignCatalog && (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-accent/25 bg-accent/8 dark:bg-accent/15 px-3 py-1.5 text-xs">
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-accent/25 bg-accent/8 dark:bg-accent/15 px-3 py-1.5 mr-11 lg:mr-0 text-xs">
             <div className="flex items-center gap-2 min-w-0">
               <CrosshairIcon className="h-3.5 w-3.5 text-accent shrink-0" weight="bold" />
               <span className="font-bold text-slate-700 dark:text-slate-200 truncate">
@@ -332,7 +332,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
         )}
 
         {/* Top Control Row: [喷涂 vs 手涂 筛选器] + [常用品牌 / 展开不常用品牌 切换开关] */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 pr-11 lg:pr-0">
           {/* Application Mode Filter: 全部用途 | 💨 喷涂漆 | 🖌️ 手涂漆 */}
           <div className="bp-segmented inline-flex rounded-full bg-slate-200/85 dark:bg-slate-800 p-0.5 border border-slate-200/80 dark:border-slate-700">
             <button

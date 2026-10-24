@@ -340,14 +340,14 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
   return (
     <div className="relative min-h-[70dvh] space-y-3.5 pb-20 select-none">
       {/* 1. Top Segmented Switcher & Category Bar — clean, no backdrop band / blur / heavy shadow */}
-      <div className="relative z-20 pt-1 pb-1 space-y-2.5 pr-11 lg:pr-1.5">
-        <div className="flex items-center justify-between gap-4 w-full">
+      <div className="relative z-20 pt-1 pb-1 space-y-2.5">
+        <div className="flex items-center justify-between gap-2 sm:gap-4 w-full pr-11 lg:pr-1.5">
           {/* Segmented Control: [涂装工程 | 单色色卡] */}
-          <div className="bp-segmented inline-flex items-center rounded-full bg-[#EEF1F5] dark:bg-slate-800 p-1 min-w-0 overflow-x-auto no-scrollbar">
+          <div className="bp-segmented inline-flex items-center rounded-full bg-[#EEF1F5] dark:bg-slate-800 p-1 min-w-0 max-w-full overflow-x-auto no-scrollbar">
             <button
               type="button"
               onClick={() => setLibraryMode("projects")}
-              className={`bp-segmented-item flex items-center gap-1 sm:gap-1.5 rounded-full px-2.5 sm:px-4 py-1.5 text-[11px] sm:text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
+              className={`bp-segmented-item flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5 text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
                 libraryMode === "projects"
                   ? "bp-segmented-item-active bg-accent text-white shadow-sm"
                   : "text-[#334155] dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
@@ -359,7 +359,7 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
             <button
               type="button"
               onClick={() => setLibraryMode("colors")}
-              className={`bp-segmented-item flex items-center gap-1 sm:gap-1.5 rounded-full px-2.5 sm:px-4 py-1.5 text-[11px] sm:text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
+              className={`bp-segmented-item flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5 text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
                 libraryMode === "colors"
                   ? "bp-segmented-item-active bg-accent text-white shadow-sm"
                   : "text-[#334155] dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
@@ -370,12 +370,12 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
             </button>
           </div>
 
-          {/* Right Action Group: [🏷️ 管理分类] + [⤢ 宽屏模式 / ⤡ 恢复双栏] */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Right Action Group (Desktop lg+): [🏷️ 管理分类] + [⤢ 宽屏模式 / ⤡ 恢复双栏] */}
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setShowCategoryManager(true)}
-              className="bp-pill inline-flex items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold text-[#334155] dark:text-slate-300 hover:text-accent hover:border-accent/40 transition cursor-pointer whitespace-nowrap shrink-0"
+              className="bp-pill inline-flex items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-bold text-[#334155] dark:text-slate-300 hover:text-accent hover:border-accent/40 transition cursor-pointer whitespace-nowrap shrink-0"
             >
               <TagIcon className="h-3.5 w-3.5 text-accent shrink-0" weight="bold" />
               <span>管理分类</span>
@@ -390,7 +390,7 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
                     ? "恢复左侧源图像画布，切换回双栏对照布局"
                     : "隐藏左侧源图像画布，全宽浏览涂装库"
                 }
-                className={`hidden lg:inline-flex items-center gap-1 rounded-full border px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
                   isWideMode
                     ? "bp-pill-active border-accent bg-accent text-white shadow-xs"
                     : "bp-pill border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[#334155] dark:text-slate-300 hover:text-accent hover:border-accent/40"
@@ -412,7 +412,7 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
           </div>
         </div>
 
-        {/* Lightweight Category Pill Bar (~29px) */}
+        {/* Lightweight Category Pill Bar (~29px, full width to right edge) */}
         <div
           className={`transition-all duration-200 overflow-hidden ${
             isCategoryBarCollapsed ? "max-h-0 opacity-0 pointer-events-none" : "max-h-14 opacity-100"
@@ -470,6 +470,15 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
               }`}
             >
               未分类
+            </button>
+            {/* Mobile (< lg) Category Manager Pill placed inline at the end of Category Row so Row 1 is never squeezed */}
+            <button
+              type="button"
+              onClick={() => setShowCategoryManager(true)}
+              className="lg:hidden bp-pill inline-flex h-[29px] items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-[#334155] dark:text-slate-300 hover:text-accent hover:border-accent/40 transition cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <TagIcon className="h-3.5 w-3.5 text-accent shrink-0" weight="bold" />
+              <span>管理分类</span>
             </button>
           </div>
         </div>

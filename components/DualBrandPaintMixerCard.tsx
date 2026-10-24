@@ -85,32 +85,40 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
   // Compute physical pigment mix via Mixbox 2.0
   const mixedHex = useMemo(() => {
     if (!paintA && !paintB) return "#64748B";
-    if (!paintA) return paintB!.hex.toUpperCase();
-    if (!paintB) return paintA.hex.toUpperCase();
-    const t = Math.max(0.05, Math.min(0.95, ratioBPct / 100));
-    const rgb = lerp(paintA.hex, paintB.hex, t);
-    if (!rgb || rgb.length < 3) return paintA.hex.toUpperCase();
-    return rgbToHex(
-      Math.round(rgb[0]),
-      Math.round(rgb[1]),
-      Math.round(rgb[2])
-    ).toUpperCase();
+    if (!paintA) return (paintB?.hex || "#64748B").toUpperCase();
+    if (!paintB) return (paintA?.hex || "#64748B").toUpperCase();
+    try {
+      const t = Math.max(0.05, Math.min(0.95, ratioBPct / 100));
+      const rgb = lerp(paintA.hex, paintB.hex, t);
+      if (!rgb || rgb.length < 3) return paintA.hex.toUpperCase();
+      return rgbToHex(
+        Math.round(rgb[0]),
+        Math.round(rgb[1]),
+        Math.round(rgb[2])
+      ).toUpperCase();
+    } catch {
+      return paintA.hex.toUpperCase();
+    }
   }, [paintA, paintB, ratioBPct]);
 
   // Live gradient bar across Mixbox steps (0% -> 25% -> 50% -> 75% -> 100%)
   const mixGradientCss = useMemo(() => {
     if (!paintA || !paintB) return "linear-gradient(to right, #3b82f6, #eab308)";
-    const stops = [0, 0.25, 0.5, 0.75, 1].map((t) => {
-      const c = lerp(paintA.hex, paintB.hex, t);
-      const hx =
-        c && c.length >= 3
-          ? rgbToHex(Math.round(c[0]), Math.round(c[1]), Math.round(c[2]))
-          : t < 0.5
-          ? paintA.hex
-          : paintB.hex;
-      return `${hx} ${Math.round(t * 100)}%`;
-    });
-    return `linear-gradient(to right, ${stops.join(", ")})`;
+    try {
+      const stops = [0, 0.25, 0.5, 0.75, 1].map((t) => {
+        const c = lerp(paintA.hex, paintB.hex, t);
+        const hx =
+          c && c.length >= 3
+            ? rgbToHex(Math.round(c[0]), Math.round(c[1]), Math.round(c[2]))
+            : t < 0.5
+            ? paintA.hex
+            : paintB.hex;
+        return `${hx} ${Math.round(t * 100)}%`;
+      });
+      return `linear-gradient(to right, ${stops.join(", ")})`;
+    } catch {
+      return `linear-gradient(to right, ${paintA.hex}, ${paintB.hex})`;
+    }
   }, [paintA, paintB]);
 
   // Top 4 closest single-bottle brand paints to the Mixbox mixed result
@@ -525,8 +533,7 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {topSameColorPaints.map((m) => {
                 const p = m.paint;
-                const qKey = matchQuality(m.deltaE);
-                const qText = matchQualityLabel(qKey, lang);
+                const qText = matchQualityLabel(m.deltaE, lang);
                 const isAssigned = selectedSandboxColor?.assignedPaint?.id === p.id;
                 return (
                   <div

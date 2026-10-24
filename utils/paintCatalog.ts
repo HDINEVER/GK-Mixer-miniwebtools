@@ -316,6 +316,32 @@ export class PaintMatchEngine {
     });
   }
 
+  findClosest(hex: string, limit = 4, solidsOnly = true): PaintMatch[] {
+    const target = labFromHex(hex);
+    if (!target) return [];
+    const allPaints: CatalogPaint[] = [];
+    for (const list of this.paintsByBrand.values()) {
+      allPaints.push(...list);
+    }
+    return this.topMatches(allPaints, target, solidsOnly, "", limit);
+  }
+
+  findClosestByBrands(
+    hex: string,
+    brands: string[],
+    limit = 4,
+    solidsOnly = true
+  ): PaintMatch[] {
+    const target = labFromHex(hex);
+    if (!target) return [];
+    const scopedPaints: CatalogPaint[] = [];
+    for (const b of brands) {
+      const list = this.paintsByBrand.get(b);
+      if (list) scopedPaints.push(...list);
+    }
+    return this.topMatches(scopedPaints, target, solidsOnly, "", limit);
+  }
+
   private topMatches(
     catalog: CatalogPaint[],
     target: Lab,

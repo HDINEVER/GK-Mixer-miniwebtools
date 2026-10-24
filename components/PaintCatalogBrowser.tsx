@@ -128,13 +128,6 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     });
   }, [paints]);
 
-  const brands = useMemo(() => {
-    if (showUncommonBrands) return allUniqueBrands;
-    return allUniqueBrands.filter((b) => commonBrandsSet.has(b));
-  }, [allUniqueBrands, showUncommonBrands, commonBrandsSet]);
-
-  const uncommonBrandCount = Math.max(0, allUniqueBrands.length - commonBrandsSet.size);
-
   // Pre-build search haystack & application mode (喷涂 vs 手涂) once per catalog load
   const searchMetaMap = useMemo(() => {
     const map = new Map<
@@ -151,6 +144,37 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     }
     return map;
   }, [paints]);
+
+  // Brands that actually contain at least 1 paint for the active applicationFilter (hides spray-only brands when "手涂/笔涂漆" is selected)
+  const brandsMatchingAppFilter = useMemo(() => {
+    if (applicationFilter === "all") return new Set<string>(allUniqueBrands);
+    const set = new Set<string>();
+    for (const paint of paints) {
+      const appType = searchMetaMap.get(paint.id)?.appType ?? getPaintApplicationType(paint);
+      if (appType === applicationFilter) {
+        set.add(paint.brand);
+      }
+    }
+    return set;
+  }, [paints, searchMetaMap, applicationFilter, allUniqueBrands]);
+
+  const brands = useMemo(() => {
+    const baseList = showUncommonBrands
+      ? allUniqueBrands
+      : allUniqueBrands.filter((b) => commonBrandsSet.has(b));
+    if (applicationFilter === "all") return baseList;
+    return baseList.filter((b) => brandsMatchingAppFilter.has(b));
+  }, [allUniqueBrands, showUncommonBrands, commonBrandsSet, applicationFilter, brandsMatchingAppFilter]);
+
+  // If the active brand has no paints under the newly switched applicationFilter (e.g. switching to 手涂漆 while Gaia is active), reset to ALL
+  useEffect(() => {
+    if (brand !== "ALL" && !brands.includes(brand)) {
+      setBrand("ALL");
+      setPrefix(null);
+    }
+  }, [brands, brand]);
+
+  const uncommonBrandCount = Math.max(0, allUniqueBrands.length - commonBrandsSet.size);
 
   // Space-separated multi-keyword matching + Common/Uncommon Brand Scope + Spray/Brush Filter
   const filteredPaints = useMemo(() => {
@@ -209,8 +233,15 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   ]);
 
   const scopedPaintsCount = useMemo(() => {
-    return paints.filter((p) => showUncommonBrands || commonBrandsSet.has(p.brand)).length;
-  }, [paints, showUncommonBrands, commonBrandsSet]);
+    return paints.filter((p) => {
+      if (!showUncommonBrands && !commonBrandsSet.has(p.brand)) return false;
+      if (applicationFilter !== "all") {
+        const appType = searchMetaMap.get(p.id)?.appType ?? getPaintApplicationType(p);
+        if (appType !== applicationFilter) return false;
+      }
+      return true;
+    }).length;
+  }, [paints, showUncommonBrands, commonBrandsSet, applicationFilter, searchMetaMap]);
 
   const availablePrefixes = useMemo(() => {
     const scope = paints.filter((p) => {

@@ -6,6 +6,10 @@ import {
   ShareNetworkIcon,
   InfoIcon,
   CheckIcon,
+  FolderPlusIcon,
+  QrCodeIcon,
+  ListChecksIcon,
+  PackageIcon,
 } from '@phosphor-icons/react';
 import { Language } from '../types';
 import { ExportResult, shareExportedImage } from '../utils/exportAnnotatedImage';
@@ -15,6 +19,7 @@ interface ExportSuccessModalProps {
   onClose: () => void;
   result: ExportResult | null;
   lang: Language;
+  onSaveToProject?: () => void;
 }
 
 export const ExportSuccessModal: React.FC<ExportSuccessModalProps> = ({
@@ -22,6 +27,7 @@ export const ExportSuccessModal: React.FC<ExportSuccessModalProps> = ({
   onClose,
   result,
   lang,
+  onSaveToProject,
 }) => {
   const [isSharing, setIsSharing] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
@@ -137,6 +143,49 @@ export const ExportSuccessModal: React.FC<ExportSuccessModalProps> = ({
               alt="Exported swatch visualizer"
               className="max-h-[48vh] w-auto max-w-full rounded object-contain"
             />
+          </div>
+
+          {/* Next-Step Workflow Guidance Card: Pure Swatch Image vs Paint Project Library */}
+          <div className="rounded-xl border border-amber-300/80 dark:border-amber-700/70 bg-amber-50/90 dark:bg-amber-950/35 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                <span>🧭</span>
+                <span>进阶操作指引：纯色卡图片 vs 涂装项目库</span>
+              </span>
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                推荐归档
+              </span>
+            </div>
+            <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/85">
+              当前保存的 PNG 为<strong>静态纯色卡图</strong>。若希望后续<strong>继续编辑色卡</strong>或<strong>分享给模友导入</strong>，强烈建议同步存入<strong>「涂装项目库」</strong>：
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[10px] font-bold text-slate-700 dark:text-slate-200">
+              <div className="flex items-center gap-1.5 rounded-lg bg-white/85 dark:bg-slate-900/80 px-2 py-1.5 border border-amber-200/70 dark:border-amber-800/50">
+                <ListChecksIcon className="h-3.5 w-3.5 text-coral shrink-0" weight="bold" />
+                <span>继续添加涂装工序</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-white/85 dark:bg-slate-900/80 px-2 py-1.5 border border-amber-200/70 dark:border-amber-800/50">
+                <QrCodeIcon className="h-3.5 w-3.5 text-coral shrink-0" weight="bold" />
+                <span>生成扫码导入名片</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-white/85 dark:bg-slate-900/80 px-2 py-1.5 border border-amber-200/70 dark:border-amber-800/50">
+                <PackageIcon className="h-3.5 w-3.5 text-coral shrink-0" weight="bold" />
+                <span>打包 .gkmix 工程</span>
+              </div>
+            </div>
+            {onSaveToProject && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onSaveToProject();
+                }}
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover px-3.5 py-2 text-xs font-extrabold text-white shadow-sm transition active:scale-[0.99] cursor-pointer"
+              >
+                <FolderPlusIcon className="h-4 w-4 shrink-0" weight="bold" />
+                <span>立即存入「涂装项目库」（继续加工序 / 制作二维码名片 / 打包工程）➔</span>
+              </button>
+            )}
           </div>
 
           {/* Mobile tip */}

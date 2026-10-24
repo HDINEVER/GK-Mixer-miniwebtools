@@ -2348,18 +2348,12 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   const lastTouchDistRef = useRef<number>(1);
   const pinchCooldownUntilRef = useRef<number>(0);
 
-  // Mobile Thumb-Front Precision Sight (十字星 + 指示箭头 + 放大镜, avoids thumb blind spot on vertical screens)
+  // Mobile Crosshair Selector Ring (准星选取器: 手指按住底部边缘移动，环中心十字准星即为取色/填色点)
   const [thumbOffsetMode, setThumbOffsetMode] = useState<boolean>(true);
-  const studioTouchSightRef = useRef<HTMLDivElement>(null);
-  const studioTouchStemRef = useRef<HTMLDivElement>(null);
   const studioLoupeContainerRef = useRef<HTMLDivElement>(null);
   const studioLoupeCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const hideStudioTouchSight = useCallback(() => {
-    if (studioTouchSightRef.current) {
-      studioTouchSightRef.current.style.opacity = "0";
-      studioTouchSightRef.current.style.transform = "translate3d(-9999px, -9999px, 0)";
-    }
     if (studioLoupeContainerRef.current) {
       studioLoupeContainerRef.current.style.opacity = "0";
       studioLoupeContainerRef.current.style.transform = "translate3d(-9999px, -9999px, 0)";
@@ -2372,21 +2366,17 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         return { targetX: touchX, targetY: touchY };
       }
       const vp = viewportRef.current;
+      // Ring diameter = 92px -> radius = 46px, so the finger rests on the bottom edge of the ring
+      // while the center crosshair of the ring sits 46px above the finger!
+      const edgeRadiusOffsetPx = 46;
       if (!vp) {
-        return { targetX: touchX, targetY: touchY - 44 };
+        return { targetX: touchX, targetY: touchY - edgeRadiusOffsetPx };
       }
       const rect = vp.getBoundingClientRect();
-      const frontOffsetPx = 44;
-      const distFromTop = Math.max(0, touchY - rect.top);
-      const rampZone = frontOffsetPx * 1.35;
-      const effectiveOffset =
-        distFromTop < rampZone
-          ? distFromTop * (frontOffsetPx / rampZone)
-          : frontOffsetPx;
       const targetX = Math.max(rect.left + 2, Math.min(rect.right - 2, touchX));
       const targetY = Math.max(
         rect.top + 2,
-        Math.min(rect.bottom - 2, touchY - effectiveOffset)
+        Math.min(rect.bottom - 2, touchY - edgeRadiusOffsetPx)
       );
       return { targetX, targetY };
     },
@@ -2397,8 +2387,8 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     (
       targetX: number,
       targetY: number,
-      touchX: number,
-      touchY: number,
+      _touchX: number,
+      _touchY: number,
       imgPt: { x: number; y: number } | null
     ) => {
       if (!imgPt || dimsRef.current.w <= 0) {
@@ -2406,27 +2396,20 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         return;
       }
 
-      if (studioTouchSightRef.current) {
-        studioTouchSightRef.current.style.transform = `translate3d(${Math.round(targetX)}px, ${Math.round(targetY)}px, 0)`;
-        studioTouchSightRef.current.style.opacity = "1";
-      }
-      if (studioTouchStemRef.current) {
-        const stemLen = Math.max(0, Math.round(touchY - targetY - 14));
-        studioTouchStemRef.current.style.height = `${stemLen}px`;
-        studioTouchStemRef.current.style.display = stemLen > 6 ? "flex" : "none";
-      }
-
       const loupeCanvas = studioLoupeCanvasRef.current;
       const loupeContainer = studioLoupeContainerRef.current;
       if (loupeCanvas && loupeContainer) {
         const LSIZE = 92;
-        const srcSpan = 22;
+        // Modest ~2.3x low-zoom lens so surrounding part contours and panel lines are clearly visible
+        const effectiveScale = Math.max(0.25, viewRef.current.scale || 1);
+        const srcSpan = Math.max(16, Math.round((LSIZE / 2.3) / effectiveScale));
         const half = Math.floor(srcSpan / 2);
         const sx = Math.round(imgPt.x - half);
         const sy = Math.round(imgPt.y - half);
         const ctx = loupeCanvas.getContext("2d");
         if (ctx) {
-          ctx.imageSmoothingEnabled = false;
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
           ctx.fillStyle = "#0f172a";
           ctx.fillRect(0, 0, LSIZE, LSIZE);
           try {
@@ -2447,36 +2430,48 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             // ignore edge draw
           }
 
-          // Center crosshair inside Studio Loupe
+          // Crisp tactical Crosshair Reticle (+) at the exact center of the Selector Ring
           const mid = LSIZE / 2;
-          ctx.strokeStyle = "rgba(0,0,0,0.65)";
+          const gap = 5;
+          ctx.strokeStyle = "rgba(15, 23, 42, 0.78)";
           ctx.lineWidth = 2.5;
           ctx.beginPath();
-          ctx.moveTo(mid, mid - 12);
-          ctx.lineTo(mid, mid + 12);
-          ctx.moveTo(mid - 12, mid);
-          ctx.lineTo(mid + 12, mid);
+          ctx.moveTo(mid, 6);
+          ctx.lineTo(mid, mid - gap);
+          ctx.moveTo(mid, mid + gap);
+          ctx.lineTo(mid, LSIZE - 6);
+          ctx.moveTo(6, mid);
+          ctx.lineTo(mid - gap, mid);
+          ctx.moveTo(mid + gap, mid);
+          ctx.lineTo(LSIZE - 6, mid);
           ctx.stroke();
 
-          ctx.strokeStyle = "rgba(255,255,255,0.98)";
-          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.98)";
+          ctx.lineWidth = 1.25;
           ctx.beginPath();
-          ctx.moveTo(mid, mid - 12);
-          ctx.lineTo(mid, mid + 12);
-          ctx.moveTo(mid - 12, mid);
-          ctx.lineTo(mid + 12, mid);
+          ctx.moveTo(mid, 6);
+          ctx.lineTo(mid, mid - gap);
+          ctx.moveTo(mid, mid + gap);
+          ctx.lineTo(mid, LSIZE - 6);
+          ctx.moveTo(6, mid);
+          ctx.lineTo(mid - gap, mid);
+          ctx.moveTo(mid + gap, mid);
+          ctx.lineTo(LSIZE - 6, mid);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(mid, mid, gap, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(15, 23, 42, 0.85)";
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.4;
           ctx.stroke();
         }
 
-        const vw = window.innerWidth || 390;
-        let left = targetX - LSIZE / 2;
-        let top = targetY - LSIZE - 36;
-        if (top < 10) {
-          top = Math.max(10, targetY - LSIZE / 2);
-          left = targetX > vw / 2 ? Math.max(8, targetX - LSIZE - 26) : Math.min(vw - LSIZE - 8, targetX + 26);
-        } else {
-          left = Math.max(8, Math.min(vw - LSIZE - 8, left));
-        }
+        // Center the Crosshair Selector Ring directly on (targetX, targetY)
+        const left = targetX - LSIZE / 2;
+        const top = targetY - LSIZE / 2;
         loupeContainer.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
         loupeContainer.style.opacity = "1";
       }
@@ -6952,38 +6947,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         </div>
       )}
 
-      {/* Mobile Touch Thumb-Front Precision Sight (十字星 + 指示箭头 + 放大镜) */}
-      <div
-        ref={studioTouchSightRef}
-        className="pointer-events-none fixed top-0 left-0 z-[105] transition-opacity duration-75"
-        style={{
-          opacity: 0,
-          transform: "translate3d(-9999px, -9999px, 0)",
-          willChange: "transform, opacity",
-        }}
-      >
-        <div className="relative -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-7 h-7">
-          <span className="absolute inset-0 rounded-full border-2 border-white shadow-[0_0_0_1.5px_rgba(15,23,42,0.85),0_2px_8px_rgba(0,0,0,0.45)]" />
-          <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-[2px] h-2.5 bg-white shadow-[0_0_2px_#000]" />
-          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-[2px] h-2.5 bg-white shadow-[0_0_2px_#000]" />
-          <span className="absolute -left-1.5 top-1/2 -translate-y-1/2 h-[2px] w-2.5 bg-white shadow-[0_0_2px_#000]" />
-          <span className="absolute -right-1.5 top-1/2 -translate-y-1/2 h-[2px] w-2.5 bg-white shadow-[0_0_2px_#000]" />
-          <span
-            className="w-2.5 h-2.5 rounded-full border border-white shadow-[0_0_0_1px_rgba(0,0,0,0.85)]"
-            style={{ backgroundColor: activeHex }}
-          />
-        </div>
-        <div
-          ref={studioTouchStemRef}
-          className="absolute left-0 top-[14px] -translate-x-1/2 flex flex-col items-center justify-between"
-          style={{ height: 0, display: "none" }}
-        >
-          <span className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[7px] border-b-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]" />
-          <span className="flex-1 w-[1.5px] border-l-2 border-dashed border-amber-400/90 drop-shadow-[0_0_2px_rgba(0,0,0,0.8)]" />
-          <span className="w-3.5 h-3.5 rounded-full border-2 border-amber-400/85 bg-amber-400/20 shadow-[0_0_4px_rgba(0,0,0,0.6)] shrink-0" />
-        </div>
-      </div>
-
+      {/* Mobile Touch Unified Low-Zoom Crosshair Selector Ring (准星选取器: 手指按住底部边缘移动，环中心准星即为作用点) */}
       <div
         ref={studioLoupeContainerRef}
         className="pointer-events-none fixed top-0 left-0 z-[106] flex flex-col items-center transition-opacity duration-75"
@@ -6993,21 +6957,29 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
           willChange: "transform, opacity",
         }}
       >
-        <div className="relative flex items-center justify-center">
+        <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-slate-950/92 px-2 py-0.5 font-mono text-[9px] font-bold text-white shadow-md border border-white/25 whitespace-nowrap">
+          <span
+            className="inline-block h-2 w-2 rounded-full border border-white/75 shrink-0"
+            style={{ backgroundColor: activeHex }}
+          />
+          <span>⊕ 准星选取器</span>
+        </div>
+        <div className="relative flex items-center justify-center h-[92px] w-[92px]">
           <canvas
             ref={studioLoupeCanvasRef}
             width={92}
             height={92}
-            className="h-[84px] w-[84px] rounded-full border-2 border-white shadow-xl ring-2 ring-black/35"
+            className="h-[92px] w-[92px] rounded-full border-[2.5px] border-white shadow-[0_4px_18px_rgba(0,0,0,0.45)] ring-2 ring-slate-950/60"
           />
-          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]" />
-        </div>
-        <div className="mt-1 flex items-center gap-1 rounded-full bg-slate-950/90 px-2 py-0.5 font-mono text-[9px] font-bold text-white shadow-md border border-white/20">
-          <span
-            className="inline-block h-2 w-2 rounded-full border border-white/60"
-            style={{ backgroundColor: activeHex }}
-          />
-          <span>⊕ 拇指前准星</span>
+          <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-[2px] h-2 bg-amber-400 rounded-full shadow-[0_0_2px_#000]" />
+          <span className="absolute -left-1 top-1/2 -translate-y-1/2 h-[2px] w-2 bg-amber-400 rounded-full shadow-[0_0_2px_#000]" />
+          <span className="absolute -right-1 top-1/2 -translate-y-1/2 h-[2px] w-2 bg-amber-400 rounded-full shadow-[0_0_2px_#000]" />
+          {thumbOffsetMode && (
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-amber-400 text-slate-950 px-2 py-0.5 text-[9px] font-extrabold shadow-[0_2px_6px_rgba(0,0,0,0.45)] border border-slate-950/40 whitespace-nowrap">
+              <span>⠿</span>
+              <span>拖边缘移动</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -21,6 +21,79 @@ export const FEATURED_BRANDS = [
   "Scale75",
 ];
 
+/**
+ * Default mainstream brands shown in the Paint Catalog Browser by default
+ * (hides niche/uncommon overseas miniature & craft paint brands unless toggled on).
+ */
+export const COMMON_MODEL_BRANDS = [
+  "Gaia",
+  "Jumpwind",
+  "Hobby Mio",
+  "Night Works",
+  "Sunin7",
+  "Mr.Hobby",
+  "Gunze",
+  "Tamiya",
+  "Vallejo",
+  "Citadel",
+  "AK",
+  "AK Real Colors",
+];
+
+export type PaintApplicationType = "airbrush" | "brush";
+
+const AIRBRUSH_PRIMARY_BRANDS = new Set([
+  "Gaia",
+  "Jumpwind",
+  "Hobby Mio",
+  "Sunin7",
+  "Mr.Hobby",
+  "Gunze",
+  "Tamiya",
+  "AK Real Colors",
+]);
+
+/**
+ * Distinguishes Airbrush/Spray paints (喷涂漆) from Hand-Brush/Water-based Miniature paints (手涂漆).
+ */
+export const getPaintApplicationType = (paint: CatalogPaint): PaintApplicationType => {
+  const brand = paint.brand.trim();
+  const setLower = (paint.set || "").toLowerCase();
+  const nameLower = (paint.name || "").toLowerCase();
+
+  if (brand === "Night Works") {
+    if (
+      setLower.includes("预调喷涂") ||
+      setLower.includes("水补土") ||
+      nameLower.includes("预调喷涂")
+    ) {
+      return "airbrush";
+    }
+    return "brush";
+  }
+
+  if (AIRBRUSH_PRIMARY_BRANDS.has(brand)) {
+    if (setLower.includes("笔涂") || nameLower.includes("笔涂")) {
+      return "brush";
+    }
+    return "airbrush";
+  }
+
+  // Water-based / miniature brands: check if it's an Air / Airbrush / Primer series
+  if (
+    /\bair\b/.test(setLower) ||
+    setLower.includes("airbrush") ||
+    setLower.includes("mecha") ||
+    setLower.includes("primer") ||
+    setLower.includes("喷涂") ||
+    /\bair\b/.test(nameLower)
+  ) {
+    return "airbrush";
+  }
+
+  return "brush";
+};
+
 export const localizedBrand = (brand: string, lang: "en" | "zh" | "ja") => {
   if (lang !== "zh") return brand;
   switch (brand) {

@@ -274,8 +274,8 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
         </div>
       )}
 
-      {/* 1. Top Navigation & Project Action Bar */}
-      <div className="bp-subcard-lg relative z-50 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/85 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 sm:px-3.5 py-2.5 shadow-xs">
+      {/* 1. Top Navigation & Project Action Bar (z-30 + mr-11 on mobile so it never overlaps Desktop Nav Dropdown or Mobile Top-Right Settings Button) */}
+      <div className="bp-subcard-lg relative z-30 mr-11 lg:mr-0 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/85 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 sm:px-3.5 py-2.5 shadow-xs">
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
           <button
             type="button"

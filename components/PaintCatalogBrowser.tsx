@@ -15,7 +15,10 @@ import {
   CrosshairIcon,
 } from "@phosphor-icons/react";
 import {
+  COMMON_MODEL_BRANDS,
   FEATURED_BRANDS,
+  PaintApplicationType,
+  getPaintApplicationType,
   loadPaintCatalog,
   localizedBrand,
   paintPrefix,
@@ -67,11 +70,15 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   const [prefix, setPrefix] = useState<string | null>(null);
   const [finishFilter, setFinishFilter] = useState<string | null>(null);
   const [activeQuickChip, setActiveQuickChip] = useState<string | null>(null);
+  const [showUncommonBrands, setShowUncommonBrands] = useState<boolean>(false);
+  const [applicationFilter, setApplicationFilter] = useState<"all" | PaintApplicationType>("all");
   const [viewMode, setViewMode] = useState<"gallery" | "compact">("gallery");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [openFilterMenu, setOpenFilterMenu] = useState<"series" | "finish" | null>(null);
   const [visibleGroupLimit, setVisibleGroupLimit] = useState<number>(INITIAL_GROUP_BATCH);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const commonBrandsSet = useMemo(() => new Set<string>(COMMON_MODEL_BRANDS), []);
 
   useEffect(() => {
     if (initialPaints && initialPaints.length > 0) {
@@ -97,9 +104,19 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   // Reset progressive window when filters change
   useEffect(() => {
     setVisibleGroupLimit(INITIAL_GROUP_BATCH);
-  }, [brand, solidsOnly, finishFilter, prefix, search, activeQuickChip, viewMode]);
+  }, [
+    brand,
+    solidsOnly,
+    finishFilter,
+    prefix,
+    search,
+    activeQuickChip,
+    showUncommonBrands,
+    applicationFilter,
+    viewMode,
+  ]);
 
-  const brands = useMemo(() => {
+  const allUniqueBrands = useMemo(() => {
     const unique = Array.from(new Set<string>(paints.map((paint) => paint.brand)));
     return unique.sort((lhs, rhs) => {
       const li = FEATURED_BRANDS.indexOf(lhs);
@@ -111,19 +128,31 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     });
   }, [paints]);
 
-  // Pre-build search haystack once per catalog load
+  const brands = useMemo(() => {
+    if (showUncommonBrands) return allUniqueBrands;
+    return allUniqueBrands.filter((b) => commonBrandsSet.has(b));
+  }, [allUniqueBrands, showUncommonBrands, commonBrandsSet]);
+
+  const uncommonBrandCount = Math.max(0, allUniqueBrands.length - commonBrandsSet.size);
+
+  // Pre-build search haystack & application mode (喷涂 vs 手涂) once per catalog load
   const searchMetaMap = useMemo(() => {
-    const map = new Map<string, { pfx: string; hay: string }>();
+    const map = new Map<
+      string,
+      { pfx: string; hay: string; appType: PaintApplicationType }
+    >();
     for (const paint of paints) {
       const pfx = paintPrefix(paint);
+      const appType = getPaintApplicationType(paint);
+      const appLabel = appType === "airbrush" ? "喷涂 喷笔" : "手涂 笔涂 水性";
       const localizedB = localizedBrand(paint.brand, "zh").toLowerCase();
-      const hay = `${paint.brand} ${localizedB} ${paint.code} ${paint.name} ${paint.hex} ${paint.set} ${paint.finish}`.toLowerCase();
-      map.set(paint.id, { pfx, hay });
+      const hay = `${paint.brand} ${localizedB} ${paint.code} ${paint.name} ${paint.hex} ${paint.set} ${paint.finish} ${appLabel}`.toLowerCase();
+      map.set(paint.id, { pfx, hay, appType });
     }
     return map;
   }, [paints]);
 
-  // Space-separated multi-keyword matching + Notion-style filters
+  // Space-separated multi-keyword matching + Common/Uncommon Brand Scope + Spray/Brush Filter
   const filteredPaints = useMemo(() => {
     const tokens = search
       .trim()
@@ -135,11 +164,15 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     const chipKeywords = chipObj ? chipObj.keyword.toLowerCase().split(/\s+/) : [];
 
     return paints.filter((paint) => {
+      if (!showUncommonBrands && !commonBrandsSet.has(paint.brand)) return false;
       if (brand !== "ALL" && paint.brand !== brand) return false;
       if (solidsOnly && paint.finish !== "standard") return false;
       if (finishFilter && paint.finish !== finishFilter) return false;
 
       const meta = searchMetaMap.get(paint.id);
+      const appType = meta ? meta.appType : getPaintApplicationType(paint);
+      if (applicationFilter !== "all" && appType !== applicationFilter) return false;
+
       const pfx = meta ? meta.pfx : paintPrefix(paint);
       if (prefix && pfx !== prefix) return false;
 
@@ -161,16 +194,36 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
 
       return true;
     });
-  }, [paints, searchMetaMap, brand, solidsOnly, finishFilter, prefix, search, activeQuickChip]);
+  }, [
+    paints,
+    searchMetaMap,
+    showUncommonBrands,
+    commonBrandsSet,
+    brand,
+    solidsOnly,
+    finishFilter,
+    applicationFilter,
+    prefix,
+    search,
+    activeQuickChip,
+  ]);
+
+  const scopedPaintsCount = useMemo(() => {
+    return paints.filter((p) => showUncommonBrands || commonBrandsSet.has(p.brand)).length;
+  }, [paints, showUncommonBrands, commonBrandsSet]);
 
   const availablePrefixes = useMemo(() => {
-    const scope = brand === "ALL" ? paints : paints.filter((p) => p.brand === brand);
+    const scope = paints.filter((p) => {
+      if (!showUncommonBrands && !commonBrandsSet.has(p.brand)) return false;
+      if (brand !== "ALL" && p.brand !== brand) return false;
+      return true;
+    });
     const set = new Set<string>();
     for (const p of scope) {
       set.add(searchMetaMap.get(p.id)?.pfx ?? paintPrefix(p));
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [paints, searchMetaMap, brand]);
+  }, [paints, searchMetaMap, showUncommonBrands, commonBrandsSet, brand]);
 
   const groups = useMemo(() => {
     const bucket = new Map<string, CatalogPaint[]>();
@@ -225,7 +278,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   return (
     <div className="flex min-h-[32rem] flex-col gap-3 select-none">
       {/* 1. Sticky Top Brand Rail + Collapsible Notion Filter Bar */}
-      <div className="sticky top-0 z-20 pt-1 pb-2.5 space-y-2.5 bg-[#F8FAFC]/95 dark:bg-slate-900/95 backdrop-blur-md">
+      <div className="sticky top-0 z-20 pt-1 pb-2.5 pr-11 lg:pr-0 space-y-2.5 bg-[#F8FAFC]/95 dark:bg-slate-900/95 backdrop-blur-md">
         {activeSampleColor && onAssignCatalog && (
           <div className="flex items-center justify-between gap-2 rounded-xl border border-accent/25 bg-accent/8 dark:bg-accent/15 px-3 py-1.5 text-xs">
             <div className="flex items-center gap-2 min-w-0">
@@ -246,6 +299,75 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
             </span>
           </div>
         )}
+
+        {/* Top Control Row: [喷涂 vs 手涂 筛选器] + [常用品牌 / 展开不常用品牌 切换开关] */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Application Mode Filter: 全部用途 | 💨 喷涂漆 | 🖌️ 手涂漆 */}
+          <div className="bp-segmented inline-flex rounded-full bg-slate-200/85 dark:bg-slate-800 p-0.5 border border-slate-200/80 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setApplicationFilter("all")}
+              className={`bp-segmented-item rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                applicationFilter === "all"
+                  ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+              }`}
+            >
+              全部用途
+            </button>
+            <button
+              type="button"
+              onClick={() => setApplicationFilter("airbrush")}
+              className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                applicationFilter === "airbrush"
+                  ? "bp-segmented-item-active bg-sky-600 text-white shadow-2xs"
+                  : "text-slate-600 dark:text-slate-300 hover:text-sky-600"
+              }`}
+              title="筛选适合高达/GK喷笔喷涂的硝基漆、预调喷涂漆与喷涂专用水性漆"
+            >
+              <span>💨</span>
+              <span>喷涂漆</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setApplicationFilter("brush")}
+              className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                applicationFilter === "brush"
+                  ? "bp-segmented-item-active bg-amber-600 text-white shadow-2xs"
+                  : "text-slate-600 dark:text-slate-300 hover:text-amber-600"
+              }`}
+              title="筛选适合手涂/笔涂的战棋水性漆、薄涂漆、对比漆与渍洗漆"
+            >
+              <span>🖌️</span>
+              <span>手涂/笔涂漆</span>
+            </button>
+          </div>
+
+          {/* Toggle Switch: Default Common Brands Only vs Include Uncommon Brands */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = !showUncommonBrands;
+              setShowUncommonBrands(next);
+              if (!next && brand !== "ALL" && !commonBrandsSet.has(brand)) {
+                setBrand("ALL");
+              }
+            }}
+            className={`bp-pill inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+              showUncommonBrands
+                ? "bp-pill-active border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200"
+                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-accent"
+            }`}
+            title={
+              showUncommonBrands
+                ? "当前已开启全部生僻/海外小众品牌，点击恢复默认仅显示主流常用品牌"
+                : "默认隐藏不常用的海外小众品牌，点击可展开并允许搜索全部品牌"
+            }
+          >
+            <span>{showUncommonBrands ? "🌐 已含生僻品牌 (点击收起)" : `🌟 默认仅常用品牌 (展开 +${uncommonBrandCount} 个不常用品牌)`}</span>
+          </button>
+        </div>
+
         {/* Horizontal Scrollable Brand Rail (ALL + Brands in Liquid Glass Capsules) */}
         <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pt-0.5 pb-1.5 pr-1.5 no-scrollbar scroll-smooth">
           <button
@@ -260,7 +382,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                 : "bp-pill bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700/70 hover:bg-white"
             }`}
           >
-            全部 ({paints.length})
+            {showUncommonBrands ? `全部品牌 (${scopedPaintsCount})` : `常用全部 (${scopedPaintsCount})`}
           </button>
           {brands.map((item) => {
             const active = item === brand;
@@ -567,6 +689,8 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                   <div className="grid grid-cols-1 gap-2.5 px-3 pb-3.5 pt-2.5 sm:grid-cols-2 lg:grid-cols-3">
                     {group.paints.map((paint) => {
                       const isAssigned = activeSampleColor?.assignedPaint?.id === paint.id;
+                      const appType =
+                        searchMetaMap.get(paint.id)?.appType ?? getPaintApplicationType(paint);
                       return (
                         <PaintBottleHover
                           key={paint.id}
@@ -608,8 +732,19 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                               title={`${paint.code} ${paint.name}`}
                             />
                             <div className="min-w-0 flex-1">
-                              <div className="truncate font-mono text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-accent transition-colors">
-                                {paint.code} {paint.name}
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="truncate font-mono text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-accent transition-colors">
+                                  {paint.code} {paint.name}
+                                </span>
+                                <span
+                                  className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-extrabold ${
+                                    appType === "airbrush"
+                                      ? "bg-sky-500/12 text-sky-700 dark:text-sky-300"
+                                      : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                                  }`}
+                                >
+                                  {appType === "airbrush" ? "💨喷涂" : "🖌️手涂"}
+                                </span>
                               </div>
                               <div className="truncate font-mono text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
                                 {paint.hex.toUpperCase()}
@@ -650,6 +785,8 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                       const finishMeta =
                         FINISH_LABELS[paint.finish] || FINISH_LABELS.standard;
                       const isAssigned = activeSampleColor?.assignedPaint?.id === paint.id;
+                      const appType =
+                        searchMetaMap.get(paint.id)?.appType ?? getPaintApplicationType(paint);
                       return (
                         <PaintBottleHover
                           key={paint.id}
@@ -696,8 +833,17 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                               </div>
                             </div>
 
-                            {/* Right: Notion-Style Colored Attribute Tags ([品牌], [光泽], [系列]) + Assign Button */}
+                            {/* Right: Notion-Style Colored Attribute Tags ([喷涂/手涂], [品牌], [光泽], [系列]) + Assign Button */}
                             <div className="flex items-center gap-1.5 shrink-0">
+                              <span
+                                className={`bp-badge rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                                  appType === "airbrush"
+                                    ? "bg-sky-500/12 text-sky-700 dark:text-sky-300"
+                                    : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                                }`}
+                              >
+                                {appType === "airbrush" ? "💨喷涂" : "🖌️手涂"}
+                              </span>
                               <span className="bp-badge rounded-md bg-accent/10 dark:bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent dark:text-accent-light">
                                 {localizedBrand(paint.brand, lang)}
                               </span>
@@ -768,8 +914,17 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
         )}
 
         {groups.length === 0 && (
-          <div className="py-12 text-center text-xs text-slate-400">
-            {lang === "zh" ? "没有找到匹配的模型漆" : "No matching paints found"}
+          <div className="py-12 text-center text-xs text-slate-400 space-y-3">
+            <div>{lang === "zh" ? "在当前常用品牌或筛选条件下没有找到匹配的模型漆" : "No matching paints found"}</div>
+            {!showUncommonBrands && (
+              <button
+                type="button"
+                onClick={() => setShowUncommonBrands(true)}
+                className="bp-pill inline-flex items-center gap-1.5 rounded-full border border-amber-400 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-1.5 text-xs font-extrabold text-amber-800 dark:text-amber-200 cursor-pointer"
+              >
+                <span>🌐 展开 +{uncommonBrandCount} 个不常用品牌并重新搜索</span>
+              </button>
+            )}
           </div>
         )}
       </div>

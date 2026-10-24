@@ -22,6 +22,7 @@ interface SwatchEditorModalProps {
   selectedColor: ColorData | null;
   onSelectColor: (color: ColorData) => void;
   onUpdateColors: (updater: (prev: ColorData[]) => ColorData[]) => void;
+  onUpdateImageAndColors?: (newImageSrc: string, nextColors: ColorData[]) => void;
   settings: SwatchSettings;
   onUpdateSettings: (updater: (prev: SwatchSettings) => SwatchSettings) => void;
   lang: Language;
@@ -62,6 +63,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
   selectedColor,
   onSelectColor,
   onUpdateColors,
+  onUpdateImageAndColors,
   settings,
   onUpdateSettings,
   lang,
@@ -222,6 +224,8 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
           {/* Right 5 cols: SwatchStudioControls */}
           <div className="lg:col-span-5 pr-1.5 pb-1.5">
             <SwatchStudioControls
+              imageSrc={imageSrc}
+              onUpdateImageAndColors={onUpdateImageAndColors}
               colors={colors}
               selectedColor={activeAssigned || selectedColor}
               onSelectColor={onSelectColor}

@@ -82,6 +82,7 @@ export interface BrandMatchPanelProps {
   selectable?: boolean;
   selectedId?: string | null;
   assignedId?: string | null;
+  assignedPaint?: CatalogPaint | null;
   onSelect?: (paint: PaintBrand) => void;
   onAssignCatalog?: (paint: CatalogPaint) => void;
   compact?: boolean;
@@ -119,6 +120,7 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
   selectable = false,
   selectedId,
   assignedId,
+  assignedPaint,
   onSelect,
   onAssignCatalog,
   compact = false,
@@ -142,13 +144,26 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
   const [showBrandPopover, setShowBrandPopover] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const [tintDeltaL, setTintDeltaL] = useState<number>(0);
-  const [selectedTintBaseIdx, setSelectedTintBaseIdx] = useState<number>(0);
+  const [selectedTintBasePaint, setSelectedTintBasePaint] = useState<CatalogPaint | null>(null);
+
+  const isSameCatalogPaint = (a?: CatalogPaint | null, b?: CatalogPaint | null): boolean => {
+    if (!a || !b) return false;
+    if (a.id === b.id) return true;
+    const sameCode = a.code.trim().toUpperCase() === b.code.trim().toUpperCase();
+    if (!sameCode) return false;
+    return (
+      a.brand.toLowerCase() === b.brand.toLowerCase() ||
+      localizedBrand(a.brand, lang) === localizedBrand(b.brand, lang)
+    );
+  };
 
   useEffect(() => {
     if (hexProp) {
       setLocalHex(hexProp.toUpperCase());
       setTintDeltaL(0);
-      setSelectedTintBaseIdx(0);
+      if (!assignedPaint && !assignedId) {
+        setSelectedTintBasePaint(null);
+      }
       if (beginnerSandboxMode) {
         setActiveSourceLabel("模拟试色台 · 已上色备选");
       }
@@ -173,6 +188,27 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
       cancelled = true;
     };
   }, []);
+
+  // Automatically sync Smart Tint Corrector base paint whenever assignedPaint or assignedId changes
+  useEffect(() => {
+    if (assignedPaint) {
+      if (paints) {
+        const canonical = paints.find((p) => isSameCatalogPaint(p, assignedPaint));
+        setSelectedTintBasePaint(canonical || assignedPaint);
+      } else {
+        setSelectedTintBasePaint(assignedPaint);
+      }
+      return;
+    }
+    if (assignedId && paints) {
+      const found = paints.find((p) => p.id === assignedId);
+      if (found) {
+        setSelectedTintBasePaint(found);
+        return;
+      }
+    }
+    setSelectedTintBasePaint(null);
+  }, [assignedId, assignedPaint, paints, lang]);
 
   const engine = useMemo(
     () => (paints ? new PaintMatchEngine(paints, compact ? 2 : 4) : null),
@@ -218,10 +254,37 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
   );
 
   const activeTintBasePaint = useMemo(() => {
-    if (top6Matches.length === 0) return null;
-    const safeIdx = Math.min(selectedTintBaseIdx, Math.min(2, top6Matches.length - 1));
-    return top6Matches[safeIdx]?.paint || top6Matches[0].paint;
-  }, [top6Matches, selectedTintBaseIdx]);
+    if (selectedTintBasePaint) {
+      if (paints) {
+        const canonical = paints.find((p) => isSameCatalogPaint(p, selectedTintBasePaint));
+        if (canonical) return canonical;
+      }
+      return selectedTintBasePaint;
+    }
+    if (assignedPaint) {
+      if (paints) {
+        const canonical = paints.find((p) => isSameCatalogPaint(p, assignedPaint));
+        if (canonical) return canonical;
+      }
+      return assignedPaint;
+    }
+    if (assignedId && paints) {
+      const byId = paints.find((p) => p.id === assignedId);
+      if (byId) return byId;
+    }
+    return top6Matches[0]?.paint || null;
+  }, [selectedTintBasePaint, assignedPaint, assignedId, paints, top6Matches, lang]);
+
+  const tintBaseOptions = useMemo(() => {
+    const top3 = top6Matches.slice(0, 3).map((m) => m.paint);
+    if (
+      activeTintBasePaint &&
+      !top3.some((p) => isSameCatalogPaint(p, activeTintBasePaint))
+    ) {
+      return [activeTintBasePaint, ...top3.slice(0, 2)];
+    }
+    return top3;
+  }, [top6Matches, activeTintBasePaint, lang]);
 
   const activeTintRecipe = useMemo(() => {
     if (!activeTintBasePaint || !tintedTargetHex) return null;
@@ -577,14 +640,19 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
               {/* 选择手头/想买的主品牌漆 */}
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-[10px] font-bold text-slate-400 mr-1">② 选择主基底品牌漆：</span>
-                {top6Matches.slice(0, 3).map((m, idx) => {
-                  const brandZh = localizedBrand(m.paint.brand, lang);
-                  const active = idx === selectedTintBaseIdx;
+                {tintBaseOptions.map((paint) => {
+                  const brandZh = localizedBrand(paint.brand, lang);
+                  const active = isSameCatalogPaint(paint, activeTintBasePaint);
                   return (
                     <button
-                      key={m.paint.id}
+                      key={`tint-base-${paint.id}-${paint.code}`}
                       type="button"
-                      onClick={() => setSelectedTintBaseIdx(idx)}
+                      onClick={() => {
+                        setSelectedTintBasePaint(paint);
+                        if (onAssignCatalog) {
+                          onAssignCatalog(paint);
+                        }
+                      }}
                       className={`bp-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold border transition cursor-pointer ${
                         active
                           ? "bp-pill-active border-accent bg-accent text-white shadow-2xs"
@@ -593,10 +661,10 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                     >
                       <span
                         className="w-3 h-3 rounded-full border border-white/60 shrink-0"
-                        style={{ backgroundColor: m.paint.hex }}
+                        style={{ backgroundColor: paint.hex }}
                       />
                       <span>
-                        {brandZh} {m.paint.code} {m.paint.name}
+                        {brandZh} {paint.code} {paint.name}
                       </span>
                     </button>
                   );
@@ -802,9 +870,12 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
           >
             {top6Matches.map((match, idx) => {
               const rank = idx + 1;
-              const used = assignedId === match.paint.id;
+              const used =
+                assignedId === match.paint.id ||
+                isSameCatalogPaint(match.paint, assignedPaint);
               const isInteractive = !!onAssignCatalog || selectable;
               const handleCardClick = () => {
+                setSelectedTintBasePaint(match.paint);
                 if (onAssignCatalog) onAssignCatalog(match.paint);
                 else if (selectable) onSelect?.(catalogToPaintBrand(match.paint));
               };
@@ -901,7 +972,9 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
               >
                 {group.matches.map((match) => {
                   const active = selectedId === match.paint.id;
-                  const used = assignedId === match.paint.id;
+                  const used =
+                    assignedId === match.paint.id ||
+                    isSameCatalogPaint(match.paint, assignedPaint);
                   const quality = matchQuality(match.deltaE);
                   const qualityClass =
                     quality === "close"
@@ -920,6 +993,7 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                   const isInteractive = !!onAssignCatalog || selectable;
 
                   const handleItemClick = () => {
+                    setSelectedTintBasePaint(match.paint);
                     if (onAssignCatalog) {
                       onAssignCatalog(match.paint);
                     } else if (selectable) {
@@ -959,6 +1033,7 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                setSelectedTintBasePaint(match.paint);
                                 onAssignCatalog(match.paint);
                               }}
                               className={`rounded-lg px-2 py-1 text-[11px] font-bold whitespace-nowrap ${
@@ -1030,6 +1105,7 @@ export const BrandMatchPanel: React.FC<BrandMatchPanelProps> = ({
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
+                              setSelectedTintBasePaint(match.paint);
                               onAssignCatalog(match.paint);
                             }}
                             className={`flex min-h-[34px] sm:min-h-[36px] min-w-[3.75rem] sm:min-w-[4.25rem] flex-shrink-0 items-center justify-center gap-1 rounded-xl px-2.5 sm:px-3 text-xs font-bold transition-all duration-150 active:scale-95 cursor-pointer shadow-xs whitespace-nowrap ${

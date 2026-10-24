@@ -403,42 +403,54 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
     <div className="bp-subcard-lg bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-sm p-4 md:p-6 overflow-hidden transition-colors duration-300">
       {/* Mixing Mode Selector: Hidden when forcedMode is active (mode is selected via top tabs/desktop bar) */}
       {!forcedMode && (
-        <div className="bp-subcard flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-100/90 dark:bg-slate-800/80 p-2 sm:p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 mb-5 min-w-0 max-w-full">
-          <div className="flex items-center gap-1.5 pl-1 sm:pl-2 text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap shrink-0">
-            <ScalesIcon className="w-4 h-4 text-accent shrink-0" weight="bold" />
-            <span>{lang === 'zh' ? '混色模式' : lang === 'ja' ? '混色モード' : 'Mixing Mode'}</span>
-          </div>
-          
-          <div className="bp-segmented grid grid-cols-2 sm:flex items-center gap-1 w-full sm:w-auto min-w-0 bg-white dark:bg-slate-900 p-1 rounded-xl shadow-xs border border-slate-200/50 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => handleSetMixingMode('mixbox')}
-              className={`bp-segmented-item flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all duration-150 whitespace-nowrap min-w-0 ${
-                mixingMode === 'mixbox'
-                  ? 'bp-segmented-item-active bg-accent text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Mixbox 物理混色 (含 003红 / 004蓝 / 005黄 普通实色 + 黑白 + 色源)"
-            >
-              <PaletteIcon className="w-3.5 h-3.5 shrink-0" weight="bold" />
-              <span className="sm:hidden truncate">{lang === 'zh' ? 'Mixbox (含实色)' : 'Mixbox'}</span>
-              <span className="hidden sm:inline">{lang === 'zh' ? 'Mixbox (含红黄蓝实色)' : 'Mixbox (Solid+CMY)'}</span>
-            </button>
+        <div className="mb-5 space-y-1.5">
+          <div className="bp-subcard flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-100/90 dark:bg-slate-800/80 p-2 sm:p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 min-w-0 max-w-full">
+            <div className="flex items-center gap-1.5 pl-1 sm:pl-2 text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap shrink-0">
+              <ScalesIcon className="w-4 h-4 text-accent shrink-0" weight="bold" />
+              <span>{lang === 'zh' ? '混色分色方案' : lang === 'ja' ? '混色モード' : 'Mixing Scheme'}</span>
+            </div>
+            
+            <div className="bp-segmented grid grid-cols-2 sm:flex items-center gap-1 w-full sm:w-auto min-w-0 bg-white dark:bg-slate-900 p-1 rounded-xl shadow-xs border border-slate-200/50 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => handleSetMixingMode('mixbox')}
+                className={`bp-segmented-item flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all duration-150 whitespace-nowrap min-w-0 ${
+                  mixingMode === 'mixbox'
+                    ? 'bp-segmented-item-active bg-accent text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="方案一：无全套色源，使用黑白 + 红/黄/蓝常规实色主漆调配"
+              >
+                <PaletteIcon className="w-3.5 h-3.5 shrink-0" weight="bold" />
+                <span className="sm:hidden truncate">{lang === 'zh' ? 'Mixbox (常规实色)' : 'Mixbox'}</span>
+                <span className="hidden sm:inline">{lang === 'zh' ? 'Mixbox (含红黄蓝实色)' : 'Mixbox (Solid+CMY)'}</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleSetMixingMode('professional')}
-              className={`bp-segmented-item flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all duration-150 whitespace-nowrap min-w-0 ${
-                mixingMode === 'professional'
-                  ? 'bp-segmented-item-active bg-accent text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="HSB 纯色源体系 (无红黄蓝实色，仅黑白 001/002 + CMY色源 033/034/035 + 间色 015/036/037)"
-            >
-              <SparkleIcon className="w-3.5 h-3.5 shrink-0" weight="bold" />
-              <span className="sm:hidden truncate">{lang === 'zh' ? 'HSB (纯色源)' : 'HSB (CMY)'}</span>
-              <span className="hidden sm:inline">{lang === 'zh' ? 'HSB (纯色源·无实色)' : 'HSB (Pure CMY)'}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => handleSetMixingMode('professional')}
+                className={`bp-segmented-item flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all duration-150 whitespace-nowrap min-w-0 ${
+                  mixingMode === 'professional'
+                    ? 'bp-segmented-item-active bg-accent text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="方案二：备齐 CMY 全套色源，去掉红黄蓝实色，纯色源减色调配"
+              >
+                <SparkleIcon className="w-3.5 h-3.5 shrink-0" weight="bold" />
+                <span className="sm:hidden truncate">{lang === 'zh' ? 'HSB (全套色源)' : 'HSB (CMY)'}</span>
+                <span className="hidden sm:inline">{lang === 'zh' ? 'HSB (纯色源·无实色)' : 'HSB (Pure CMY)'}</span>
+              </button>
+            </div>
+          </div>
+          <div className="px-1 text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center justify-between gap-1">
+            <span>
+              {lang === 'zh'
+                ? '🎯 颜色分解适合【高达 / GK 喷涂自调色玩家】，提供「有无全套色源漆」双方案'
+                : '🎯 Designed for Gundam/GK airbrush self-mixing (two schemes based on CMY source paint availability)'}
+            </span>
+            <span className="font-bold text-amber-600 dark:text-amber-400">
+              {lang === 'zh' ? '⚠️ 笔涂玩家仅供参考' : '⚠️ Brush painters: reference only'}
+            </span>
           </div>
         </div>
       )}

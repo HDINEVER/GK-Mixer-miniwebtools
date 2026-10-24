@@ -192,54 +192,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            {/* 0.5. 混色模式区别说明 / Mixing Modes Explanation */}
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5 dark:border-slate-700/80 dark:bg-slate-800/50">
-              <label className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                <PaletteIcon className="h-3.5 w-3.5 text-accent" />{' '}
-                {lang === 'zh'
-                  ? '混色模式区别说明 (Mixbox vs HSB 纯色源)'
-                  : lang === 'ja'
-                  ? '混色モードの違い (Mixbox vs HSB 純色ソース)'
-                  : 'Mixing Modes Guide (Mixbox vs HSB Pure CMY)'}
-              </label>
+            {/* 0.5. 混色分色模式说明 / Mixing Modes Summary */}
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5 dark:border-slate-700/80 dark:bg-slate-800/50 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700 dark:text-slate-200">
+                  <PaletteIcon className="h-3.5 w-3.5 text-accent" />{' '}
+                  {lang === 'zh'
+                    ? '混色分色说明（高达 / GK 喷涂自调色双方案）'
+                    : lang === 'ja'
+                    ? '混色モード案内（ガンプラ/GKエアブラシ調色）'
+                    : 'Mixing Modes (Gundam/GK Airbrush Self-Mixing)'}
+                </label>
+                <span className="rounded-full bg-amber-100 dark:bg-amber-950/60 border border-amber-300/70 dark:border-amber-700/60 px-2 py-0.5 text-[10px] font-extrabold text-amber-800 dark:text-amber-300">
+                  {lang === 'zh' ? '⚠️ 笔涂玩家仅供参考' : '⚠️ Brush painters: reference only'}
+                </span>
+              </div>
 
-              <div className="grid grid-cols-1 gap-2.5 text-xs">
+              <p className="text-[11px] leading-snug text-slate-600 dark:text-slate-300">
+                {lang === 'zh'
+                  ? '颜色分解专为【高达 / GK 喷涂自调色玩家】设计，针对手头是否备有全套色源漆提供以下两个方案：'
+                  : 'Designed for Gundam/GK airbrush self-mixing players, offering two schemes based on whether you own a full set of CMY color source paints:'}
+              </p>
+
+              <div className="grid grid-cols-1 gap-2 text-xs">
                 <div className="rounded-xl border border-blue-200/70 bg-white/90 p-2.5 dark:border-blue-900/40 dark:bg-slate-900/70">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-extrabold text-blue-600 dark:text-blue-400">
-                      🎨 {lang === 'zh' ? 'Mixbox (含红黄蓝实色)' : 'Mixbox (Solid + CMY)'}
+                      🎨 {lang === 'zh' ? '方案一 · Mixbox（含红黄蓝实色）' : 'Scheme 1 · Mixbox (Solid RYB)'}
                     </span>
                     <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                      {lang === 'zh' ? '10瓶 · 含3实色' : '10 Paints'}
+                      {lang === 'zh' ? '无全套色源 · 常规实色' : 'Standard Solids'}
                     </span>
                   </div>
-                  <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                  <p className="mt-1 text-[11px] leading-snug text-slate-600 dark:text-slate-300">
                     {lang === 'zh'
-                      ? '使用 001/002 黑白底漆 + 003光泽红 / 004光泽蓝 / 005光泽黄（三个普通基础实色）+ 033/034 色源及 015/036/037 间色。适合手头备有常规红黄蓝实色主漆、需要直接高遮盖力调色的玩家。'
-                      : 'Uses 001/002 Base B/W + 003 Red / 004 Blue / 005 Yellow solid paints + CMY & secondary color sources. Ideal if you stock standard opaque red/blue/yellow paints.'}
+                      ? '黑白底漆 + 红/黄/蓝普通实色主漆（可辅以少量色源/间色），适合使用常规基础实色直接调配、追求高遮盖力的喷涂玩家。'
+                      : 'B/W base + standard Red/Yellow/Blue opaque paints. Ideal when mixing with regular high-opacity paints without a full CMY source set.'}
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-cyan-200/70 bg-white/90 p-2.5 dark:border-cyan-900/40 dark:bg-slate-900/70">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-extrabold text-cyan-600 dark:text-cyan-400">
-                      ✨ {lang === 'zh' ? 'HSB (纯色源·无实色)' : 'HSB (Pure Color Sources)'}
+                      ✨ {lang === 'zh' ? '方案二 · HSB（纯色源·无实色）' : 'Scheme 2 · HSB (Pure CMY Sources)'}
                     </span>
                     <span className="rounded bg-cyan-100 px-1.5 py-0.5 text-[10px] font-bold text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300">
-                      {lang === 'zh' ? '8瓶 · 纯色源体系' : '8 Pure Sources'}
+                      {lang === 'zh' ? '备齐CMY全套色源' : 'Full CMY Sources'}
                     </span>
                   </div>
-                  <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                  <p className="mt-1 text-[11px] leading-snug text-slate-600 dark:text-slate-300">
                     {lang === 'zh'
-                      ? '去掉红、蓝、黄三个普通实色，仅用 001/002 黑白底漆 + 033青 / 034品红 / 035黄（CMY三原色源）+ 015橙 / 036绿 / 037紫（三间色源）。依靠半透明色源减色耦合（如品红+橙得正红、青+紫得正蓝），避免实色颜料跨色相混合发灰发脏。'
-                      : 'Excludes opaque Red/Blue/Yellow solids. Uses only 001/002 B/W base + CMY primary sources (033/034/035) + secondary sources (015/036/037) for clean, high-chroma subtractive mixing.'}
+                      ? '去掉红黄蓝实色，仅用黑白底漆 + 青/品红/黄 CMY 色源（及橙/绿/紫间色）减色混配，高饱和跨色相调色纯净不发灰。'
+                      : 'Excludes opaque RYB solids; uses only B/W base + CMY primary & secondary color sources for clean, high-chroma subtractive mixing.'}
                   </p>
-                </div>
-
-                <div className="rounded-lg bg-amber-50/70 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-                  {lang === 'zh'
-                    ? '💡 两种模式均可独立开关「间色色源 (015橙/036绿/037紫)」：开启时以「以一顶二」直接替代双原色混配；关闭时自动回退为原色混配。'
-                    : '💡 Both modes support toggling Secondary Sources (015 Orange / 036 Green / 037 Purple) on or off.'}
                 </div>
               </div>
             </div>

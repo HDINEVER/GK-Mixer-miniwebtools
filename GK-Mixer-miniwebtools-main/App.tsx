@@ -38,6 +38,8 @@ import { SwatchEditorModal } from './components/SwatchEditorModal';
 import { SaveToProjectModal } from './components/SaveToProjectModal';
 import QuickPaintAssignSheet from './components/QuickPaintAssignSheet';
 import ColoringSandboxLab, { SandboxSyncPayload } from './components/ColoringSandboxLab';
+import DualBrandPaintMixerCard from './components/DualBrandPaintMixerCard';
+import WorkflowGuideModal from './components/WorkflowGuideModal';
 import ColorLoupe, { ColorLoupeHandle, resolveTouchSamplePoint, sampleCanvasAtClient } from './components/ColorLoupe';
 import ExtractMarkerOverlay from './components/ExtractMarkerOverlay';
 import SwatchStudioControls from './components/SwatchStudioControls';
@@ -245,6 +247,8 @@ const App: React.FC = () => {
     token: number;
   } | null>(null);
   const [swatchEditorMode, setSwatchEditorMode] = useState<'pro' | 'sandbox'>('pro');
+  const [beginnerOverrideHex, setBeginnerOverrideHex] = useState<string | null>(null);
+  const [isWorkflowGuideOpen, setIsWorkflowGuideOpen] = useState<boolean>(false);
   // Urgent UI state for the desktop tab pill: updates synchronously on click so the
   // highlight responds instantly, while the heavy panel swap runs in a transition.
   const [desktopTabUI, setDesktopTabUI] = useState<DesktopPanelTab>(() =>
@@ -1108,7 +1112,7 @@ const App: React.FC = () => {
     handleSwitchDesktopTab('studio');
     showToast(
       lang === 'zh'
-        ? `✅ 已存入涂装库工程「${newProj.title}」并生成 ${nodes.length} 个悬浮色卡`
+        ? `✅ 已存入涂装库「${newProj.title}」(${nodes.length}个色卡)，可继续添加涂装工序、生成扫码名片或打包工程！`
         : `Saved project ${newProj.title}`
     );
   }, [sandboxSyncState, sandboxColors, handleSwitchDesktopTab, lang, showToast]);
@@ -1496,7 +1500,7 @@ const App: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsSettingsOpen(true)}
-          className={`fixed top-3 right-3 z-50 flex h-10 w-10 items-center justify-center transition-all active:scale-95 cursor-pointer ${
+          className={`fixed top-3 right-3 z-[45] flex h-10 w-10 items-center justify-center transition-all active:scale-95 cursor-pointer ${
             uiStyle === 'blueprint'
               ? 'rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-400 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-[3px_3px_0px_#0F172A] dark:shadow-[3px_3px_0px_#020617]'
               : 'rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl text-slate-700 dark:text-slate-200 shadow-lg hover:bg-white dark:hover:bg-slate-800'
@@ -1852,8 +1856,8 @@ const App: React.FC = () => {
                     <div className="flex items-center justify-between gap-2 px-1 pt-0.5">
                       <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-snug">
                         {lang === 'zh'
-                          ? '按住画面滑动可通过「拇指前十字星 + 箭头 + 放大镜」精准取色；放大请用双指捏合。点按右侧菜单可收藏或导出。'
-                          : 'Touch & slide to pick color with thumb-front crosshair + magnifier; pinch with 2 fingers to zoom.'}
+                          ? '按住「准星选取器」底部边缘拖动，圆环中心十字准星即为取色点；放大请用双指捏合。点按右侧菜单可收藏或导出。'
+                          : 'Drag the bottom edge of the crosshair ring; the center crosshair samples the color. Pinch with 2 fingers to zoom.'}
                       </p>
 
                       {/* Plain ••• Button (44x44px hit area, no outer circle border, coral accent) */}
@@ -1985,6 +1989,13 @@ const App: React.FC = () => {
                             </span>
                         </span>
                         <div className="flex items-center gap-2.5 text-[11px] font-bold shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setIsWorkflowGuideOpen(true)}
+                              className="text-amber-600 dark:text-amber-400 hover:underline whitespace-nowrap cursor-pointer"
+                            >
+                              {lang === "zh" ? "🧭 保存指引" : "Guide"}
+                            </button>
                             <button type="button" onClick={handleCopyAssignments} className="text-accent hover:underline whitespace-nowrap cursor-pointer">
                                 {lang === "zh" ? "复制清单" : "Copy"}
                             </button>
@@ -2206,7 +2217,7 @@ const App: React.FC = () => {
                 )}
 
                 {/* Desktop Tabs Bar: Dual Workflow Support (Beginner 4-Step Guided vs Pro 8-Tab Full) */}
-                <div className="hidden lg:flex w-full items-center mb-6 relative" translate="no">
+                <div className="hidden lg:flex w-full items-center mb-6 relative z-40" translate="no">
                   {workflowMode === 'beginner' ? (
                     <div className="gk-tab-bar w-full flex items-center flex-nowrap bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-full p-1 gap-1.5 border border-slate-200/60 dark:border-slate-700/60">
                       <button
@@ -2533,8 +2544,8 @@ const App: React.FC = () => {
                   <ErrorBoundary fallbackTitle="品牌近邻视图遇到渲染异常">
                     {workflowMode === 'beginner' ? (
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                        {/* Left Column: 色卡预览图 (色卡编辑导出预览图) + 右侧竖置试色台选中颜色列表 */}
-                        <div className="lg:col-span-5 xl:col-span-5 lg:sticky lg:top-4 min-w-0">
+                        {/* Left Column: 色卡预览图 (色卡编辑导出预览图) + 双品牌漆 Mixbox 混色试验台 (Screenshot 3) */}
+                        <div className="lg:col-span-5 xl:col-span-5 lg:sticky lg:top-4 min-w-0 space-y-4">
                           <div className="bp-subcard-lg rounded-2xl border border-slate-200/85 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 p-3 sm:p-3.5 shadow-xs space-y-3">
                             {/* Header Bar */}
                             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2548,6 +2559,15 @@ const App: React.FC = () => {
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsWorkflowGuideOpen(true)}
+                                  className="bp-btn flex items-center gap-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-2 py-1.5 text-[10px] font-extrabold text-amber-800 dark:text-amber-200 hover:border-amber-400 cursor-pointer"
+                                  title="查看纯色卡导出与涂装项目库（加工序/二维码名片/工程打包）的区别"
+                                >
+                                  <span>🧭</span>
+                                  <span>保存指引</span>
+                                </button>
                                 <button
                                   type="button"
                                   disabled={!sandboxSyncState?.compositeDataUrl || sandboxColors.length === 0 || isExporting}
@@ -2587,7 +2607,10 @@ const App: React.FC = () => {
                                         selectedId={selectedSandboxColor?.id || null}
                                         onSelect={(cOrId) => {
                                           const id = typeof cOrId === 'string' ? cOrId : cOrId?.id;
-                                          if (id) setSelectedSandboxColorId(id);
+                                          if (id) {
+                                            setBeginnerOverrideHex(null);
+                                            setSelectedSandboxColorId(id);
+                                          }
                                         }}
                                         onUpdatePosition={(id, nx, ny) => {
                                           setSandboxColors((prev) =>
@@ -2646,7 +2669,10 @@ const App: React.FC = () => {
                                         <button
                                           key={sc.id}
                                           type="button"
-                                          onClick={() => setSelectedSandboxColorId(sc.id)}
+                                          onClick={() => {
+                                            setBeginnerOverrideHex(null);
+                                            setSelectedSandboxColorId(sc.id);
+                                          }}
                                           className={`bp-subcard group shrink-0 w-36 sm:w-full flex flex-col gap-1 rounded-xl border p-2 text-left transition cursor-pointer ${
                                             isSelected
                                               ? 'bp-subcard-active border-accent bg-accent/10 dark:bg-accent/20 shadow-xs'
@@ -2705,12 +2731,31 @@ const App: React.FC = () => {
                               </span>
                             </button>
                           </div>
+
+                          {/* Below Preview Image (Screenshot 3): Dual-Brand Paint Mixbox Trial Mixer + Fast Same-Color Paint Matcher */}
+                          <DualBrandPaintMixerCard
+                            lang={lang}
+                            sandboxColors={sandboxColors}
+                            selectedSandboxColor={selectedSandboxColor}
+                            onSendHexToBrandMatcher={(mixedHex) => {
+                              setBeginnerOverrideHex(mixedHex.toUpperCase());
+                              showToast(
+                                lang === 'zh'
+                                  ? `🧪 已将混合色 ${mixedHex} 发送至右侧匹配同色现成油漆`
+                                  : `Sent mixed color ${mixedHex} to Brand Matcher`
+                              );
+                            }}
+                            onAssignCatalogPaint={(paint) => {
+                              handleAssignSandboxCatalogPaint(paint);
+                            }}
+                          />
                         </div>
 
                         {/* Right Column: 选漆与微调 (BrandMatchPanel) */}
                         <div className="lg:col-span-7 xl:col-span-7 min-w-0">
                           <BrandMatchPanel
                             hex={
+                              beginnerOverrideHex ||
                               selectedSandboxColor?.hex ||
                               sandboxSyncState?.activeHex ||
                               selectedColor?.hex ||
@@ -2722,6 +2767,7 @@ const App: React.FC = () => {
                             beginnerSandboxMode={true}
                             sandboxSwatches={sandboxSyncState?.syncedSwatches || []}
                             onSelectSandboxSwatch={(_hex, id) => {
+                              setBeginnerOverrideHex(null);
                               setSelectedSandboxColorId(id);
                             }}
                             onNavigateToSandbox={() => handleSwitchDesktopTab('coloring')}
@@ -2730,6 +2776,7 @@ const App: React.FC = () => {
                             assignedPaint={selectedSandboxColor?.assignedPaint || null}
                             onAssignCatalog={handleAssignSandboxCatalogPaint}
                             onChangeHex={(newHex) => {
+                              setBeginnerOverrideHex(newHex.toUpperCase());
                               if (selectedSandboxColor) {
                                 setSandboxColors((prev) =>
                                   prev.map((c) =>
@@ -2882,6 +2929,13 @@ const App: React.FC = () => {
             : handleExportAnnotated
         }
         isExporting={isExporting}
+        onSaveToProject={() => {
+          if (swatchEditorMode === 'sandbox' && sandboxSyncState?.compositeDataUrl) {
+            handleSaveSandboxToProject();
+          } else {
+            setIsSaveToProjectOpen(true);
+          }
+        }}
       />
 
       {/* Save Current Swatch Canvas to Tab 3 PaintProject Modal */}
@@ -2900,7 +2954,13 @@ const App: React.FC = () => {
               prev.map((p) => (p.id === updatedOrNewProject.id ? updatedOrNewProject : p))
             );
           }
-          showToast(lang === 'zh' ? `已保存零件色卡至「${updatedOrNewProject.title || '涂装工程'}」` : 'Saved part canvas to project');
+          setFocusProjectId(updatedOrNewProject.id);
+          handleSwitchDesktopTab('studio');
+          showToast(
+            lang === 'zh'
+              ? `✅ 已存入涂装库「${updatedOrNewProject.title || '涂装工程'}」，可继续添加工序、制作二维码名片或打包工程！`
+              : 'Saved part canvas to project'
+          );
         }}
         onCreateCategory={(name) => {
           const newCat: PaletteCategory = { id: generateId(), name, createdAt: Date.now() };
@@ -2929,6 +2989,34 @@ const App: React.FC = () => {
         onClose={() => setIsExportModalOpen(false)}
         result={exportResult}
         lang={lang}
+        onSaveToProject={() => {
+          if (workflowMode === 'beginner' && sandboxSyncState?.compositeDataUrl) {
+            handleSaveSandboxToProject();
+          } else {
+            setIsSaveToProjectOpen(true);
+          }
+        }}
+      />
+
+      {/* Contextual Workflow & Project Sharing Guide Modal */}
+      <WorkflowGuideModal
+        isOpen={isWorkflowGuideOpen}
+        onClose={() => setIsWorkflowGuideOpen(false)}
+        onSaveToProject={
+          workflowMode === 'beginner' && sandboxSyncState?.compositeDataUrl && sandboxColors.length > 0
+            ? handleSaveSandboxToProject
+            : sourceImage && assignedMarkers.length > 0
+            ? () => setIsSaveToProjectOpen(true)
+            : undefined
+        }
+        onExportPng={
+          workflowMode === 'beginner' && sandboxSyncState?.compositeDataUrl && sandboxColors.length > 0
+            ? handleExportSandboxAnnotated
+            : sourceImage && assignedMarkers.length > 0
+            ? handleExportAnnotated
+            : undefined
+        }
+        onNavigateToStudio={() => handleSwitchDesktopTab('studio')}
       />
 
       {/* Quick Paint Assign Bottom Sheet (Vertical-Friendly Closed Loop) */}

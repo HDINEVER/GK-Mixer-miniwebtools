@@ -340,7 +340,7 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
   return (
     <div className="relative min-h-[70dvh] space-y-3.5 pb-20 select-none">
       {/* 1. Top Segmented Switcher & Category Bar — clean, no backdrop band / blur / heavy shadow */}
-      <div className="relative z-20 pt-1 pb-1 space-y-2.5 pr-1.5">
+      <div className="relative z-20 pt-1 pb-1 space-y-2.5 pr-11 lg:pr-1.5">
         <div className="flex items-center justify-between gap-4 w-full">
           {/* Segmented Control: [涂装工程 | 单色色卡] */}
           <div className="bp-segmented inline-flex items-center rounded-full bg-[#EEF1F5] dark:bg-slate-800 p-1 min-w-0 overflow-x-auto no-scrollbar">
@@ -470,6 +470,34 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
               }`}
             >
               未分类
+            </button>
+          </div>
+        </div>
+
+        {/* Contextual Workflow Guide Banner */}
+        <div className="rounded-2xl border border-amber-300/75 dark:border-amber-700/65 bg-amber-50/85 dark:bg-amber-950/30 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div className="text-amber-900 dark:text-amber-200 leading-snug">
+            <span className="font-black">🧭 操作提示：</span>
+            {libraryMode === "projects"
+              ? "点开任意涂装工程文件夹，即可继续添加「涂装工序」、生成模友可扫码导入的「二维码名片」，或在右上角菜单打包导出「.gkmix 工程文件」。"
+              : "「单色色卡」仅保存纯单色块；若需保存零件色卡图、添加喷涂工序、生成二维码名片或打包项目文件，请存入「涂装工程」！"}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowScanPosterModal(true)}
+              className="bp-pill inline-flex items-center gap-1 rounded-full border border-amber-400/80 bg-white dark:bg-slate-900 px-2.5 py-1 text-[10px] font-extrabold text-amber-800 dark:text-amber-200 hover:border-accent cursor-pointer"
+            >
+              <QrCodeIcon className="h-3 w-3 text-accent shrink-0" weight="bold" />
+              <span>扫码导入名片</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => gkmixInputRef.current?.click()}
+              className="bp-pill inline-flex items-center gap-1 rounded-full border border-amber-400/80 bg-white dark:bg-slate-900 px-2.5 py-1 text-[10px] font-extrabold text-amber-800 dark:text-amber-200 hover:border-accent cursor-pointer"
+            >
+              <DownloadSimpleIcon className="h-3 w-3 text-accent shrink-0" weight="bold" />
+              <span>导入 .gkmix</span>
             </button>
           </div>
         </div>

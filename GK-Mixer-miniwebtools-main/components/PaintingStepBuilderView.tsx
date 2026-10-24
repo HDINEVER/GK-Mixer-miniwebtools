@@ -226,7 +226,7 @@ export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = (
   return (
     <div className="space-y-4">
       {/* Top Toolbar: Title + [💡 提示] + [✨ 智能推导] + [+ 添加工序] */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h4 className="text-xs font-black text-slate-900 dark:text-white">
             涂装工序流水线 ({steps.length} 步)

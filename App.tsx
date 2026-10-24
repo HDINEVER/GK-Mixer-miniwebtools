@@ -2890,6 +2890,23 @@ const App: React.FC = () => {
           }
         }}
         onUpdateColors={swatchEditorMode === 'sandbox' ? setSandboxColors : setColors}
+        onUpdateImageAndColors={(newImageSrc, nextColors) => {
+          if (swatchEditorMode === 'sandbox') {
+            setSandboxSyncState((prev) =>
+              prev ? { ...prev, compositeDataUrl: newImageSrc } : prev
+            );
+            setSandboxColors(nextColors);
+          } else {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              imageRef.current = img;
+              setSourceImage(newImageSrc);
+              setColors(nextColors);
+            };
+            img.src = newImageSrc;
+          }
+        }}
         settings={swatchSettings}
         onUpdateSettings={setSwatchSettings}
         lang={lang}

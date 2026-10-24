@@ -841,7 +841,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                 className="w-full flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-xs font-extrabold text-slate-800 dark:text-slate-100 hover:bg-accent/10 hover:text-accent transition whitespace-nowrap cursor-pointer"
               >
                 <QrCodeIcon className="h-4 w-4 text-accent shrink-0" weight="bold" />
-                <span>生成涂装名片二维码</span>
+                <span>导出涂装方案名片</span>
               </button>
               <button
                 type="button"
@@ -867,8 +867,8 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           }}
           style={{ width: "56px", height: "56px" }}
           className="bp-fab flex items-center justify-center rounded-full bg-accent text-white border border-slate-200/80 dark:border-slate-700 shadow-[0_6px_20px_rgba(15,23,42,0.18)] hover:scale-105 active:scale-95 transition cursor-pointer"
-          title="导出涂装名片二维码或 .gkmix 工程文件"
-          aria-label="导出涂装名片二维码或 .gkmix 工程文件"
+          title="导出涂装方案名片或 .gkmix 工程文件"
+          aria-label="导出涂装方案名片或 .gkmix 工程文件"
         >
           <ExportIcon className="h-6 w-6" weight="bold" />
         </button>
@@ -887,6 +887,14 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           }
           onSelectColor={(c) => setSelectedNodeId(c.id)}
           onUpdateColors={handleUpdateColorsFromEditor}
+          onUpdateImageAndColors={(newImageSrc, nextColors) => {
+            const nextNodes = colorsToFloatingNodes(nextColors);
+            updateActivePart((part) => ({
+              ...part,
+              sourceImageDataUrl: newImageSrc,
+              nodes: nextNodes,
+            }));
+          }}
           settings={swatchSettings}
           onUpdateSettings={onUpdateSwatchSettings}
           lang={lang}

@@ -689,14 +689,14 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   // Algorithm parameters — Visual Lineart Layer (XDoG / Threshold)
   const [lineThreshold, setLineThreshold] = useState(165);
   const [lineSoftness, setLineSoftness] = useState(35);
-  const [filterRedStamp, setFilterRedStamp] = useState(true);
+  const [filterRedStamp, setFilterRedStamp] = useState(false);
   // XDoG Lineart parameters (σ is debounced: blur pyramid ≈100ms; p/ε/φ are a ~50ms pointwise pass)
-  const [xdogSigma, setXdogSigma] = useState(1.0);
-  const [xdogSigmaApplied, setXdogSigmaApplied] = useState(1.0);
-  const [xdogP, setXdogP] = useState(22);
-  const [xdogEpsilon, setXdogEpsilon] = useState(0.75);
+  const [xdogSigma, setXdogSigma] = useState(0.9);
+  const [xdogSigmaApplied, setXdogSigmaApplied] = useState(0.9);
+  const [xdogP, setXdogP] = useState(20);
+  const [xdogEpsilon, setXdogEpsilon] = useState(0.78);
   const [xdogPhi, setXdogPhi] = useState(2.5);
-  const [xdogInkFill, setXdogInkFill] = useState(true);
+  const [xdogInkFill, setXdogInkFill] = useState(false);
   const [showXdogAdvanced, setShowXdogAdvanced] = useState(false);
 
   useEffect(() => {
@@ -707,18 +707,18 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
 
   // Hybrid 3-Barrier Engine parameters
   // Barrier A: XDoG + Canny Union + Morphological Closing
-  const [useCannyBarrier, setUseCannyBarrier] = useState(false);
+  const [useCannyBarrier, setUseCannyBarrier] = useState(true);
   const [cannyLow, setCannyLow] = useState(26);
   const [cannyHigh, setCannyHigh] = useState(68);
   const [gapCloseRadius, setGapCloseRadius] = useState(1);
   // Barrier B: Source Chroma / Redmean Color Distance Tolerance (0 = off, 26 = CG default)
-  const [fillTolerance, setFillTolerance] = useState(0);
+  const [fillTolerance, setFillTolerance] = useState(26);
   // Barrier C: 1px/2px Neighbor Local Gradient Step Barrier (0 = off, 15 = CG/Photo default)
-  const [localStepThreshold, setLocalStepThreshold] = useState(0);
+  const [localStepThreshold, setLocalStepThreshold] = useState(15);
   // Edge absorb: extra color-guided rings that eat fattened wall pixels so thin parts fill to their edges
-  const [edgeAbsorb, setEdgeAbsorb] = useState(0);
+  const [edgeAbsorb, setEdgeAbsorb] = useState(3);
 
-  const [lineOpacity, setLineOpacity] = useState(92);
+  const [lineOpacity, setLineOpacity] = useState(45);
   const [brushRadius, setBrushRadius] = useState(3);
   const [paperBgStyle, setPaperBgStyle] = useState<"source" | "white">("source");
   // Default collapsed so the right panel focuses 100% on coloring
@@ -1715,8 +1715,14 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         if (opts?.preset) {
           applyScenePreset(opts.preset, true);
         } else if (opts?.autoDetectPreset) {
-          // Sample chroma & luminance variance to auto-pick between lineart_card / cg_recolor / photo_miniature
+          // Sample chroma & luminance distribution to accurately distinguish:
+          // - lineart_card (true black-and-white lineart on bright white paper, no dark background or color)
+          // - cg_recolor (colored official art / CG / painted model, including mostly-white mecha with colored accents)
+          // - photo_miniature (unpainted grey primer / resin / low-saturation miniature photo)
           let chromaSum = 0;
+          let coloredCount = 0;
+          let brightWhiteCount = 0;
+          let darkPixelCount = 0;
           let midToneCount = 0;
           const step = Math.max(1, (n / 4000) | 0);
           let samples = 0;
@@ -1727,19 +1733,34 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             const b = rgba[p + 2];
             const maxC = Math.max(r, g, b);
             const minC = Math.min(r, g, b);
-            chromaSum += maxC - minC;
+            const chroma = maxC - minC;
+            chromaSum += chroma;
+            if (chroma > 24) coloredCount++;
             const gr = cache.gray[i];
-            if (gr > 45 && gr < 210) midToneCount++;
+            if (gr >= 230 && chroma < 16) brightWhiteCount++;
+            else if (gr < 65) darkPixelCount++;
+            else midToneCount++;
             samples++;
           }
-          const avgChroma = chromaSum / Math.max(1, samples);
-          const midRatio = midToneCount / Math.max(1, samples);
-          if (avgChroma > 18) {
-            applyScenePreset("cg_recolor", true);
-          } else if (midRatio > 0.35) {
-            applyScenePreset("photo_miniature", true);
-          } else {
+          const total = Math.max(1, samples);
+          const avgChroma = chromaSum / total;
+          const coloredRatio = coloredCount / total;
+          const brightWhiteRatio = brightWhiteCount / total;
+          const darkPixelRatio = darkPixelCount / total;
+          const midRatio = midToneCount / total;
+
+          const isPureLineartOnWhite =
+            brightWhiteRatio > 0.65 &&
+            darkPixelRatio < 0.12 &&
+            coloredRatio < 0.02 &&
+            midRatio < 0.22;
+
+          if (isPureLineartOnWhite) {
             applyScenePreset("lineart_card", true);
+          } else if (coloredRatio >= 0.022 || avgChroma > 7) {
+            applyScenePreset("cg_recolor", true);
+          } else {
+            applyScenePreset("photo_miniature", true);
           }
         }
         if (opts?.extraction) setExtractionMode(opts.extraction);
@@ -4432,266 +4453,573 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     </div>
   );
 
-  // Reusable Algorithm Controls Section (Default Collapsed 36px Bar + Quick Preset Selector)
-  const renderAlgorithmSection = (alwaysOpen = false) => (
-    <div className="space-y-2 shrink-0" translate="no">
-      {!alwaysOpen && (
-        <div
-          className={`flex items-center justify-between gap-1.5 h-9 px-2 shrink-0 ${
-            isBlueprint
-              ? "rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-slate-100 dark:bg-slate-800/95 shadow-[2px_2px_0px_#0F172A]"
-              : "rounded-xl border border-slate-200/90 dark:border-slate-700/90 bg-slate-100/80 dark:bg-slate-800/70"
-          }`}
-        >
-          {/* Left: Inline Quick Scene Preset Selector (No need to expand panel) */}
-          <div className="flex items-center gap-1 min-w-0">
-            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 shrink-0">⚙️ 预设:</span>
-            <select
-              value={scenePreset}
-              onChange={(e) => applyScenePreset(e.target.value as ScenePresetKey)}
-              aria-label="图像识别预设"
-              className="bg-transparent text-[11px] font-black text-slate-800 dark:text-slate-100 outline-none cursor-pointer truncate"
-            >
-              <option value="cg_recolor">🤖 官图改色</option>
-              <option value="photo_miniature">🗿 灰模实拍</option>
-              <option value="lineart_card">📄 黑白线稿</option>
-            </select>
-          </div>
+  // Reusable Algorithm Controls Section (⚙️ 高级设置: Beginner-friendly 3-Step Layout + Prominent Checkable Switches)
+  const renderAlgorithmSection = (alwaysOpen = false) => {
+    const colorBarrierEnabled = fillTolerance > 0;
+    const stepBarrierEnabled = localStepThreshold > 0;
 
-          {/* Right: Expand/Collapse Advanced Leak-Prevention Parameters */}
-          <button
-            type="button"
-            onClick={() => setShowAlgorithmPanel((v) => !v)}
-            className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-extrabold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition"
+    return (
+      <div className="space-y-2 shrink-0" translate="no">
+        {!alwaysOpen && (
+          <div
+            className={`flex items-center justify-between gap-1.5 h-9 px-2 shrink-0 ${
+              isBlueprint
+                ? "rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-slate-100 dark:bg-slate-800/95 shadow-[2px_2px_0px_#0F172A]"
+                : "rounded-xl border border-slate-200/90 dark:border-slate-700/90 bg-slate-100/80 dark:bg-slate-800/70"
+            }`}
           >
-            <span>
-              🎚️ 高级防漏色 (闭合{gapCloseRadius}px·色差{fillTolerance})
-            </span>
-            <span>{showAlgorithmPanel ? "▾" : "▸"}</span>
-          </button>
-        </div>
-      )}
+            {/* Left: Inline Quick Scene Preset Selector (No need to expand panel) */}
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 shrink-0">原图类型:</span>
+              <select
+                value={scenePreset}
+                onChange={(e) => applyScenePreset(e.target.value as ScenePresetKey)}
+                aria-label="图像识别预设"
+                className="bg-transparent text-[11px] font-black text-slate-800 dark:text-slate-100 outline-none cursor-pointer truncate"
+              >
+                <option value="cg_recolor">🤖 彩色官图 / CG</option>
+                <option value="photo_miniature">🗿 灰模 / 实拍图</option>
+                <option value="lineart_card">📄 纯黑白线稿</option>
+              </select>
+            </div>
 
-      {(alwaysOpen || showAlgorithmPanel) && (
-        <div
-          className={`p-2.5 space-y-2.5 text-xs shrink-0 ${
-            isBlueprint
-              ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-white dark:bg-slate-900 shadow-[2px_2px_0px_#0F172A]"
-              : "rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60"
-          }`}
-        >
-          {/* Header with Reset to Preset Defaults */}
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
-              1. 顶层视觉线稿 (Visual Layer · 正片叠底)
-            </span>
+            {/* Right: Expand/Collapse Advanced Settings */}
             <button
               type="button"
-              onClick={() => applyScenePreset(scenePreset)}
-              className="text-[10px] font-extrabold underline cursor-pointer whitespace-nowrap shrink-0"
-              style={{ color: "var(--accent-color)" }}
+              onClick={() => setShowAlgorithmPanel((v) => !v)}
+              className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-extrabold text-slate-800 dark:text-slate-100 bg-white/80 dark:bg-slate-900/70 border border-slate-300/80 dark:border-slate-600/80 hover:bg-[var(--accent-soft)] cursor-pointer transition"
             >
-              ↺ 恢复当前预设默认值
+              <span>⚙️ 高级设置</span>
+              <span>{showAlgorithmPanel ? "▾" : "▸"}</span>
             </button>
           </div>
+        )}
 
-          {/* Lineart Extraction Engine Switcher (Moved from top canvas toolbar into Advanced Menu) */}
-          <div className="space-y-1.5">
-            <div className="gk-tab-bar grid grid-cols-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200/70 dark:bg-slate-800 p-0.5 gap-1">
-              <button
-                type="button"
-                onClick={() => setExtractionMode("xdog")}
-                className={`gk-tab-pill rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold transition cursor-pointer ${
-                  extractionMode === "xdog"
-                    ? "gk-tab-pill-active bg-[var(--accent-color)] text-white shadow-xs"
-                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                🎨 XDoG 边缘剥离 (默认)
-              </button>
-              <button
-                type="button"
-                onClick={() => setExtractionMode("threshold")}
-                className={`gk-tab-pill rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold transition cursor-pointer ${
-                  extractionMode === "threshold"
-                    ? "gk-tab-pill-active bg-[var(--accent-color)] text-white shadow-xs"
-                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                ✒️ 灰度阈值直提
-              </button>
-            </div>
-            <div className="rounded-lg bg-white/80 dark:bg-slate-900/70 border border-slate-200/70 dark:border-slate-700/70 px-2.5 py-1.5 text-[10px] leading-relaxed text-slate-600 dark:text-slate-300">
-              {extractionMode === "xdog" ? (
-                <span>
-                  <strong className="text-slate-900 dark:text-white">🎨 XDoG 高斯差分线稿：</strong>
-                  自动过滤彩色装甲块与曲面光影阴影，只提取折角与刻线边缘（防止深色装甲整块变黑，适合<strong>彩色官图 / 实拍灰模</strong>）。
+        {(alwaysOpen || showAlgorithmPanel) && (
+          <div
+            className={`p-3 space-y-3 text-xs shrink-0 ${
+              isBlueprint
+                ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-white dark:bg-slate-900 shadow-[2px_2px_0px_#0F172A]"
+                : "rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60"
+            }`}
+          >
+            {/* STEP 1: One-Click Image Type Presets (Always visible on both Mobile & Desktop) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-black text-slate-800 dark:text-slate-100">
+                  1. 选择原图类型（一键匹配最佳参数）
                 </span>
-              ) : (
-                <span>
-                  <strong className="text-slate-900 dark:text-white">✒️ 灰度阈值线稿：</strong>
-                  直接把原图中低于阈值的深色像素当成墨线提取，100% 保留原始笔触粗细（仅适合<strong>白底纯黑白设定线稿</strong>，用于彩图会使深色装甲变黑）。
-                </span>
-              )}
-            </div>
-          </div>
-
-          <SliderRow
-            label="👁️ 顶层线条不透明度 (CG可调至30%)"
-            value={lineOpacity}
-            min={0}
-            max={100}
-            suffix="%"
-            onChange={setLineOpacity}
-          />
-
-          {extractionMode === "threshold" ? (
-            <>
-              <SliderRow label="线稿阈值 (Threshold)" value={lineThreshold} min={100} max={230} onChange={setLineThreshold} />
-              <SliderRow
-                label="抗锯齿柔化带宽 (Softness)"
-                value={lineSoftness}
-                min={5}
-                max={70}
-                onChange={setLineSoftness}
-              />
-            </>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-2">
-                <SliderRow
-                  label="📏 线条粗细 σ"
-                  value={xdogSigma}
-                  min={0.6}
-                  max={2.5}
-                  step={0.1}
-                  onChange={setXdogSigma}
-                  compact
-                />
-                <SliderRow
-                  label="🔍 刻线灵敏度 p"
-                  value={xdogP}
-                  min={5}
-                  max={45}
-                  onChange={setXdogP}
-                  compact
-                />
+                <button
+                  type="button"
+                  onClick={() => applyScenePreset(scenePreset)}
+                  className="text-[10px] font-extrabold underline cursor-pointer whitespace-nowrap shrink-0"
+                  style={{ color: "var(--accent-color)" }}
+                >
+                  ↺ 恢复默认
+                </button>
               </div>
-              <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={xdogInkFill}
-                  onChange={(e) => setXdogInkFill(e.target.checked)}
-                  style={{ accentColor: "var(--accent-color)" }}
-                />
-                <span>实心墨线增强（黑白设定稿开启，CG/照片关闭）</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowXdogAdvanced((v) => !v)}
-                className="text-[10px] font-bold text-slate-500 underline cursor-pointer"
+
+              <div className="grid grid-cols-3 gap-1.5">
+                {(
+                  [
+                    {
+                      key: "cg_recolor" as ScenePresetKey,
+                      icon: "🤖",
+                      title: "彩色官图/CG",
+                      sub: "高达官图·成品图",
+                    },
+                    {
+                      key: "photo_miniature" as ScenePresetKey,
+                      icon: "🗿",
+                      title: "灰模/实拍图",
+                      sub: "水补土·素组照片",
+                    },
+                    {
+                      key: "lineart_card" as ScenePresetKey,
+                      icon: "📄",
+                      title: "纯黑白线稿",
+                      sub: "仅限白底设定稿",
+                    },
+                  ]
+                ).map((p) => {
+                  const active = scenePreset === p.key;
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => applyScenePreset(p.key)}
+                      className={`flex flex-col items-center justify-center p-2 text-center transition cursor-pointer ${
+                        isBlueprint
+                          ? `rounded-[5px] border-[1.5px] ${
+                              active
+                                ? "border-slate-900 dark:border-slate-300 bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
+                                : "border-slate-900/70 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700"
+                            }`
+                          : `rounded-xl border ${
+                              active
+                                ? "border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-sm"
+                                : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-800 dark:text-slate-100 hover:border-[var(--accent-color)]"
+                            }`
+                      }`}
+                    >
+                      <span className="text-sm leading-none">{p.icon}</span>
+                      <span className="mt-1 text-[11px] font-black leading-tight">{p.title}</span>
+                      <span
+                        className={`mt-0.5 text-[9px] font-bold leading-tight ${
+                          active ? "text-white/90" : "text-slate-400 dark:text-slate-400"
+                        }`}
+                      >
+                        {p.sub}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* STEP 2: Prominent Checkable Switches (要打勾打开的设置) */}
+            <div className={`pt-2.5 space-y-2 ${dividerTopClass}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-black text-slate-800 dark:text-slate-100">
+                  2. 核心防漏与画面开关（点击打勾开启）
+                </span>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400">
+                  遇到串色/变黑优先调这里
+                </span>
+              </div>
+
+              {/* Switch 1: Canny Barrier (补全浅色断线) */}
+              <div
+                onClick={() => setUseCannyBarrier((v) => !v)}
+                role="checkbox"
+                aria-checked={useCannyBarrier}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === " " || e.key === "Enter") {
+                    e.preventDefault();
+                    setUseCannyBarrier((v) => !v);
+                  }
+                }}
+                className={`p-2.5 rounded-xl border transition cursor-pointer select-none ${
+                  useCannyBarrier
+                    ? "border-[var(--accent-color)] bg-[var(--accent-soft)]/50 dark:bg-slate-800/90 shadow-2xs"
+                    : "border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 hover:border-slate-300"
+                }`}
               >
-                {showXdogAdvanced ? "收起高级参数 ▲" : "高级参数 (ε / φ / 底纹) ▼"}
-              </button>
-              {showXdogAdvanced && (
-                <div className="space-y-2 pt-1">
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-black shrink-0 border transition ${
+                        useCannyBarrier
+                          ? "bg-[var(--accent-color)] border-[var(--accent-color)] text-white"
+                          : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-transparent"
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                      🛡️ 补全浅色断线（防漏色必开）
+                    </span>
+                  </div>
+                  <span
+                    className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black ${
+                      useCannyBarrier
+                        ? "bg-[var(--accent-color)] text-white"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {useCannyBarrier ? "已打勾 ✓" : "未开启"}
+                  </span>
+                </div>
+                <p className="mt-1 pl-7 text-[10px] font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                  自动补全高光反光处看不清的浅刻线，防止点按填色时颜料从断口漏到隔壁零件。
+                </p>
+              </div>
+
+              {/* Switch 2: Color Difference Barrier (按原图颜色防串色) */}
+              <div
+                className={`p-2.5 rounded-xl border transition ${
+                  colorBarrierEnabled
+                    ? "border-[var(--accent-color)] bg-[var(--accent-soft)]/50 dark:bg-slate-800/90 shadow-2xs"
+                    : "border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 hover:border-slate-300"
+                }`}
+              >
+                <div
+                  onClick={() => setFillTolerance((v) => (v > 0 ? 0 : 26))}
+                  role="checkbox"
+                  aria-checked={colorBarrierEnabled}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.preventDefault();
+                      setFillTolerance((v) => (v > 0 ? 0 : 26));
+                    }
+                  }}
+                  className="flex items-center justify-between gap-2 cursor-pointer select-none"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-black shrink-0 border transition ${
+                        colorBarrierEnabled
+                          ? "bg-[var(--accent-color)] border-[var(--accent-color)] text-white"
+                          : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-transparent"
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                      🎨 按原图颜色边界防串色（官图/彩图必开）
+                    </span>
+                  </div>
+                  <span
+                    className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black ${
+                      colorBarrierEnabled
+                        ? "bg-[var(--accent-color)] text-white"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {colorBarrierEnabled ? `已打勾 · ${fillTolerance}` : "未开启"}
+                  </span>
+                </div>
+                <p className="mt-1 pl-7 text-[10px] font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                  哪怕两个零件之间没有黑线，只要原图颜色不同就能自动挡住不串色。
+                </p>
+                {colorBarrierEnabled && (
+                  <div className="mt-2 pl-7 pt-1.5 border-t border-dashed border-slate-300/70 dark:border-slate-700">
                     <SliderRow
-                      label="阴影抑制 ε"
-                      value={xdogEpsilon}
-                      min={0.4}
-                      max={0.98}
-                      step={0.01}
-                      onChange={setXdogEpsilon}
+                      label="颜色容差范围（调小=防串色更严，调大=单次涂抹范围更大）"
+                      value={fillTolerance}
+                      min={5}
+                      max={60}
                       compact
-                    />
-                    <SliderRow
-                      label="边缘锐度 φ"
-                      value={xdogPhi}
-                      min={0.5}
-                      max={8}
-                      step={0.1}
-                      onChange={setXdogPhi}
-                      compact
+                      onChange={setFillTolerance}
                     />
                   </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filterRedStamp}
-                        onChange={(e) => setFilterRedStamp(e.target.checked)}
-                        style={{ accentColor: "var(--accent-color)" }}
-                      />
-                      <span>滤除黄底纹 / 红印章</span>
-                    </label>
+                )}
+              </div>
+
+              {/* Switch 3: 3D Corner / Shadow Step Barrier (按立体折角阴影防漏) */}
+              <div
+                className={`p-2.5 rounded-xl border transition ${
+                  stepBarrierEnabled
+                    ? "border-[var(--accent-color)] bg-[var(--accent-soft)]/50 dark:bg-slate-800/90 shadow-2xs"
+                    : "border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 hover:border-slate-300"
+                }`}
+              >
+                <div
+                  onClick={() => setLocalStepThreshold((v) => (v > 0 ? 0 : 15))}
+                  role="checkbox"
+                  aria-checked={stepBarrierEnabled}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.preventDefault();
+                      setLocalStepThreshold((v) => (v > 0 ? 0 : 15));
+                    }
+                  }}
+                  className="flex items-center justify-between gap-2 cursor-pointer select-none"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-black shrink-0 border transition ${
+                        stepBarrierEnabled
+                          ? "bg-[var(--accent-color)] border-[var(--accent-color)] text-white"
+                          : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-transparent"
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                      📐 按立体折角阴影防漏（灰模/实拍必开）
+                    </span>
+                  </div>
+                  <span
+                    className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black ${
+                      stepBarrierEnabled
+                        ? "bg-[var(--accent-color)] text-white"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {stepBarrierEnabled ? `已打勾 · ${localStepThreshold}` : "未开启"}
+                  </span>
+                </div>
+                <p className="mt-1 pl-7 text-[10px] font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                  识别零件立体转折的明暗交界线，防止同色零件在阴影处漏成一片。
+                </p>
+                {stepBarrierEnabled && (
+                  <div className="mt-2 pl-7 pt-1.5 border-t border-dashed border-slate-300/70 dark:border-slate-700">
+                    <SliderRow
+                      label="折角阻断灵敏度（调小=更严密防漏，调大=跨阴影平涂）"
+                      value={localStepThreshold}
+                      min={4}
+                      max={40}
+                      compact
+                      onChange={setLocalStepThreshold}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Switch 4: Solid Ink Fill (深色区域涂黑加固 — With clear warning for CG/Photos!) */}
+              <div
+                onClick={() => setXdogInkFill((v) => !v)}
+                role="checkbox"
+                aria-checked={xdogInkFill}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === " " || e.key === "Enter") {
+                    e.preventDefault();
+                    setXdogInkFill((v) => !v);
+                  }
+                }}
+                className={`p-2.5 rounded-xl border transition cursor-pointer select-none ${
+                  xdogInkFill
+                    ? "border-amber-500 bg-amber-50/90 dark:bg-amber-950/40 shadow-2xs"
+                    : "border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-black shrink-0 border transition ${
+                        xdogInkFill
+                          ? "bg-amber-500 border-amber-600 text-white"
+                          : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-transparent"
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                      ✒️ 深色区域涂黑加固（仅限白底线稿）
+                    </span>
+                  </div>
+                  <span
+                    className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black ${
+                      xdogInkFill
+                        ? "bg-amber-500 text-white"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {xdogInkFill ? "已打勾 ⚠️" : "已关闭"}
+                  </span>
+                </div>
+                <p className="mt-1 pl-7 text-[10px] font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                  把深色部分全部涂成纯黑墨线。<strong className="text-amber-700 dark:text-amber-300">上传彩色官图或黑底照片请务必取消打勾</strong>，否则深色零件和背景会整块变黑！
+                </p>
+              </div>
+
+              {/* Switch 5: Filter Red Stamp / Yellow Paper */}
+              <div
+                onClick={() => setFilterRedStamp((v) => !v)}
+                role="checkbox"
+                aria-checked={filterRedStamp}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === " " || e.key === "Enter") {
+                    e.preventDefault();
+                    setFilterRedStamp((v) => !v);
+                  }
+                }}
+                className={`p-2.5 rounded-xl border transition cursor-pointer select-none ${
+                  filterRedStamp
+                    ? "border-[var(--accent-color)] bg-[var(--accent-soft)]/50 dark:bg-slate-800/90 shadow-2xs"
+                    : "border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-black shrink-0 border transition ${
+                        filterRedStamp
+                          ? "bg-[var(--accent-color)] border-[var(--accent-color)] text-white"
+                          : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-transparent"
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                      🧹 过滤说明书红印章 / 发黄底纹
+                    </span>
+                  </div>
+                  <span
+                    className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black ${
+                      filterRedStamp
+                        ? "bg-[var(--accent-color)] text-white"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {filterRedStamp ? "已打勾 ✓" : "未开启"}
+                  </span>
+                </div>
+                <p className="mt-1 pl-7 text-[10px] font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                  仅在上传带红色印章或纸张发黄的扫描线稿时打勾；若是拍红色零件请关闭。
+                </p>
+              </div>
+            </div>
+
+            {/* STEP 3: Plain-Language Fine-Tuning Sliders (线条与填色细节微调) */}
+            <div className={`pt-2.5 space-y-2.5 ${dividerTopClass}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-black text-slate-800 dark:text-slate-100">
+                  3. 线条与填色细节微调
+                </span>
+              </div>
+
+              <SliderRow
+                label="👁️ 表面黑线显示浓淡"
+                hint="黑线太重遮挡漆面颜色时调低（彩色官图建议 30%~50%）"
+                value={lineOpacity}
+                min={0}
+                max={100}
+                suffix="%"
+                onChange={setLineOpacity}
+              />
+
+              <SliderRow
+                label="🔗 自动缝合断线缺口"
+                hint="填色容易从细小缝隙漏出去时往右调高（推荐 1~2px）"
+                value={gapCloseRadius}
+                min={0}
+                max={3}
+                suffix="px"
+                onChange={setGapCloseRadius}
+              />
+
+              <SliderRow
+                label="🧲 细小零件边缘填满度"
+                hint="天线、火神炮或零件窄边留白填不满时往右调高"
+                value={edgeAbsorb}
+                min={0}
+                max={8}
+                suffix="px"
+                onChange={setEdgeAbsorb}
+              />
+
+              {/* Line Extraction Method & Detail Sliders */}
+              <div className="pt-1 space-y-2">
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  <span>线条提取方式</span>
+                  <div className="flex items-center gap-1">
+                    <span>未上色底纸：</span>
                     <button
                       type="button"
                       onClick={() => setPaperBgStyle((s) => (s === "source" ? "white" : "source"))}
-                      className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold cursor-pointer"
+                      className="rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-extrabold text-slate-700 dark:text-slate-200 cursor-pointer"
                     >
-                      底色：{paperBgStyle === "source" ? "原图" : "纯白"}
+                      {paperBgStyle === "source" ? "🖼️ 保留原图" : "📄 纯白底纸"}
                     </button>
                   </div>
                 </div>
+
+                <div className="gk-tab-bar grid grid-cols-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200/70 dark:bg-slate-800 p-0.5 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setExtractionMode("xdog")}
+                    className={`gk-tab-pill rounded-lg px-2 py-1.5 text-[11px] font-extrabold transition cursor-pointer ${
+                      extractionMode === "xdog"
+                        ? "gk-tab-pill-active bg-[var(--accent-color)] text-white shadow-xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    🎨 智能提取轮廓 (推荐)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExtractionMode("threshold")}
+                    className={`gk-tab-pill rounded-lg px-2 py-1.5 text-[11px] font-extrabold transition cursor-pointer ${
+                      extractionMode === "threshold"
+                        ? "gk-tab-pill-active bg-[var(--accent-color)] text-white shadow-xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    ✒️ 黑白墨线直提
+                  </button>
+                </div>
+
+                {extractionMode === "threshold" ? (
+                  <div className="space-y-2 pt-1">
+                    <SliderRow
+                      label="✒️ 黑线提取深浅范围"
+                      hint="往右调高可把浅灰铅笔线也变成黑线（仅限白底线稿）"
+                      value={lineThreshold}
+                      min={100}
+                      max={230}
+                      onChange={setLineThreshold}
+                    />
+                    <SliderRow
+                      label="🫧 线条边缘柔化过渡"
+                      hint="消除黑白线条边缘的锯齿感"
+                      value={lineSoftness}
+                      min={5}
+                      max={70}
+                      onChange={setLineSoftness}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    <div className="grid grid-cols-2 gap-2">
+                      <SliderRow
+                        label="📏 轮廓线条粗细"
+                        hint="太粗糊细节调低，太细调高"
+                        value={xdogSigma}
+                        min={0.6}
+                        max={2.5}
+                        step={0.1}
+                        onChange={setXdogSigma}
+                        compact
+                      />
+                      <SliderRow
+                        label="🔍 浅刻线识别度"
+                        hint="浅刻线没显示出来时调高"
+                        value={xdogP}
+                        min={5}
+                        max={45}
+                        onChange={setXdogP}
+                        compact
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <SliderRow
+                        label="🌤️ 过滤曲面黑斑"
+                        hint="暗部有脏黑斑噪点时调高"
+                        value={xdogEpsilon}
+                        min={0.4}
+                        max={0.98}
+                        step={0.01}
+                        onChange={setXdogEpsilon}
+                        compact
+                      />
+                      <SliderRow
+                        label="🔪 线条边缘清晰度"
+                        hint="线条发虚模糊时调高"
+                        value={xdogPhi}
+                        min={0.5}
+                        max={8}
+                        step={0.1}
+                        onChange={setXdogPhi}
+                        compact
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {(activeTool === "pen" || activeTool === "lineEraser") && (
+                <SliderRow
+                  label="✏️ 手动封口笔 / 擦线橡皮粗细"
+                  value={brushRadius}
+                  min={1}
+                  max={10}
+                  suffix="px"
+                  onChange={setBrushRadius}
+                />
               )}
-            </>
-          )}
-
-          <div className={`pt-2 space-y-2 ${dividerTopClass}`}>
-            <div className="flex items-center justify-between text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              <span>2. 底层三合一阻断引擎 (Hybrid Barrier)</span>
             </div>
-
-            <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useCannyBarrier}
-                onChange={(e) => setUseCannyBarrier(e.target.checked)}
-                style={{ accentColor: "var(--accent-color)" }}
-              />
-              <span>防线 A：叠加 Canny 边缘闭合骨架（挡高光漏口）</span>
-            </label>
-
-            <SliderRow
-              label="🔗 形态学闭运算封口 (Gap Close)"
-              value={gapCloseRadius}
-              min={0}
-              max={3}
-              suffix="px"
-              onChange={setGapCloseRadius}
-            />
-            <SliderRow
-              label="🎨 防线 B：原图色差/色度阻断 (0=关闭)"
-              value={fillTolerance}
-              min={0}
-              max={60}
-              onChange={setFillTolerance}
-            />
-            <SliderRow
-              label="📐 防线 C：相邻像素折角梯度阻断 (0=关闭)"
-              value={localStepThreshold}
-              min={0}
-              max={40}
-              onChange={setLocalStepThreshold}
-            />
-            <SliderRow
-              label="🧲 细小零件边缘吸附 (天线/杆件填不满时调高)"
-              value={edgeAbsorb}
-              min={0}
-              max={8}
-              suffix="px"
-              onChange={setEdgeAbsorb}
-            />
           </div>
-
-          {(activeTool === "pen" || activeTool === "lineEraser") && (
-            <SliderRow label="封口笔 / 线框橡皮粗细" value={brushRadius} min={1} max={10} suffix="px" onChange={setBrushRadius} />
-          )}
-        </div>
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   // Reusable Used Palette + Brand Paint Assignment Closed-Loop Section (📋 本图已用色卡)
   const renderUsedPaintsSection = (showExportActions = false) => (
@@ -6063,7 +6391,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                   mobileDrawer === "params" ? primaryActionBtnClass : secondaryActionBtnClass
                 }`}
               >
-                <span>⚙️ 线稿/防漏</span>
+                <span>⚙️ 高级设置</span>
               </button>
 
               <button
@@ -6339,7 +6667,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                   mobileDrawer === "params" ? primaryActionBtnClass : secondaryActionBtnClass
                 }`}
               >
-                ⚙️ 线稿/防漏
+                ⚙️ 高级设置
               </button>
               <button
                 type="button"
@@ -6457,6 +6785,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
 // ============================================================================
 const SliderRow: React.FC<{
   label: string;
+  hint?: string;
   value: number;
   min: number;
   max: number;
@@ -6464,10 +6793,10 @@ const SliderRow: React.FC<{
   suffix?: string;
   compact?: boolean;
   onChange: (v: number) => void;
-}> = ({ label, value, min, max, step = 1, suffix = "", compact, onChange }) => {
+}> = ({ label, hint, value, min, max, step = 1, suffix = "", compact, onChange }) => {
   const decimals = step >= 1 ? 0 : step >= 0.1 ? 1 : 2;
   return (
-    <div translate="no">
+    <div translate="no" className="space-y-0.5">
       <div className={`flex justify-between font-bold text-slate-700 dark:text-slate-200 ${compact ? "text-[10px]" : "text-[11px]"}`}>
         <span className="truncate">{label}</span>
         <span className="font-mono shrink-0 ml-1">
@@ -6475,6 +6804,11 @@ const SliderRow: React.FC<{
           {suffix}
         </span>
       </div>
+      {hint && (
+        <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-snug">
+          {hint}
+        </div>
+      )}
       <input
         type="range"
         min={min}

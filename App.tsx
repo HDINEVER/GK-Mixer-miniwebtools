@@ -86,6 +86,7 @@ import {
   autoArrangeTopBottom,
   alignMarkers,
   resetMarkerPositions,
+  getCanvasMarginRecord,
 } from './utils/swatchLayout';
 import {
   UIStyle,
@@ -197,6 +198,12 @@ const App: React.FC = () => {
     }, 300);
     return () => window.clearTimeout(timer);
   }, [savedColors, studioLoaded]);
+
+  useEffect(() => {
+    const noopTouch = () => {};
+    document.addEventListener('touchstart', noopTouch, { passive: true });
+    return () => document.removeEventListener('touchstart', noopTouch);
+  }, []);
 
   useEffect(() => {
     if (!isSourceActionMenuOpen) return;
@@ -970,13 +977,30 @@ const App: React.FC = () => {
 
   const handleSyncSandboxState = useCallback(
     (payload: SandboxSyncPayload) => {
-      setSandboxSyncState(payload);
+      let activeMarginRec: ReturnType<typeof getCanvasMarginRecord> = undefined;
+      setSandboxSyncState((prev) => {
+        const rec = prev?.compositeDataUrl ? getCanvasMarginRecord(prev.compositeDataUrl) : undefined;
+        if (rec && rec.mode !== 'none' && rec.originalImageSrc === payload.compositeDataUrl) {
+          activeMarginRec = rec;
+          return {
+            ...payload,
+            compositeDataUrl: prev!.compositeDataUrl,
+          };
+        }
+        return payload;
+      });
       setSandboxColors((prev) => {
         const next: ColorData[] = payload.syncedSwatches.map((sw) => {
           const existing = prev.find(
             (c) => c.id === sw.id || c.hex.toUpperCase() === sw.hex.toUpperCase()
           );
           const rgb = hexToRgb(sw.hex) || { r: 128, g: 128, b: 128 };
+          const sampleX = activeMarginRec
+            ? activeMarginRec.innerLeftNx + sw.anchorX * activeMarginRec.innerWidthNw
+            : existing?.sampleX ?? sw.anchorX;
+          const sampleY = activeMarginRec
+            ? activeMarginRec.innerTopNy + sw.anchorY * activeMarginRec.innerHeightNh
+            : existing?.sampleY ?? sw.anchorY;
           return {
             id: sw.id,
             hex: sw.hex.toUpperCase(),
@@ -986,8 +1010,8 @@ const App: React.FC = () => {
             lab: rgbToLab(rgb.r, rgb.g, rgb.b),
             source: 'manual',
             colorSpace,
-            sampleX: sw.anchorX,
-            sampleY: sw.anchorY,
+            sampleX,
+            sampleY,
             labelNx: existing?.labelNx ?? sw.offsetX,
             labelNy: existing?.labelNy ?? sw.offsetY,
             labelScale: existing?.labelScale,
@@ -2897,14 +2921,8 @@ const App: React.FC = () => {
             );
             setSandboxColors(nextColors);
           } else {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-              imageRef.current = img;
-              setSourceImage(newImageSrc);
-              setColors(nextColors);
-            };
-            img.src = newImageSrc;
+            setSourceImage(newImageSrc);
+            setColors(nextColors);
           }
         }}
         settings={swatchSettings}

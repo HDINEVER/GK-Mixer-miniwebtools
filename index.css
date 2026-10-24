@@ -1074,5 +1074,185 @@ html.dark[data-ui-style="blueprint"] .bp-mixed-preview {
   box-shadow: 3px 3px 0px #020617 !important;
 }
 
+/* ==========================================================================
+   11. Unified Blueprint Tactile Button Press-Down (Black-Shadow Collapse &
+       Spring Bounce-Back Animation across the Entire App)
+   ========================================================================== */
+
+/* Ensure any bordered rounded button in Blueprint mode that doesn't already
+   carry a .bp-* class still gets the signature Blueprint border & hard shadow */
+html[data-ui-style="blueprint"]
+  button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+    [class*="border-t"]
+  ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+    .bp-segmented-item
+  ):not(.gk-tab-pill):not(:disabled) {
+  border: 1.5px solid #0F172A !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"]
+  button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+    [class*="border-t"]
+  ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+    .bp-segmented-item
+  ):not(.gk-tab-pill):not(:disabled) {
+  border-color: #475569 !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+
+/* Resting spring transition so releasing the button bounces the black shadow back */
+html[data-ui-style="blueprint"] .bp-btn:not(:disabled),
+html[data-ui-style="blueprint"] .bp-pill:not(:disabled),
+html[data-ui-style="blueprint"] .bp-pill-active:not(:disabled),
+html[data-ui-style="blueprint"] .bp-use-btn:not(:disabled),
+html[data-ui-style="blueprint"] .bp-use-btn-used:not(:disabled),
+html[data-ui-style="blueprint"] .bp-fab:not(:disabled),
+html[data-ui-style="blueprint"] .bp-segmented-item:not(:disabled),
+html[data-ui-style="blueprint"] .bp-segmented-item-active:not(:disabled),
+html[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled),
+html[data-ui-style="blueprint"] .gk-mech-primary:not(:disabled),
+html[data-ui-style="blueprint"] .gk-btn-primary:not(:disabled),
+html[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled),
+html[data-ui-style="blueprint"] .gk-tab-pill:not(:disabled),
+html[data-ui-style="blueprint"] .gk-tab-pill-active:not(:disabled),
+html[data-ui-style="blueprint"] .bp-delete-btn:not(:disabled),
+html[data-ui-style="blueprint"] .bp-matrix-cell:not(:disabled),
+html[data-ui-style="blueprint"] .bp-matrix-cell-active:not(:disabled),
+html[data-ui-style="blueprint"] button.bp-subcard:not(:disabled),
+html[data-ui-style="blueprint"] button.bp-subcard-active:not(:disabled),
+html[data-ui-style="blueprint"] label.bp-subcard,
+html[data-ui-style="blueprint"] .bp-subcard-interactive,
+html[data-ui-style="blueprint"] .bp-project-card,
+html[data-ui-style="blueprint"] .bp-extracted-card,
+html[data-ui-style="blueprint"] button[class*="shadow-["]:not(:disabled),
+html[data-ui-style="blueprint"] label[class*="shadow-["],
+html[data-ui-style="blueprint"]
+  button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+    [class*="border-t"]
+  ):not([class*="border-0"]):not([class*="border-transparent"]):not(:disabled) {
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.12s ease,
+    border-color 0.12s ease !important;
+  will-change: transform, box-shadow;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hover lift for Blueprint pills & buttons */
+@media (hover: hover) {
+  html[data-ui-style="blueprint"] .bp-pill:not(:disabled):hover,
+  html[data-ui-style="blueprint"] .bp-pill-active:not(:disabled):hover,
+  html[data-ui-style="blueprint"] .bp-use-btn:not(:disabled):hover,
+  html[data-ui-style="blueprint"] .bp-use-btn-used:not(:disabled):hover,
+  html[data-ui-style="blueprint"] .bp-fab:not(:disabled):hover,
+  html[data-ui-style="blueprint"] .bp-delete-btn:not(:disabled):hover,
+  html[data-ui-style="blueprint"] button.bp-subcard:not(:disabled):hover,
+  html[data-ui-style="blueprint"] label.bp-subcard:hover,
+  html[data-ui-style="blueprint"]
+    button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+      [class*="border-t"]
+    ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+      .bp-segmented-item
+    ):not(.gk-tab-pill):not(:disabled):hover {
+    transform: translate(-1px, -1px) !important;
+    box-shadow: 3px 3px 0px #0F172A !important;
+  }
+
+  html.dark[data-ui-style="blueprint"] .bp-pill:not(:disabled):hover,
+  html.dark[data-ui-style="blueprint"] .bp-pill-active:not(:disabled):hover,
+  html.dark[data-ui-style="blueprint"] .bp-use-btn:not(:disabled):hover,
+  html.dark[data-ui-style="blueprint"] .bp-use-btn-used:not(:disabled):hover,
+  html.dark[data-ui-style="blueprint"] .bp-fab:not(:disabled):hover,
+  html.dark[data-ui-style="blueprint"] .bp-delete-btn:not(:disabled):hover,
+  html.dark[data-ui-style="blueprint"] button.bp-subcard:not(:disabled):hover,
+  html.dark[data-ui-style="blueprint"] label.bp-subcard:hover,
+  html.dark[data-ui-style="blueprint"]
+    button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+      [class*="border-t"]
+    ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+      .bp-segmented-item
+    ):not(.gk-tab-pill):not(:disabled):hover {
+    transform: translate(-1px, -1px) !important;
+    box-shadow: 3px 3px 0px #020617 !important;
+  }
+}
+
+/* Active Press-Down State: Instant Black-Shadow Collapse (0px 0px 0px) + Translate into Shadow */
+html[data-ui-style="blueprint"] .bp-btn:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-pill:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-pill-active:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-use-btn:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-use-btn-used:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-fab:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-segmented-item:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-segmented-item-active:not(:disabled):active,
+html[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled):active,
+html[data-ui-style="blueprint"] .gk-mech-primary:not(:disabled):active,
+html[data-ui-style="blueprint"] .gk-btn-primary:not(:disabled):active,
+html[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled):active,
+html[data-ui-style="blueprint"] .gk-tab-pill:not(:disabled):active,
+html[data-ui-style="blueprint"] .gk-tab-pill-active:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-delete-btn:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-matrix-cell:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-matrix-cell-active:not(:disabled):active,
+html[data-ui-style="blueprint"] button.bp-subcard:not(:disabled):active,
+html[data-ui-style="blueprint"] button.bp-subcard-active:not(:disabled):active,
+html[data-ui-style="blueprint"] label.bp-subcard:active,
+html[data-ui-style="blueprint"]
+  .bp-subcard-interactive:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
+html[data-ui-style="blueprint"]
+  .bp-project-card:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
+html[data-ui-style="blueprint"]
+  .bp-extracted-card:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
+html[data-ui-style="blueprint"] button[class*="shadow-["]:not(:disabled):active,
+html[data-ui-style="blueprint"] label[class*="shadow-["]:active,
+html[data-ui-style="blueprint"]
+  button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+    [class*="border-t"]
+  ):not([class*="border-0"]):not([class*="border-transparent"]):not(:disabled):active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0px 0px 0px #0F172A !important;
+  transition: transform 0.035s ease-out, box-shadow 0.035s ease-out !important;
+}
+
+html.dark[data-ui-style="blueprint"] .bp-btn:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .bp-pill:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .bp-pill-active:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .bp-use-btn:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .bp-use-btn-used:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .bp-fab:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .bp-segmented-item:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .bp-segmented-item-active:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .gk-mech-primary:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .gk-btn-primary:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .gk-tab-pill:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .gk-tab-pill-active:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .bp-delete-btn:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .bp-matrix-cell:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] .bp-matrix-cell-active:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] button.bp-subcard:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] button.bp-subcard-active:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] label.bp-subcard:active,
+html.dark[data-ui-style="blueprint"]
+  .bp-subcard-interactive:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
+html.dark[data-ui-style="blueprint"]
+  .bp-project-card:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
+html.dark[data-ui-style="blueprint"]
+  .bp-extracted-card:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
+html.dark[data-ui-style="blueprint"] button[class*="shadow-["]:not(:disabled):active,
+html.dark[data-ui-style="blueprint"] label[class*="shadow-["]:active,
+html.dark[data-ui-style="blueprint"]
+  button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+    [class*="border-t"]
+  ):not([class*="border-0"]):not([class*="border-transparent"]):not(:disabled):active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0px 0px 0px #020617 !important;
+  transition: transform 0.035s ease-out, box-shadow 0.035s ease-out !important;
+}
+
+
 
 

@@ -88,7 +88,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
     existingMarginRecord?.mode || "none"
   );
   const [marginRatio, setMarginRatio] = useState<number>(
-    existingMarginRecord?.ratio || 0.3
+    existingMarginRecord?.ratio || 0.36
   );
   const [marginCustomColor, setMarginCustomColor] = useState<string | null>(
     existingMarginRecord?.customColor ?? null
@@ -621,9 +621,9 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                     <span className="text-[10px] font-bold text-slate-400">留白宽度</span>
                     {(
                       [
-                        { val: 0.22, label: "紧凑" },
-                        { val: 0.3, label: "标准" },
-                        { val: 0.4, label: "宽敞" },
+                        { val: 0.28, label: "紧凑" },
+                        { val: 0.36, label: "标准" },
+                        { val: 0.48, label: "宽敞" },
                       ]
                     ).map((r) => (
                       <button
@@ -631,9 +631,9 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                         type="button"
                         disabled={isApplyingMargin}
                         onClick={() => handleApplyMarginExtension(marginMode, r.val, marginCustomColor)}
-                        className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold transition cursor-pointer ${
-                          Math.abs(marginRatio - r.val) < 0.03
-                            ? "bg-[var(--accent-color)] text-white"
+                        className={`bp-btn rounded-md px-1.5 py-0.5 text-[10px] font-bold transition cursor-pointer ${
+                          Math.abs(marginRatio - r.val) < 0.04
+                            ? "bp-pill-active bg-[var(--accent-color)] text-white"
                             : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                         }`}
                       >
@@ -647,9 +647,9 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                       type="button"
                       disabled={isApplyingMargin}
                       onClick={() => handleApplyMarginExtension(marginMode, marginRatio, null)}
-                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold transition cursor-pointer ${
+                      className={`bp-btn rounded-md px-1.5 py-0.5 text-[10px] font-bold transition cursor-pointer ${
                         marginCustomColor === null
-                          ? "bg-[var(--accent-color)] text-white"
+                          ? "bp-pill-active bg-[var(--accent-color)] text-white"
                           : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                       }`}
                       title="自动吸取原图四边背景颜色"

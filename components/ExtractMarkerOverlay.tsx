@@ -125,19 +125,43 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
         Math.abs(prev.w - w) < 0.5 && Math.abs(prev.h - h) < 0.5 ? prev : { w, h }
       );
     };
-    const observer = new ResizeObserver((entries) => {
-      const rect = entries[0]?.contentRect;
-      if (!rect) return;
+    const measureAndApply = () => {
+      const target = el.parentElement || el;
+      const w = el.clientWidth || target.clientWidth;
+      const h = el.clientHeight || target.clientHeight;
+      if (w > 1 && h > 1) {
+        applySize(w, h);
+      } else {
+        const rect = el.getBoundingClientRect();
+        const scale = Math.max(viewScale, 0.01);
+        if (rect.width > 1 && rect.height > 1) {
+          applySize(rect.width / scale, rect.height / scale);
+        }
+      }
+    };
+    const observer = new ResizeObserver(() => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => applySize(rect.width, rect.height));
+      frame = requestAnimationFrame(measureAndApply);
     });
     observer.observe(el);
-    applySize(el.clientWidth, el.clientHeight);
+    const parent = el.parentElement;
+    const siblingImg = parent?.querySelector("img") || null;
+    const siblingCanvas = parent?.querySelector("canvas") || null;
+    if (parent) observer.observe(parent);
+    if (siblingImg) {
+      observer.observe(siblingImg);
+      siblingImg.addEventListener("load", measureAndApply);
+    }
+    if (siblingCanvas) observer.observe(siblingCanvas);
+    measureAndApply();
     return () => {
       cancelAnimationFrame(frame);
+      if (siblingImg) {
+        siblingImg.removeEventListener("load", measureAndApply);
+      }
       observer.disconnect();
     };
-  }, []);
+  }, [markers.length, viewScale]);
 
   useEffect(() => {
     return () => {
@@ -241,22 +265,39 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
     event.stopPropagation();
 
     const wasAlreadySelected = selectedId === marker.id;
-    if (!wasAlreadySelected) {
-      triggerSelect(marker);
-    }
 
-    if (!allowDrag || !moveCallback || !rootRef.current) return;
+    if (!allowDrag || !moveCallback || !rootRef.current) {
+      if (!wasAlreadySelected) {
+        triggerSelect(marker);
+      }
+      return;
+    }
     event.preventDefault();
 
-    // Cache bounding rect once on pointerdown to avoid layout thrashing during pointermove
-    const rect = rootRef.current.getBoundingClientRect();
-    const rectW = Math.max(rect.width || boxW, 1);
-    const rectH = Math.max(rect.height || boxH, 1);
+    // Measure live DOM dimensions on pointerdown so expanded-margin canvases never use a stale boxW/boxH
+    const el = rootRef.current;
+    const rect = el.getBoundingClientRect();
+    const scale = Math.max(viewScale, 0.01);
+    const rectW = Math.max(rect.width || boxW * scale, 1);
+    const rectH = Math.max(rect.height || boxH * scale, 1);
+    const liveBoxW = Math.max(el.clientWidth || rectW / scale || boxW, 1);
+    const liveBoxH = Math.max(el.clientHeight || rectH / scale || boxH, 1);
+
+    if (Math.abs(liveBoxW - boxW) > 0.5 || Math.abs(liveBoxH - boxH) > 0.5) {
+      setOverlayBox({ w: liveBoxW, h: liveBoxH });
+    }
+
+    const liveCanvasScale = getCanvasScale(liveBoxW, liveBoxH, baseW);
+    const liveMScale = (marker.labelScale ?? cardScale) * liveCanvasScale * ui;
+    const hasTonal = Boolean(marker.tonalGradient && marker.tonalGradient.length > 0);
+    const liveCW = baseW * liveMScale || cW;
+    const liveCH = (baseH + (hasTonal ? 12 : 0)) * liveMScale || cH;
+
     const normX = (event.clientX - rect.left) / rectW;
     const normY = (event.clientY - rect.top) / rectH;
 
-    const cardWNorm = cW / Math.max(boxW, 1);
-    const cardHNorm = cH / Math.max(boxH, 1);
+    const cardWNorm = liveCW / liveBoxW;
+    const cardHNorm = liveCH / liveBoxH;
 
     dragRef.current = {
       id: marker.id,
@@ -266,22 +307,26 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
       rectTop: rect.top,
       rectW,
       rectH,
-      boxW,
-      boxH,
-      cW,
-      cH,
+      boxW: liveBoxW,
+      boxH: liveBoxH,
+      cW: liveCW,
+      cH: liveCH,
       maxX: Math.max(0, 1 - cardWNorm),
       maxY: Math.max(0, 1 - cardHNorm),
-      pinX: marker.nx * boxW,
-      pinY: marker.ny * boxH,
-      pinRadius: 6 * visualScale,
-      mScale,
+      pinX: marker.nx * liveBoxW,
+      pinY: marker.ny * liveBoxH,
+      pinRadius: 6 * liveCanvasScale * cardScale * ui,
+      mScale: liveMScale || mScale,
       latestNx: left,
       latestNy: top,
       moved: false,
       wasAlreadySelected,
       cardEl: event.currentTarget,
     };
+
+    if (!wasAlreadySelected) {
+      triggerSelect(marker);
+    }
 
     try {
       event.currentTarget.setPointerCapture(event.pointerId);

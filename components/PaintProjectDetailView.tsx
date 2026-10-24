@@ -150,7 +150,17 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
     const nextNodes = colorsToFloatingNodes(nextColors);
     updateActivePart((part) => ({
       ...part,
-      nodes: nextNodes,
+      nodes: nextNodes.map((n) => {
+        const prevNode = part.nodes.find((pn) => pn.id === n.id);
+        return prevNode
+          ? {
+              ...n,
+              basePaintHex: prevNode.basePaintHex,
+              tintBadgeText: prevNode.tintBadgeText,
+              recipeSummary: prevNode.recipeSummary,
+            }
+          : n;
+      }),
     }));
   };
 
@@ -616,9 +626,17 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                   const id = typeof cOrId === "string" ? cOrId : cOrId?.id;
                   if (id) setSelectedNodeId(id);
                 }}
+                onUpdatePosition={(id, nx, ny) => {
+                  updateActivePart((part) => ({
+                    ...part,
+                    nodes: part.nodes.map((n) =>
+                      n.id === id ? { ...n, offsetX: nx, offsetY: ny } : n
+                    ),
+                  }));
+                }}
                 settings={swatchSettings}
                 interactive={true}
-                allowDrag={false}
+                allowDrag={true}
               />
             </div>
 
@@ -635,7 +653,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-0.5 text-[11px] text-slate-400">
-            <span className="truncate">左右滑动切换零件 · 点按画面色卡查看详情</span>
+            <span className="truncate">拖拽画面色卡可自由移动 · 点按色卡查看详情</span>
             <button
               type="button"
               onClick={() => setIsSwatchEditorOpen(true)}
@@ -892,7 +910,17 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
             updateActivePart((part) => ({
               ...part,
               sourceImageDataUrl: newImageSrc,
-              nodes: nextNodes,
+              nodes: nextNodes.map((n) => {
+                const prevNode = part.nodes.find((pn) => pn.id === n.id);
+                return prevNode
+                  ? {
+                      ...n,
+                      basePaintHex: prevNode.basePaintHex,
+                      tintBadgeText: prevNode.tintBadgeText,
+                      recipeSummary: prevNode.recipeSummary,
+                    }
+                  : n;
+              }),
             }));
           }}
           settings={swatchSettings}

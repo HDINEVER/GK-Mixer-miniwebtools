@@ -164,7 +164,15 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                 <img
                   src={imageSrc}
                   alt="Swatch Canvas"
-                  className="bp-swatch block max-h-[44dvh] lg:max-h-[62dvh] w-auto max-w-full rounded-xl object-contain select-none"
+                  onLoad={() => {
+                    const el = imgContainerRef.current;
+                    if (!el) return;
+                    const rect = el.getBoundingClientRect();
+                    if (rect.width > 10 && rect.height > 10) {
+                      setCanvasSize({ w: rect.width, h: rect.height });
+                    }
+                  }}
+                  className="bp-swatch block max-h-[44dvh] lg:max-h-[62dvh] w-auto h-auto max-w-full rounded-xl select-none"
                   draggable={false}
                 />
                 <ExtractMarkerOverlay

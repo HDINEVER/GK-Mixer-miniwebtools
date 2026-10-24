@@ -39,19 +39,23 @@ export function getCanvasScale(width: number, height: number, cardBaseWidth = BA
   const maxSide = Math.max(width, height);
   if (maxSide <= 1) return 1.0;
 
-  let scale = maxSide / REFERENCE_CANVAS_DIM;
+  const minSide = Math.max(1, Math.min(width, height));
+  // Anchor scale to the unexpanded model dimension when canvas is wide (左右加宽) or tall (上下加高)
+  const effectiveDim = Math.min(maxSide, minSide * 1.22);
+  let scale = effectiveDim / REFERENCE_CANVAS_DIM;
   const { baseW } = getCardBaseDimensions(cardBaseWidth);
 
-  // Guard for ultra-tall portrait aspect ratios (e.g. 9:19.5 phone screenshots):
-  // Cap the card width so it never takes up more than ~36% of the canvas width
-  // at default 1.0x card scale, preserving clean two-column layout without overlap.
-  const maxCardWidth = width * 0.36;
+  // Cap card width relative to canvas width so cards fit comfortably inside left/right margin strips
+  // as well as ultra-tall portrait aspect ratios.
+  const aspect = width / Math.max(1, height);
+  const maxCardWidthRatio = aspect > 1.25 ? 0.19 : 0.32;
+  const maxCardWidth = width * maxCardWidthRatio;
   if (baseW * scale > maxCardWidth && width > 40) {
     scale = maxCardWidth / baseW;
   }
 
-  // Set a reasonable floor so interactive cards don't vanish on tiny thumbnails
-  return Math.max(0.32, scale);
+  // Set a reasonable floor so interactive cards remain legible on compact screens
+  return Math.max(0.26, scale);
 }
 
 export interface LeaderLinePath {
@@ -805,7 +809,7 @@ export async function inspectOrSampleImageMargins(imageSrc: string): Promise<Can
       innerWidthNw: 1,
       innerHeightNh: 1,
       mode: 'none',
-      ratio: 0.3,
+      ratio: 0.36,
       customColor: null,
       sampledEdgeColors,
     };
@@ -984,7 +988,7 @@ export async function buildExtendedMarginCanvasAndColors<
   currentImageSrc: string,
   colors: T[],
   mode: MarginExtendMode,
-  ratio = 0.3,
+  ratio = 0.36,
   customColor: string | null = null,
   cardScale = 1.0,
   cardBaseWidth = BASE_CARD_W
@@ -1051,8 +1055,8 @@ export async function buildExtendedMarginCanvasAndColors<
   }
 
   // Compute pixel padding on each side
-  const safeRatio = Math.max(0.15, Math.min(0.55, ratio));
-  const singleSideRatio = Math.min(0.55, safeRatio * 1.15);
+  const safeRatio = Math.max(0.2, Math.min(0.6, ratio));
+  const singleSideRatio = Math.min(0.6, safeRatio * 1.18);
   const padLeft =
     mode === 'leftRight'
       ? Math.round(origW * safeRatio)

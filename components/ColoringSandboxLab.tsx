@@ -3963,6 +3963,8 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             return (
               <div
                 key={sw.hex}
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   const hsl = hexToHsl(sw.hex);
                   if (hsl.s >= 4) {
@@ -3980,12 +3982,12 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                   );
                 }}
                 title={`${sw.brand} ${sw.code} · ${sw.name} (${sw.hex}) — 点击自动同步 360° 色相环与和谐分色推荐`}
-                className={`group relative flex flex-col items-center p-1 transition cursor-pointer ${
+                className={`bp-subcard bp-subcard-interactive group relative flex flex-col items-center p-1 transition cursor-pointer ${
                   isBlueprint
                     ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 ${
                         isSelected
-                          ? "bg-[var(--accent-soft)] ring-1 ring-[var(--accent-color)] shadow-[2px_2px_0px_#0F172A]"
-                          : "bg-white dark:bg-slate-800/90 hover:bg-[var(--accent-soft)] shadow-[1.5px_1.5px_0px_#0F172A]"
+                          ? "bp-subcard-active bg-[var(--accent-soft)] ring-1 ring-[var(--accent-color)] shadow-[2px_2px_0px_#0F172A]"
+                          : "bg-white dark:bg-slate-800/90 hover:bg-[var(--accent-soft)] shadow-[2px_2px_0px_#0F172A]"
                       }`
                     : `rounded-lg border ${
                         isSelected
@@ -4100,11 +4102,13 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               type="button"
               onClick={() => setCatalogBrandFilter("ALL")}
               className={`px-2 py-0.5 text-[10px] font-extrabold shrink-0 cursor-pointer transition ${
+                catalogBrandFilter === "ALL" ? "bp-pill-active" : "bp-pill"
+              } ${
                 isBlueprint
                   ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 font-mono ${
                       catalogBrandFilter === "ALL"
                         ? "bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
-                        : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[1.5px_1.5px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
+                        : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[2px_2px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
                     }`
                   : `rounded-full ${
                       catalogBrandFilter === "ALL"
@@ -4123,11 +4127,13 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                   type="button"
                   onClick={() => setCatalogBrandFilter(b)}
                   className={`px-2 py-0.5 text-[10px] font-extrabold shrink-0 cursor-pointer transition ${
+                    active ? "bp-pill-active" : "bp-pill"
+                  } ${
                     isBlueprint
                       ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 font-mono ${
                           active
                             ? "bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
-                            : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[1.5px_1.5px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
+                            : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[2px_2px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
                         }`
                       : `rounded-full ${
                           active
@@ -4152,11 +4158,13 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                   type="button"
                   onClick={() => setCatalogColorFamily(cf.id)}
                   className={`shrink-0 flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-extrabold transition cursor-pointer ${
+                    active ? "bp-pill-active" : "bp-pill"
+                  } ${
                     isBlueprint
                       ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 font-mono ${
                           active
                             ? "bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
-                            : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[1.5px_1.5px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
+                            : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[2px_2px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
                         }`
                       : `rounded-md border ${
                           active
@@ -4188,6 +4196,8 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               return (
                 <div
                   key={p.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     if (assigningTargetHex) {
                       assignBrandPaintToHexRegions(assigningTargetHex, p, brandZh, true);
@@ -4210,11 +4220,11 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                     setStatusMessage(`🏷️ 已选品牌油漆：${brandZh} ${p.code} ${p.name} (${p.hex})`);
                   }}
                   title={`${brandZh} ${p.code} · ${p.name} (${p.hex}) — 点击直接上色`}
-                  className={`group relative flex flex-col p-1.5 text-left transition cursor-pointer ${
+                  className={`bp-subcard bp-subcard-interactive group relative flex flex-col p-1.5 text-left transition cursor-pointer ${
                     isBlueprint
                       ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 shadow-[2px_2px_0px_#0F172A] ${
                           isSelected
-                            ? "bg-[var(--accent-soft)] ring-1 ring-[var(--accent-color)]"
+                            ? "bp-subcard-active bg-[var(--accent-soft)] ring-1 ring-[var(--accent-color)]"
                             : "bg-white dark:bg-slate-800/95 hover:bg-[var(--accent-soft)]"
                         }`
                       : `rounded-lg border ${
@@ -4286,17 +4296,17 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                       })
                     }
                     title={`${g.label} · ${g.lLabel} (${g.hex})`}
-                    className={`group flex flex-col items-center cursor-pointer transition shrink-0 ${
-                      isSelected ? "scale-105" : "hover:scale-105"
+                    className={`bp-gray-step-btn group flex flex-col items-center cursor-pointer transition shrink-0 ${
+                      !isBlueprint && (isSelected ? "scale-105" : "hover:scale-105")
                     }`}
                   >
                     <span
-                      className={`h-6 min-h-[24px] w-full shrink-0 transition ${
+                      className={`bp-gray-step-swatch h-6 min-h-[24px] w-full shrink-0 transition ${
                         isBlueprint
                           ? `rounded-[3px] border-[1.5px] border-slate-900 dark:border-slate-400 ${
                               isSelected
                                 ? "ring-2 ring-[var(--accent-color)] shadow-[2px_2px_0px_#0F172A]"
-                                : "shadow-[1.5px_1.5px_0px_#0F172A]"
+                                : "shadow-[2px_2px_0px_#0F172A]"
                             }`
                           : `rounded-md border ${
                               isSelected
@@ -4443,12 +4453,14 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                             isAnchorCell ? ` [★ 当前备选色 ${harmonyAnchorLabel} 近似格]` : ""
                           }`}
                           style={{ backgroundColor: cell.hex, minHeight: 32 }}
-                          className={`relative h-8 min-h-[32px] w-full shrink-0 transition cursor-pointer flex items-center justify-center ${
+                          className={`bp-matrix-cell ${
+                            isCurrent ? "bp-matrix-cell-active" : ""
+                          } relative h-8 min-h-[32px] w-full shrink-0 transition cursor-pointer flex items-center justify-center ${
                             isBlueprint
                               ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-400 ${
                                   isCurrent
-                                    ? "ring-2 ring-[var(--accent-color)] shadow-[2.5px_2.5px_0px_#0F172A] scale-[1.04] z-10"
-                                    : "shadow-[1.5px_1.5px_0px_#0F172A] hover:scale-[1.03]"
+                                    ? "ring-2 ring-[var(--accent-color)] shadow-[2.5px_2.5px_0px_#0F172A] z-10"
+                                    : "shadow-[2px_2px_0px_#0F172A]"
                                 }`
                               : `rounded-md border ${
                                   isCurrent
@@ -4513,11 +4525,13 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                     type="button"
                     onClick={() => setHarmonyMode(tab.id)}
                     className={`py-1 px-1 text-[10px] font-extrabold transition cursor-pointer truncate ${
+                      active ? "bp-pill-active" : "bp-pill"
+                    } ${
                       isBlueprint
                         ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 font-mono ${
                             active
                               ? "bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
-                              : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[1.5px_1.5px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
+                              : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[2px_2px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
                           }`
                         : `rounded-lg border ${
                             active
@@ -4538,6 +4552,8 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                 return (
                   <div
                     key={`${sw.role}-${idx}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() =>
                       applyPaintToSelectedRegions(sw.hex, {
                         brand: "和谐推荐",
@@ -4546,11 +4562,11 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                       })
                     }
                     title={`${sw.role} (${sw.tag}) · ${sw.hex} — 点击直接上色，右上角「+」可存入备选栏`}
-                    className={`group relative flex flex-col items-center p-1 transition cursor-pointer shrink-0 ${
+                    className={`bp-subcard bp-subcard-interactive group relative flex flex-col items-center p-1 transition cursor-pointer shrink-0 ${
                       isBlueprint
                         ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 shadow-[2px_2px_0px_#0F172A] ${
                             isCurrent
-                              ? "bg-[var(--accent-soft)] ring-1 ring-[var(--accent-color)]"
+                              ? "bp-subcard-active bg-[var(--accent-soft)] ring-1 ring-[var(--accent-color)]"
                               : "bg-white dark:bg-slate-800/90 hover:bg-[var(--accent-soft)]"
                           }`
                         : `rounded-lg border ${
@@ -4561,10 +4577,10 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                     }`}
                   >
                     <span
-                      className={`h-6 min-h-[24px] w-full shrink-0 transition group-hover:scale-105 ${
+                      className={`h-6 min-h-[24px] w-full shrink-0 transition ${
                         isBlueprint
                           ? "rounded-[3px] border-[1.5px] border-slate-900 dark:border-slate-400"
-                          : "rounded border border-black/15 dark:border-white/15"
+                          : "rounded border border-black/15 dark:border-white/15 group-hover:scale-105"
                       }`}
                       style={{ backgroundColor: sw.hex }}
                     />
@@ -5994,11 +6010,13 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                 type="button"
                 onClick={() => setShowShadingPopover((v) => !v)}
                 title={`当前光影合成：${shadingFullLabel}（点击切换 四层光影推导 / 3D相对光影保留 / 2D纯色平涂）`}
-                className={`relative w-[35px] h-[31px] sm:w-[42px] sm:h-[42px] flex flex-col items-center justify-center transition cursor-pointer ${
+                className={`bp-btn ${
+                  showShadingPopover ? "bp-pill-active" : ""
+                } relative w-[35px] h-[31px] sm:w-[42px] sm:h-[42px] flex flex-col items-center justify-center transition cursor-pointer ${
                   isBlueprint
                     ? showShadingPopover
                       ? "rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-400 bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
-                      : "rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-[var(--accent-soft)] text-slate-900 dark:text-white hover:bg-[var(--accent-color)] hover:text-white"
+                      : "rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-[var(--accent-soft)] text-slate-900 dark:text-white shadow-[2px_2px_0px_#0F172A] hover:bg-[var(--accent-color)] hover:text-white"
                     : showShadingPopover
                     ? "rounded-xl border border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-md backdrop-blur-md"
                     : "rounded-xl border border-[var(--accent-color)]/45 bg-[var(--accent-soft)] text-[var(--accent-color)] dark:text-white hover:bg-[var(--accent-color)] hover:text-white backdrop-blur-md"
@@ -7043,13 +7061,15 @@ const SquareDockButton: React.FC<{
     translate="no"
     onClick={onClick}
     title={title}
-    className={`notranslate w-[35px] h-[31px] sm:w-[42px] sm:h-[42px] shrink-0 flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors ${
+    className={`bp-btn ${
+      active ? "bp-pill-active" : ""
+    } notranslate w-[35px] h-[31px] sm:w-[42px] sm:h-[42px] shrink-0 flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors ${
       active
         ? isBlueprint
           ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-400 bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
           : "rounded-xl bg-[var(--accent-color)] text-white shadow-md"
         : isBlueprint
-        ? `rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[1.5px_1.5px_0px_#0F172A] ${
+        ? `rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[2px_2px_0px_#0F172A] ${
             dangerHover
               ? "hover:bg-rose-50 hover:text-rose-600 hover:border-rose-600 dark:hover:bg-rose-950/60 dark:hover:text-rose-300"
               : "hover:bg-slate-100 dark:hover:bg-slate-700"

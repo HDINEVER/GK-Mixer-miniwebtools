@@ -202,7 +202,118 @@ const App: React.FC = () => {
   useEffect(() => {
     const noopTouch = () => {};
     document.addEventListener('touchstart', noopTouch, { passive: true });
-    return () => document.removeEventListener('touchstart', noopTouch);
+
+    const BP_INTERACTIVE_SELECTOR = [
+      '.bp-btn:not(:disabled)',
+      '.bp-pill:not(:disabled)',
+      '.bp-pill-active:not(:disabled)',
+      '.bp-use-btn:not(:disabled)',
+      '.bp-use-btn-used:not(:disabled)',
+      '.bp-fab:not(:disabled)',
+      '.bp-segmented-item:not(:disabled)',
+      '.bp-segmented-item-active:not(:disabled)',
+      '.gk-mech-btn:not(:disabled)',
+      '.gk-mech-primary:not(:disabled)',
+      '.gk-btn-primary:not(:disabled)',
+      '.gk-btn-secondary:not(:disabled)',
+      '.gk-tab-pill:not(:disabled)',
+      '.gk-tab-pill-active:not(:disabled)',
+      '.bp-delete-btn:not(:disabled)',
+      '.bp-matrix-cell:not(:disabled)',
+      '.bp-matrix-cell-active:not(:disabled)',
+      '.bp-gray-step-btn:not(:disabled)',
+      'button.bp-subcard:not(:disabled)',
+      'button.bp-subcard-active:not(:disabled)',
+      'label.bp-subcard',
+      '.bp-subcard-interactive',
+      '.bp-project-card',
+      '.bp-extracted-card',
+      'button[class*="shadow-["]:not(:disabled)',
+      'label[class*="shadow-["]',
+      'button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not([class*="border-t"]):not([class*="border-0"]):not([class*="border-transparent"]):not(:disabled)',
+    ].join(', ');
+
+    const MIN_PRESS_HOLD_MS = 95;
+    const MAX_PRESS_SAFETY_MS = 650;
+    const activePresses = new Map<
+      HTMLElement,
+      { downAt: number; releaseTimer: number; safetyTimer: number }
+    >();
+
+    const clearPressedElement = (el: HTMLElement) => {
+      const entry = activePresses.get(el);
+      if (entry) {
+        if (entry.releaseTimer) window.clearTimeout(entry.releaseTimer);
+        if (entry.safetyTimer) window.clearTimeout(entry.safetyTimer);
+        activePresses.delete(el);
+      }
+      el.removeAttribute('data-bp-pressed');
+    };
+
+    const handlePointerDownCapture = (e: PointerEvent) => {
+      if (document.documentElement.getAttribute('data-ui-style') !== 'blueprint') return;
+      if (!(e.target instanceof Element)) return;
+      const target = e.target.closest(BP_INTERACTIVE_SELECTOR) as HTMLElement | null;
+      if (!target) return;
+
+      const existing = activePresses.get(target);
+      if (existing) {
+        if (existing.releaseTimer) window.clearTimeout(existing.releaseTimer);
+        if (existing.safetyTimer) window.clearTimeout(existing.safetyTimer);
+      }
+
+      target.setAttribute('data-bp-pressed', 'true');
+      const downAt = performance.now();
+      const safetyTimer = window.setTimeout(() => {
+        clearPressedElement(target);
+      }, MAX_PRESS_SAFETY_MS);
+
+      activePresses.set(target, { downAt, releaseTimer: 0, safetyTimer });
+    };
+
+    const handlePointerReleaseCapture = () => {
+      if (activePresses.size === 0) return;
+      const now = performance.now();
+      activePresses.forEach((entry, el) => {
+        if (entry.releaseTimer) return;
+        const elapsed = now - entry.downAt;
+        const remaining = Math.max(0, MIN_PRESS_HOLD_MS - elapsed);
+        if (remaining === 0) {
+          clearPressedElement(el);
+        } else {
+          entry.releaseTimer = window.setTimeout(() => {
+            clearPressedElement(el);
+          }, remaining);
+        }
+      });
+    };
+
+    document.addEventListener('pointerdown', handlePointerDownCapture, {
+      capture: true,
+      passive: true,
+    });
+    window.addEventListener('pointerup', handlePointerReleaseCapture, {
+      capture: true,
+      passive: true,
+    });
+    window.addEventListener('pointercancel', handlePointerReleaseCapture, {
+      capture: true,
+      passive: true,
+    });
+
+    return () => {
+      document.removeEventListener('touchstart', noopTouch);
+      document.removeEventListener('pointerdown', handlePointerDownCapture, {
+        capture: true,
+      });
+      window.removeEventListener('pointerup', handlePointerReleaseCapture, {
+        capture: true,
+      });
+      window.removeEventListener('pointercancel', handlePointerReleaseCapture, {
+        capture: true,
+      });
+      activePresses.forEach((_entry, el) => clearPressedElement(el));
+    };
   }, []);
 
   useEffect(() => {

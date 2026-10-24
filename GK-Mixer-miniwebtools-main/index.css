@@ -416,26 +416,12 @@ html[data-ui-style="blueprint"] .gk-mech-btn,
 html[data-ui-style="blueprint"] .gk-btn-secondary {
   border: 1.5px solid #0F172A !important;
   border-radius: 5px !important;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
 }
 html.dark[data-ui-style="blueprint"] .gk-mech-btn,
 html.dark[data-ui-style="blueprint"] .gk-btn-secondary {
   border: 1.5px solid #475569 !important;
-}
-html[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled):hover,
-html[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled):hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 2px 2px 0px #0F172A;
-}
-html.dark[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled):hover,
-html.dark[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled):hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 2px 2px 0px #020617;
-}
-html[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled):active,
-html[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled):active {
-  transform: translate(1px, 1px) !important;
-  box-shadow: 0px 0px 0px !important;
+  box-shadow: 2px 2px 0px #020617 !important;
 }
 
 /* Active tab / Primary action button in blueprint mode */
@@ -453,12 +439,6 @@ html.dark[data-ui-style="blueprint"] .gk-btn-primary,
 html.dark[data-ui-style="blueprint"] .gk-tab-pill-active {
   border-color: #64748B !important;
   box-shadow: 2px 2px 0px #020617 !important;
-}
-html[data-ui-style="blueprint"] .gk-mech-primary:not(:disabled):active,
-html[data-ui-style="blueprint"] .gk-btn-primary:not(:disabled):active,
-html[data-ui-style="blueprint"] .gk-tab-pill-active:not(:disabled):active {
-  transform: translate(1px, 1px) !important;
-  box-shadow: 0px 0px 0px !important;
 }
 
 /* Tab bar container & inactive tabs in blueprint mode (single-row compact layout matching glass mode) */
@@ -482,18 +462,16 @@ html[data-ui-style="blueprint"] .gk-tab-pill {
 }
 html[data-ui-style="blueprint"] .gk-tab-pill:not(.gk-tab-pill-active) {
   border-radius: 4px !important;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
 }
-html[data-ui-style="blueprint"] .gk-tab-pill:not(.gk-tab-pill-active):hover {
+html[data-ui-style="blueprint"] .gk-tab-pill:not(.gk-tab-pill-active):hover:not(:active):not([data-bp-pressed="true"]) {
   border-color: #0F172A;
   background-color: #FFFFFF;
-  transform: translate(-1px, -1px);
   box-shadow: 2px 2px 0px #0F172A;
 }
-html.dark[data-ui-style="blueprint"] .gk-tab-pill:not(.gk-tab-pill-active):hover {
+html.dark[data-ui-style="blueprint"] .gk-tab-pill:not(.gk-tab-pill-active):hover:not(:active):not([data-bp-pressed="true"]) {
   border-color: #475569;
   background-color: #1E293B;
-  transform: translate(-1px, -1px);
   box-shadow: 2px 2px 0px #020617;
 }
 
@@ -572,15 +550,11 @@ html.dark[data-ui-style="blueprint"] .bp-subcard-active {
   background-color: rgba(15, 23, 42, 0.9) !important;
   box-shadow: 3px 3px 0px #020617 !important;
 }
-html[data-ui-style="blueprint"] .bp-subcard-interactive:hover {
-  transform: translate(-1px, -1px) !important;
+html[data-ui-style="blueprint"] .bp-subcard-interactive:hover:not(:active):not([data-bp-pressed="true"]) {
   border-color: var(--accent-color) !important;
-  box-shadow: 3px 3px 0px #0F172A !important;
 }
-html.dark[data-ui-style="blueprint"] .bp-subcard-interactive:hover {
-  transform: translate(-1px, -1px) !important;
+html.dark[data-ui-style="blueprint"] .bp-subcard-interactive:hover:not(:active):not([data-bp-pressed="true"]) {
   border-color: var(--accent-color) !important;
-  box-shadow: 3px 3px 0px #020617 !important;
 }
 
 /* Larger internal panels / TOP 6 cards / Chroma Studio sub-cards (3px hard shadow) */
@@ -608,15 +582,11 @@ html.dark[data-ui-style="blueprint"] .bp-project-card {
   background-color: #111827 !important;
   box-shadow: 4px 4px 0px #020617 !important;
 }
-html[data-ui-style="blueprint"] .bp-project-card:hover {
-  transform: translate(-1px, -1px) !important;
-  border-color: #0F172A !important;
-  box-shadow: 5px 5px 0px #0F172A !important;
-}
-html.dark[data-ui-style="blueprint"] .bp-project-card:hover {
-  transform: translate(-1px, -1px) !important;
+html[data-ui-style="blueprint"] .bp-project-card:hover:not(:active):not([data-bp-pressed="true"]) {
   border-color: var(--accent-color) !important;
-  box-shadow: 5px 5px 0px #020617 !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-project-card:hover:not(:active):not([data-bp-pressed="true"]) {
+  border-color: var(--accent-color) !important;
 }
 html[data-ui-style="blueprint"] .bp-cover-top {
   border-top-left-radius: 4px !important;
@@ -641,7 +611,18 @@ html.dark[data-ui-style="blueprint"] .bp-segmented {
 }
 html[data-ui-style="blueprint"] .bp-segmented-item {
   border-radius: 4px !important;
+  border: 1.5px solid transparent !important;
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+}
+html[data-ui-style="blueprint"] .bp-segmented-item:not(.bp-segmented-item-active):hover:not(:active):not([data-bp-pressed="true"]) {
+  border-color: #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-segmented-item:not(.bp-segmented-item-active):hover:not(:active):not([data-bp-pressed="true"]) {
+  border-color: #64748B !important;
+  background-color: #1E293B !important;
+  box-shadow: 1.5px 1.5px 0px #020617 !important;
 }
 html[data-ui-style="blueprint"] .bp-segmented-item-active {
   border-radius: 4px !important;
@@ -649,11 +630,11 @@ html[data-ui-style="blueprint"] .bp-segmented-item-active {
   background-color: var(--accent-color) !important;
   color: #FFFFFF !important;
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
-  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-segmented-item-active {
   border-color: #64748B !important;
-  box-shadow: 1.5px 1.5px 0px #020617 !important;
+  box-shadow: 2px 2px 0px #020617 !important;
 }
 
 /* Filter Pills / Brand Chips / Category Tags */
@@ -720,21 +701,26 @@ html.dark[data-ui-style="blueprint"] .bp-swatch {
 
 html[data-ui-style="blueprint"] .bp-matrix-cell {
   border-radius: 4px !important;
-  border: 1.5px solid rgba(15, 23, 42, 0.85) !important;
-  box-shadow: none !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+  scale: 1 !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-matrix-cell {
-  border: 1.5px solid rgba(148, 163, 184, 0.65) !important;
+  border: 1.5px solid #64748B !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+  scale: 1 !important;
 }
 html[data-ui-style="blueprint"] .bp-matrix-cell-active {
   border-radius: 4px !important;
   border: 2px solid #0F172A !important;
-  box-shadow: 3px 3px 0px #0F172A !important;
+  box-shadow: 2.5px 2.5px 0px #0F172A !important;
   outline: none !important;
+  scale: 1 !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-matrix-cell-active {
   border: 2px solid #F8FAFC !important;
-  box-shadow: 3px 3px 0px #020617 !important;
+  box-shadow: 2.5px 2.5px 0px #020617 !important;
+  scale: 1 !important;
 }
 
 html[data-ui-style="blueprint"] .bp-badge {
@@ -764,14 +750,6 @@ html[data-ui-style="blueprint"] .bp-btn {
 html.dark[data-ui-style="blueprint"] .bp-btn {
   border-color: #475569 !important;
   box-shadow: 2px 2px 0px #020617 !important;
-}
-html[data-ui-style="blueprint"] .bp-btn:not(:disabled):hover {
-  transform: translate(-1px, -1px) !important;
-  box-shadow: 3px 3px 0px #0F172A !important;
-}
-html[data-ui-style="blueprint"] .bp-btn:not(:disabled):active {
-  transform: translate(1px, 1px) !important;
-  box-shadow: 0px 0px 0px !important;
 }
 
 html[data-ui-style="blueprint"] .bp-use-btn {
@@ -1082,175 +1060,175 @@ html.dark[data-ui-style="blueprint"] .bp-mixed-preview {
 /* Ensure any bordered rounded button in Blueprint mode that doesn't already
    carry a .bp-* class still gets the signature Blueprint border & hard shadow */
 html[data-ui-style="blueprint"]
-  button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
-    [class*="border-t"]
-  ):not([class*="border-0"]):not([class*="border-transparent"]):not(
-    .bp-segmented-item
-  ):not(.gk-tab-pill):not(:disabled) {
+  :where(
+    button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+      [class*="border-t"]
+    ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+      .bp-segmented-item
+    ):not(.gk-tab-pill):not(.bp-gray-step-btn):not(:disabled)
+  ) {
   border: 1.5px solid #0F172A !important;
   box-shadow: 2px 2px 0px #0F172A !important;
 }
 html.dark[data-ui-style="blueprint"]
-  button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
-    [class*="border-t"]
-  ):not([class*="border-0"]):not([class*="border-transparent"]):not(
-    .bp-segmented-item
-  ):not(.gk-tab-pill):not(:disabled) {
+  :where(
+    button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+      [class*="border-t"]
+    ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+      .bp-segmented-item
+    ):not(.gk-tab-pill):not(.bp-gray-step-btn):not(:disabled)
+  ) {
   border-color: #475569 !important;
   box-shadow: 2px 2px 0px #020617 !important;
 }
 
 /* Resting spring transition so releasing the button bounces the black shadow back */
-html[data-ui-style="blueprint"] .bp-btn:not(:disabled),
-html[data-ui-style="blueprint"] .bp-pill:not(:disabled),
-html[data-ui-style="blueprint"] .bp-pill-active:not(:disabled),
-html[data-ui-style="blueprint"] .bp-use-btn:not(:disabled),
-html[data-ui-style="blueprint"] .bp-use-btn-used:not(:disabled),
-html[data-ui-style="blueprint"] .bp-fab:not(:disabled),
-html[data-ui-style="blueprint"] .bp-segmented-item:not(:disabled),
-html[data-ui-style="blueprint"] .bp-segmented-item-active:not(:disabled),
-html[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled),
-html[data-ui-style="blueprint"] .gk-mech-primary:not(:disabled),
-html[data-ui-style="blueprint"] .gk-btn-primary:not(:disabled),
-html[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled),
-html[data-ui-style="blueprint"] .gk-tab-pill:not(:disabled),
-html[data-ui-style="blueprint"] .gk-tab-pill-active:not(:disabled),
-html[data-ui-style="blueprint"] .bp-delete-btn:not(:disabled),
-html[data-ui-style="blueprint"] .bp-matrix-cell:not(:disabled),
-html[data-ui-style="blueprint"] .bp-matrix-cell-active:not(:disabled),
-html[data-ui-style="blueprint"] button.bp-subcard:not(:disabled),
-html[data-ui-style="blueprint"] button.bp-subcard-active:not(:disabled),
-html[data-ui-style="blueprint"] label.bp-subcard,
-html[data-ui-style="blueprint"] .bp-subcard-interactive,
-html[data-ui-style="blueprint"] .bp-project-card,
-html[data-ui-style="blueprint"] .bp-extracted-card,
-html[data-ui-style="blueprint"] button[class*="shadow-["]:not(:disabled),
-html[data-ui-style="blueprint"] label[class*="shadow-["],
 html[data-ui-style="blueprint"]
-  button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
-    [class*="border-t"]
-  ):not([class*="border-0"]):not([class*="border-transparent"]):not(:disabled) {
+  :where(
+    .bp-btn:not(:disabled),
+    .bp-pill:not(:disabled),
+    .bp-pill-active:not(:disabled),
+    .bp-use-btn:not(:disabled),
+    .bp-use-btn-used:not(:disabled),
+    .bp-fab:not(:disabled),
+    .bp-segmented-item:not(:disabled),
+    .bp-segmented-item-active:not(:disabled),
+    .gk-mech-btn:not(:disabled),
+    .gk-mech-primary:not(:disabled),
+    .gk-btn-primary:not(:disabled),
+    .gk-btn-secondary:not(:disabled),
+    .gk-tab-pill:not(:disabled),
+    .gk-tab-pill-active:not(:disabled),
+    .bp-delete-btn:not(:disabled),
+    .bp-matrix-cell:not(:disabled),
+    .bp-matrix-cell-active:not(:disabled),
+    .bp-gray-step-swatch,
+    button.bp-subcard:not(:disabled),
+    button.bp-subcard-active:not(:disabled),
+    label.bp-subcard,
+    .bp-subcard-interactive,
+    .bp-project-card,
+    .bp-extracted-card,
+    button[class*="shadow-["]:not(:disabled),
+    label[class*="shadow-["],
+    button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+      [class*="border-t"]
+    ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+      .bp-gray-step-btn
+    ):not(:disabled)
+  ) {
+  transform: translate(0px, 0px);
+  scale: 1 !important;
   transition:
-    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 0.22s cubic-bezier(0.34, 1.65, 0.64, 1),
+    box-shadow 0.22s cubic-bezier(0.34, 1.65, 0.64, 1),
     background-color 0.12s ease,
     border-color 0.12s ease !important;
   will-change: transform, box-shadow;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Hover lift for Blueprint pills & buttons */
-@media (hover: hover) {
-  html[data-ui-style="blueprint"] .bp-pill:not(:disabled):hover,
-  html[data-ui-style="blueprint"] .bp-pill-active:not(:disabled):hover,
-  html[data-ui-style="blueprint"] .bp-use-btn:not(:disabled):hover,
-  html[data-ui-style="blueprint"] .bp-use-btn-used:not(:disabled):hover,
-  html[data-ui-style="blueprint"] .bp-fab:not(:disabled):hover,
-  html[data-ui-style="blueprint"] .bp-delete-btn:not(:disabled):hover,
-  html[data-ui-style="blueprint"] button.bp-subcard:not(:disabled):hover,
-  html[data-ui-style="blueprint"] label.bp-subcard:hover,
-  html[data-ui-style="blueprint"]
+/* Active & Pressed State: Instant Black-Shadow Collapse (0px 0px 0px) + Translate into Shadow (2px, 2px) */
+html[data-ui-style="blueprint"]
+  :where(
+    .bp-btn:not(:disabled),
+    .bp-pill:not(:disabled),
+    .bp-pill-active:not(:disabled),
+    .bp-use-btn:not(:disabled),
+    .bp-use-btn-used:not(:disabled),
+    .bp-fab:not(:disabled),
+    .bp-segmented-item:not(:disabled),
+    .bp-segmented-item-active:not(:disabled),
+    .gk-mech-btn:not(:disabled),
+    .gk-mech-primary:not(:disabled),
+    .gk-btn-primary:not(:disabled),
+    .gk-btn-secondary:not(:disabled),
+    .gk-tab-pill:not(:disabled),
+    .gk-tab-pill-active:not(:disabled),
+    .bp-delete-btn:not(:disabled),
+    .bp-matrix-cell:not(:disabled),
+    .bp-matrix-cell-active:not(:disabled),
+    button.bp-subcard:not(:disabled),
+    button.bp-subcard-active:not(:disabled),
+    label.bp-subcard,
+    button[class*="shadow-["]:not(:disabled),
+    label[class*="shadow-["],
     button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
       [class*="border-t"]
     ):not([class*="border-0"]):not([class*="border-transparent"]):not(
-      .bp-segmented-item
-    ):not(.gk-tab-pill):not(:disabled):hover {
-    transform: translate(-1px, -1px) !important;
-    box-shadow: 3px 3px 0px #0F172A !important;
-  }
-
-  html.dark[data-ui-style="blueprint"] .bp-pill:not(:disabled):hover,
-  html.dark[data-ui-style="blueprint"] .bp-pill-active:not(:disabled):hover,
-  html.dark[data-ui-style="blueprint"] .bp-use-btn:not(:disabled):hover,
-  html.dark[data-ui-style="blueprint"] .bp-use-btn-used:not(:disabled):hover,
-  html.dark[data-ui-style="blueprint"] .bp-fab:not(:disabled):hover,
-  html.dark[data-ui-style="blueprint"] .bp-delete-btn:not(:disabled):hover,
-  html.dark[data-ui-style="blueprint"] button.bp-subcard:not(:disabled):hover,
-  html.dark[data-ui-style="blueprint"] label.bp-subcard:hover,
-  html.dark[data-ui-style="blueprint"]
-    button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
-      [class*="border-t"]
-    ):not([class*="border-0"]):not([class*="border-transparent"]):not(
-      .bp-segmented-item
-    ):not(.gk-tab-pill):not(:disabled):hover {
-    transform: translate(-1px, -1px) !important;
-    box-shadow: 3px 3px 0px #020617 !important;
-  }
-}
-
-/* Active Press-Down State: Instant Black-Shadow Collapse (0px 0px 0px) + Translate into Shadow */
-html[data-ui-style="blueprint"] .bp-btn:not(:disabled):active,
-html[data-ui-style="blueprint"] .bp-pill:not(:disabled):active,
-html[data-ui-style="blueprint"] .bp-pill-active:not(:disabled):active,
-html[data-ui-style="blueprint"] .bp-use-btn:not(:disabled):active,
-html[data-ui-style="blueprint"] .bp-use-btn-used:not(:disabled):active,
-html[data-ui-style="blueprint"] .bp-fab:not(:disabled):active,
-html[data-ui-style="blueprint"] .bp-segmented-item:not(:disabled):active,
-html[data-ui-style="blueprint"] .bp-segmented-item-active:not(:disabled):active,
-html[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled):active,
-html[data-ui-style="blueprint"] .gk-mech-primary:not(:disabled):active,
-html[data-ui-style="blueprint"] .gk-btn-primary:not(:disabled):active,
-html[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled):active,
-html[data-ui-style="blueprint"] .gk-tab-pill:not(:disabled):active,
-html[data-ui-style="blueprint"] .gk-tab-pill-active:not(:disabled):active,
-html[data-ui-style="blueprint"] .bp-delete-btn:not(:disabled):active,
-html[data-ui-style="blueprint"] .bp-matrix-cell:not(:disabled):active,
-html[data-ui-style="blueprint"] .bp-matrix-cell-active:not(:disabled):active,
-html[data-ui-style="blueprint"] button.bp-subcard:not(:disabled):active,
-html[data-ui-style="blueprint"] button.bp-subcard-active:not(:disabled):active,
-html[data-ui-style="blueprint"] label.bp-subcard:active,
+      .bp-gray-step-btn
+    ):not(:disabled)
+  ):is(:active, [data-bp-pressed="true"]),
 html[data-ui-style="blueprint"]
-  .bp-subcard-interactive:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
+  :where(.bp-subcard-interactive, .bp-project-card, .bp-extracted-card):not(
+    :has(
+      button:active,
+      button[data-bp-pressed="true"],
+      label:active,
+      label[data-bp-pressed="true"],
+      input:active,
+      [role="button"]:active,
+      [role="button"][data-bp-pressed="true"]
+    )
+  ):is(:active, [data-bp-pressed="true"]),
 html[data-ui-style="blueprint"]
-  .bp-project-card:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
-html[data-ui-style="blueprint"]
-  .bp-extracted-card:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
-html[data-ui-style="blueprint"] button[class*="shadow-["]:not(:disabled):active,
-html[data-ui-style="blueprint"] label[class*="shadow-["]:active,
-html[data-ui-style="blueprint"]
-  button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
-    [class*="border-t"]
-  ):not([class*="border-0"]):not([class*="border-transparent"]):not(:disabled):active {
+  .bp-gray-step-btn:is(:active, [data-bp-pressed="true"])
+  .bp-gray-step-swatch {
   transform: translate(2px, 2px) !important;
+  scale: 1 !important;
   box-shadow: 0px 0px 0px #0F172A !important;
-  transition: transform 0.035s ease-out, box-shadow 0.035s ease-out !important;
+  transition: transform 0.025s ease-out, box-shadow 0.025s ease-out !important;
 }
 
-html.dark[data-ui-style="blueprint"] .bp-btn:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .bp-pill:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .bp-pill-active:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .bp-use-btn:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .bp-use-btn-used:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .bp-fab:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .bp-segmented-item:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .bp-segmented-item-active:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .gk-mech-btn:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .gk-mech-primary:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .gk-btn-primary:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .gk-btn-secondary:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .gk-tab-pill:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .gk-tab-pill-active:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .bp-delete-btn:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .bp-matrix-cell:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] .bp-matrix-cell-active:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] button.bp-subcard:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] button.bp-subcard-active:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] label.bp-subcard:active,
 html.dark[data-ui-style="blueprint"]
-  .bp-subcard-interactive:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
+  :where(
+    .bp-btn:not(:disabled),
+    .bp-pill:not(:disabled),
+    .bp-pill-active:not(:disabled),
+    .bp-use-btn:not(:disabled),
+    .bp-use-btn-used:not(:disabled),
+    .bp-fab:not(:disabled),
+    .bp-segmented-item:not(:disabled),
+    .bp-segmented-item-active:not(:disabled),
+    .gk-mech-btn:not(:disabled),
+    .gk-mech-primary:not(:disabled),
+    .gk-btn-primary:not(:disabled),
+    .gk-btn-secondary:not(:disabled),
+    .gk-tab-pill:not(:disabled),
+    .gk-tab-pill-active:not(:disabled),
+    .bp-delete-btn:not(:disabled),
+    .bp-matrix-cell:not(:disabled),
+    .bp-matrix-cell-active:not(:disabled),
+    button.bp-subcard:not(:disabled),
+    button.bp-subcard-active:not(:disabled),
+    label.bp-subcard,
+    button[class*="shadow-["]:not(:disabled),
+    label[class*="shadow-["],
+    button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+      [class*="border-t"]
+    ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+      .bp-gray-step-btn
+    ):not(:disabled)
+  ):is(:active, [data-bp-pressed="true"]),
 html.dark[data-ui-style="blueprint"]
-  .bp-project-card:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
+  :where(.bp-subcard-interactive, .bp-project-card, .bp-extracted-card):not(
+    :has(
+      button:active,
+      button[data-bp-pressed="true"],
+      label:active,
+      label[data-bp-pressed="true"],
+      input:active,
+      [role="button"]:active,
+      [role="button"][data-bp-pressed="true"]
+    )
+  ):is(:active, [data-bp-pressed="true"]),
 html.dark[data-ui-style="blueprint"]
-  .bp-extracted-card:not(:has(button:active, label:active, input:active, [role="button"]:active)):active,
-html.dark[data-ui-style="blueprint"] button[class*="shadow-["]:not(:disabled):active,
-html.dark[data-ui-style="blueprint"] label[class*="shadow-["]:active,
-html.dark[data-ui-style="blueprint"]
-  button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
-    [class*="border-t"]
-  ):not([class*="border-0"]):not([class*="border-transparent"]):not(:disabled):active {
+  .bp-gray-step-btn:is(:active, [data-bp-pressed="true"])
+  .bp-gray-step-swatch {
   transform: translate(2px, 2px) !important;
+  scale: 1 !important;
   box-shadow: 0px 0px 0px #020617 !important;
-  transition: transform 0.035s ease-out, box-shadow 0.035s ease-out !important;
+  transition: transform 0.025s ease-out, box-shadow 0.025s ease-out !important;
 }
 
 

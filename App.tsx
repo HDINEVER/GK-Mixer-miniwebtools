@@ -38,7 +38,7 @@ import { SwatchEditorModal } from './components/SwatchEditorModal';
 import { SaveToProjectModal } from './components/SaveToProjectModal';
 import QuickPaintAssignSheet from './components/QuickPaintAssignSheet';
 import ColoringSandboxLab, { SandboxSyncPayload } from './components/ColoringSandboxLab';
-import ColorLoupe, { ColorLoupeHandle, sampleCanvasAtClient } from './components/ColorLoupe';
+import ColorLoupe, { ColorLoupeHandle, resolveTouchSamplePoint, sampleCanvasAtClient } from './components/ColorLoupe';
 import ExtractMarkerOverlay from './components/ExtractMarkerOverlay';
 import SwatchStudioControls from './components/SwatchStudioControls';
 import Loader from './components/Loader';
@@ -506,11 +506,12 @@ const App: React.FC = () => {
 
   const handleImageLoaded = (_file: File, img: HTMLImageElement) => {
     setSourceImage(img.src);
-    // Reset zoom
+    // Reset zoom & automatically enable picking so touching the uploaded image immediately shows the thumb-front crosshair + magnifier
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setColors([]);
     setSelectedColorId(null);
+    setIsPicking(true);
   };
 
   const handleManualAdd = () => {
@@ -620,9 +621,12 @@ const App: React.FC = () => {
     }
   };
 
-  const previewAtClient = useCallback((clientX: number, clientY: number) => {
-    loupeHandleRef.current?.updateAtClient(clientX, clientY);
-  }, []);
+  const previewAtClient = useCallback(
+    (clientX: number, clientY: number, rawTouchX?: number, rawTouchY?: number) => {
+      loupeHandleRef.current?.updateAtClient(clientX, clientY, rawTouchX, rawTouchY);
+    },
+    []
+  );
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isPicking || !canvasRef.current) return;
@@ -1236,19 +1240,26 @@ const App: React.FC = () => {
       }
       const touch = e.touches[0];
 
-      // If in color picking mode and touched on the image canvas
+      // If in color picking mode and touched on the image canvas (use thumb-front offset target so thumb never blocks target)
       if (isPicking && canvasRef.current) {
-        const rgb = sampleCanvasAtClient(canvasRef.current, touch.clientX, touch.clientY);
+        const { targetX, targetY, isInsideTouch } = resolveTouchSamplePoint(
+          canvasRef.current,
+          touch.clientX,
+          touch.clientY
+        );
+        const rgb = isInsideTouch
+          ? sampleCanvasAtClient(canvasRef.current, targetX, targetY)
+          : null;
         if (rgb) {
           if (e.cancelable) e.preventDefault();
           touchPickRef.current = {
             startX: touch.clientX,
             startY: touch.clientY,
-            lastX: touch.clientX,
-            lastY: touch.clientY,
+            lastX: targetX,
+            lastY: targetY,
             startTime: Date.now(),
           };
-          previewAtClient(touch.clientX, touch.clientY);
+          previewAtClient(targetX, targetY, touch.clientX, touch.clientY);
         } else {
           // Touch outside canvas pixels while in picking mode -> exit picking mode so single finger can scroll
           touchPickRef.current = null;
@@ -1312,13 +1323,18 @@ const App: React.FC = () => {
       return;
     }
 
-    // 1 Finger Color Picker preview (ONLY when a valid picking touch is active on canvas)
+    // 1 Finger Color Picker preview (ONLY when a valid picking touch is active on canvas; uses thumb-front offset target)
     if (e.touches.length === 1 && isPicking && touchPickRef.current && canvasRef.current) {
       if (e.cancelable) e.preventDefault();
       const touch = e.touches[0];
-      touchPickRef.current.lastX = touch.clientX;
-      touchPickRef.current.lastY = touch.clientY;
-      previewAtClient(touch.clientX, touch.clientY);
+      const { targetX, targetY } = resolveTouchSamplePoint(
+        canvasRef.current,
+        touch.clientX,
+        touch.clientY
+      );
+      touchPickRef.current.lastX = targetX;
+      touchPickRef.current.lastY = targetY;
+      previewAtClient(targetX, targetY, touch.clientX, touch.clientY);
       return;
     }
   }, [applyTransform, isPicking, clampSourceViewport]);
@@ -1836,8 +1852,8 @@ const App: React.FC = () => {
                     <div className="flex items-center justify-between gap-2 px-1 pt-0.5">
                       <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-snug">
                         {lang === 'zh'
-                          ? '点按画面取色；放大请用双指捏合。点按右下角菜单可收藏颜色、导出 PNG 或保存至涂装项目。'
-                          : 'Tap image to pick color; pinch with 2 fingers to zoom. Use the menu on the right to save or export.'}
+                          ? '按住画面滑动可通过「拇指前十字星 + 箭头 + 放大镜」精准取色；放大请用双指捏合。点按右侧菜单可收藏或导出。'
+                          : 'Touch & slide to pick color with thumb-front crosshair + magnifier; pinch with 2 fingers to zoom.'}
                       </p>
 
                       {/* Plain ••• Button (44x44px hit area, no outer circle border, coral accent) */}
@@ -2711,6 +2727,7 @@ const App: React.FC = () => {
                             onNavigateToSandbox={() => handleSwitchDesktopTab('coloring')}
                             hasSamplePoint={!!selectedSandboxColor}
                             assignedId={selectedSandboxColor?.assignedPaint?.id || null}
+                            assignedPaint={selectedSandboxColor?.assignedPaint || null}
                             onAssignCatalog={handleAssignSandboxCatalogPaint}
                             onChangeHex={(newHex) => {
                               if (selectedSandboxColor) {
@@ -2739,6 +2756,7 @@ const App: React.FC = () => {
                         standaloneMode={true}
                         hasSamplePoint={!!selectedColor && hasSamplePoint(selectedColor)}
                         assignedId={selectedColor?.assignedPaint?.id || null}
+                        assignedPaint={selectedColor?.assignedPaint || null}
                         onAssignCatalog={handleAssignCatalogPaint}
                         onChangeHex={handleAddColor}
                         onSyncToWorkbench={(hex) => {

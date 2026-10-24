@@ -2348,6 +2348,142 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   const lastTouchDistRef = useRef<number>(1);
   const pinchCooldownUntilRef = useRef<number>(0);
 
+  // Mobile Thumb-Front Precision Sight (十字星 + 指示箭头 + 放大镜, avoids thumb blind spot on vertical screens)
+  const [thumbOffsetMode, setThumbOffsetMode] = useState<boolean>(true);
+  const studioTouchSightRef = useRef<HTMLDivElement>(null);
+  const studioTouchStemRef = useRef<HTMLDivElement>(null);
+  const studioLoupeContainerRef = useRef<HTMLDivElement>(null);
+  const studioLoupeCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  const hideStudioTouchSight = useCallback(() => {
+    if (studioTouchSightRef.current) {
+      studioTouchSightRef.current.style.opacity = "0";
+      studioTouchSightRef.current.style.transform = "translate3d(-9999px, -9999px, 0)";
+    }
+    if (studioLoupeContainerRef.current) {
+      studioLoupeContainerRef.current.style.opacity = "0";
+      studioLoupeContainerRef.current.style.transform = "translate3d(-9999px, -9999px, 0)";
+    }
+  }, []);
+
+  const resolveStudioTouchTarget = useCallback(
+    (touchX: number, touchY: number): { targetX: number; targetY: number } => {
+      if (!thumbOffsetMode) {
+        return { targetX: touchX, targetY: touchY };
+      }
+      const vp = viewportRef.current;
+      if (!vp) {
+        return { targetX: touchX, targetY: touchY - 44 };
+      }
+      const rect = vp.getBoundingClientRect();
+      const frontOffsetPx = 44;
+      const distFromTop = Math.max(0, touchY - rect.top);
+      const rampZone = frontOffsetPx * 1.35;
+      const effectiveOffset =
+        distFromTop < rampZone
+          ? distFromTop * (frontOffsetPx / rampZone)
+          : frontOffsetPx;
+      const targetX = Math.max(rect.left + 2, Math.min(rect.right - 2, touchX));
+      const targetY = Math.max(
+        rect.top + 2,
+        Math.min(rect.bottom - 2, touchY - effectiveOffset)
+      );
+      return { targetX, targetY };
+    },
+    [thumbOffsetMode]
+  );
+
+  const updateStudioTouchSight = useCallback(
+    (
+      targetX: number,
+      targetY: number,
+      touchX: number,
+      touchY: number,
+      imgPt: { x: number; y: number } | null
+    ) => {
+      if (!imgPt || dimsRef.current.w <= 0) {
+        hideStudioTouchSight();
+        return;
+      }
+
+      if (studioTouchSightRef.current) {
+        studioTouchSightRef.current.style.transform = `translate3d(${Math.round(targetX)}px, ${Math.round(targetY)}px, 0)`;
+        studioTouchSightRef.current.style.opacity = "1";
+      }
+      if (studioTouchStemRef.current) {
+        const stemLen = Math.max(0, Math.round(touchY - targetY - 14));
+        studioTouchStemRef.current.style.height = `${stemLen}px`;
+        studioTouchStemRef.current.style.display = stemLen > 6 ? "flex" : "none";
+      }
+
+      const loupeCanvas = studioLoupeCanvasRef.current;
+      const loupeContainer = studioLoupeContainerRef.current;
+      if (loupeCanvas && loupeContainer) {
+        const LSIZE = 92;
+        const srcSpan = 22;
+        const half = Math.floor(srcSpan / 2);
+        const sx = Math.round(imgPt.x - half);
+        const sy = Math.round(imgPt.y - half);
+        const ctx = loupeCanvas.getContext("2d");
+        if (ctx) {
+          ctx.imageSmoothingEnabled = false;
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(0, 0, LSIZE, LSIZE);
+          try {
+            if (baseCanvasRef.current) {
+              ctx.drawImage(baseCanvasRef.current, sx, sy, srcSpan, srcSpan, 0, 0, LSIZE, LSIZE);
+            }
+            if (fillCanvasRef.current && !isComparingOriginal) {
+              ctx.drawImage(fillCanvasRef.current, sx, sy, srcSpan, srcSpan, 0, 0, LSIZE, LSIZE);
+            }
+            if (lineCanvasRef.current && !isComparingOriginal && lineOpacity > 0) {
+              ctx.save();
+              ctx.globalAlpha = lineOpacity / 100;
+              ctx.globalCompositeOperation = "multiply";
+              ctx.drawImage(lineCanvasRef.current, sx, sy, srcSpan, srcSpan, 0, 0, LSIZE, LSIZE);
+              ctx.restore();
+            }
+          } catch {
+            // ignore edge draw
+          }
+
+          // Center crosshair inside Studio Loupe
+          const mid = LSIZE / 2;
+          ctx.strokeStyle = "rgba(0,0,0,0.65)";
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(mid, mid - 12);
+          ctx.lineTo(mid, mid + 12);
+          ctx.moveTo(mid - 12, mid);
+          ctx.lineTo(mid + 12, mid);
+          ctx.stroke();
+
+          ctx.strokeStyle = "rgba(255,255,255,0.98)";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(mid, mid - 12);
+          ctx.lineTo(mid, mid + 12);
+          ctx.moveTo(mid - 12, mid);
+          ctx.lineTo(mid + 12, mid);
+          ctx.stroke();
+        }
+
+        const vw = window.innerWidth || 390;
+        let left = targetX - LSIZE / 2;
+        let top = targetY - LSIZE - 36;
+        if (top < 10) {
+          top = Math.max(10, targetY - LSIZE / 2);
+          left = targetX > vw / 2 ? Math.max(8, targetX - LSIZE - 26) : Math.min(vw - LSIZE - 8, targetX + 26);
+        } else {
+          left = Math.max(8, Math.min(vw - LSIZE - 8, left));
+        }
+        loupeContainer.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+        loupeContainer.style.opacity = "1";
+      }
+    },
+    [hideStudioTouchSight, isComparingOriginal, lineOpacity]
+  );
+
   const gestureRef = useRef<{
     mode: GestureMode;
     startX: number;
@@ -2366,10 +2502,11 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     lastTouchMidRef.current = null;
     gestureRef.current.mode = "none";
     pointersRef.current.clear();
+    hideStudioTouchSight();
     if (withCooldown) {
       pinchCooldownUntilRef.current = performance.now() + 150;
     }
-  }, []);
+  }, [hideStudioTouchSight]);
 
   const startPanFrom = (x: number, y: number) => {
     const g = gestureRef.current;
@@ -2519,6 +2656,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
       isPinchingRef.current = true;
       isPanningRef.current = false;
       g.mode = "pinch";
+      hideStudioTouchSight();
       return;
     }
 
@@ -2536,13 +2674,16 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
       const t0 = e.touches[0];
       if (spaceRef.current || activeTool === "pan") {
         if (e.cancelable) e.preventDefault();
+        hideStudioTouchSight();
         startPanFrom(t0.clientX, t0.clientY);
         return;
       }
 
-      const pt = clientToImage(t0.clientX, t0.clientY);
+      const { targetX, targetY } = resolveStudioTouchTarget(t0.clientX, t0.clientY);
+      const pt = clientToImage(targetX, targetY);
       if (!pt) {
         if (e.cancelable) e.preventDefault();
+        hideStudioTouchSight();
         startPanFrom(t0.clientX, t0.clientY);
         return;
       }
@@ -2551,6 +2692,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
       if (activeTool === "pen" || activeTool === "lineEraser") {
         g.mode = "draw";
         beginStroke(pt);
+        updateStudioTouchSight(targetX, targetY, t0.clientX, t0.clientY, pt);
         return;
       }
 
@@ -2565,6 +2707,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
       fillStrokeLastImgPtRef.current = pt;
       fillStrokeStartTimeRef.current = performance.now();
       stepFillStrokeAt(pt.x, pt.y, true);
+      updateStudioTouchSight(targetX, targetY, t0.clientX, t0.clientY, pt);
     }
   };
 
@@ -2574,6 +2717,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     // 2 Fingers: simultaneous Pinch Zoom + Two-Finger Center Translation (dx, dy)
     if (e.touches.length === 2) {
       if (e.cancelable) e.preventDefault();
+      hideStudioTouchSight();
       const vp = viewportRef.current;
       if (!vp) return;
       const rect = vp.getBoundingClientRect();
@@ -2631,28 +2775,39 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
       }
       if (g.mode === "fillStroke") {
         if (e.cancelable) e.preventDefault();
-        const pt = clientToImage(t0.clientX, t0.clientY);
-        if (!pt) return;
+        const { targetX, targetY } = resolveStudioTouchTarget(t0.clientX, t0.clientY);
+        const pt = clientToImage(targetX, targetY);
+        if (!pt) {
+          hideStudioTouchSight();
+          return;
+        }
         const prev = fillStrokeLastImgPtRef.current || pt;
         const dist = Math.hypot(pt.x - prev.x, pt.y - prev.y);
-        if (dist < 2) return;
-        const steps = Math.max(1, Math.ceil(dist / 5));
-        for (let s = 1; s <= steps; s++) {
-          const t = s / steps;
-          const sx = Math.round(prev.x + (pt.x - prev.x) * t);
-          const sy = Math.round(prev.y + (pt.y - prev.y) * t);
-          stepFillStrokeAt(sx, sy, false);
+        if (dist >= 2) {
+          const steps = Math.max(1, Math.ceil(dist / 5));
+          for (let s = 1; s <= steps; s++) {
+            const t = s / steps;
+            const sx = Math.round(prev.x + (pt.x - prev.x) * t);
+            const sy = Math.round(prev.y + (pt.y - prev.y) * t);
+            stepFillStrokeAt(sx, sy, false);
+          }
+          fillStrokeLastImgPtRef.current = pt;
         }
-        fillStrokeLastImgPtRef.current = pt;
+        updateStudioTouchSight(targetX, targetY, t0.clientX, t0.clientY, pt);
         return;
       }
       if (g.mode === "draw") {
         if (e.cancelable) e.preventDefault();
-        const pt = clientToImage(t0.clientX, t0.clientY);
-        if (!pt) return;
+        const { targetX, targetY } = resolveStudioTouchTarget(t0.clientX, t0.clientY);
+        const pt = clientToImage(targetX, targetY);
+        if (!pt) {
+          hideStudioTouchSight();
+          return;
+        }
         const prev = lastDrawPtRef.current || pt;
         stampSegment(prev.x, prev.y, pt.x, pt.y, activeTool === "pen");
         lastDrawPtRef.current = pt;
+        updateStudioTouchSight(targetX, targetY, t0.clientX, t0.clientY, pt);
       }
     }
   };
@@ -6358,6 +6513,26 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               >
                 🎯 复位
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setThumbOffsetMode((v) => {
+                    const next = !v;
+                    setStatusMessage(
+                      next
+                        ? "已开启「拇指前准星+放大镜」：触屏点按位置在拇指前方，彻底避开手指遮挡盲区"
+                        : "已切换为手指中心直接点按模式"
+                    );
+                    return next;
+                  });
+                }}
+                title="手机竖屏触控防遮挡：开启后准星位于拇指前方并联动放大镜，避免手指挡住细小零件"
+                className={`lg:hidden h-7 px-2 text-[11px] font-extrabold cursor-pointer whitespace-nowrap shrink-0 transition ${
+                  thumbOffsetMode ? primaryActionBtnClass : secondaryActionBtnClass
+                }`}
+              >
+                {thumbOffsetMode ? "⊕ 拇指准星:开" : "⊕ 拇指准星:关"}
+              </button>
               <span className="ml-1 text-xs font-medium text-slate-600 dark:text-slate-300 truncate">
                 {statusMessage}
               </span>
@@ -6776,6 +6951,65 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
           </form>
         </div>
       )}
+
+      {/* Mobile Touch Thumb-Front Precision Sight (十字星 + 指示箭头 + 放大镜) */}
+      <div
+        ref={studioTouchSightRef}
+        className="pointer-events-none fixed top-0 left-0 z-[105] transition-opacity duration-75"
+        style={{
+          opacity: 0,
+          transform: "translate3d(-9999px, -9999px, 0)",
+          willChange: "transform, opacity",
+        }}
+      >
+        <div className="relative -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-7 h-7">
+          <span className="absolute inset-0 rounded-full border-2 border-white shadow-[0_0_0_1.5px_rgba(15,23,42,0.85),0_2px_8px_rgba(0,0,0,0.45)]" />
+          <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-[2px] h-2.5 bg-white shadow-[0_0_2px_#000]" />
+          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-[2px] h-2.5 bg-white shadow-[0_0_2px_#000]" />
+          <span className="absolute -left-1.5 top-1/2 -translate-y-1/2 h-[2px] w-2.5 bg-white shadow-[0_0_2px_#000]" />
+          <span className="absolute -right-1.5 top-1/2 -translate-y-1/2 h-[2px] w-2.5 bg-white shadow-[0_0_2px_#000]" />
+          <span
+            className="w-2.5 h-2.5 rounded-full border border-white shadow-[0_0_0_1px_rgba(0,0,0,0.85)]"
+            style={{ backgroundColor: activeHex }}
+          />
+        </div>
+        <div
+          ref={studioTouchStemRef}
+          className="absolute left-0 top-[14px] -translate-x-1/2 flex flex-col items-center justify-between"
+          style={{ height: 0, display: "none" }}
+        >
+          <span className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[7px] border-b-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]" />
+          <span className="flex-1 w-[1.5px] border-l-2 border-dashed border-amber-400/90 drop-shadow-[0_0_2px_rgba(0,0,0,0.8)]" />
+          <span className="w-3.5 h-3.5 rounded-full border-2 border-amber-400/85 bg-amber-400/20 shadow-[0_0_4px_rgba(0,0,0,0.6)] shrink-0" />
+        </div>
+      </div>
+
+      <div
+        ref={studioLoupeContainerRef}
+        className="pointer-events-none fixed top-0 left-0 z-[106] flex flex-col items-center transition-opacity duration-75"
+        style={{
+          opacity: 0,
+          transform: "translate3d(-9999px, -9999px, 0)",
+          willChange: "transform, opacity",
+        }}
+      >
+        <div className="relative flex items-center justify-center">
+          <canvas
+            ref={studioLoupeCanvasRef}
+            width={92}
+            height={92}
+            className="h-[84px] w-[84px] rounded-full border-2 border-white shadow-xl ring-2 ring-black/35"
+          />
+          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]" />
+        </div>
+        <div className="mt-1 flex items-center gap-1 rounded-full bg-slate-950/90 px-2 py-0.5 font-mono text-[9px] font-bold text-white shadow-md border border-white/20">
+          <span
+            className="inline-block h-2 w-2 rounded-full border border-white/60"
+            style={{ backgroundColor: activeHex }}
+          />
+          <span>⊕ 拇指前准星</span>
+        </div>
+      </div>
     </div>
   );
 };

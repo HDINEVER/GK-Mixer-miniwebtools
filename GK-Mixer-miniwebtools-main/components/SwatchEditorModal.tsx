@@ -135,22 +135,11 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                   onClose();
                   onSaveToProject();
                 }}
-                className="bp-pill inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-xs font-extrabold text-slate-800 dark:text-slate-100 hover:border-[var(--accent-color)] transition-colors cursor-pointer"
+                className="bp-pill-active inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-color)] px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 transition-colors cursor-pointer"
                 title="存入涂装项目库，可继续添加涂装工序、制作扫码导入二维码名片及打包工程文件"
               >
-                <FolderPlusIcon className="h-3.5 w-3.5 text-[var(--accent-color)]" weight="bold" />
+                <FolderPlusIcon className="h-3.5 w-3.5" weight="bold" />
                 <span>存入涂装库</span>
-              </button>
-            )}
-            {onExportImage && (
-              <button
-                type="button"
-                onClick={onExportImage}
-                disabled={isExporting}
-                className="bp-pill-active inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-color)] px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 disabled:opacity-50 transition-colors cursor-pointer"
-              >
-                <DownloadSimpleIcon className="h-3.5 w-3.5" />
-                <span>{isExporting ? "导出中…" : "导出纯色卡 PNG"}</span>
               </button>
             )}
             <button
@@ -214,34 +203,20 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                 </button>
               </div>
             )}
-            {/* Contextual Workflow Guidance Banner */}
-            <div className="rounded-2xl border border-amber-300/80 dark:border-amber-700/70 bg-amber-50/90 dark:bg-amber-950/35 p-3 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                  <span>🧭</span>
-                  <span>色卡保存指引：纯色卡 PNG vs 涂装项目库</span>
-                </span>
-              </div>
-              <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/85">
-                • <strong>导出纯色卡 PNG</strong>：生成静态图片保存至相册；<br />
-                • <strong>存入涂装项目库</strong>：归档为可复用的涂装工程，支持<strong>继续添加喷涂工序（底漆/阴影/主色/消光）</strong>、制作<strong>别人可扫码导入的「项目二维码名片」</strong>，以及<strong>打包导出 `.gkmix` 项目文件</strong>！
-              </p>
-              {onSaveToProject && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onSaveToProject();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent-color)] hover:opacity-95 px-3 py-2 text-xs font-extrabold text-white shadow-xs transition cursor-pointer"
-                  >
-                    <FolderPlusIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-                    <span>存入涂装项目库（加工序 / 二维码名片 / 打包工程）➔</span>
-                  </button>
-                </div>
-              )}
-            </div>
+
+            {onSaveToProject && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onSaveToProject();
+                }}
+                className="bp-pill-active w-full flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent-color)] hover:opacity-95 px-3.5 py-2.5 text-xs font-extrabold text-white shadow-sm transition cursor-pointer"
+              >
+                <FolderPlusIcon className="h-4 w-4 shrink-0" weight="bold" />
+                <span>存入涂装库（添加工序 / 生成二维码名片 / 导出工程）➔</span>
+              </button>
+            )}
           </div>
 
           {/* Right 5 cols: SwatchStudioControls */}
@@ -255,8 +230,6 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
               onUpdateSettings={onUpdateSettings}
               canvasSize={canvasSize}
               lang={lang}
-              onExportImage={onExportImage}
-              isExporting={isExporting}
             />
           </div>
         </div>

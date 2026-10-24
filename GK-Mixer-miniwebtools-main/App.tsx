@@ -1842,12 +1842,12 @@ const App: React.FC = () => {
                           )}
                           <button
                             type="button"
-                            onClick={handleExportAnnotated}
-                            disabled={!extractMarkers.some((marker) => marker.paint) || isExporting}
-                            className="bp-btn flex items-center gap-1.5 rounded-lg bg-slate-900/80 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg backdrop-blur-sm hover:bg-slate-900 disabled:opacity-40 cursor-pointer"
+                            onClick={() => setIsSaveToProjectOpen(true)}
+                            disabled={!extractMarkers.some((marker) => marker.paint)}
+                            className="bp-btn flex items-center gap-1.5 rounded-lg bg-slate-900/85 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg backdrop-blur-sm hover:bg-slate-900 disabled:opacity-40 cursor-pointer"
                           >
-                            <DownloadSimpleIcon className="h-3.5 w-3.5" />
-                            {isExporting ? t.exporting : t.exportAnnotated}
+                            <FolderPlusIcon className="h-3.5 w-3.5 text-accent" />
+                            <span>{lang === 'zh' ? '存入涂装库' : 'Save to Library'}</span>
                           </button>
                         </div>
                     </div>
@@ -1856,7 +1856,7 @@ const App: React.FC = () => {
                     <div className="flex items-center justify-between gap-2 px-1 pt-0.5">
                       <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-snug">
                         {lang === 'zh'
-                          ? '按住「准星选取器」底部边缘拖动，圆环中心十字准星即为取色点；放大请用双指捏合。点按右侧菜单可收藏或导出。'
+                          ? '按住「准星选取器」底部边缘拖动，圆环中心十字准星即为取色点；放大请用双指捏合。点按右侧菜单可存入涂装库。'
                           : 'Drag the bottom edge of the crosshair ring; the center crosshair samples the color. Pinch with 2 fingers to zoom.'}
                       </p>
 
@@ -1876,26 +1876,13 @@ const App: React.FC = () => {
                           <div className="bp-subcard-lg absolute right-0 bottom-11 w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xl py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
                             <button
                               type="button"
-                              disabled={!assignedMarkers.length || isExporting}
-                              onClick={() => {
-                                setIsSourceActionMenuOpen(false);
-                                handleExportAnnotated();
-                              }}
-                              className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 flex items-center justify-between gap-2"
-                            >
-                              <span>{lang === 'zh' ? '导出 PNG 图片' : 'Export PNG Image'}</span>
-                              <DownloadSimpleIcon className="w-4 h-4 text-slate-500" />
-                            </button>
-                            <div className="h-[1px] bg-slate-100 dark:bg-slate-800 my-0.5" />
-                            <button
-                              type="button"
                               onClick={() => {
                                 setIsSourceActionMenuOpen(false);
                                 setIsSaveToProjectOpen(true);
                               }}
                               className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between gap-2"
                             >
-                              <span>{lang === 'zh' ? '保存至涂装项目...' : 'Save to Project...'}</span>
+                              <span>{lang === 'zh' ? '存入涂装项目库...' : 'Save to Project...'}</span>
                               <FolderPlusIcon className="w-4 h-4 text-accent" />
                             </button>
                             <div className="h-[1px] bg-slate-100 dark:bg-slate-800 my-0.5" />
@@ -1991,10 +1978,10 @@ const App: React.FC = () => {
                         <div className="flex items-center gap-2.5 text-[11px] font-bold shrink-0">
                             <button
                               type="button"
-                              onClick={() => setIsWorkflowGuideOpen(true)}
-                              className="text-amber-600 dark:text-amber-400 hover:underline whitespace-nowrap cursor-pointer"
+                              onClick={() => setIsSaveToProjectOpen(true)}
+                              className="text-accent hover:underline whitespace-nowrap cursor-pointer"
                             >
-                              {lang === "zh" ? "🧭 保存指引" : "Guide"}
+                              {lang === "zh" ? "存入涂装库" : "Save to Library"}
                             </button>
                             <button type="button" onClick={handleCopyAssignments} className="text-accent hover:underline whitespace-nowrap cursor-pointer">
                                 {lang === "zh" ? "复制清单" : "Copy"}
@@ -2561,29 +2548,12 @@ const App: React.FC = () => {
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                   type="button"
-                                  onClick={() => setIsWorkflowGuideOpen(true)}
-                                  className="bp-btn flex items-center gap-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-2 py-1.5 text-[10px] font-extrabold text-amber-800 dark:text-amber-200 hover:border-amber-400 cursor-pointer"
-                                  title="查看纯色卡导出与涂装项目库（加工序/二维码名片/工程打包）的区别"
-                                >
-                                  <span>🧭</span>
-                                  <span>保存指引</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={!sandboxSyncState?.compositeDataUrl || sandboxColors.length === 0 || isExporting}
-                                  onClick={handleExportSandboxAnnotated}
-                                  className="bp-btn flex items-center gap-1 rounded-lg bg-slate-900 dark:bg-slate-700 px-2.5 py-1.5 text-[10px] font-extrabold text-white shadow-xs hover:opacity-95 disabled:opacity-40 cursor-pointer"
-                                >
-                                  <DownloadSimpleIcon className="h-3.5 w-3.5" />
-                                  <span>{isExporting ? '导出中…' : '导出 PNG'}</span>
-                                </button>
-                                <button
-                                  type="button"
                                   disabled={!sandboxSyncState?.compositeDataUrl || sandboxColors.length === 0}
                                   onClick={handleSaveSandboxToProject}
-                                  className="bp-btn flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-[10px] font-extrabold text-slate-700 dark:text-slate-200 hover:border-accent disabled:opacity-40 cursor-pointer"
+                                  className="bp-btn flex items-center gap-1.5 rounded-lg bg-accent hover:bg-accent-hover px-3 py-1.5 text-[11px] font-extrabold text-white shadow-xs disabled:opacity-40 cursor-pointer"
+                                  title="存入涂装项目库，可继续添加涂装工序、制作项目二维码名片及导出 .gkmix 工程文件"
                                 >
-                                  <FolderPlusIcon className="h-3.5 w-3.5 text-accent" />
+                                  <FolderPlusIcon className="h-3.5 w-3.5" weight="bold" />
                                   <span>存入涂装库</span>
                                 </button>
                               </div>

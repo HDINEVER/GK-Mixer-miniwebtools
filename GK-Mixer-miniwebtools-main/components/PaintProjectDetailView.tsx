@@ -45,6 +45,7 @@ import {
   CheckIcon,
   ArrowsOutSimpleIcon,
   ArrowsInSimpleIcon,
+  ExportIcon,
 } from "@phosphor-icons/react";
 
 interface PaintProjectDetailViewProps {
@@ -81,6 +82,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showCategoryMenu, setShowCategoryMenu] = useState<boolean>(false);
   const [showMoreMenu, setShowMoreMenu] = useState<boolean>(false);
+  const [showExportFabMenu, setShowExportFabMenu] = useState<boolean>(false);
   const [isSwatchEditorOpen, setIsSwatchEditorOpen] = useState<boolean>(false);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState<boolean>(false);
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
@@ -363,7 +365,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           </div>
         </div>
 
-        {/* Right: [🎨 试色改色] + [编辑色卡] + [生成名片] + [•••] */}
+        {/* Right: [🎨 试色改色] + [编辑色卡] + [宽屏模式] + [•••] */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {onSendImageToColoring && activePart?.sourceImageDataUrl && (
             <button
@@ -389,15 +391,6 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           >
             <SlidersHorizontalIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
             <span>编辑色卡</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsPosterModalOpen(true)}
-            className="bp-pill-active flex items-center gap-1 sm:gap-1.5 rounded-full bg-slate-900 dark:bg-white px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-extrabold text-white dark:text-slate-900 shadow-xs hover:opacity-90 transition cursor-pointer whitespace-nowrap shrink-0"
-          >
-            <QrCodeIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-            <span>二维码名片</span>
           </button>
 
           {onToggleWideMode && (
@@ -435,6 +428,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               onClick={() => {
                 setShowMoreMenu((v) => !v);
                 setShowCategoryMenu(false);
+                setShowExportFabMenu(false);
               }}
               className="bp-pill flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-coral hover:bg-coral/10 transition cursor-pointer"
               title="更多项目操作"
@@ -449,82 +443,60 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                   onClick={() => setShowMoreMenu(false)}
                 />
                 <div className="bp-subcard-lg absolute right-0 top-full mt-2 z-[100] min-w-[220px] rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-2xl space-y-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMoreMenu(false);
-                    setIsPosterModalOpen(true);
-                  }}
-                  className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
-                >
-                  <QrCodeIcon className="h-4 w-4 text-coral shrink-0" weight="bold" />
-                  <span>生成涂装名片二维码</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMoreMenu(false);
-                    exportGKMixArchive(project);
-                  }}
-                  className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
-                >
-                  <DownloadSimpleIcon className="h-4 w-4 text-coral shrink-0" weight="bold" />
-                  <span>导出 .gkmix 工程文件</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMoreMenu(false);
-                    addPartFileRef.current?.click();
-                  }}
-                  className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
-                >
-                  <PlusIcon className="h-4 w-4 text-coral shrink-0" weight="bold" />
-                  <span>添加新零件工程图</span>
-                </button>
-                {activePart?.sourceImageDataUrl && (
                   <button
                     type="button"
-                    onClick={async () => {
+                    onClick={() => {
                       setShowMoreMenu(false);
-                      const thumb = await createCoverThumbnail(activePart.sourceImageDataUrl);
-                      onUpdateProject({
-                        ...project,
-                        coverImageDataUrl: thumb,
-                        customCoverImageDataUrl: thumb,
-                        updatedAt: Date.now(),
-                      });
-                      setToastMessage("已设为项目封面");
-                      setTimeout(() => setToastMessage(null), 2000);
+                      addPartFileRef.current?.click();
                     }}
-                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
+                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap cursor-pointer"
                   >
-                    <ImageSquareIcon className="h-4 w-4 text-accent shrink-0" weight="bold" />
-                    <span>📌 将当前零件设为封面</span>
+                    <PlusIcon className="h-4 w-4 text-coral shrink-0" weight="bold" />
+                    <span>添加新零件工程图</span>
                   </button>
-                )}
-                {project.parts.length > 1 && (
+                  {activePart?.sourceImageDataUrl && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setShowMoreMenu(false);
+                        const thumb = await createCoverThumbnail(activePart.sourceImageDataUrl);
+                        onUpdateProject({
+                          ...project,
+                          coverImageDataUrl: thumb,
+                          customCoverImageDataUrl: thumb,
+                          updatedAt: Date.now(),
+                        });
+                        setToastMessage("已设为项目封面");
+                        setTimeout(() => setToastMessage(null), 2000);
+                      }}
+                      className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap cursor-pointer"
+                    >
+                      <ImageSquareIcon className="h-4 w-4 text-accent shrink-0" weight="bold" />
+                      <span>📌 将当前零件设为封面</span>
+                    </button>
+                  )}
+                  {project.parts.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteCurrentPart}
+                      className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 whitespace-nowrap cursor-pointer"
+                    >
+                      <TrashIcon className="h-4 w-4 shrink-0" weight="bold" />
+                      <span>删除当前零件图</span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={handleDeleteCurrentPart}
-                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 whitespace-nowrap"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      onDeleteProject(project.id);
+                    }}
+                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 whitespace-nowrap cursor-pointer"
                   >
                     <TrashIcon className="h-4 w-4 shrink-0" weight="bold" />
-                    <span>删除当前零件图</span>
+                    <span>删除整个工程</span>
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMoreMenu(false);
-                    onDeleteProject(project.id);
-                  }}
-                  className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 whitespace-nowrap"
-                >
-                  <TrashIcon className="h-4 w-4 shrink-0" weight="bold" />
-                  <span>删除整个工程</span>
-                </button>
-              </div>
+                </div>
               </>
             )}
           </div>
@@ -851,6 +823,57 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
       </div>
       </div>
 
+      {/* Bottom-Right Floating Export Button (QR Poster Card + .gkmix Archive Export, Screenshot 3) */}
+      <div className="fixed bottom-24 lg:bottom-8 right-5 z-40 overflow-visible">
+        {showExportFabMenu && (
+          <>
+            <div
+              className="fixed inset-0 z-30"
+              onClick={() => setShowExportFabMenu(false)}
+            />
+            <div className="bp-subcard-lg absolute bottom-[68px] right-0 z-40 min-w-[225px] rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.16)] space-y-0.5 animate-fadeIn">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExportFabMenu(false);
+                  setIsPosterModalOpen(true);
+                }}
+                className="w-full flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-xs font-extrabold text-slate-800 dark:text-slate-100 hover:bg-accent/10 hover:text-accent transition whitespace-nowrap cursor-pointer"
+              >
+                <QrCodeIcon className="h-4 w-4 text-accent shrink-0" weight="bold" />
+                <span>生成涂装名片二维码</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExportFabMenu(false);
+                  exportGKMixArchive(project);
+                }}
+                className="w-full flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-xs font-extrabold text-slate-800 dark:text-slate-100 hover:bg-accent/10 hover:text-accent transition whitespace-nowrap cursor-pointer"
+              >
+                <DownloadSimpleIcon className="h-4 w-4 text-accent shrink-0" weight="bold" />
+                <span>导出 .gkmix 工程文件</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            setShowExportFabMenu((v) => !v);
+            setShowMoreMenu(false);
+            setShowCategoryMenu(false);
+          }}
+          style={{ width: "56px", height: "56px" }}
+          className="bp-fab flex items-center justify-center rounded-full bg-accent text-white border border-slate-200/80 dark:border-slate-700 shadow-[0_6px_20px_rgba(15,23,42,0.18)] hover:scale-105 active:scale-95 transition cursor-pointer"
+          title="导出涂装名片二维码或 .gkmix 工程文件"
+          aria-label="导出涂装名片二维码或 .gkmix 工程文件"
+        >
+          <ExportIcon className="h-6 w-6" weight="bold" />
+        </button>
+      </div>
+
       {/* Shared Swatch Editor Modal */}
       {activePart && (
         <SwatchEditorModal
@@ -867,7 +890,6 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           settings={swatchSettings}
           onUpdateSettings={onUpdateSwatchSettings}
           lang={lang}
-          onExportImage={handleExportCurrentPartPng}
         />
       )}
 

@@ -32,6 +32,19 @@ const codeCandidates = (brand: string, code: string): string[] => {
   const compact = raw.replace(/\s+/g, "");
   const preferred: string[] = [];
 
+  if (brand === "Gaia" || brand === "Gaianotes" || brand === "盖亚") {
+    const ex = compact.match(/^EX-?(\d+[A-Za-z]?)$/i);
+    if (ex) {
+      const num = ex[1].padStart(2, "0");
+      preferred.push(`Ex-${num}`, `EX-${num}`, `EX${num}`, `ex-${num}`);
+    }
+    const series = compact.match(/^(GP|EV|VO|FG|GS|NC|NP|GE|TL)-?([0-9A-Za-z]+)$/i);
+    if (series) {
+      const pfx = series[1].toUpperCase();
+      const rest = series[2];
+      preferred.push(`${pfx}-${rest}`, `${pfx}${rest}`, `${pfx.toLowerCase()}-${rest.toLowerCase()}`);
+    }
+  }
   if (brand === "Jumpwind" || brand === "匠域") {
     const mc = compact.match(/^MC\.?(\d+)$/i);
     if (mc) preferred.push(`MC${mc[1]}`);

@@ -18,8 +18,12 @@ import {
 import {
   COMMON_MODEL_BRANDS,
   FEATURED_BRANDS,
+  GAIA_CATEGORY_ORDER,
+  NIGHTWORKS_CATEGORY_ORDER,
   PaintApplicationType,
+  PaintSolventType,
   getPaintApplicationType,
+  getPaintSolventType,
   loadPaintCatalog,
   localizedBrand,
   paintPrefix,
@@ -58,6 +62,12 @@ const preSortCatalogPaints = (raw: CatalogPaint[]): CatalogPaint[] => {
 const FINISH_LABELS: Record<string, { zh: string; colorClass: string }> = {
   standard: { zh: "标准实色", colorClass: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
   metallic: { zh: "金属漆", colorClass: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300" },
+  extraMetal: { zh: "极光/特调金属", colorClass: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300" },
+  primeMetal: { zh: "超级金属漆", colorClass: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300" },
+  pearl: { zh: "珍珠/偏光", colorClass: "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/60 dark:text-fuchsia-300" },
+  clear: { zh: "透明漆", colorClass: "bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300" },
+  fluorescent: { zh: "荧光色", colorClass: "bg-lime-100 text-lime-800 dark:bg-lime-950/60 dark:text-lime-300" },
+  hyper: { zh: "高遮盖实色", colorClass: "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300" },
   wash: { zh: "渍洗/阴影", colorClass: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300" },
   ink: { zh: "透明/滤镜", colorClass: "bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300" },
   other: { zh: "特殊/底漆", colorClass: "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300" },
@@ -68,7 +78,7 @@ const QUICK_CHIPS = [
   { id: "metallic", label: "✨ 金属漆", finish: "metallic", keyword: "金 银 铁 铜 金属" },
   { id: "matte", label: "🌫️ 消光/半光", keyword: "消光 半光 哑光" },
   { id: "fluorescent", label: "🎨 荧光色", keyword: "荧光" },
-  { id: "pearl", label: "🫧 珍珠色", keyword: "珍珠 偏光 魔幻" },
+  { id: "pearl", label: "🫧 珍珠/魔幻", keyword: "珍珠 偏光 魔幻 棱镜" },
   { id: "clear", label: "💎 透明色", keyword: "透明 滤镜 阴影" },
 ];
 
@@ -91,6 +101,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   const [activeQuickChip, setActiveQuickChip] = useState<string | null>(null);
   const [showUncommonBrands, setShowUncommonBrands] = useState<boolean>(false);
   const [applicationFilter, setApplicationFilter] = useState<"all" | PaintApplicationType>("all");
+  const [solventFilter, setSolventFilter] = useState<"all" | PaintSolventType>("all");
   const [viewMode, setViewMode] = useState<"gallery" | "compact">("gallery");
   const [viewModeUI, setViewModeUI] = useState<"gallery" | "compact">("gallery");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -154,6 +165,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     activeQuickChip,
     showUncommonBrands,
     applicationFilter,
+    solventFilter,
   ]);
 
   const allUniqueBrands = useMemo(() => {
@@ -168,24 +180,26 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     });
   }, [paints]);
 
-  // Pre-build search haystack & application mode (喷涂 vs 手涂) once per catalog load
+  // Pre-build search haystack, application mode (喷涂 vs 手涂), and chemistry (油性 vs 水性) once per catalog load
   const searchMetaMap = useMemo(() => {
     const map = new Map<
       string,
-      { pfx: string; hay: string; appType: PaintApplicationType }
+      { pfx: string; hay: string; appType: PaintApplicationType; solventType: PaintSolventType }
     >();
     for (const paint of paints) {
       const pfx = paintPrefix(paint);
       const appType = getPaintApplicationType(paint);
-      const appLabel = appType === "airbrush" ? "喷涂 喷笔" : "手涂 笔涂 水性";
+      const solventType = getPaintSolventType(paint);
+      const appLabel = appType === "airbrush" ? "喷涂 喷笔" : "手涂 笔涂";
+      const solventLabel = solventType === "oil" ? "油性 硝基 珐琅" : "水性 丙烯";
       const localizedB = localizedBrand(paint.brand, "zh").toLowerCase();
-      const hay = `${paint.brand} ${localizedB} ${paint.code} ${paint.name} ${paint.hex} ${paint.set} ${paint.finish} ${appLabel}`.toLowerCase();
-      map.set(paint.id, { pfx, hay, appType });
+      const hay = `${paint.brand} ${localizedB} ${paint.code} ${paint.name} ${paint.hex} ${paint.set} ${paint.finish} ${appLabel} ${solventLabel}`.toLowerCase();
+      map.set(paint.id, { pfx, hay, appType, solventType });
     }
     return map;
   }, [paints]);
 
-  // Brands that actually contain at least 1 paint for the active applicationFilter (hides spray-only brands when "手涂/笔涂漆" is selected)
+  // Brands that actually contain at least 1 paint for the active applicationFilter
   const brandsMatchingAppFilter = useMemo(() => {
     if (applicationFilter === "all") return new Set<string>(allUniqueBrands);
     const set = new Set<string>();
@@ -206,7 +220,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     return baseList.filter((b) => brandsMatchingAppFilter.has(b));
   }, [allUniqueBrands, showUncommonBrands, commonBrandsSet, applicationFilter, brandsMatchingAppFilter]);
 
-  // If the active brand has no paints under the newly switched applicationFilter (e.g. switching to 手涂漆 while Gaia is active), reset to ALL
+  // If the active brand has no paints under the newly switched applicationFilter, reset to ALL
   useEffect(() => {
     if (brand !== "ALL" && !brands.includes(brand)) {
       setBrand("ALL");
@@ -214,9 +228,35 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     }
   }, [brands, brand]);
 
+  // Live Oil vs Water counts inside the currently selected brand (or all brands when brand === "ALL")
+  const brandSolventCounts = useMemo(() => {
+    let oil = 0;
+    let water = 0;
+    for (const paint of paints) {
+      if (!showUncommonBrands && !commonBrandsSet.has(paint.brand)) continue;
+      if (brand !== "ALL" && paint.brand !== brand) continue;
+      const meta = searchMetaMap.get(paint.id);
+      const appType = meta ? meta.appType : getPaintApplicationType(paint);
+      if (applicationFilter !== "all" && appType !== applicationFilter) continue;
+      const st = meta ? meta.solventType : getPaintSolventType(paint);
+      if (st === "oil") oil += 1;
+      else water += 1;
+    }
+    return { all: oil + water, oil, water };
+  }, [paints, showUncommonBrands, commonBrandsSet, brand, applicationFilter, searchMetaMap]);
+
+  // Auto-reset solventFilter to "all" if switching to a brand that only has the other chemistry (e.g. switching from Night Works water to Gaia oil while water is selected)
+  useEffect(() => {
+    if (solventFilter === "oil" && brandSolventCounts.oil === 0 && brandSolventCounts.water > 0) {
+      setSolventFilter("all");
+    } else if (solventFilter === "water" && brandSolventCounts.water === 0 && brandSolventCounts.oil > 0) {
+      setSolventFilter("all");
+    }
+  }, [brand, brandSolventCounts, solventFilter]);
+
   const uncommonBrandCount = Math.max(0, allUniqueBrands.length - commonBrandsSet.size);
 
-  // Space-separated multi-keyword matching + Common/Uncommon Brand Scope + Spray/Brush Filter
+  // Space-separated multi-keyword matching + Common/Uncommon Brand Scope + Spray/Brush Filter + Oil/Water Filter
   const filteredPaints = useMemo(() => {
     const tokens = search
       .trim()
@@ -236,6 +276,9 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
       const meta = searchMetaMap.get(paint.id);
       const appType = meta ? meta.appType : getPaintApplicationType(paint);
       if (applicationFilter !== "all" && appType !== applicationFilter) return false;
+
+      const solventType = meta ? meta.solventType : getPaintSolventType(paint);
+      if (solventFilter !== "all" && solventType !== solventFilter) return false;
 
       const pfx = meta ? meta.pfx : paintPrefix(paint);
       if (prefix && pfx !== prefix) return false;
@@ -267,6 +310,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     solidsOnly,
     finishFilter,
     applicationFilter,
+    solventFilter,
     prefix,
     search,
     activeQuickChip,
@@ -275,26 +319,50 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   const scopedPaintsCount = useMemo(() => {
     return paints.filter((p) => {
       if (!showUncommonBrands && !commonBrandsSet.has(p.brand)) return false;
+      const meta = searchMetaMap.get(p.id);
       if (applicationFilter !== "all") {
-        const appType = searchMetaMap.get(p.id)?.appType ?? getPaintApplicationType(p);
+        const appType = meta?.appType ?? getPaintApplicationType(p);
         if (appType !== applicationFilter) return false;
+      }
+      if (solventFilter !== "all") {
+        const st = meta?.solventType ?? getPaintSolventType(p);
+        if (st !== solventFilter) return false;
       }
       return true;
     }).length;
-  }, [paints, showUncommonBrands, commonBrandsSet, applicationFilter, searchMetaMap]);
+  }, [paints, showUncommonBrands, commonBrandsSet, applicationFilter, solventFilter, searchMetaMap]);
 
   const availablePrefixes = useMemo(() => {
     const scope = paints.filter((p) => {
       if (!showUncommonBrands && !commonBrandsSet.has(p.brand)) return false;
       if (brand !== "ALL" && p.brand !== brand) return false;
+      if (solventFilter !== "all") {
+        const st = searchMetaMap.get(p.id)?.solventType ?? getPaintSolventType(p);
+        if (st !== solventFilter) return false;
+      }
       return true;
     });
     const set = new Set<string>();
     for (const p of scope) {
       set.add(searchMetaMap.get(p.id)?.pfx ?? paintPrefix(p));
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [paints, searchMetaMap, showUncommonBrands, commonBrandsSet, brand]);
+    return Array.from(set).sort((a, b) => {
+      if (brand === "Gaia") {
+        const li = GAIA_CATEGORY_ORDER.indexOf(a);
+        const ri = GAIA_CATEGORY_ORDER.indexOf(b);
+        const left = li === -1 ? Number.MAX_SAFE_INTEGER : li;
+        const right = ri === -1 ? Number.MAX_SAFE_INTEGER : ri;
+        if (left !== right) return left - right;
+      } else if (brand === "Night Works") {
+        const li = NIGHTWORKS_CATEGORY_ORDER.indexOf(a);
+        const ri = NIGHTWORKS_CATEGORY_ORDER.indexOf(b);
+        const left = li === -1 ? Number.MAX_SAFE_INTEGER : li;
+        const right = ri === -1 ? Number.MAX_SAFE_INTEGER : ri;
+        if (left !== right) return left - right;
+      }
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+  }, [paints, searchMetaMap, showUncommonBrands, commonBrandsSet, brand, solventFilter]);
 
   const groups = useMemo(() => {
     const bucket = new Map<string, CatalogPaint[]>();
@@ -311,10 +379,30 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
       }
       list.push(paint);
     }
-    return Array.from(bucket.entries()).map(([grpKey, list]) => ({
+    const entries = Array.from(bucket.entries()).map(([grpKey, list]) => ({
       prefix: grpKey,
       paints: list,
     }));
+    if (brand === "Gaia") {
+      entries.sort((a, b) => {
+        const li = GAIA_CATEGORY_ORDER.indexOf(a.prefix);
+        const ri = GAIA_CATEGORY_ORDER.indexOf(b.prefix);
+        const left = li === -1 ? Number.MAX_SAFE_INTEGER : li;
+        const right = ri === -1 ? Number.MAX_SAFE_INTEGER : ri;
+        if (left !== right) return left - right;
+        return a.prefix.localeCompare(b.prefix, undefined, { numeric: true });
+      });
+    } else if (brand === "Night Works") {
+      entries.sort((a, b) => {
+        const li = NIGHTWORKS_CATEGORY_ORDER.indexOf(a.prefix);
+        const ri = NIGHTWORKS_CATEGORY_ORDER.indexOf(b.prefix);
+        const left = li === -1 ? Number.MAX_SAFE_INTEGER : li;
+        const right = ri === -1 ? Number.MAX_SAFE_INTEGER : ri;
+        if (left !== right) return left - right;
+        return a.prefix.localeCompare(b.prefix, undefined, { numeric: true });
+      });
+    }
+    return entries;
   }, [filteredPaints, searchMetaMap, brand, lang]);
 
   // Slice by total rendered paint items (INITIAL_ITEM_BATCH = 60) so even groups with 300+ paints never block the main thread on view switch
@@ -576,6 +664,62 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
               </button>
             );
           })}
+        </div>
+
+        {/* Brand-Internal Oil vs Water Chemistry Filter Bar (品牌内部油性/水性筛选器) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/85 dark:bg-slate-900/80 px-2.5 py-1.5 mr-1.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
+              {brand === "ALL"
+                ? "🧪 漆性筛选 (油性 / 水性):"
+                : `🧪 「${localizedBrand(brand, lang)}」内部漆性筛选:`}
+            </span>
+          </div>
+          <div className="bp-segmented inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200/80 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setSolventFilter("all")}
+              className={`bp-segmented-item rounded-full px-2.5 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                solventFilter === "all"
+                  ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+              }`}
+            >
+              全部性质 ({brandSolventCounts.all})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSolventFilter("oil")}
+              disabled={brandSolventCounts.oil === 0}
+              className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold transition whitespace-nowrap ${
+                brandSolventCounts.oil === 0
+                  ? "opacity-40 cursor-not-allowed text-slate-400"
+                  : solventFilter === "oil"
+                  ? "bp-segmented-item-active bg-rose-600 text-white shadow-2xs cursor-pointer"
+                  : "text-slate-600 dark:text-slate-300 hover:text-rose-600 cursor-pointer"
+              }`}
+              title="筛选硝基漆、珐琅漆等油性模型漆"
+            >
+              <span>🧪</span>
+              <span>油性漆 ({brandSolventCounts.oil})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSolventFilter("water")}
+              disabled={brandSolventCounts.water === 0}
+              className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold transition whitespace-nowrap ${
+                brandSolventCounts.water === 0
+                  ? "opacity-40 cursor-not-allowed text-slate-400"
+                  : solventFilter === "water"
+                  ? "bp-segmented-item-active bg-emerald-600 text-white shadow-2xs cursor-pointer"
+                  : "text-slate-600 dark:text-slate-300 hover:text-emerald-600 cursor-pointer"
+              }`}
+              title="筛选水性丙烯漆、战棋水性漆与水性喷涂漆 (如匠域JW-A、郡士H/N、田宫X/XF)"
+            >
+              <span>💧</span>
+              <span>水性漆 ({brandSolventCounts.water})</span>
+            </button>
+          </div>
         </div>
 
         {/* Multi-Keyword Search Bar */}
@@ -864,8 +1008,9 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                   <div className="grid grid-cols-1 gap-2.5 px-3 pb-3.5 pt-2.5 sm:grid-cols-2 lg:grid-cols-3">
                     {group.paints.map((paint) => {
                       const isAssigned = activeSampleColor?.assignedPaint?.id === paint.id;
-                      const appType =
-                        searchMetaMap.get(paint.id)?.appType ?? getPaintApplicationType(paint);
+                      const meta = searchMetaMap.get(paint.id);
+                      const appType = meta?.appType ?? getPaintApplicationType(paint);
+                      const solventType = meta?.solventType ?? getPaintSolventType(paint);
                       return (
                         <div
                           key={paint.id}
@@ -905,9 +1050,18 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                             title={`${paint.code} ${paint.name}`}
                           />
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="flex items-center gap-1 min-w-0">
                               <span className="truncate font-mono text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-accent transition-colors">
                                 {paint.code} {paint.name}
+                              </span>
+                              <span
+                                className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-extrabold ${
+                                  solventType === "oil"
+                                    ? "bg-rose-500/12 text-rose-700 dark:text-rose-300"
+                                    : "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                                }`}
+                              >
+                                {solventType === "oil" ? "🧪油性" : "💧水性"}
                               </span>
                               <span
                                 className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-extrabold ${
@@ -957,8 +1111,9 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                       const finishMeta =
                         FINISH_LABELS[paint.finish] || FINISH_LABELS.standard;
                       const isAssigned = activeSampleColor?.assignedPaint?.id === paint.id;
-                      const appType =
-                        searchMetaMap.get(paint.id)?.appType ?? getPaintApplicationType(paint);
+                      const meta = searchMetaMap.get(paint.id);
+                      const appType = meta?.appType ?? getPaintApplicationType(paint);
+                      const solventType = meta?.solventType ?? getPaintSolventType(paint);
                       return (
                         <div
                           key={paint.id}
@@ -1003,8 +1158,17 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                             </div>
                           </div>
 
-                          {/* Right: Notion-Style Colored Attribute Tags ([喷涂/手涂], [品牌], [光泽], [系列]) + Assign Button */}
+                          {/* Right: Notion-Style Colored Attribute Tags ([油性/水性], [喷涂/手涂], [品牌], [光泽], [系列]) + Assign Button */}
                           <div className="flex items-center gap-1.5 shrink-0">
+                            <span
+                              className={`bp-badge rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                                solventType === "oil"
+                                  ? "bg-rose-500/12 text-rose-700 dark:text-rose-300"
+                                  : "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                              }`}
+                            >
+                              {solventType === "oil" ? "🧪油性" : "💧水性"}
+                            </span>
                             <span
                               className={`bp-badge rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
                                 appType === "airbrush"
@@ -1121,6 +1285,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                 <PaintBottleImg
                   brand={hoveredBottle.brand}
                   code={hoveredBottle.code}
+                  hex={hoveredBottle.hex}
                   className="relative z-[1] max-h-28 max-w-28 object-contain drop-shadow-md"
                 />
               </div>

@@ -5,14 +5,52 @@ import { paintBottleUrls } from "../utils/paintBottle";
 export const PaintBottleImg: React.FC<{
   brand: string;
   code: string;
+  hex?: string;
   className?: string;
   alt?: string;
-}> = ({ brand, code, className, alt = "" }) => {
+}> = ({ brand, code, hex, className, alt = "" }) => {
   const urls = paintBottleUrls(brand, code);
   const [urlIndex, setUrlIndex] = useState(0);
   useEffect(() => setUrlIndex(0), [brand, code]);
   const src = urls[urlIndex];
-  if (!src) return null;
+  if (!src) {
+    if (!hex) return null;
+    const shortCode = String(code || "").trim().slice(0, 6);
+    return (
+      <svg
+        viewBox="0 0 64 64"
+        className={className}
+        role="img"
+        aria-label={alt || `${brand} ${code}`}
+      >
+        {/* Bottle Cap (Black/Silver Model Paint Cap) */}
+        <rect x="20" y="6" width="24" height="11" rx="3" fill="#1E293B" stroke="#0F172A" strokeWidth="1.5" />
+        <line x1="24" y1="8" x2="24" y2="15" stroke="#475569" strokeWidth="1.2" />
+        <line x1="28" y1="8" x2="28" y2="15" stroke="#475569" strokeWidth="1.2" />
+        <line x1="36" y1="8" x2="36" y2="15" stroke="#475569" strokeWidth="1.2" />
+        <line x1="40" y1="8" x2="40" y2="15" stroke="#475569" strokeWidth="1.2" />
+        {/* Bottle Neck */}
+        <rect x="23" y="17" width="18" height="4" fill="#CBD5E1" stroke="#334155" strokeWidth="1.2" />
+        {/* Glass Bottle Body Filled with Paint Hex */}
+        <rect x="13" y="21" width="38" height="36" rx="6" fill={hex} stroke="#1E293B" strokeWidth="2" />
+        {/* Specular Glass Highlight */}
+        <rect x="16" y="24" width="5" height="30" rx="2.5" fill="#FFFFFF" fillOpacity="0.32" />
+        {/* Bottle Label Strip */}
+        <rect x="14" y="31" width="36" height="15" fill="#FFFFFF" fillOpacity="0.92" />
+        <text
+          x="32"
+          y="41.5"
+          textAnchor="middle"
+          fontSize="9.5"
+          fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+          fontWeight="900"
+          fill="#0F172A"
+        >
+          {shortCode}
+        </text>
+      </svg>
+    );
+  }
   return (
     <img
       src={src}
@@ -106,6 +144,7 @@ const PaintBottleHover: React.FC<PaintBottleHoverProps> = ({
               <PaintBottleImg
                 brand={brand}
                 code={code}
+                hex={hex}
                 className="relative z-[1] max-h-28 max-w-28 object-contain drop-shadow-md"
               />
             </div>

@@ -14,6 +14,7 @@ import {
   XIcon,
   FunnelSimpleIcon,
   CrosshairIcon,
+  MagnifyingGlassIcon,
 } from "@phosphor-icons/react";
 import {
   COMMON_MODEL_BRANDS,
@@ -105,7 +106,8 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   const [viewMode, setViewMode] = useState<"gallery" | "compact">("gallery");
   const [viewModeUI, setViewModeUI] = useState<"gallery" | "compact">("gallery");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [openFilterMenu, setOpenFilterMenu] = useState<"series" | "finish" | null>(null);
+  const [openFilterMenu, setOpenFilterMenu] = useState<"series" | "finish" | "solvent" | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [visibleItemLimit, setVisibleItemLimit] = useState<number>(INITIAL_ITEM_BATCH);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -559,46 +561,84 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
           </div>
         )}
 
-        {/* Top Control Row: [喷涂 vs 手涂 筛选器] + [常用品牌 / 展开不常用品牌 切换开关] */}
+        {/* Top Control Row: [喷涂 vs 手涂 筛选器] + [🔍 搜索开关] + [常用品牌 / 展开不常用品牌 切换开关] */}
         <div className="flex flex-wrap items-center justify-between gap-2 pr-11 lg:pr-0">
-          {/* Application Mode Filter: 全部用途 | 💨 喷涂漆 | 🖌️ 手涂漆 */}
-          <div className="bp-segmented inline-flex rounded-full bg-slate-200/85 dark:bg-slate-800 p-0.5 border border-slate-200/80 dark:border-slate-700">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Application Mode Filter: 全部用途 | 💨 喷涂漆 | 🖌️ 手涂漆 */}
+            <div className="bp-segmented inline-flex rounded-full bg-slate-200/85 dark:bg-slate-800 p-0.5 border border-slate-200/80 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setApplicationFilter("all")}
+                className={`bp-segmented-item rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                  applicationFilter === "all"
+                    ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                }`}
+              >
+                全部用途
+              </button>
+              <button
+                type="button"
+                onClick={() => setApplicationFilter("airbrush")}
+                className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                  applicationFilter === "airbrush"
+                    ? "bp-segmented-item-active bg-sky-600 text-white shadow-2xs"
+                    : "text-slate-600 dark:text-slate-300 hover:text-sky-600"
+                }`}
+                title="筛选适合高达/GK喷笔喷涂的硝基漆、预调喷涂漆与喷涂专用水性漆"
+              >
+                <span>💨</span>
+                <span>喷涂漆</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setApplicationFilter("brush")}
+                className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                  applicationFilter === "brush"
+                    ? "bp-segmented-item-active bg-amber-600 text-white shadow-2xs"
+                    : "text-slate-600 dark:text-slate-300 hover:text-amber-600"
+                }`}
+                title="筛选适合手涂/笔涂的战棋水性漆、薄涂漆、对比漆与渍洗漆"
+              >
+                <span>🖌️</span>
+                <span>手涂/笔涂漆</span>
+              </button>
+            </div>
+
+            {/* Manual Search Bar Toggle Button right next to Application Mode Tab */}
             <button
               type="button"
-              onClick={() => setApplicationFilter("all")}
-              className={`bp-segmented-item rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
-                applicationFilter === "all"
-                  ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+              onClick={() => setIsSearchOpen((prev) => !prev)}
+              className={`bp-pill inline-flex items-center gap-1.5 rounded-full border px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                isSearchOpen || search.trim() || activeQuickChip
+                  ? "bp-pill-active border-accent bg-accent text-white shadow-2xs"
+                  : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-accent"
               }`}
+              title={isSearchOpen ? "点击收起搜索栏以扩大色卡显示面积" : "点击展开搜索框与快捷标签"}
             >
-              全部用途
-            </button>
-            <button
-              type="button"
-              onClick={() => setApplicationFilter("airbrush")}
-              className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
-                applicationFilter === "airbrush"
-                  ? "bp-segmented-item-active bg-sky-600 text-white shadow-2xs"
-                  : "text-slate-600 dark:text-slate-300 hover:text-sky-600"
-              }`}
-              title="筛选适合高达/GK喷笔喷涂的硝基漆、预调喷涂漆与喷涂专用水性漆"
-            >
-              <span>💨</span>
-              <span>喷涂漆</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setApplicationFilter("brush")}
-              className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
-                applicationFilter === "brush"
-                  ? "bp-segmented-item-active bg-amber-600 text-white shadow-2xs"
-                  : "text-slate-600 dark:text-slate-300 hover:text-amber-600"
-              }`}
-              title="筛选适合手涂/笔涂的战棋水性漆、薄涂漆、对比漆与渍洗漆"
-            >
-              <span>🖌️</span>
-              <span>手涂/笔涂漆</span>
+              <MagnifyingGlassIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+              <span>
+                {search.trim()
+                  ? `搜索: ${search.trim()}`
+                  : activeQuickChip
+                  ? QUICK_CHIPS.find((c) => c.id === activeQuickChip)?.label || "已选标签"
+                  : isSearchOpen
+                  ? "收起搜索"
+                  : "搜索"}
+              </span>
+              {(search.trim() || activeQuickChip) && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSearch("");
+                    setActiveQuickChip(null);
+                  }}
+                  className="ml-0.5 rounded-full hover:bg-white/20 p-0.5"
+                  title="清空搜索与快捷筛选"
+                >
+                  <XIcon className="h-2.5 w-2.5" weight="bold" />
+                </span>
+              )}
             </button>
           </div>
 
@@ -627,15 +667,49 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
           </button>
         </div>
 
+        {/* Collapsible Search Bar + Quick Chips (Only expanded when user clicks [🔍 搜索]) */}
+        {isSearchOpen && (
+          <div className="space-y-1.5 pr-1.5 pb-0.5 animate-in fade-in duration-150">
+            <IOSSearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder={
+                lang === "zh"
+                  ? "多关键词空格组合搜索：如「盖亚 黑」「匠域 金属」「002」"
+                  : "Multi-keyword search: e.g. Gaia black 002"
+              }
+            />
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5 pb-1">
+              {QUICK_CHIPS.map((chip) => {
+                const active = activeQuickChip === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setActiveQuickChip(active ? null : chip.id)}
+                    className={`h-7 px-2.5 rounded-full text-[11px] font-bold shrink-0 transition cursor-pointer ${
+                      active
+                        ? "bp-pill-active bg-coral text-white shadow-2xs"
+                        : "bp-pill bg-white/75 dark:bg-slate-800/75 border border-slate-200/70 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-coral/50"
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Horizontal Scrollable Brand Rail (ALL + Brands in Liquid Glass Capsules) */}
-        <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pt-0.5 pb-1.5 pr-1.5 no-scrollbar scroll-smooth">
+        <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pt-0.5 pb-1 pr-1.5 no-scrollbar scroll-smooth">
           <button
             type="button"
             onClick={() => {
               setBrand("ALL");
               setPrefix(null);
             }}
-            className={`min-h-[38px] px-3.5 py-1.5 rounded-full text-xs font-black transition shrink-0 cursor-pointer whitespace-nowrap ${
+            className={`min-h-[36px] px-3.5 py-1 rounded-full text-xs font-black transition shrink-0 cursor-pointer whitespace-nowrap ${
               brand === "ALL"
                 ? "bp-pill-active bg-coral text-white shadow-sm"
                 : "bp-pill bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700/70 hover:bg-white"
@@ -654,7 +728,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                   setPrefix(null);
                   setCollapsed(new Set());
                 }}
-                className={`min-h-[38px] px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer whitespace-nowrap ${
+                className={`min-h-[36px] px-3.5 py-1 rounded-full text-xs font-bold transition shrink-0 cursor-pointer whitespace-nowrap ${
                   active
                     ? "bp-pill-active bg-coral text-white shadow-sm"
                     : "bp-pill bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700/70 hover:bg-white"
@@ -666,280 +740,277 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
           })}
         </div>
 
-        {/* Brand-Internal Oil vs Water Chemistry Filter Bar (品牌内部油性/水性筛选器) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/85 dark:bg-slate-900/80 px-2.5 py-1.5 mr-1.5 shadow-2xs">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
-              {brand === "ALL"
-                ? "🧪 漆性筛选 (油性 / 水性):"
-                : `🧪 「${localizedBrand(brand, lang)}」内部漆性筛选:`}
-            </span>
-          </div>
-          <div className="bp-segmented inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200/80 dark:border-slate-700">
-            <button
-              type="button"
-              onClick={() => setSolventFilter("all")}
-              className={`bp-segmented-item rounded-full px-2.5 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
-                solventFilter === "all"
-                  ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
-              }`}
-            >
-              全部性质 ({brandSolventCounts.all})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSolventFilter("oil")}
-              disabled={brandSolventCounts.oil === 0}
-              className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold transition whitespace-nowrap ${
-                brandSolventCounts.oil === 0
-                  ? "opacity-40 cursor-not-allowed text-slate-400"
-                  : solventFilter === "oil"
-                  ? "bp-segmented-item-active bg-rose-600 text-white shadow-2xs cursor-pointer"
-                  : "text-slate-600 dark:text-slate-300 hover:text-rose-600 cursor-pointer"
-              }`}
-              title="筛选硝基漆、珐琅漆等油性模型漆"
-            >
-              <span>🧪</span>
-              <span>油性漆 ({brandSolventCounts.oil})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSolventFilter("water")}
-              disabled={brandSolventCounts.water === 0}
-              className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold transition whitespace-nowrap ${
-                brandSolventCounts.water === 0
-                  ? "opacity-40 cursor-not-allowed text-slate-400"
-                  : solventFilter === "water"
-                  ? "bp-segmented-item-active bg-emerald-600 text-white shadow-2xs cursor-pointer"
-                  : "text-slate-600 dark:text-slate-300 hover:text-emerald-600 cursor-pointer"
-              }`}
-              title="筛选水性丙烯漆、战棋水性漆与水性喷涂漆 (如匠域JW-A、郡士H/N、田宫X/XF)"
-            >
-              <span>💧</span>
-              <span>水性漆 ({brandSolventCounts.water})</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Multi-Keyword Search Bar */}
-        <div className="flex items-center gap-2 pr-1.5 pb-0.5">
-          <div className="flex-1 min-w-0">
-            <IOSSearchBar
-              value={search}
-              onChange={setSearch}
-              placeholder={
-                lang === "zh"
-                  ? "多关键词空格组合搜索：如「盖亚 黑」「匠域 金属」「002」"
-                  : "Multi-keyword search: e.g. Gaia black 002"
-              }
-            />
-          </div>
-        </div>
-
-        {/* Notion-Style Filter Pills + Quick Chips + View Mode Switcher */}
-        <div className="space-y-2">
-          {/* Quick Filter Chips Row */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5 pb-1.5 pr-1.5">
-            {QUICK_CHIPS.map((chip) => {
-              const active = activeQuickChip === chip.id;
-              return (
-                <button
-                  key={chip.id}
-                  type="button"
-                  onClick={() => setActiveQuickChip(active ? null : chip.id)}
-                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold shrink-0 transition cursor-pointer ${
-                    active
-                      ? "bp-pill-active bg-coral text-white shadow-2xs"
-                      : "bp-pill bg-white/75 dark:bg-slate-800/75 border border-slate-200/70 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-coral/50"
-                  }`}
-                >
-                  {chip.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Notion-Style Filter Pills & Dual View Mode Toggle */}
-          <div className="relative flex flex-wrap items-center justify-between gap-2 pr-1.5 pb-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {/* [+ 系列 ⌄] Pill */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setOpenFilterMenu(openFilterMenu === "series" ? null : "series")
-                  }
-                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
-                    prefix
-                      ? "bp-pill-active border-accent bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent-light"
-                      : "bp-pill border-slate-200/90 dark:border-slate-700 bg-white/85 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                  }`}
-                >
-                  <FunnelSimpleIcon className="h-3 w-3 shrink-0" weight="bold" />
-                  <span>{prefix ? `系列: ${prefix}` : "+ 系列"}</span>
-                  {prefix ? (
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPrefix(null);
-                      }}
-                      className="ml-0.5 rounded-full hover:bg-accent/20 p-0.5"
-                    >
-                      <XIcon className="h-2.5 w-2.5" weight="bold" />
-                    </span>
-                  ) : (
-                    <CaretDownIcon className="h-2.5 w-2.5 opacity-60" />
-                  )}
-                </button>
-
-                {openFilterMenu === "series" && (
-                  <div className="bp-subcard-lg absolute left-0 top-full mt-1.5 z-40 w-56 max-h-60 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-1.5 shadow-xl grid grid-cols-2 gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPrefix(null);
-                        setOpenFilterMenu(null);
-                      }}
-                      className="col-span-2 rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-accent hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      全部系列
-                    </button>
-                    {availablePrefixes.map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => {
-                          setPrefix(item);
-                          setOpenFilterMenu(null);
-                        }}
-                        className={`truncate rounded-xl px-2.5 py-1.5 text-left text-xs font-bold ${
-                          prefix === item
-                            ? "bp-pill-active bg-accent text-white"
-                            : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* [+ 光泽/属性 ⌄] Pill */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setOpenFilterMenu(openFilterMenu === "finish" ? null : "finish")
-                  }
-                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
-                    finishFilter
-                      ? "bp-pill-active border-accent bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent-light"
-                      : "bp-pill border-slate-200/90 dark:border-slate-700 bg-white/85 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                  }`}
-                >
-                  <span>
-                    {finishFilter
-                      ? `属性: ${FINISH_LABELS[finishFilter]?.zh || finishFilter}`
-                      : "+ 光泽/类型"}
-                  </span>
-                  {finishFilter ? (
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFinishFilter(null);
-                      }}
-                      className="ml-0.5 rounded-full hover:bg-accent/20 p-0.5"
-                    >
-                      <XIcon className="h-2.5 w-2.5" weight="bold" />
-                    </span>
-                  ) : (
-                    <CaretDownIcon className="h-2.5 w-2.5 opacity-60" />
-                  )}
-                </button>
-
-                {openFilterMenu === "finish" && (
-                  <div className="bp-subcard-lg absolute left-0 top-full mt-1.5 z-40 w-44 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-1.5 shadow-xl space-y-0.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFinishFilter(null);
-                        setOpenFilterMenu(null);
-                      }}
-                      className="w-full rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-accent hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      全部类型
-                    </button>
-                    {Object.entries(FINISH_LABELS).map(([k, val]) => (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => {
-                          setFinishFilter(k);
-                          setOpenFilterMenu(null);
-                        }}
-                        className={`w-full rounded-xl px-2.5 py-1.5 text-left text-xs font-bold ${
-                          finishFilter === k
-                            ? "bp-pill-active bg-accent text-white"
-                            : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        }`}
-                      >
-                        {val.zh}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* [仅实色] Pill */}
+        {/* Single-Row Notion-Style Filter Pills ([+ 系列 ⌄] [+ 光泽/类型 ⌄] [+ 油性/水性 ⌄] [仅实色]) + View Mode Switcher */}
+        <div className="relative flex flex-wrap items-center justify-between gap-2 pr-1.5 pb-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* [+ 系列 ⌄] Pill */}
+            <div className="relative">
               <button
                 type="button"
-                onClick={() => setSolidsOnly(!solidsOnly)}
+                onClick={() =>
+                  setOpenFilterMenu(openFilterMenu === "series" ? null : "series")
+                }
                 className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
-                  solidsOnly
-                    ? "bp-pill-active border-accent bg-accent text-white"
+                  prefix
+                    ? "bp-pill-active border-accent bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent-light"
                     : "bp-pill border-slate-200/90 dark:border-slate-700 bg-white/85 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                 }`}
               >
-                {solidsOnly && <CheckIcon className="h-3 w-3 shrink-0" weight="bold" />}
-                <span>仅实色</span>
+                <FunnelSimpleIcon className="h-3 w-3 shrink-0" weight="bold" />
+                <span>{prefix ? `系列: ${prefix}` : "+ 系列"}</span>
+                {prefix ? (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPrefix(null);
+                    }}
+                    className="ml-0.5 rounded-full hover:bg-accent/20 p-0.5"
+                  >
+                    <XIcon className="h-2.5 w-2.5" weight="bold" />
+                  </span>
+                ) : (
+                  <CaretDownIcon className="h-2.5 w-2.5 opacity-60" />
+                )}
               </button>
+
+              {openFilterMenu === "series" && (
+                <div className="bp-subcard-lg absolute left-0 top-full mt-1.5 z-40 w-56 max-h-60 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-1.5 shadow-xl grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPrefix(null);
+                      setOpenFilterMenu(null);
+                    }}
+                    className="col-span-2 rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-accent hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    全部系列
+                  </button>
+                  {availablePrefixes.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => {
+                        setPrefix(item);
+                        setOpenFilterMenu(null);
+                      }}
+                      className={`truncate rounded-xl px-2.5 py-1.5 text-left text-xs font-bold ${
+                        prefix === item
+                          ? "bp-pill-active bg-accent text-white"
+                          : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Right: Count + [画廊网格 | 紧凑列表] Switcher */}
-            <div className="flex items-center gap-2 ml-auto">
-              <span className="font-mono text-[11px] font-bold text-slate-400 whitespace-nowrap">
-                {filteredPaints.length} 款
-              </span>
-              <div className="bp-segmented inline-flex rounded-full bg-slate-200/80 dark:bg-slate-800 p-0.5 border border-slate-200/80 dark:border-slate-700">
-                <button
-                  type="button"
-                  onClick={() => handleSwitchViewMode("gallery")}
-                  className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
-                    viewModeUI === "gallery"
-                      ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-accent dark:text-white shadow-2xs"
-                      : "text-slate-500 dark:text-slate-400"
-                  }`}
-                  title="画廊网格视图"
-                >
-                  <SquaresFourIcon className="h-3.5 w-3.5 shrink-0" />
-                  <span>画廊</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSwitchViewMode("compact")}
-                  className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
-                    viewModeUI === "compact"
-                      ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-accent dark:text-white shadow-2xs"
-                      : "text-slate-500 dark:text-slate-400"
-                  }`}
-                  title="Notion 紧凑列表视图"
-                >
-                  <ListIcon className="h-3.5 w-3.5 shrink-0" />
-                  <span>列表</span>
-                </button>
-              </div>
+            {/* [+ 光泽/属性 ⌄] Pill */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenFilterMenu(openFilterMenu === "finish" ? null : "finish")
+                }
+                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
+                  finishFilter
+                    ? "bp-pill-active border-accent bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent-light"
+                    : "bp-pill border-slate-200/90 dark:border-slate-700 bg-white/85 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                <span>
+                  {finishFilter
+                    ? `属性: ${FINISH_LABELS[finishFilter]?.zh || finishFilter}`
+                    : "+ 光泽/类型"}
+                </span>
+                {finishFilter ? (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFinishFilter(null);
+                    }}
+                    className="ml-0.5 rounded-full hover:bg-accent/20 p-0.5"
+                  >
+                    <XIcon className="h-2.5 w-2.5" weight="bold" />
+                  </span>
+                ) : (
+                  <CaretDownIcon className="h-2.5 w-2.5 opacity-60" />
+                )}
+              </button>
+
+              {openFilterMenu === "finish" && (
+                <div className="bp-subcard-lg absolute left-0 top-full mt-1.5 z-40 w-44 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-1.5 shadow-xl space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFinishFilter(null);
+                      setOpenFilterMenu(null);
+                    }}
+                    className="w-full rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-accent hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    全部类型
+                  </button>
+                  {Object.entries(FINISH_LABELS).map(([k, val]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => {
+                        setFinishFilter(k);
+                        setOpenFilterMenu(null);
+                      }}
+                      className={`w-full rounded-xl px-2.5 py-1.5 text-left text-xs font-bold ${
+                        finishFilter === k
+                          ? "bp-pill-active bg-accent text-white"
+                          : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {val.zh}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* [+ 油性/水性 ⌄] Notion-Style Filter Pill */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenFilterMenu(openFilterMenu === "solvent" ? null : "solvent")
+                }
+                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
+                  solventFilter !== "all"
+                    ? "bp-pill-active border-accent bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent-light"
+                    : "bp-pill border-slate-200/90 dark:border-slate-700 bg-white/85 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                <span>
+                  {solventFilter === "oil"
+                    ? `🧪 油性漆 (${brandSolventCounts.oil})`
+                    : solventFilter === "water"
+                    ? `💧 水性漆 (${brandSolventCounts.water})`
+                    : "+ 油性/水性"}
+                </span>
+                {solventFilter !== "all" ? (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSolventFilter("all");
+                    }}
+                    className="ml-0.5 rounded-full hover:bg-accent/20 p-0.5"
+                  >
+                    <XIcon className="h-2.5 w-2.5" weight="bold" />
+                  </span>
+                ) : (
+                  <CaretDownIcon className="h-2.5 w-2.5 opacity-60" />
+                )}
+              </button>
+
+              {openFilterMenu === "solvent" && (
+                <div className="bp-subcard-lg absolute left-0 top-full mt-1.5 z-40 w-52 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-1.5 shadow-xl space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSolventFilter("all");
+                      setOpenFilterMenu(null);
+                    }}
+                    className={`w-full rounded-xl px-2.5 py-1.5 text-left text-xs font-bold flex items-center justify-between ${
+                      solventFilter === "all"
+                        ? "bp-pill-active bg-accent text-white"
+                        : "text-accent hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span>全部性质</span>
+                    <span className="font-mono text-[10px] opacity-80">{brandSolventCounts.all}</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={brandSolventCounts.oil === 0}
+                    onClick={() => {
+                      setSolventFilter("oil");
+                      setOpenFilterMenu(null);
+                    }}
+                    className={`w-full rounded-xl px-2.5 py-1.5 text-left text-xs font-bold flex items-center justify-between ${
+                      brandSolventCounts.oil === 0
+                        ? "opacity-40 cursor-not-allowed text-slate-400"
+                        : solventFilter === "oil"
+                        ? "bp-pill-active bg-accent text-white"
+                        : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span>🧪 油性漆 (硝基/珐琅)</span>
+                    <span className="font-mono text-[10px] opacity-80">{brandSolventCounts.oil}</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={brandSolventCounts.water === 0}
+                    onClick={() => {
+                      setSolventFilter("water");
+                      setOpenFilterMenu(null);
+                    }}
+                    className={`w-full rounded-xl px-2.5 py-1.5 text-left text-xs font-bold flex items-center justify-between ${
+                      brandSolventCounts.water === 0
+                        ? "opacity-40 cursor-not-allowed text-slate-400"
+                        : solventFilter === "water"
+                        ? "bp-pill-active bg-accent text-white"
+                        : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span>💧 水性漆 (水性/丙烯)</span>
+                    <span className="font-mono text-[10px] opacity-80">{brandSolventCounts.water}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* [仅实色] Pill */}
+            <button
+              type="button"
+              onClick={() => setSolidsOnly(!solidsOnly)}
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
+                solidsOnly
+                  ? "bp-pill-active border-accent bg-accent text-white"
+                  : "bp-pill border-slate-200/90 dark:border-slate-700 bg-white/85 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+              }`}
+            >
+              {solidsOnly && <CheckIcon className="h-3 w-3 shrink-0" weight="bold" />}
+              <span>仅实色</span>
+            </button>
+          </div>
+
+          {/* Right: Count + [画廊网格 | 紧凑列表] Switcher */}
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="font-mono text-[11px] font-bold text-slate-400 whitespace-nowrap">
+              {filteredPaints.length} 款
+            </span>
+            <div className="bp-segmented inline-flex rounded-full bg-slate-200/80 dark:bg-slate-800 p-0.5 border border-slate-200/80 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => handleSwitchViewMode("gallery")}
+                className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
+                  viewModeUI === "gallery"
+                    ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-accent dark:text-white shadow-2xs"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
+                title="画廊网格视图"
+              >
+                <SquaresFourIcon className="h-3.5 w-3.5 shrink-0" />
+                <span>画廊</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSwitchViewMode("compact")}
+                className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
+                  viewModeUI === "compact"
+                    ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-accent dark:text-white shadow-2xs"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
+                title="Notion 紧凑列表视图"
+              >
+                <ListIcon className="h-3.5 w-3.5 shrink-0" />
+                <span>列表</span>
+              </button>
             </div>
           </div>
         </div>

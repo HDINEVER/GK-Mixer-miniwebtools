@@ -172,7 +172,13 @@ export const paintPrefix = (paint: CatalogPaint): string => {
   }
   if (letters.length >= 1 && letters.length <= 4) {
     const rest = code.slice(letters.length);
-    if (!rest || /[0-9\-._ ]/.test(rest[0])) return letters.toUpperCase();
+    if (!rest || /[0-9\-._ ]/.test(rest[0])) {
+      const upper = letters.toUpperCase();
+      if (upper === paint.brand.trim().toUpperCase() && set) {
+        return set;
+      }
+      return upper;
+    }
   }
   if (/^\d{3,}$/.test(code)) {
     const value = Number(code);

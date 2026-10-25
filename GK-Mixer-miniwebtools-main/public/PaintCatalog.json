@@ -71768,10 +71768,10 @@
       "mixable": false
     },
     {
-      "id": "gaia-GP-02p",
+      "id": "gaia-GP-02P",
       "brand": "Gaia",
-      "code": "GP-02p",
-      "name": "超级珍珠魔幻红 (限定) / Pearl Premium Red",
+      "code": "GP-02P",
+      "name": "超级珍珠红 (珍珠魔幻红) / Pearl Premium Red",
       "hex": "#DC143C",
       "set": "GP 魔幻与高级色",
       "finish": "pearl",
@@ -71805,7 +71805,7 @@
       "id": "gaia-GP-04",
       "brand": "Gaia",
       "code": "GP-04",
-      "name": "高级玻璃星光珍珠白 / Premium Glass Pearl",
+      "name": "魔幻星光珍珠白 (玻璃珍珠白) / Premium Glass Pearl",
       "hex": "#F0F6FC",
       "set": "GP 魔幻与高级色",
       "finish": "pearl",
@@ -71822,10 +71822,10 @@
       "id": "gaia-GP-05",
       "brand": "Gaia",
       "code": "GP-05",
-      "name": "超级群青海洋蓝 / Ultra Marine Blue",
+      "name": "超级海洋蓝 (群青海洋蓝) / Ultra Marine Blue",
       "hex": "#003EB8",
       "set": "GP 魔幻与高级色",
-      "finish": "standard",
+      "finish": "clear",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
@@ -71833,13 +71833,13 @@
         33.8052,
         -68.1564
       ],
-      "mixable": true
+      "mixable": false
     },
     {
-      "id": "gaia-GP-05p",
+      "id": "gaia-GP-05P",
       "brand": "Gaia",
-      "code": "GP-05p",
-      "name": "超级珍珠海洋蓝 (限定) / Pearl Ultra Marine Blue",
+      "code": "GP-05P",
+      "name": "超级珍珠蓝 (珍珠海洋蓝) / Pearl Ultra Marine Blue",
       "hex": "#2B5CE6",
       "set": "GP 魔幻与高级色",
       "finish": "pearl",
@@ -71873,7 +71873,7 @@
       "id": "gaia-GP-07",
       "brand": "Gaia",
       "code": "GP-07",
-      "name": "高级电镀银 / Premium Plated Silver",
+      "name": "高级电镀银 / Premium Silver Plate",
       "hex": "#DCDFE4",
       "set": "GP 魔幻与高级色",
       "finish": "metallic",
@@ -71884,7 +71884,7 @@
         -0.0931,
         -2.7932
       ],
-      "mixable": true
+      "mixable": false
     },
     {
       "id": "gaia-GP-08",
@@ -71901,13 +71901,13 @@
         -0.2763,
         -2.2871
       ],
-      "mixable": true
+      "mixable": false
     },
     {
       "id": "gaia-GP-09",
       "brand": "Gaia",
       "code": "GP-09",
-      "name": "棱镜偏光蓝黑 / Prism Blue Black",
+      "name": "棱镜蓝黑 (棱镜偏光蓝黑) / Prism Blue Black",
       "hex": "#121730",
       "set": "GP 魔幻与高级色",
       "finish": "pearl",
@@ -189911,6 +189911,261 @@
         -39.4947
       ],
       "mixable": true
+    },
+    {
+      "id": "gaia-GP-11",
+      "brand": "Gaia",
+      "code": "GP-11",
+      "name": "高级纯金 (金条色) / Premium Bullion Gold",
+      "hex": "#C9922C",
+      "set": "GP 魔幻与高级色",
+      "finish": "metallic",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        64.2902,
+        11.6999,
+        58.5068
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-01",
+      "brand": "Gaia",
+      "code": "SP-01",
+      "name": "棱镜金属 绿松石绿 / Prism Metallic Turquoise Green Light Blue",
+      "hex": "#1485B8",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        52.2666,
+        -10.76,
+        -34.8925
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-02",
+      "brand": "Gaia",
+      "code": "SP-02",
+      "name": "高级金属红 (深红) / Premium Metallic Red Deep Red",
+      "hex": "#9E1118",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "metallic",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        33.432,
+        53.8979,
+        36.2824
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-03",
+      "brand": "Gaia",
+      "code": "SP-03",
+      "name": "棱镜绿 日出 (日出绿) / Prism Green Sunrise",
+      "hex": "#82C458",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        72.8451,
+        -39.8685,
+        47.0186
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-04",
+      "brand": "Gaia",
+      "code": "SP-04",
+      "name": "棱镜姬 抚子 (樱花石竹) / Prism Hime Nadeshiko",
+      "hex": "#E8B4C8",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        78.4447,
+        21.8889,
+        -2.8349
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-05",
+      "brand": "Gaia",
+      "code": "SP-05",
+      "name": "棱镜金属 蓝紫 / Prism Metallic Blue Violet",
+      "hex": "#2B3BA8",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        30.5629,
+        32.3577,
+        -60.2573
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-06",
+      "brand": "Gaia",
+      "code": "SP-06",
+      "name": "阿兹特莱红宝石 (金属棱镜蓝红) / Metallic Prism Azurite Ruby",
+      "hex": "#5A1E48",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        22.1978,
+        32.7735,
+        -12.3499
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-07",
+      "brand": "Gaia",
+      "code": "SP-07",
+      "name": "幻彩全息 (金属棱镜全息) / Metallic Prism Hologram",
+      "hex": "#D4DCE6",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        87.4345,
+        -0.7953,
+        -5.82
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-08",
+      "brand": "Gaia",
+      "code": "SP-08",
+      "name": "棱镜青紫 (亚历山大变石) / Metallic Prism Alexandrite",
+      "hex": "#2E6878",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        40.9552,
+        -13.734,
+        -14.6344
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-09",
+      "brand": "Gaia",
+      "code": "SP-09",
+      "name": "洋红金 (尖晶石金) / Metallic Prism Spinel Gold",
+      "hex": "#9C3A4E",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        38.9779,
+        42.5109,
+        9.6929
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-10",
+      "brand": "Gaia",
+      "code": "SP-10",
+      "name": "月亮金 (金银偏光) / Metallic Prism Moon Gold Silver",
+      "hex": "#D8C46A",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        79.1111,
+        -4.561,
+        47.3343
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-11",
+      "brand": "Gaia",
+      "code": "SP-11",
+      "name": "氰基蓝 (金属棱镜深蓝) / Metallic Prism Cyanos Blue",
+      "hex": "#1E3566",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        22.9342,
+        9.0328,
+        -31.5457
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-12",
+      "brand": "Gaia",
+      "code": "SP-12",
+      "name": "棱镜金属 粉金 (粉金) / Prism Metallic Pink Gold",
+      "hex": "#E07A86",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        62.9204,
+        40.6801,
+        11.3318
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-13",
+      "brand": "Gaia",
+      "code": "SP-13",
+      "name": "岩浆红 (棱镜岩浆红) / Prism Magma Red",
+      "hex": "#B84234",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        44.7136,
+        46.8607,
+        33.834
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-SP-14",
+      "brand": "Gaia",
+      "code": "SP-14",
+      "name": "珍珠群青 (辉煌珍珠群青) / Pearl Ultramarine Blue Brilliant",
+      "hex": "#2658D8",
+      "set": "限定棱镜与幻彩特殊色",
+      "finish": "pearl",
+      "source": "gk-mixer",
+      "approx": true,
+      "lab": [
+        41.7629,
+        30.9522,
+        -70.0596
+      ],
+      "mixable": false
     }
   ]
 }

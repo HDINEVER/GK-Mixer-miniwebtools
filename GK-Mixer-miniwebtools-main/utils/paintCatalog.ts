@@ -246,6 +246,7 @@ export const GAIA_CATEGORY_ORDER = [
   "001–099 基础标准色",
   "EX 大瓶装系列",
   "GP 魔幻与高级色",
+  "限定棱镜与幻彩特殊色",
   "棱镜偏光与珍珠色",
   "星光与金属色",
   "荧光色系列",
@@ -344,6 +345,13 @@ export const prefixGroups = (
     if (brand === "Night Works") {
       const li = NIGHTWORKS_CATEGORY_ORDER.indexOf(a);
       const ri = NIGHTWORKS_CATEGORY_ORDER.indexOf(b);
+      const left = li === -1 ? Number.MAX_SAFE_INTEGER : li;
+      const right = ri === -1 ? Number.MAX_SAFE_INTEGER : ri;
+      if (left !== right) return left - right;
+    }
+    if (brand === "Gaia") {
+      const li = GAIA_CATEGORY_ORDER.indexOf(a);
+      const ri = GAIA_CATEGORY_ORDER.indexOf(b);
       const left = li === -1 ? Number.MAX_SAFE_INTEGER : li;
       const right = ri === -1 ? Number.MAX_SAFE_INTEGER : ri;
       if (left !== right) return left - right;

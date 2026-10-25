@@ -38,11 +38,16 @@ const codeCandidates = (brand: string, code: string): string[] => {
       const num = ex[1].padStart(2, "0");
       preferred.push(`Ex-${num}`, `EX-${num}`, `EX${num}`, `ex-${num}`);
     }
-    const series = compact.match(/^(GP|EV|VO|FG|GS|NC|NP|GE|TL)-?([0-9A-Za-z]+)$/i);
+    const series = compact.match(/^(GP|SP|EV|VO|FG|GS|NC|NP|GE|TL)-?([0-9A-Za-z]+)$/i);
     if (series) {
       const pfx = series[1].toUpperCase();
-      const rest = series[2];
-      preferred.push(`${pfx}-${rest}`, `${pfx}${rest}`, `${pfx.toLowerCase()}-${rest.toLowerCase()}`);
+      const rest = series[2].toUpperCase();
+      preferred.push(
+        `${pfx}-${rest}`,
+        `${pfx}${rest}`,
+        `${pfx}-${series[2]}`,
+        `${pfx.toLowerCase()}-${rest.toLowerCase()}`
+      );
     }
   }
   if (brand === "Jumpwind" || brand === "匠域") {

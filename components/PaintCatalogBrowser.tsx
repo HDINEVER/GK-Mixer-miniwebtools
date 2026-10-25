@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CatalogPaint, ColorData, Language } from "../types";
-import PaintBottleHover from "./PaintBottleHover";
+import { PaintBottleImg } from "./PaintBottleHover";
 import IOSSearchBar from "./IOSSearchBar";
 import {
   CheckIcon,
@@ -22,7 +23,6 @@ import {
   loadPaintCatalog,
   localizedBrand,
   paintPrefix,
-  sortPaints,
 } from "../utils/paintCatalog";
 
 interface PaintCatalogBrowserProps {
@@ -33,8 +33,27 @@ interface PaintCatalogBrowserProps {
   activeSampleColor?: ColorData | null;
 }
 
-const INITIAL_GROUP_BATCH = 6;
-const GROUP_BATCH_STEP = 8;
+const INITIAL_ITEM_BATCH = 60;
+const ITEM_BATCH_STEP = 90;
+
+const BRAND_PRIORITY_MAP = new Map<string, number>(
+  FEATURED_BRANDS.map((b, idx) => [b, idx])
+);
+
+const preSortCatalogPaints = (raw: CatalogPaint[]): CatalogPaint[] => {
+  if (!raw || raw.length === 0) return [];
+  return [...raw].sort((a, b) => {
+    if (a.brand !== b.brand) {
+      const pa = BRAND_PRIORITY_MAP.get(a.brand) ?? Number.MAX_SAFE_INTEGER;
+      const pb = BRAND_PRIORITY_MAP.get(b.brand) ?? Number.MAX_SAFE_INTEGER;
+      if (pa !== pb) return pa - pb;
+      return a.brand.localeCompare(b.brand);
+    }
+    const codeCmp = a.code.localeCompare(b.code, undefined, { numeric: true });
+    if (codeCmp !== 0) return codeCmp;
+    return a.name.localeCompare(b.name);
+  });
+};
 
 const FINISH_LABELS: Record<string, { zh: string; colorClass: string }> = {
   standard: { zh: "标准实色", colorClass: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
@@ -61,7 +80,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   activeSampleColor,
 }) => {
   const [paints, setPaints] = useState<CatalogPaint[]>(() =>
-    initialPaints && initialPaints.length > 0 ? initialPaints : []
+    initialPaints && initialPaints.length > 0 ? preSortCatalogPaints(initialPaints) : []
   );
   const [isReady, setIsReady] = useState<boolean>(false);
   const [brand, setBrand] = useState<string>("ALL");
@@ -73,19 +92,41 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
   const [showUncommonBrands, setShowUncommonBrands] = useState<boolean>(false);
   const [applicationFilter, setApplicationFilter] = useState<"all" | PaintApplicationType>("all");
   const [viewMode, setViewMode] = useState<"gallery" | "compact">("gallery");
+  const [viewModeUI, setViewModeUI] = useState<"gallery" | "compact">("gallery");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [openFilterMenu, setOpenFilterMenu] = useState<"series" | "finish" | null>(null);
-  const [visibleGroupLimit, setVisibleGroupLimit] = useState<number>(INITIAL_GROUP_BATCH);
+  const [visibleItemLimit, setVisibleItemLimit] = useState<number>(INITIAL_ITEM_BATCH);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Single event-delegated hover preview state (replaces 1,000+ per-card PaintBottleHover instances)
+  const [hoveredBottle, setHoveredBottle] = useState<{
+    brand: string;
+    code: string;
+    name: string;
+    hex: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const hoveredCardElRef = useRef<HTMLElement | null>(null);
+
+  const handleSwitchViewMode = useCallback((nextMode: "gallery" | "compact") => {
+    setViewModeUI(nextMode);
+    setHoveredBottle(null);
+    hoveredCardElRef.current = null;
+    startTransition(() => {
+      setVisibleItemLimit(INITIAL_ITEM_BATCH);
+      setViewMode(nextMode);
+    });
+  }, []);
 
   const commonBrandsSet = useMemo(() => new Set<string>(COMMON_MODEL_BRANDS), []);
 
   useEffect(() => {
     if (initialPaints && initialPaints.length > 0) {
-      setPaints(initialPaints);
+      setPaints(preSortCatalogPaints(initialPaints));
     } else {
       loadPaintCatalog().then((loaded) => {
-        setPaints(loaded);
+        setPaints(preSortCatalogPaints(loaded));
       });
     }
     // Defer heavy card list mount by 1 animation frame so tab switch paints instantaneously
@@ -101,9 +142,9 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     };
   }, [initialPaints]);
 
-  // Reset progressive window when filters change
+  // Reset progressive item window when filters change
   useEffect(() => {
-    setVisibleGroupLimit(INITIAL_GROUP_BATCH);
+    setVisibleItemLimit(INITIAL_ITEM_BATCH);
   }, [
     brand,
     solidsOnly,
@@ -113,7 +154,6 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     activeQuickChip,
     showUncommonBrands,
     applicationFilter,
-    viewMode,
   ]);
 
   const allUniqueBrands = useMemo(() => {
@@ -264,38 +304,138 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
         brand === "ALL"
           ? `${localizedBrand(paint.brand, lang)} · ${pfx}`
           : pfx;
-      const list = bucket.get(key) ?? [];
+      let list = bucket.get(key);
+      if (!list) {
+        list = [];
+        bucket.set(key, list);
+      }
       list.push(paint);
-      bucket.set(key, list);
     }
     return Array.from(bucket.entries()).map(([grpKey, list]) => ({
       prefix: grpKey,
-      paints: sortPaints(list),
+      paints: list,
     }));
   }, [filteredPaints, searchMetaMap, brand, lang]);
 
-  const visibleGroups = useMemo(
-    () => groups.slice(0, visibleGroupLimit),
-    [groups, visibleGroupLimit]
-  );
-  const hasMoreGroups = visibleGroupLimit < groups.length;
+  // Slice by total rendered paint items (INITIAL_ITEM_BATCH = 60) so even groups with 300+ paints never block the main thread on view switch
+  const { visibleGroups, renderedPaintCount, hasMoreItems } = useMemo(() => {
+    const result: Array<{
+      prefix: string;
+      paints: CatalogPaint[];
+      totalCount: number;
+    }> = [];
+    let count = 0;
+    let more = false;
 
-  // Automatically expand visible groups when scrolling near the sentinel
+    for (const grp of groups) {
+      const totalCount = grp.paints.length;
+      if (collapsed.has(grp.prefix)) {
+        result.push({ prefix: grp.prefix, paints: [], totalCount });
+        continue;
+      }
+      if (count >= visibleItemLimit) {
+        more = true;
+        break;
+      }
+      const remaining = visibleItemLimit - count;
+      if (totalCount <= remaining) {
+        result.push({ prefix: grp.prefix, paints: grp.paints, totalCount });
+        count += totalCount;
+      } else {
+        result.push({
+          prefix: grp.prefix,
+          paints: grp.paints.slice(0, remaining),
+          totalCount,
+        });
+        count += remaining;
+        more = true;
+        break;
+      }
+    }
+    return { visibleGroups: result, renderedPaintCount: count, hasMoreItems: more };
+  }, [groups, visibleItemLimit, collapsed]);
+
+  // Automatically expand visible items when scrolling near the sentinel
   useEffect(() => {
-    if (!isReady || !hasMoreGroups) return;
+    if (!isReady || !hasMoreItems) return;
     const node = loadMoreSentinelRef.current;
     if (!node || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          setVisibleGroupLimit((prev) => Math.min(groups.length, prev + GROUP_BATCH_STEP));
+          startTransition(() => {
+            setVisibleItemLimit((prev) =>
+              Math.min(filteredPaints.length, prev + ITEM_BATCH_STEP)
+            );
+          });
         }
       },
-      { rootMargin: "360px 0px" }
+      { rootMargin: "420px 0px" }
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [isReady, hasMoreGroups, groups.length]);
+  }, [isReady, hasMoreItems, filteredPaints.length]);
+
+  const handleCatalogMouseOver = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (typeof window !== "undefined" && !window.matchMedia("(hover: hover)").matches) {
+      return;
+    }
+    const target = (e.target as Element | null)?.closest?.(
+      "[data-bottle-code]"
+    ) as HTMLElement | null;
+    if (!target) {
+      if (hoveredCardElRef.current) {
+        hoveredCardElRef.current = null;
+        setHoveredBottle(null);
+      }
+      return;
+    }
+    if (hoveredCardElRef.current === target) return;
+    hoveredCardElRef.current = target;
+
+    const b = target.getAttribute("data-bottle-brand") || "";
+    const c = target.getAttribute("data-bottle-code") || "";
+    const n = target.getAttribute("data-bottle-name") || "";
+    const h = target.getAttribute("data-bottle-hex") || "#808080";
+    if (!b || !c) return;
+
+    const rect = target.getBoundingClientRect();
+    const width = 160;
+    const height = 220;
+    const gap = 12;
+    const pad = 12;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const leftX = rect.left - gap - width;
+    const rightX = rect.right + gap;
+    const canLeft = leftX >= pad;
+    const canRight = rightX + width <= vw - pad;
+
+    let x: number;
+    if (canLeft) x = leftX;
+    else if (canRight) x = rightX;
+    else x = rect.left >= vw - rect.right ? pad : vw - width - pad;
+
+    let y = rect.top;
+    if (y + height > vh - pad) y = vh - height - pad;
+    if (y < pad) y = pad;
+
+    const overlapsRow =
+      x < rect.right && x + width > rect.left && y < rect.bottom && y + height > rect.top;
+    if (overlapsRow) {
+      const aboveY = rect.top - gap - height;
+      if (aboveY >= pad) y = aboveY;
+      else y = Math.min(vh - height - pad, rect.bottom + gap);
+    }
+
+    setHoveredBottle({ brand: b, code: c, name: n, hex: h, x, y });
+  }, []);
+
+  const handleCatalogMouseLeave = useCallback(() => {
+    hoveredCardElRef.current = null;
+    setHoveredBottle(null);
+  }, []);
 
   const toggleCollapse = (key: string) => {
     setCollapsed((prev) => {
@@ -631,9 +771,9 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
               <div className="bp-segmented inline-flex rounded-full bg-slate-200/80 dark:bg-slate-800 p-0.5 border border-slate-200/80 dark:border-slate-700">
                 <button
                   type="button"
-                  onClick={() => setViewMode("gallery")}
+                  onClick={() => handleSwitchViewMode("gallery")}
                   className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
-                    viewMode === "gallery"
+                    viewModeUI === "gallery"
                       ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-accent dark:text-white shadow-2xs"
                       : "text-slate-500 dark:text-slate-400"
                   }`}
@@ -644,9 +784,9 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewMode("compact")}
+                  onClick={() => handleSwitchViewMode("compact")}
                   className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
-                    viewMode === "compact"
+                    viewModeUI === "compact"
                       ? "bp-segmented-item-active bg-white dark:bg-slate-900 text-accent dark:text-white shadow-2xs"
                       : "text-slate-500 dark:text-slate-400"
                   }`}
@@ -686,7 +826,11 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
           </div>
         </div>
       ) : (
-      <div className="space-y-2.5 pr-1.5 pb-1.5">
+      <div
+        className="space-y-2.5 pr-1.5 pb-1.5"
+        onMouseOver={handleCatalogMouseOver}
+        onMouseLeave={handleCatalogMouseLeave}
+      >
         {visibleGroups.map((group) => {
           const isCollapsed = collapsed.has(group.prefix);
           return (
@@ -702,7 +846,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                 <span className="flex items-center gap-2 font-mono">
                   <span>{group.prefix}</span>
                   <span className="bp-badge rounded-full bg-slate-200/80 dark:bg-slate-700 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                    {group.paints.length}
+                    {group.totalCount}
                   </span>
                 </span>
                 <span className="text-slate-400">
@@ -716,96 +860,93 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
 
               {!isCollapsed &&
                 (viewMode === "gallery" ? (
-                  /* Mode A: Gallery Swatch Cards Grid (Pure Color Swatch, Bottle Thumbnail on Hover) */
+                  /* Mode A: Gallery Swatch Cards Grid (Pure Color Swatch, Delegated Bottle Thumbnail on Hover) */
                   <div className="grid grid-cols-1 gap-2.5 px-3 pb-3.5 pt-2.5 sm:grid-cols-2 lg:grid-cols-3">
                     {group.paints.map((paint) => {
                       const isAssigned = activeSampleColor?.assignedPaint?.id === paint.id;
                       const appType =
                         searchMetaMap.get(paint.id)?.appType ?? getPaintApplicationType(paint);
                       return (
-                        <PaintBottleHover
+                        <div
                           key={paint.id}
-                          brand={paint.brand}
-                          code={paint.code}
-                          name={paint.name}
-                          hex={paint.hex}
-                        >
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => {
+                          role="button"
+                          tabIndex={0}
+                          data-bottle-brand={paint.brand}
+                          data-bottle-code={paint.code}
+                          data-bottle-name={paint.name}
+                          data-bottle-hex={paint.hex}
+                          onClick={() => {
+                            if (onAssignCatalog && activeSampleColor) {
+                              onAssignCatalog(paint);
+                            } else {
+                              onPickHex?.(paint.hex);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
                               if (onAssignCatalog && activeSampleColor) {
                                 onAssignCatalog(paint);
                               } else {
                                 onPickHex?.(paint.hex);
                               }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                if (onAssignCatalog && activeSampleColor) {
-                                  onAssignCatalog(paint);
-                                } else {
-                                  onPickHex?.(paint.hex);
-                                }
-                              }
-                            }}
-                            className={`bp-subcard bp-subcard-interactive group flex w-full items-center gap-3 rounded-2xl border p-2.5 sm:p-3 text-left transition active:scale-[0.99] cursor-pointer ${
-                              isAssigned
-                                ? "bp-subcard-active border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/35 ring-1 ring-emerald-500/30"
-                                : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-accent hover:shadow-xs"
-                            }`}
-                          >
-                            {/* Pure Color Swatch Block (No thumbnail directly on card) */}
-                            <div
-                              className="bp-swatch relative h-11 w-11 flex-shrink-0 rounded-xl border border-black/10 dark:border-white/10 shadow-2xs overflow-hidden"
-                              style={{ backgroundColor: paint.hex }}
-                              title={`${paint.code} ${paint.name}`}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="truncate font-mono text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-accent transition-colors">
-                                  {paint.code} {paint.name}
-                                </span>
-                                <span
-                                  className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-extrabold ${
-                                    appType === "airbrush"
-                                      ? "bg-sky-500/12 text-sky-700 dark:text-sky-300"
-                                      : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                                  }`}
-                                >
-                                  {appType === "airbrush" ? "💨喷涂" : "🖌️手涂"}
-                                </span>
-                              </div>
-                              <div className="truncate font-mono text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
-                                {paint.hex.toUpperCase()}
-                                {paint.brand ? ` · ${localizedBrand(paint.brand, lang)}` : ""}
-                                {paint.set ? ` · ${paint.set}` : ""}
-                              </div>
-                            </div>
-                            {onAssignCatalog && activeSampleColor ? (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onAssignCatalog(paint);
-                                }}
-                                className={`flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold shrink-0 transition whitespace-nowrap cursor-pointer ${
-                                  isAssigned
-                                    ? "bp-use-btn-used bg-emerald-600 text-white"
-                                    : "bp-use-btn bg-accent/10 text-accent hover:bg-accent hover:text-white border border-accent/25 dark:bg-accent/20 dark:text-accent-light dark:hover:bg-accent dark:hover:text-white"
+                            }
+                          }}
+                          className={`bp-subcard bp-subcard-interactive group flex w-full items-center gap-3 rounded-2xl border p-2.5 sm:p-3 text-left transition cursor-pointer ${
+                            isAssigned
+                              ? "bp-subcard-active border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/35 ring-1 ring-emerald-500/30"
+                              : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-accent hover:shadow-xs"
+                          }`}
+                        >
+                          {/* Pure Color Swatch Block */}
+                          <div
+                            className="bp-swatch relative h-11 w-11 flex-shrink-0 rounded-xl border border-black/10 dark:border-white/10 shadow-2xs overflow-hidden"
+                            style={{ backgroundColor: paint.hex }}
+                            title={`${paint.code} ${paint.name}`}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="truncate font-mono text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-accent transition-colors">
+                                {paint.code} {paint.name}
+                              </span>
+                              <span
+                                className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-extrabold ${
+                                  appType === "airbrush"
+                                    ? "bg-sky-500/12 text-sky-700 dark:text-sky-300"
+                                    : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
                                 }`}
                               >
-                                {isAssigned && <CheckIcon className="w-3 h-3" weight="bold" />}
-                                <span>{isAssigned ? (lang === "zh" ? "已绑定" : "Bound") : (lang === "zh" ? "指派" : "Assign")}</span>
-                              </button>
-                            ) : onPickHex ? (
-                              <span className="text-slate-300 dark:text-slate-600 group-hover:text-accent transition-colors flex-shrink-0">
-                                <ArrowUpRightIcon className="w-4 h-4" weight="bold" />
+                                {appType === "airbrush" ? "💨喷涂" : "🖌️手涂"}
                               </span>
-                            ) : null}
+                            </div>
+                            <div className="truncate font-mono text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
+                              {paint.hex.toUpperCase()}
+                              {paint.brand ? ` · ${localizedBrand(paint.brand, lang)}` : ""}
+                              {paint.set ? ` · ${paint.set}` : ""}
+                            </div>
                           </div>
-                        </PaintBottleHover>
+                          {onAssignCatalog && activeSampleColor ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAssignCatalog(paint);
+                              }}
+                              className={`flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold shrink-0 transition whitespace-nowrap cursor-pointer ${
+                                isAssigned
+                                  ? "bp-use-btn-used bg-emerald-600 text-white"
+                                  : "bp-use-btn bg-accent/10 text-accent hover:bg-accent hover:text-white border border-accent/25 dark:bg-accent/20 dark:text-accent-light dark:hover:bg-accent dark:hover:text-white"
+                              }`}
+                            >
+                              {isAssigned && <CheckIcon className="w-3 h-3" weight="bold" />}
+                              <span>{isAssigned ? (lang === "zh" ? "已绑定" : "Bound") : (lang === "zh" ? "指派" : "Assign")}</span>
+                            </button>
+                          ) : onPickHex ? (
+                            <span className="text-slate-300 dark:text-slate-600 group-hover:text-accent transition-colors flex-shrink-0">
+                              <ArrowUpRightIcon className="w-4 h-4" weight="bold" />
+                            </span>
+                          ) : null}
+                        </div>
                       );
                     })}
                   </div>
@@ -819,94 +960,91 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
                       const appType =
                         searchMetaMap.get(paint.id)?.appType ?? getPaintApplicationType(paint);
                       return (
-                        <PaintBottleHover
+                        <div
                           key={paint.id}
-                          brand={paint.brand}
-                          code={paint.code}
-                          name={paint.name}
-                          hex={paint.hex}
+                          role="button"
+                          tabIndex={0}
+                          data-bottle-brand={paint.brand}
+                          data-bottle-code={paint.code}
+                          data-bottle-name={paint.name}
+                          data-bottle-hex={paint.hex}
+                          onClick={() => {
+                            if (onAssignCatalog && activeSampleColor) {
+                              onAssignCatalog(paint);
+                            } else {
+                              onPickHex?.(paint.hex);
+                            }
+                          }}
+                          className={`group flex w-full h-[54px] items-center justify-between gap-2.5 px-3.5 text-left transition cursor-pointer ${
+                            isAssigned
+                              ? "bg-emerald-50/70 dark:bg-emerald-950/35"
+                              : "hover:bg-slate-50/90 dark:hover:bg-slate-800/50"
+                          }`}
                         >
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => {
-                              if (onAssignCatalog && activeSampleColor) {
-                                onAssignCatalog(paint);
-                              } else {
-                                onPickHex?.(paint.hex);
-                              }
-                            }}
-                            className={`group flex w-full h-[54px] items-center justify-between gap-2.5 px-3.5 text-left transition cursor-pointer ${
-                              isAssigned
-                                ? "bg-emerald-50/70 dark:bg-emerald-950/35"
-                                : "hover:bg-slate-50/90 dark:hover:bg-slate-800/50"
-                            }`}
-                          >
-                            {/* Left: Pure Color Swatch + Code + Name + Hex */}
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div
-                                className="bp-swatch relative h-9 w-9 rounded-xl border border-black/10 dark:border-white/10 shrink-0 overflow-hidden shadow-2xs"
-                                style={{ backgroundColor: paint.hex }}
-                                title={`${paint.code} ${paint.name}`}
-                              />
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="font-mono text-xs font-black text-slate-900 dark:text-white shrink-0 group-hover:text-accent transition-colors">
-                                    {paint.code}
-                                  </span>
-                                  <span className="truncate text-xs font-bold text-slate-700 dark:text-slate-200">
-                                    {paint.name}
-                                  </span>
-                                </div>
-                                <div className="font-mono text-[10px] text-slate-400">
-                                  {paint.hex.toUpperCase()}
-                                </div>
+                          {/* Left: Pure Color Swatch + Code + Name + Hex */}
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div
+                              className="bp-swatch relative h-9 w-9 rounded-xl border border-black/10 dark:border-white/10 shrink-0 overflow-hidden shadow-2xs"
+                              style={{ backgroundColor: paint.hex }}
+                              title={`${paint.code} ${paint.name}`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="font-mono text-xs font-black text-slate-900 dark:text-white shrink-0 group-hover:text-accent transition-colors">
+                                  {paint.code}
+                                </span>
+                                <span className="truncate text-xs font-bold text-slate-700 dark:text-slate-200">
+                                  {paint.name}
+                                </span>
+                              </div>
+                              <div className="font-mono text-[10px] text-slate-400">
+                                {paint.hex.toUpperCase()}
                               </div>
                             </div>
+                          </div>
 
-                            {/* Right: Notion-Style Colored Attribute Tags ([喷涂/手涂], [品牌], [光泽], [系列]) + Assign Button */}
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <span
-                                className={`bp-badge rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
-                                  appType === "airbrush"
-                                    ? "bg-sky-500/12 text-sky-700 dark:text-sky-300"
-                                    : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                          {/* Right: Notion-Style Colored Attribute Tags ([喷涂/手涂], [品牌], [光泽], [系列]) + Assign Button */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span
+                              className={`bp-badge rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                                appType === "airbrush"
+                                  ? "bg-sky-500/12 text-sky-700 dark:text-sky-300"
+                                  : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                              }`}
+                            >
+                              {appType === "airbrush" ? "💨喷涂" : "🖌️手涂"}
+                            </span>
+                            <span className="bp-badge rounded-md bg-accent/10 dark:bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent dark:text-accent-light">
+                              {localizedBrand(paint.brand, lang)}
+                            </span>
+                            <span
+                              className={`bp-badge rounded-md px-2 py-0.5 text-[10px] font-bold ${finishMeta.colorClass}`}
+                            >
+                              {finishMeta.zh}
+                            </span>
+                            {paint.set && (
+                              <span className="bp-badge hidden sm:inline-block rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400 max-w-[110px] truncate">
+                                {paint.set}
+                              </span>
+                            )}
+                            {onAssignCatalog && activeSampleColor && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onAssignCatalog(paint);
+                                }}
+                                className={`rounded-lg px-2 py-1 text-[10px] font-bold transition whitespace-nowrap cursor-pointer ${
+                                  isAssigned
+                                    ? "bp-use-btn-used bg-emerald-600 text-white"
+                                    : "bp-use-btn bg-accent/10 text-accent hover:bg-accent hover:text-white border border-accent/25 dark:bg-accent/20 dark:text-accent-light"
                                 }`}
                               >
-                                {appType === "airbrush" ? "💨喷涂" : "🖌️手涂"}
-                              </span>
-                              <span className="bp-badge rounded-md bg-accent/10 dark:bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent dark:text-accent-light">
-                                {localizedBrand(paint.brand, lang)}
-                              </span>
-                              <span
-                                className={`bp-badge rounded-md px-2 py-0.5 text-[10px] font-bold ${finishMeta.colorClass}`}
-                              >
-                                {finishMeta.zh}
-                              </span>
-                              {paint.set && (
-                                <span className="bp-badge hidden sm:inline-block rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400 max-w-[110px] truncate">
-                                  {paint.set}
-                                </span>
-                              )}
-                              {onAssignCatalog && activeSampleColor && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onAssignCatalog(paint);
-                                  }}
-                                  className={`rounded-lg px-2 py-1 text-[10px] font-bold transition whitespace-nowrap cursor-pointer ${
-                                    isAssigned
-                                      ? "bp-use-btn-used bg-emerald-600 text-white"
-                                      : "bp-use-btn bg-accent/10 text-accent hover:bg-accent hover:text-white border border-accent/25 dark:bg-accent/20 dark:text-accent-light"
-                                  }`}
-                                >
-                                  {isAssigned ? (lang === "zh" ? "已绑定" : "Bound") : (lang === "zh" ? "指派" : "Assign")}
-                                </button>
-                              )}
-                            </div>
+                                {isAssigned ? (lang === "zh" ? "已绑定" : "Bound") : (lang === "zh" ? "指派" : "Assign")}
+                              </button>
+                            )}
                           </div>
-                        </PaintBottleHover>
+                        </div>
                       );
                     })}
                   </div>
@@ -915,7 +1053,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
           );
         })}
 
-        {hasMoreGroups && (
+        {hasMoreItems && (
           <div
             ref={loadMoreSentinelRef}
             className="flex flex-wrap items-center justify-center gap-2.5 py-4 text-xs"
@@ -923,20 +1061,28 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
             <button
               type="button"
               onClick={() =>
-                setVisibleGroupLimit((prev) => Math.min(groups.length, prev + GROUP_BATCH_STEP))
+                startTransition(() => {
+                  setVisibleItemLimit((prev) =>
+                    Math.min(filteredPaints.length, prev + ITEM_BATCH_STEP)
+                  );
+                })
               }
               className="bp-pill inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-accent hover:text-accent transition cursor-pointer"
             >
               <span className="h-3.5 w-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin shrink-0" />
               <span>
                 {lang === "zh"
-                  ? `向下滚动自动加载更多 (${visibleGroups.length}/${groups.length} 组)`
-                  : `Scroll to load more (${visibleGroups.length}/${groups.length})`}
+                  ? `向下滚动自动加载更多 (${renderedPaintCount}/${filteredPaints.length} 款)`
+                  : `Scroll to load more (${renderedPaintCount}/${filteredPaints.length})`}
               </span>
             </button>
             <button
               type="button"
-              onClick={() => setVisibleGroupLimit(groups.length)}
+              onClick={() =>
+                startTransition(() => {
+                  setVisibleItemLimit(filteredPaints.length);
+                })
+              }
               className="bp-pill inline-flex items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-accent transition cursor-pointer"
             >
               <span>{lang === "zh" ? "展开全部" : "Show All"}</span>
@@ -958,6 +1104,54 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
             )}
           </div>
         )}
+
+        {hoveredBottle &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              className="pointer-events-none fixed z-[90] w-44 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 transition-opacity duration-150 animate-in fade-in"
+              style={{ left: hoveredBottle.x, top: hoveredBottle.y }}
+              role="tooltip"
+            >
+              <div className="relative flex h-36 items-center justify-center bg-slate-50/90 dark:bg-slate-800/80 p-2">
+                <div
+                  className="absolute h-16 w-16 rounded-xl border border-black/10 shadow-inner dark:border-white/15"
+                  style={{ backgroundColor: hoveredBottle.hex }}
+                />
+                <PaintBottleImg
+                  brand={hoveredBottle.brand}
+                  code={hoveredBottle.code}
+                  className="relative z-[1] max-h-28 max-w-28 object-contain drop-shadow-md"
+                />
+              </div>
+              <div className="border-t border-slate-100 px-3 py-2.5 dark:border-slate-800">
+                <div className="truncate font-mono text-xs font-bold text-slate-800 dark:text-slate-100">
+                  {hoveredBottle.brand} {hoveredBottle.code}
+                </div>
+                {hoveredBottle.name && (
+                  <div className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                    {hoveredBottle.name}
+                  </div>
+                )}
+                <div
+                  className="mt-1.5 inline-block rounded-md px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums shadow-2xs"
+                  style={{
+                    backgroundColor: hoveredBottle.hex,
+                    color:
+                      parseInt(hoveredBottle.hex.slice(1, 3), 16) * 0.299 +
+                        parseInt(hoveredBottle.hex.slice(3, 5), 16) * 0.587 +
+                        parseInt(hoveredBottle.hex.slice(5, 7), 16) * 0.114 >
+                      128
+                        ? "#000"
+                        : "#fff",
+                  }}
+                >
+                  {hoveredBottle.hex.toUpperCase()}
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
       </div>
       )}
     </div>

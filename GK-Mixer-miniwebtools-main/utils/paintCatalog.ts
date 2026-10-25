@@ -41,6 +41,7 @@ export const COMMON_MODEL_BRANDS = [
 ];
 
 export type PaintApplicationType = "airbrush" | "brush";
+export type PaintSolventType = "oil" | "water";
 
 const AIRBRUSH_PRIMARY_BRANDS = new Set([
   "Gaia",
@@ -52,6 +53,92 @@ const AIRBRUSH_PRIMARY_BRANDS = new Set([
   "Tamiya",
   "AK Real Colors",
 ]);
+
+/**
+ * Distinguishes Oil-based (硝基/珐琅 油性漆) from Water-based (水性/丙烯漆) paints,
+ * including brand-internal series distinctions (e.g. Jumpwind Aqueous JW-A, Mr.Hobby H/N, Tamiya X/XF vs LP/TS).
+ */
+export const getPaintSolventType = (paint: CatalogPaint): PaintSolventType => {
+  const brand = paint.brand.trim();
+  const code = (paint.code || "").trim();
+  const setLower = (paint.set || "").toLowerCase();
+  const nameLower = (paint.name || "").toLowerCase();
+
+  // Pure oil-based lacquer/enamel brands
+  if (
+    brand === "Gaia" ||
+    brand === "Hobby Mio" ||
+    brand === "Sunin7" ||
+    brand === "AK Real Colors"
+  ) {
+    return "oil";
+  }
+
+  // Jumpwind (匠域): JW-A / Aqueous is water-based; Basic/MEKA/NEO/Metal/Pearl/Clear are oil-based lacquer
+  if (brand === "Jumpwind") {
+    if (
+      setLower.includes("aqueous") ||
+      setLower.includes("水性") ||
+      /^jw-?a/i.test(code) ||
+      nameLower.includes("水性")
+    ) {
+      return "water";
+    }
+    return "oil";
+  }
+
+  // Mr.Hobby (郡士): H (Aqueous Hobby Color) and N (Acrysion) are water-based; C/GX/SM/UG/CL are oil-based
+  if (brand === "Mr.Hobby") {
+    if (
+      setLower.includes("aqueous") ||
+      setLower.includes("acrysion") ||
+      setLower.includes("水性") ||
+      /^[hn]\d/i.test(code) ||
+      nameLower.includes("水性")
+    ) {
+      return "water";
+    }
+    return "oil";
+  }
+
+  // Gunze (郡士水性): Acrysion series is water-based unless C/GX lacquer code
+  if (brand === "Gunze") {
+    if (/^(c|gx|sm|mr)\d/i.test(code) || setLower.includes("mr color")) {
+      return "oil";
+    }
+    return "water";
+  }
+
+  // Tamiya (田宫): LP (Lacquer Paint), TS / AS (Spray), Enamel are oil-based; X / XF (Acrylic Mini) are water-based
+  if (brand === "Tamiya") {
+    if (
+      setLower.includes("lacquer") ||
+      setLower.includes("spray") ||
+      setLower.includes("enamel") ||
+      /^(lp|ts|as)-?\d/i.test(code)
+    ) {
+      return "oil";
+    }
+    return "water";
+  }
+
+  // Vallejo / AK / Citadel / Night Works & miniature brands: mostly water-based except Liquid Gold / Spray / Enamel / Real Colors
+  if (
+    setLower.includes("liquid gold") ||
+    setLower.includes("hobby paint") ||
+    setLower.includes("spray") ||
+    setLower.includes("enamel") ||
+    setLower.includes("lacquer") ||
+    setLower.includes("real color") ||
+    setLower.includes("xtreme metal") ||
+    setLower.includes("油性") ||
+    setLower.includes("硝基")
+  ) {
+    return "oil";
+  }
+
+  return "water";
+};
 
 /**
  * Distinguishes Airbrush/Spray paints (喷涂漆) from Hand-Brush/Water-based Miniature paints (手涂漆).
@@ -155,12 +242,41 @@ export const NIGHTWORKS_CATEGORY_ORDER = [
   "特效漆",
 ];
 
+export const GAIA_CATEGORY_ORDER = [
+  "001–099 基础标准色",
+  "EX 大瓶装系列",
+  "GP 魔幻与高级色",
+  "棱镜偏光与珍珠色",
+  "星光与金属色",
+  "荧光色系列",
+  "NAZCA 机甲专业色",
+  "GS 水补土 Evo",
+  "EVA 福音战士限定色",
+  "VO 电脑战机限定色",
+  "FG 机娘联名限定色",
+  "GE 珐琅与旧化特殊色",
+  "军事色系列",
+  "铁道模型色",
+];
+
 export const paintPrefix = (paint: CatalogPaint): string => {
   if (paint.brand === "Night Works") {
     return paint.set.trim() || OTHER_PREFIX;
   }
   const code = paint.code.trim();
   const set = paint.set.trim();
+  if (paint.brand === "Gaia") {
+    if (set && set !== "Gaia Notes") {
+      return set;
+    }
+    if (/^\d{3}$/.test(code)) {
+      const value = Number(code);
+      if (value < 100) return "001–099 基础标准色";
+      if (value < 200) return "100–199 特殊/金属/荧光";
+      return "军事色系列";
+    }
+    return set || OTHER_PREFIX;
+  }
   const dot = code.indexOf(".");
   if (dot > 0 && [...code.slice(0, dot)].every((ch) => ch >= "0" && ch <= "9")) {
     return `${code.slice(0, dot)}.`;

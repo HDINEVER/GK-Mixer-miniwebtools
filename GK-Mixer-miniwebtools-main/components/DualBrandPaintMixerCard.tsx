@@ -5,6 +5,7 @@ import { rgbToHex } from "../utils/colorUtils";
 import {
   FEATURED_BRANDS,
   PaintMatchEngine,
+  getPaintSolventType,
   loadPaintCatalog,
   localizedBrand,
   matchQuality,
@@ -19,6 +20,9 @@ import {
   CaretDownIcon,
   SparkleIcon,
   ArrowRightIcon,
+  LockKeyIcon,
+  LockKeyOpenIcon,
+  WarningIcon,
 } from "@phosphor-icons/react";
 
 interface DualBrandPaintMixerCardProps {
@@ -52,8 +56,10 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
   // ratioB = proportion of Paint B in [0.05, 0.95]
   const [ratioBPct, setRatioBPct] = useState<number>(50);
   const [activePickerSlot, setActivePickerSlot] = useState<"A" | "B" | null>(null);
-  const [pickerBrand, setPickerBrand] = useState<string>("ALL");
+  const [pickerBrand, setPickerBrand] = useState<string>("COMMON");
   const [pickerQuery, setPickerQuery] = useState<string>("");
+  // Default to same-brand mixing only; user can manually toggle cross-brand mixing on (with warning)
+  const [allowCrossBrand, setAllowCrossBrand] = useState<boolean>(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,14 +135,46 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
     return engine.findClosest(mixedHex, 4);
   }, [engine, mixedHex]);
 
+  // Helper: find a companion paint of the same brand & same solvent type when locking to same brand
+  const findCompanionPaintOfBrand = (
+    targetBrand: string,
+    targetSolvent: "oil" | "water",
+    excludeId?: string
+  ): CatalogPaint | null => {
+    const candidates = catalog.filter(
+      (p) =>
+        p.brand === targetBrand &&
+        p.id !== excludeId &&
+        getPaintSolventType(p) === targetSolvent
+    );
+    if (candidates.length === 0) {
+      return catalog.find((p) => p.brand === targetBrand && p.id !== excludeId) || null;
+    }
+    return (
+      candidates.find((p) => p.finish === "standard" && /^(001|005|C1|H1|X-2|1|JW001)/i.test(p.code)) ||
+      candidates.find((p) => p.finish === "standard") ||
+      candidates[0]
+    );
+  };
+
   // Filtered catalog for the slot picker popover
   const pickerResults = useMemo(() => {
     if (!activePickerSlot || catalog.length === 0) return [];
     const q = pickerQuery.trim().toLowerCase();
     const featuredSet = new Set<string>(FEATURED_BRANDS);
+    const lockedToBrandA =
+      !allowCrossBrand && activePickerSlot === "B" && paintA ? paintA.brand : null;
+    const lockedSolventA =
+      !allowCrossBrand && activePickerSlot === "B" && paintA
+        ? getPaintSolventType(paintA)
+        : null;
+
     return catalog
       .filter((p) => {
-        if (pickerBrand === "COMMON") {
+        if (lockedToBrandA) {
+          if (p.brand !== lockedToBrandA) return false;
+          if (lockedSolventA && getPaintSolventType(p) !== lockedSolventA) return false;
+        } else if (pickerBrand === "COMMON") {
           if (!featuredSet.has(p.brand)) return false;
         } else if (pickerBrand !== "ALL") {
           if (p.brand !== pickerBrand) return false;
@@ -152,12 +190,36 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
         );
       })
       .slice(0, 60);
-  }, [activePickerSlot, catalog, pickerBrand, pickerQuery, lang]);
+  }, [activePickerSlot, catalog, pickerBrand, pickerQuery, lang, allowCrossBrand, paintA]);
 
   const pctA = 100 - ratioBPct;
   const pctB = ratioBPct;
   const dropsA = Math.max(1, Math.round(pctA / 10));
   const dropsB = Math.max(1, Math.round(pctB / 10));
+
+  const isDifferentBrand = Boolean(paintA && paintB && paintA.brand !== paintB.brand);
+  const solventA = paintA ? getPaintSolventType(paintA) : "oil";
+  const solventB = paintB ? getPaintSolventType(paintB) : "oil";
+  const isDifferentSolvent = Boolean(paintA && paintB && solventA !== solventB);
+
+  const handleToggleCrossBrand = () => {
+    const next = !allowCrossBrand;
+    setAllowCrossBrand(next);
+    if (!next && paintA && paintB) {
+      // Locking back to same-brand mode: sync B to A's brand & solvent type if mismatched
+      if (paintB.brand !== paintA.brand || getPaintSolventType(paintB) !== getPaintSolventType(paintA)) {
+        const companion = findCompanionPaintOfBrand(
+          paintA.brand,
+          getPaintSolventType(paintA),
+          paintA.id
+        );
+        if (companion) setPaintB(companion);
+      }
+      if (activePickerSlot === "B") {
+        setPickerBrand(paintA.brand);
+      }
+    }
+  };
 
   const handleSwap = () => {
     setPaintA(paintB);
@@ -168,31 +230,97 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
   const handleSelectPaintForSlot = (paint: CatalogPaint) => {
     if (activePickerSlot === "A") {
       setPaintA(paint);
+      if (!allowCrossBrand) {
+        const targetSolvent = getPaintSolventType(paint);
+        if (
+          !paintB ||
+          paintB.brand !== paint.brand ||
+          getPaintSolventType(paintB) !== targetSolvent
+        ) {
+          const companion = findCompanionPaintOfBrand(paint.brand, targetSolvent, paint.id);
+          if (companion) setPaintB(companion);
+        }
+      }
     } else if (activePickerSlot === "B") {
-      setPaintB(paint);
+      if (!allowCrossBrand && paintA && paint.brand !== paintA.brand) {
+        // If user clicked a quick-pick chip from another brand while locked, auto-sync A to match or keep same brand
+        setPaintB(paint);
+        const companionA = findCompanionPaintOfBrand(
+          paint.brand,
+          getPaintSolventType(paint),
+          paint.id
+        );
+        if (companionA) setPaintA(companionA);
+      } else {
+        setPaintB(paint);
+      }
     }
     setActivePickerSlot(null);
   };
 
   return (
     <div className="bp-subcard-lg rounded-2xl border border-slate-200/85 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 p-3 sm:p-3.5 shadow-xs space-y-3">
-      {/* Header */}
+      {/* Header + Same-Brand / Cross-Brand Mode Switch */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <FlaskIcon className="h-4 w-4 text-accent shrink-0" weight="fill" />
           <span className="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
             <span className="tech-prefix">[MIXBOX_LAB]</span>
-            双品牌漆 Mixbox 混色试验台
+            品牌漆 Mixbox 混色试验台
           </span>
         </div>
-        <span className="bp-badge px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-700 dark:text-amber-300 text-[10px] font-extrabold font-mono shrink-0">
-          双漆试混 + 同色快匹
-        </span>
+
+        {/* Toggle Button: Default Same-Brand Only vs Manual Cross-Brand with Warning */}
+        <button
+          type="button"
+          onClick={handleToggleCrossBrand}
+          className={`bp-pill inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold transition cursor-pointer shrink-0 ${
+            allowCrossBrand
+              ? "bp-pill-active border-amber-500 bg-amber-500/15 text-amber-800 dark:text-amber-200"
+              : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:border-amber-400"
+          }`}
+          title={
+            allowCrossBrand
+              ? "当前已手动开启跨品牌混合，点击恢复默认仅限同品牌混合"
+              : "默认锁定同一品牌油漆混合以保证相容性，点击可手动开启跨品牌混色"
+          }
+        >
+          {allowCrossBrand ? (
+            <>
+              <LockKeyOpenIcon className="h-3 w-3 text-amber-600 dark:text-amber-300 shrink-0" weight="bold" />
+              <span>已开启跨品牌混合 (点击锁定同品牌)</span>
+            </>
+          ) : (
+            <>
+              <LockKeyIcon className="h-3 w-3 text-emerald-600 dark:text-emerald-300 shrink-0" weight="bold" />
+              <span>默认仅同品牌混合 (点击允许跨品牌)</span>
+            </>
+          )}
+        </button>
       </div>
 
       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-        点选任意两款品牌油漆按比例混合，实时预览 Mixbox 颜料混色效果，并快速匹配同色现成单瓶漆。
+        {allowCrossBrand
+          ? "已手动开启跨品牌混色模式：可自由选择不同品牌油漆预览 Mixbox 混色与同色快匹。"
+          : `当前默认锁定同一品牌（${paintA ? localizedBrand(paintA.brand, lang) : "同品牌"}）内部混色，确保溶剂与树脂体系一致；如需不同品牌混色可点击右上角手动开启。`}
       </p>
+
+      {/* Warning Banner when Cross-Brand Mixing is Enabled or Different Brands are Selected */}
+      {(allowCrossBrand || isDifferentBrand) && (
+        <div className="rounded-xl border border-amber-400/80 dark:border-amber-500/60 bg-amber-50/90 dark:bg-amber-950/45 px-2.5 py-2 text-[11px] text-amber-900 dark:text-amber-200 space-y-1 animate-in fade-in duration-150">
+          <div className="flex items-start gap-1.5 font-extrabold leading-snug">
+            <WarningIcon className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" weight="fill" />
+            <span>
+              跨品牌混色提示：不同品牌油漆的树脂体系、溶剂挥发速率与色浆浓度不同，直接混合效果可能不好（易出现发灰、光泽不均、分层沉淀或实喷色差偏大），实喷前请务必先做小样测试。
+            </span>
+          </div>
+          {isDifferentSolvent && (
+            <div className="rounded-lg bg-rose-600/15 dark:bg-rose-950/80 border border-rose-500/50 px-2 py-1 text-[10px] font-black text-rose-700 dark:text-rose-300">
+              🚫 水油不相溶警告：当前 A 槽为「{solventA === "oil" ? "🧪油性漆" : "💧水性漆"}」、B 槽为「{solventB === "oil" ? "🧪油性漆" : "💧水性漆"}」，油性与水性直接混合会发生絮凝结块导致油漆报废，严禁直接混调！
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Two Paint Slots: Paint A + Swap + Paint B */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-2">
@@ -200,7 +328,11 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
         <button
           type="button"
           onClick={() => {
-            setActivePickerSlot(activePickerSlot === "A" ? null : "A");
+            const nextSlot = activePickerSlot === "A" ? null : "A";
+            setActivePickerSlot(nextSlot);
+            if (nextSlot === "A" && paintA) {
+              setPickerBrand(paintA.brand);
+            }
             setPickerQuery("");
           }}
           className={`bp-subcard group flex items-center gap-2 rounded-xl border p-2 text-left transition cursor-pointer min-w-0 ${
@@ -217,6 +349,7 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
               <PaintBottleImg
                 brand={paintA.brand}
                 code={paintA.code}
+                hex={paintA.hex}
                 className="h-full w-full object-contain p-0.5 bg-white/85"
               />
             )}
@@ -234,7 +367,9 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
             <div className="truncate text-xs font-black text-slate-800 dark:text-slate-100">
               {paintA?.name || "点击选漆"}
             </div>
-            <div className="font-mono text-[9px] text-slate-400">{paintA?.hex || "#----"}</div>
+            <div className="font-mono text-[9px] text-slate-400">
+              {paintA?.hex || "#----"} · {solventA === "oil" ? "🧪油性" : "💧水性"}
+            </div>
           </div>
         </button>
 
@@ -252,7 +387,13 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
         <button
           type="button"
           onClick={() => {
-            setActivePickerSlot(activePickerSlot === "B" ? null : "B");
+            const nextSlot = activePickerSlot === "B" ? null : "B";
+            setActivePickerSlot(nextSlot);
+            if (nextSlot === "B" && paintA && !allowCrossBrand) {
+              setPickerBrand(paintA.brand);
+            } else if (nextSlot === "B" && paintB) {
+              setPickerBrand(paintB.brand);
+            }
             setPickerQuery("");
           }}
           className={`bp-subcard group flex items-center gap-2 rounded-xl border p-2 text-left transition cursor-pointer min-w-0 ${
@@ -269,6 +410,7 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
               <PaintBottleImg
                 brand={paintB.brand}
                 code={paintB.code}
+                hex={paintB.hex}
                 className="h-full w-full object-contain p-0.5 bg-white/85"
               />
             )}
@@ -286,7 +428,9 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
             <div className="truncate text-xs font-black text-slate-800 dark:text-slate-100">
               {paintB?.name || "点击选漆"}
             </div>
-            <div className="font-mono text-[9px] text-slate-400">{paintB?.hex || "#----"}</div>
+            <div className="font-mono text-[9px] text-slate-400">
+              {paintB?.hex || "#----"} · {solventB === "oil" ? "🧪油性" : "💧水性"}
+            </div>
           </div>
         </button>
       </div>
@@ -294,9 +438,19 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
       {/* Inline Searchable Brand Paint Selector Drawer (when Slot A or Slot B is active) */}
       {activePickerSlot && (
         <div className="rounded-xl border border-accent/40 bg-slate-50/95 dark:bg-slate-950/90 p-2.5 space-y-2 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-[11px] font-black text-slate-800 dark:text-slate-100">
               正在选择「油漆 {activePickerSlot}」
+              {!allowCrossBrand && activePickerSlot === "B" && paintA && (
+                <span className="ml-1.5 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                  (🔒 已锁定同品牌：{localizedBrand(paintA.brand, lang)} · {solventA === "oil" ? "油性漆" : "水性漆"})
+                </span>
+              )}
+              {!allowCrossBrand && activePickerSlot === "A" && (
+                <span className="ml-1.5 text-[10px] font-bold text-slate-400">
+                  (切换 A 槽品牌将同步 B 槽为同品牌)
+                </span>
+              )}
             </span>
             <button
               type="button"
@@ -339,34 +493,49 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
             </div>
           )}
 
-          {/* Brand Pills */}
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
-            {[
-              { id: "COMMON", label: "🌟 常用品牌" },
-              { id: "Gaia", label: "盖亚" },
-              { id: "Jumpwind", label: "匠域" },
-              { id: "Hobby Mio", label: "喵匠" },
-              { id: "Night Works", label: "夜之工坊" },
-              { id: "Gunze", label: "郡士" },
-              { id: "Mr.Hobby", label: "Mr.Hobby" },
-              { id: "Tamiya", label: "田宫" },
-              { id: "Vallejo", label: "AV水性" },
-              { id: "ALL", label: "全部" },
-            ].map((b) => (
+          {/* Brand Pills (Locked to paintA.brand when selecting Slot B in default same-brand mode) */}
+          {!allowCrossBrand && activePickerSlot === "B" && paintA ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[10px]">
+              <span className="font-extrabold text-emerald-800 dark:text-emerald-200">
+                🔒 默认仅允许同一品牌「{localizedBrand(paintA.brand, lang)}」内部混色
+              </span>
               <button
-                key={b.id}
                 type="button"
-                onClick={() => setPickerBrand(b.id)}
-                className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold whitespace-nowrap shrink-0 cursor-pointer transition ${
-                  pickerBrand === b.id
-                    ? "bg-accent text-white"
-                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                }`}
+                onClick={() => setAllowCrossBrand(true)}
+                className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-black text-white hover:bg-amber-600 transition cursor-pointer"
               >
-                {b.label}
+                🔓 手动开启跨品牌混合
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
+              {[
+                { id: "COMMON", label: "🌟 常用品牌" },
+                { id: "Gaia", label: "盖亚" },
+                { id: "Jumpwind", label: "匠域" },
+                { id: "Hobby Mio", label: "喵匠" },
+                { id: "Night Works", label: "夜之工坊" },
+                { id: "Gunze", label: "郡士水性" },
+                { id: "Mr.Hobby", label: "郡士" },
+                { id: "Tamiya", label: "田宫" },
+                { id: "Vallejo", label: "AV水性" },
+                { id: "ALL", label: "全部" },
+              ].map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setPickerBrand(b.id)}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold whitespace-nowrap shrink-0 cursor-pointer transition ${
+                    pickerBrand === b.id
+                      ? "bg-accent text-white"
+                      : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                  }`}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Search Input */}
           <div className="relative">
@@ -375,34 +544,42 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
               type="text"
               value={pickerQuery}
               onChange={(e) => setPickerQuery(e.target.value)}
-              placeholder="搜索色号或名称 (如 004 / 钴蓝 / EX-01)…"
+              placeholder="搜索色号或名称 (如 004 / 钴蓝 / EX01 / GP-01)…"
               className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-8 pr-3 py-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-accent"
             />
           </div>
 
           {/* Compact Grid of Catalog Paints */}
           <div className="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-0.5">
-            {pickerResults.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handleSelectPaintForSlot(p)}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-1.5 text-left hover:border-accent transition cursor-pointer min-w-0"
-              >
-                <span
-                  className="h-5 w-5 rounded border border-black/15 shrink-0"
-                  style={{ backgroundColor: p.hex }}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[10px] font-extrabold text-slate-800 dark:text-slate-100">
-                    {localizedBrand(p.brand, lang)} {p.code}
+            {pickerResults.map((p) => {
+              const st = getPaintSolventType(p);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSelectPaintForSlot(p)}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-1.5 text-left hover:border-accent transition cursor-pointer min-w-0"
+                >
+                  <span
+                    className="h-5 w-5 rounded border border-black/15 shrink-0"
+                    style={{ backgroundColor: p.hex }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="truncate text-[10px] font-extrabold text-slate-800 dark:text-slate-100">
+                        {localizedBrand(p.brand, lang)} {p.code}
+                      </span>
+                      <span className="shrink-0 text-[8px] font-bold text-slate-400">
+                        {st === "oil" ? "油" : "水"}
+                      </span>
+                    </div>
+                    <div className="truncate text-[9px] text-slate-500 dark:text-slate-400">
+                      {p.name}
+                    </div>
                   </div>
-                  <div className="truncate text-[9px] text-slate-500 dark:text-slate-400">
-                    {p.name}
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -553,6 +730,7 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
                         <PaintBottleImg
                           brand={p.brand}
                           code={p.code}
+                          hex={p.hex}
                           className="h-full w-full object-contain p-0.5 bg-white/85"
                         />
                       </span>

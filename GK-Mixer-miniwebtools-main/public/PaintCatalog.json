@@ -69782,16 +69782,16 @@
       "id": "gaia-038-gaia-notes-a41c1a",
       "brand": "Gaia",
       "code": "038",
-      "name": "プライマリーメタリックレッド",
-      "hex": "#A41C1A",
-      "set": "Gaia Notes",
+      "name": "金属三原色红 / Primary Metallic Red",
+      "hex": "#C81E32",
+      "set": "星光与金属色",
       "finish": "metallic",
       "source": "modkit-swatch",
       "approx": true,
       "lab": [
-        35.5968,
-        53.1791,
-        37.6569
+        43.4222,
+        63.6403,
+        34.3305
       ],
       "mixable": true
     },
@@ -69799,16 +69799,16 @@
       "id": "gaia-039-gaia-notes-004dac",
       "brand": "Gaia",
       "code": "039",
-      "name": "プライマリーメタリックブルー",
-      "hex": "#004DAC",
-      "set": "Gaia Notes",
+      "name": "金属三原色蓝 / Primary Metallic Blue",
+      "hex": "#1858B8",
+      "set": "星光与金属色",
       "finish": "metallic",
       "source": "modkit-swatch",
       "approx": true,
       "lab": [
-        34.5694,
-        18.836,
-        -56.1569
+        38.9549,
+        17.4962,
+        -56.1115
       ],
       "mixable": true
     },
@@ -69816,16 +69816,16 @@
       "id": "gaia-040-gaia-notes-b79901",
       "brand": "Gaia",
       "code": "040",
-      "name": "プライマリーメタリックイエロー",
-      "hex": "#B79901",
-      "set": "Gaia Notes",
+      "name": "金属三原色黄 / Primary Metallic Yellow",
+      "hex": "#E5B812",
+      "set": "星光与金属色",
       "finish": "metallic",
       "source": "modkit-swatch",
       "approx": true,
       "lab": [
-        64.0424,
-        -1.1068,
-        67.642
+        76.6706,
+        3.014,
+        76.7037
       ],
       "mixable": true
     },
@@ -70243,7 +70243,7 @@
       "code": "101",
       "name": "荧光蓝",
       "hex": "#00FFFF",
-      "set": "Gaia Notes",
+      "set": "荧光色系列",
       "finish": "fluorescent",
       "source": "gk-mixer",
       "approx": true,
@@ -70260,7 +70260,7 @@
       "code": "102",
       "name": "荧光粉",
       "hex": "#FF1493",
-      "set": "Gaia Notes",
+      "set": "荧光色系列",
       "finish": "fluorescent",
       "source": "gk-mixer",
       "approx": true,
@@ -70277,7 +70277,7 @@
       "code": "103",
       "name": "荧光红",
       "hex": "#FF0000",
-      "set": "Gaia Notes",
+      "set": "荧光色系列",
       "finish": "fluorescent",
       "source": "gk-mixer",
       "approx": true,
@@ -70294,7 +70294,7 @@
       "code": "104",
       "name": "荧光绿",
       "hex": "#39FF14",
-      "set": "Gaia Notes",
+      "set": "荧光色系列",
       "finish": "fluorescent",
       "source": "gk-mixer",
       "approx": true,
@@ -70311,7 +70311,7 @@
       "code": "105",
       "name": "荧光黄",
       "hex": "#CCFF00",
-      "set": "Gaia Notes",
+      "set": "荧光色系列",
       "finish": "fluorescent",
       "source": "gk-mixer",
       "approx": true,
@@ -70328,7 +70328,7 @@
       "code": "106",
       "name": "荧光橙",
       "hex": "#FF4500",
-      "set": "Gaia Notes",
+      "set": "荧光色系列",
       "finish": "fluorescent",
       "source": "gk-mixer",
       "approx": true,
@@ -70345,7 +70345,7 @@
       "code": "107",
       "name": "荧光黄绿",
       "hex": "#ADFF2F",
-      "set": "Gaia Notes",
+      "set": "荧光色系列",
       "finish": "fluorescent",
       "source": "gk-mixer",
       "approx": true,
@@ -70362,7 +70362,7 @@
       "code": "108",
       "name": "荧光蓝绿",
       "hex": "#00FF7F",
-      "set": "Gaia Notes",
+      "set": "荧光色系列",
       "finish": "fluorescent",
       "source": "gk-mixer",
       "approx": true,
@@ -70379,7 +70379,7 @@
       "code": "110",
       "name": "荧光透明",
       "hex": "#F0F8FF",
-      "set": "Gaia Notes",
+      "set": "荧光色系列",
       "finish": "fluorescent",
       "source": "gk-mixer",
       "approx": true,
@@ -70394,16 +70394,16 @@
       "id": "gaia-121",
       "brand": "Gaia",
       "code": "121",
-      "name": "星光银",
-      "hex": "#C5C5C5",
-      "set": "Gaia Notes",
+      "name": "星光银 / Star Bright Silver",
+      "hex": "#D0D4D8",
+      "set": "星光与金属色",
       "finish": "metallic",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        79.5193,
-        0,
-        0
+        84.7174,
+        -0.6155,
+        -2.4458
       ],
       "mixable": true
     },
@@ -70411,9 +70411,9 @@
       "id": "gaia-122",
       "brand": "Gaia",
       "code": "122",
-      "name": "星光金",
+      "name": "星光金 / Star Bright Gold",
       "hex": "#E5C100",
-      "set": "Gaia Notes",
+      "set": "星光与金属色",
       "finish": "metallic",
       "source": "gk-mixer",
       "approx": true,
@@ -70428,16 +70428,16 @@
       "id": "gaia-123",
       "brand": "Gaia",
       "code": "123",
-      "name": "星光铝",
-      "hex": "#A9A9A9",
-      "set": "Gaia Notes",
+      "name": "星光杜拉铝 / Star Bright Duralumin",
+      "hex": "#B8BDC4",
+      "set": "星光与金属色",
       "finish": "metallic",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        69.2378,
-        0,
-        0
+        76.4183,
+        -0.3854,
+        -4.1241
       ],
       "mixable": true
     },
@@ -70445,16 +70445,16 @@
       "id": "gaia-124",
       "brand": "Gaia",
       "code": "124",
-      "name": "星光铜",
-      "hex": "#B87333",
-      "set": "Gaia Notes",
+      "name": "星光黄铜 / Star Bright Brass",
+      "hex": "#C6983E",
+      "set": "星光与金属色",
       "finish": "metallic",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        54.7551,
-        21.6531,
-        45.3964
+        65.6025,
+        7.969,
+        52.2627
       ],
       "mixable": true
     },
@@ -70462,9 +70462,9 @@
       "id": "gaia-125",
       "brand": "Gaia",
       "code": "125",
-      "name": "星光铁",
+      "name": "星光铁 / Star Bright Iron",
       "hex": "#434B4D",
-      "set": "Gaia Notes",
+      "set": "星光与金属色",
       "finish": "metallic",
       "source": "gk-mixer",
       "approx": true,
@@ -70479,16 +70479,16 @@
       "id": "gaia-131",
       "brand": "Gaia",
       "code": "131",
-      "name": "珍珠银",
-      "hex": "#E0E0E0",
-      "set": "Gaia Notes",
+      "name": "珍珠银 / Pearl Silver",
+      "hex": "#E4E7EB",
+      "set": "棱镜偏光与珍珠色",
       "finish": "pearl",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        89.1773,
-        0,
-        0
+        91.5248,
+        -0.2767,
+        -2.2908
       ],
       "mixable": false
     },
@@ -70496,16 +70496,16 @@
       "id": "gaia-132",
       "brand": "Gaia",
       "code": "132",
-      "name": "珍珠金",
-      "hex": "#FFF8DC",
-      "set": "Gaia Notes",
+      "name": "珍珠金 / Pearl Gold",
+      "hex": "#F3E09B",
+      "set": "棱镜偏光与珍珠色",
       "finish": "pearl",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        97.4557,
-        -2.2177,
-        14.2935
+        89.2686,
+        -3.2116,
+        36.1798
       ],
       "mixable": false
     },
@@ -70513,9 +70513,9 @@
       "id": "gaia-133",
       "brand": "Gaia",
       "code": "133",
-      "name": "珍珠铜",
+      "name": "珍珠铜 / Pearl Copper",
       "hex": "#CD7F32",
-      "set": "Gaia Notes",
+      "set": "棱镜偏光与珍珠色",
       "finish": "pearl",
       "source": "gk-mixer",
       "approx": true,
@@ -70530,103 +70530,103 @@
       "id": "gaia-134",
       "brand": "Gaia",
       "code": "134",
-      "name": "棱镜紫绿",
-      "hex": "#9370DB",
-      "set": "Gaia Notes",
-      "finish": "standard",
+      "name": "棱镜偏光紫绿 / Prism Purple Green",
+      "hex": "#6B4E9B",
+      "set": "棱镜偏光与珍珠色",
+      "finish": "pearl",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        54.9748,
-        36.7978,
-        -50.0895
+        39.481,
+        29.2628,
+        -37.7861
       ],
-      "mixable": true
+      "mixable": false
     },
     {
       "id": "gaia-135",
       "brand": "Gaia",
       "code": "135",
-      "name": "棱镜蓝绿",
-      "hex": "#20B2AA",
-      "set": "Gaia Notes",
-      "finish": "standard",
+      "name": "棱镜偏光蓝绿 / Prism Blue Green",
+      "hex": "#1D9A8C",
+      "set": "棱镜偏光与珍珠色",
+      "finish": "pearl",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        65.7853,
-        -37.5139,
-        -6.331
+        57.3315,
+        -35.516,
+        -1.9451
       ],
-      "mixable": true
+      "mixable": false
     },
     {
       "id": "gaia-136",
       "brand": "Gaia",
       "code": "136",
-      "name": "棱镜红金",
-      "hex": "#DA70D6",
-      "set": "Gaia Notes",
-      "finish": "standard",
+      "name": "棱镜偏光品红金 / Prism Magenta Gold",
+      "hex": "#B84A72",
+      "set": "棱镜偏光与珍珠色",
+      "finish": "pearl",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        62.8032,
-        55.2824,
-        -34.4044
+        47.3728,
+        48.2846,
+        0.0418
       ],
-      "mixable": true
+      "mixable": false
     },
     {
       "id": "gaia-137-gaia-notes-00b1c5",
       "brand": "Gaia",
       "code": "137",
-      "name": "プリズム パステル ターコイズブルーイエロー",
-      "hex": "#00B1C5",
-      "set": "Gaia Notes",
-      "finish": "standard",
+      "name": "马卡龙棱镜松石蓝黄 / Prism Pastel Turquoise Yellow",
+      "hex": "#6CD4C8",
+      "set": "棱镜偏光与珍珠色",
+      "finish": "pearl",
       "source": "modkit-swatch",
       "approx": true,
       "lab": [
-        66.1145,
-        -30.2195,
-        -20.828
+        78.7186,
+        -33.1114,
+        -3.371
       ],
-      "mixable": true
+      "mixable": false
     },
     {
       "id": "gaia-138-gaia-notes-db519d",
       "brand": "Gaia",
       "code": "138",
-      "name": "プリズム パステル チェリーピンクブルー",
-      "hex": "#DB519D",
-      "set": "Gaia Notes",
-      "finish": "standard",
+      "name": "马卡龙棱镜樱粉蓝 / Prism Pastel Cherry Pink Blue",
+      "hex": "#F29CB8",
+      "set": "棱镜偏光与珍珠色",
+      "finish": "pearl",
       "source": "modkit-swatch",
       "approx": true,
       "lab": [
-        55.4649,
-        61.0888,
-        -12.9894
+        73.6224,
+        35.736,
+        -1.0331
       ],
-      "mixable": true
+      "mixable": false
     },
     {
       "id": "gaia-139-gaia-notes-02c0b3",
       "brand": "Gaia",
       "code": "139",
-      "name": "プリズム パステル ミントグリーンブルー",
-      "hex": "#02C0B3",
-      "set": "Gaia Notes",
-      "finish": "standard",
+      "name": "马卡龙棱镜薄荷绿蓝 / Prism Pastel Mint Green Blue",
+      "hex": "#8CE2B8",
+      "set": "棱镜偏光与珍珠色",
+      "finish": "pearl",
       "source": "modkit-swatch",
       "approx": true,
       "lab": [
-        70.1501,
-        -42.6233,
-        -4.8574
+        83.666,
+        -35.1629,
+        12.4393
       ],
-      "mixable": true
+      "mixable": false
     },
     {
       "id": "gaia-201",
@@ -70700,9 +70700,9 @@
       "id": "gaia-205-military-ac8642",
       "brand": "Gaia",
       "code": "205",
-      "name": "ゲルプブラウン (イエローブラウン)",
+      "name": "德军黄褐 / Gelbbraun",
       "hex": "#AC8642",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70717,9 +70717,9 @@
       "id": "gaia-206-military-8b693b",
       "brand": "Gaia",
       "code": "206",
-      "name": "グラウグリュン (グレーグリーン)",
+      "name": "德军灰绿 / Graugrün",
       "hex": "#8B693B",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70734,9 +70734,9 @@
       "id": "gaia-207-military-cd9d69",
       "brand": "Gaia",
       "code": "207",
-      "name": "ブラウン",
+      "name": "德军棕褐 / Braun",
       "hex": "#CD9D69",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70751,9 +70751,9 @@
       "id": "gaia-208-military-cab793",
       "brand": "Gaia",
       "code": "208",
-      "name": "グラウ (グレー)",
+      "name": "德军装甲灰 / Grau",
       "hex": "#CAB793",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70768,9 +70768,9 @@
       "id": "gaia-211-military-c4c392",
       "brand": "Gaia",
       "code": "211",
-      "name": "灰緑色(かいりょくしょく)",
+      "name": "旧日本海军灰绿色 / IJN Grey Green",
       "hex": "#C4C392",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70785,9 +70785,9 @@
       "id": "gaia-212-military-324134",
       "brand": "Gaia",
       "code": "212",
-      "name": "緑色(みどりいろ)",
+      "name": "旧日本陆军绿色 / IJA Green",
       "hex": "#324134",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70802,9 +70802,9 @@
       "id": "gaia-213-military-cdcfb4",
       "brand": "Gaia",
       "code": "213",
-      "name": "灰緑色(かいりょくしょく)",
+      "name": "零战灰绿色 / Zero Grey Green",
       "hex": "#CDCFB4",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70819,9 +70819,9 @@
       "id": "gaia-214-military-1f5539",
       "brand": "Gaia",
       "code": "214",
-      "name": "暗緑色(あんりょくしょく)",
+      "name": "旧日本海军暗绿色 / IJN Dark Green",
       "hex": "#1F5539",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70836,9 +70836,9 @@
       "id": "gaia-215-military-3e3d21",
       "brand": "Gaia",
       "code": "215",
-      "name": "215 FS34079 ダークグリーン",
+      "name": "FS34079 越战深绿 / Dark Green",
       "hex": "#3E3D21",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70853,9 +70853,9 @@
       "id": "gaia-216-military-484e10",
       "brand": "Gaia",
       "code": "216",
-      "name": "216 FS34102 グリーン",
+      "name": "FS34102 越战中绿 / Medium Green",
       "hex": "#484E10",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70870,9 +70870,9 @@
       "id": "gaia-217-military-876d48",
       "brand": "Gaia",
       "code": "217",
-      "name": "217 FS30219 タン",
+      "name": "FS30219 越战黄褐 / Tan",
       "hex": "#876D48",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70887,9 +70887,9 @@
       "id": "gaia-218-military-bebb9c",
       "brand": "Gaia",
       "code": "218",
-      "name": "218 FS36622 グレー",
+      "name": "FS36622 越战机腹浅灰 / Camouflage Grey",
       "hex": "#BEBB9C",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70904,9 +70904,9 @@
       "id": "gaia-219-military-999884",
       "brand": "Gaia",
       "code": "219",
-      "name": "219 FS36440 ライトガルグレー",
+      "name": "FS36440 浅海鸥灰 / Light Gull Grey",
       "hex": "#999884",
-      "set": "Military",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70972,9 +70972,9 @@
       "id": "gaia-1000-railway-dddbd7",
       "brand": "Gaia",
       "code": "1000",
-      "name": "ステンレスシルバー",
+      "name": "不锈钢银 / Stainless Silver",
       "hex": "#DDDBD7",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -70989,9 +70989,9 @@
       "id": "gaia-1001-railway-c5c5c5",
       "brand": "Gaia",
       "code": "1001",
-      "name": "ライトステンレスシルバー",
+      "name": "浅不锈钢银 / Light Stainless Silver",
       "hex": "#C5C5C5",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71006,9 +71006,9 @@
       "id": "gaia-1002-railway-9e9da2",
       "brand": "Gaia",
       "code": "1002",
-      "name": "ダークステンレスシルバー",
+      "name": "深不锈钢银 / Dark Stainless Silver",
       "hex": "#9E9DA2",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71025,7 +71025,7 @@
       "code": "1003",
       "name": "青15号",
       "hex": "#3A4559",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71040,9 +71040,9 @@
       "id": "gaia-1004-railway-362825",
       "brand": "Gaia",
       "code": "1004",
-      "name": "ぶどう色2号",
+      "name": "葡萄色2号 (深褐) / Grape Brown No.2",
       "hex": "#362825",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71057,9 +71057,9 @@
       "id": "gaia-1005-railway-9e9b92",
       "brand": "Gaia",
       "code": "1005",
-      "name": "ねずみ色1号",
+      "name": "鼠色1号 (铁道灰) / Mouse Grey No.1",
       "hex": "#9E9B92",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71076,7 +71076,7 @@
       "code": "1006",
       "name": "灰色9号",
       "hex": "#BEBBAF",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71091,9 +71091,9 @@
       "id": "gaia-1007-railway-595a55",
       "brand": "Gaia",
       "code": "1007",
-      "name": "ダークグレー",
+      "name": "铁道深灰 / Dark Grey",
       "hex": "#595A55",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71108,9 +71108,9 @@
       "id": "gaia-1008-railway-fffcd8",
       "brand": "Gaia",
       "code": "1008",
-      "name": "クリーム1号",
+      "name": "奶油色1号 / Cream No.1",
       "hex": "#FFFCD8",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71125,9 +71125,9 @@
       "id": "gaia-1009-railway-c02823",
       "brand": "Gaia",
       "code": "1009",
-      "name": "ローズピンク",
+      "name": "玫瑰粉 / Rose Pink",
       "hex": "#C02823",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71142,9 +71142,9 @@
       "id": "gaia-1010-railway-0d0d0b",
       "brand": "Gaia",
       "code": "1010",
-      "name": "ぶどう色1号",
+      "name": "葡萄色1号 / Grape Brown No.1",
       "hex": "#0D0D0B",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71159,9 +71159,9 @@
       "id": "gaia-1012-railway-9c4b47",
       "brand": "Gaia",
       "code": "1012",
-      "name": "赤サビ",
+      "name": "红锈色 / Red Rust",
       "hex": "#9C4B47",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71176,9 +71176,9 @@
       "id": "gaia-1013-railway-f26434",
       "brand": "Gaia",
       "code": "1013",
-      "name": "黄サビ",
+      "name": "黄锈色 / Yellow Rust",
       "hex": "#F26434",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71193,9 +71193,9 @@
       "id": "gaia-1021-railway-3a96ab",
       "brand": "Gaia",
       "code": "1021",
-      "name": "コンテナブルー",
+      "name": "集装箱蓝 / Container Blue",
       "hex": "#3A96AB",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71210,9 +71210,9 @@
       "id": "gaia-1022-railway-4c0b21",
       "brand": "Gaia",
       "code": "1022",
-      "name": "コンテナレッド",
+      "name": "集装箱红 / Container Red",
       "hex": "#4C0B21",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71227,9 +71227,9 @@
       "id": "gaia-1023-railway-930710",
       "brand": "Gaia",
       "code": "1023",
-      "name": "名鉄スカーレット",
+      "name": "名铁绯红 / Meitetsu Scarlet",
       "hex": "#930710",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71244,9 +71244,9 @@
       "id": "gaia-1024-railway-e4b559",
       "brand": "Gaia",
       "code": "1024",
-      "name": "西武101系イエロー",
+      "name": "西武101系黄 / Seibu 101 Yellow",
       "hex": "#E4B559",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71261,9 +71261,9 @@
       "id": "gaia-1025-railway-e8b542",
       "brand": "Gaia",
       "code": "1025",
-      "name": "西武2000系イエロー",
+      "name": "西武2000系黄 / Seibu 2000 Yellow",
       "hex": "#E8B542",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71278,9 +71278,9 @@
       "id": "gaia-1026-railway-bfa276",
       "brand": "Gaia",
       "code": "1026",
-      "name": "西武ベージュ",
+      "name": "西武米褐 / Seibu Beige",
       "hex": "#BFA276",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71295,9 +71295,9 @@
       "id": "gaia-1027-railway-932a31",
       "brand": "Gaia",
       "code": "1027",
-      "name": "西武レッド",
+      "name": "西武红 / Seibu Red",
       "hex": "#932A31",
-      "set": "Railway",
+      "set": "铁道模型色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71312,16 +71312,16 @@
       "id": "gaia-EV-01",
       "brand": "Gaia",
       "code": "EV-01",
-      "name": "EVA 紫",
-      "hex": "#6A5ACD",
-      "set": "Gaia Notes",
+      "name": "EVA 初号机紫 / EVA Purple",
+      "hex": "#5B3B8C",
+      "set": "EVA 福音战士限定色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        45.336,
-        36.0395,
-        -57.7719
+        32.3592,
+        32.3091,
+        -40.1351
       ],
       "mixable": true
     },
@@ -71329,16 +71329,16 @@
       "id": "gaia-EV-02",
       "brand": "Gaia",
       "code": "EV-02",
-      "name": "EVA 绿",
-      "hex": "#32CD32",
-      "set": "Gaia Notes",
+      "name": "EVA 初号机绿 / EVA Green",
+      "hex": "#5CE63C",
+      "set": "EVA 福音战士限定色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        72.6067,
-        -67.1255,
-        61.4372
+        81.3971,
+        -66.5412,
+        67.1429
       ],
       "mixable": true
     },
@@ -71346,16 +71346,16 @@
       "id": "gaia-EV-03",
       "brand": "Gaia",
       "code": "EV-03",
-      "name": "EVA 黄",
-      "hex": "#FFD700",
-      "set": "Gaia Notes",
+      "name": "EVA 初号机夜战紫 / EVA Night Purple",
+      "hex": "#3E2668",
+      "set": "EVA 福音战士限定色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        86.9306,
-        -1.9237,
-        87.132
+        21.6154,
+        27.4065,
+        -34.824
       ],
       "mixable": true
     },
@@ -71363,9 +71363,9 @@
       "id": "gaia-EX01",
       "brand": "Gaia",
       "code": "EX01",
-      "name": "光泽白 (大瓶)",
+      "name": "Ex-光泽白 (50ml大瓶) / Ex-White",
       "hex": "#FFFFFF",
-      "set": "Gaia Notes",
+      "set": "EX 大瓶装系列",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
@@ -71380,14 +71380,14 @@
       "id": "gaia-EX02",
       "brand": "Gaia",
       "code": "EX02",
-      "name": "光泽黑 (大瓶)",
-      "hex": "#000000",
-      "set": "Gaia Notes",
+      "name": "Ex-光泽黑 (50ml大瓶) / Ex-Black",
+      "hex": "#0A0A0A",
+      "set": "EX 大瓶装系列",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        0,
+        2.7417,
         0,
         0
       ],
@@ -71397,16 +71397,16 @@
       "id": "gaia-EX03",
       "brand": "Gaia",
       "code": "EX03",
-      "name": "光泽透明 (大瓶)",
-      "hex": "#E0E0E0",
-      "set": "Gaia Notes",
+      "name": "Ex-光泽透明保护漆 (50ml) / Ex-Clear",
+      "hex": "#E8EEF2",
+      "set": "EX 大瓶装系列",
       "finish": "clear",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        89.1773,
-        0,
-        0
+        93.7603,
+        -1.2609,
+        -2.6238
       ],
       "mixable": false
     },
@@ -71414,16 +71414,16 @@
       "id": "gaia-EX04",
       "brand": "Gaia",
       "code": "EX04",
-      "name": "消光透明 (大瓶)",
-      "hex": "#D6D6D6",
-      "set": "Gaia Notes",
-      "finish": "clear",
+      "name": "Ex-消光透明保护漆 (50ml) / Ex-Flat Clear",
+      "hex": "#DCE2E6",
+      "set": "EX 大瓶装系列",
+      "finish": "other",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        85.6272,
-        0,
-        0
+        89.5432,
+        -1.2718,
+        -2.649
       ],
       "mixable": false
     },
@@ -71431,16 +71431,16 @@
       "id": "gaia-ex05-ex-ffffff",
       "brand": "Gaia",
       "code": "EX05",
-      "name": "Ex-フラットホワイト",
-      "hex": "#FFFFFF",
-      "set": "EX",
+      "name": "Ex-消光白 (50ml大瓶) / Ex-Flat White",
+      "hex": "#F7F8FA",
+      "set": "EX 大瓶装系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
       "lab": [
-        100,
-        0,
-        0
+        97.5558,
+        0.0238,
+        -1.0732
       ],
       "mixable": true
     },
@@ -71448,16 +71448,16 @@
       "id": "gaia-ex06-ex-28a038",
       "brand": "Gaia",
       "code": "EX06",
-      "name": "Ex-Green",
-      "hex": "#28A038",
-      "set": "EX",
+      "name": "Ex-消光黑 (50ml大瓶) / Ex-Flat Black",
+      "hex": "#18191B",
+      "set": "EX 大瓶装系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
       "lab": [
-        57.9198,
-        -53.5672,
-        43.7188
+        8.7269,
+        0.0581,
+        -1.565
       ],
       "mixable": true
     },
@@ -71465,16 +71465,16 @@
       "id": "gaia-EX07",
       "brand": "Gaia",
       "code": "EX07",
-      "name": "星光银 (大瓶)",
-      "hex": "#C0C0C0",
-      "set": "Gaia Notes",
+      "name": "Ex-星光银 (50ml大瓶) / Ex-Silver",
+      "hex": "#C8CDD2",
+      "set": "EX 大瓶装系列",
       "finish": "metallic",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        77.7044,
-        0,
-        0
+        82.1604,
+        -0.7659,
+        -3.0742
       ],
       "mixable": true
     },
@@ -71482,16 +71482,16 @@
       "id": "gaia-EX08",
       "brand": "Gaia",
       "code": "EX08",
-      "name": "星光金 (大瓶)",
-      "hex": "#FFD700",
-      "set": "Gaia Notes",
+      "name": "Ex-星光金 (50ml大瓶) / Ex-Gold",
+      "hex": "#E5C138",
+      "set": "EX 大瓶装系列",
       "finish": "metallic",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        86.9306,
-        -1.9237,
-        87.132
+        79.0911,
+        -0.6752,
+        69.0588
       ],
       "mixable": true
     },
@@ -71499,9 +71499,9 @@
       "id": "gaia-ge-01-gaia-ex-ffffff",
       "brand": "Gaia",
       "code": "GE-01",
-      "name": "ホワイト",
+      "name": "珐琅白 / Enamel White",
       "hex": "#FFFFFF",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71516,9 +71516,9 @@
       "id": "gaia-ge-03-gaia-ex-002cc3",
       "brand": "Gaia",
       "code": "GE-03",
-      "name": "シアン",
+      "name": "珐琅青 / Enamel Cyan",
       "hex": "#002CC3",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71533,9 +71533,9 @@
       "id": "gaia-ge-04-gaia-ex-a70000",
       "brand": "Gaia",
       "code": "GE-04",
-      "name": "マゼンタ",
+      "name": "珐琅品红 / Enamel Magenta",
       "hex": "#A70000",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71550,9 +71550,9 @@
       "id": "gaia-ge-05-gaia-ex-fcc333",
       "brand": "Gaia",
       "code": "GE-05",
-      "name": "イエロー",
+      "name": "珐琅黄 / Enamel Yellow",
       "hex": "#FCC333",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71567,9 +71567,9 @@
       "id": "gaia-ge-06-gaia-ex-079ae7",
       "brand": "Gaia",
       "code": "GE-06",
-      "name": "蛍光ブルー",
+      "name": "珐琅荧光蓝 / Enamel Fluorescent Blue",
       "hex": "#079AE7",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "fluorescent",
       "source": "modkit-swatch",
       "approx": true,
@@ -71584,9 +71584,9 @@
       "id": "gaia-ge-07-gaia-ex-fb4a21",
       "brand": "Gaia",
       "code": "GE-07",
-      "name": "蛍光レッド",
+      "name": "珐琅荧光红 / Enamel Fluorescent Red",
       "hex": "#FB4A21",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "fluorescent",
       "source": "modkit-swatch",
       "approx": true,
@@ -71601,9 +71601,9 @@
       "id": "gaia-ge-08-gaia-ex-e9fe0d",
       "brand": "Gaia",
       "code": "GE-08",
-      "name": "蛍光イエロー",
+      "name": "珐琅荧光黄 / Enamel Fluorescent Yellow",
       "hex": "#E9FE0D",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "fluorescent",
       "source": "modkit-swatch",
       "approx": true,
@@ -71618,9 +71618,9 @@
       "id": "gaia-ge-09-gaia-ex-fc4c8d",
       "brand": "Gaia",
       "code": "GE-09",
-      "name": "蛍光ピンク",
+      "name": "珐琅荧光粉 / Enamel Fluorescent Pink",
       "hex": "#FC4C8D",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "fluorescent",
       "source": "modkit-swatch",
       "approx": true,
@@ -71635,9 +71635,9 @@
       "id": "gaia-ge-10-gaia-ex-00ef00",
       "brand": "Gaia",
       "code": "GE-10",
-      "name": "蛍光グリーン",
+      "name": "珐琅荧光绿 / Enamel Fluorescent Green",
       "hex": "#00EF00",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "fluorescent",
       "source": "modkit-swatch",
       "approx": true,
@@ -71652,9 +71652,9 @@
       "id": "gaia-ge-51-gaia-ex-701f0a",
       "brand": "Gaia",
       "code": "GE-51",
-      "name": "赤サビ",
+      "name": "旧化红铁锈 / Red Rust",
       "hex": "#701F0A",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71669,9 +71669,9 @@
       "id": "gaia-ge-52-gaia-ex-b52c02",
       "brand": "Gaia",
       "code": "GE-52",
-      "name": "黄サビ",
+      "name": "旧化黄铁锈 / Yellow Rust",
       "hex": "#B52C02",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71686,9 +71686,9 @@
       "id": "gaia-ge-53-gaia-ex-050706",
       "brand": "Gaia",
       "code": "GE-53",
-      "name": "煤（すす）",
+      "name": "旧化烟熏煤灰 / Soot",
       "hex": "#050706",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71703,9 +71703,9 @@
       "id": "gaia-ge-54-gaia-ex-5a492b",
       "brand": "Gaia",
       "code": "GE-54",
-      "name": "オイル",
+      "name": "旧化机油渍 / Oil Stain",
       "hex": "#5A492B",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71720,9 +71720,9 @@
       "id": "gaia-ge-55-gaia-ex-a09575",
       "brand": "Gaia",
       "code": "GE-55",
-      "name": "埃（ほこり）",
+      "name": "旧化浮尘土 / Dust",
       "hex": "#A09575",
-      "set": "Gaia Ex",
+      "set": "GE 珐琅与旧化特殊色",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -71737,16 +71737,16 @@
       "id": "gaia-GP-01",
       "brand": "Gaia",
       "code": "GP-01",
-      "name": "海洋蓝",
-      "hex": "#120A8F",
-      "set": "Gaia Notes",
+      "name": "群青海洋蓝 (限定) / Ultra Marine Blue",
+      "hex": "#121894",
+      "set": "GP 魔幻与高级色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        17.1231,
-        48.4204,
-        -67.2101
+        19.7175,
+        44.2373,
+        -65.9976
       ],
       "mixable": true
     },
@@ -71754,10 +71754,10 @@
       "id": "gaia-GP-02",
       "brand": "Gaia",
       "code": "GP-02",
-      "name": "魔幻红",
+      "name": "魔幻红 (高透亮红) / Premium Red",
       "hex": "#D9001B",
-      "set": "Gaia Notes",
-      "finish": "standard",
+      "set": "GP 魔幻与高级色",
+      "finish": "clear",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
@@ -71765,15 +71765,15 @@
         71.2051,
         49.9326
       ],
-      "mixable": true
+      "mixable": false
     },
     {
       "id": "gaia-GP-02p",
       "brand": "Gaia",
       "code": "GP-02p",
-      "name": "超级珍珠红",
+      "name": "超级珍珠魔幻红 (限定) / Pearl Premium Red",
       "hex": "#DC143C",
-      "set": "Gaia Notes",
+      "set": "GP 魔幻与高级色",
       "finish": "pearl",
       "source": "gk-mixer",
       "approx": true,
@@ -71788,16 +71788,16 @@
       "id": "gaia-GP-03",
       "brand": "Gaia",
       "code": "GP-03",
-      "name": "海洋深蓝 2",
-      "hex": "#000080",
-      "set": "Gaia Notes",
+      "name": "群青海洋深蓝2 (限定) / Ultra Marine Blue 2",
+      "hex": "#0A1075",
+      "set": "GP 魔幻与高级色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        12.972,
-        47.5023,
-        -64.7022
+        13.9377,
+        37.6247,
+        -56.0194
       ],
       "mixable": true
     },
@@ -71805,16 +71805,16 @@
       "id": "gaia-GP-04",
       "brand": "Gaia",
       "code": "GP-04",
-      "name": "星光珍珠白",
-      "hex": "#F0F8FF",
-      "set": "Gaia Notes",
+      "name": "高级玻璃星光珍珠白 / Premium Glass Pearl",
+      "hex": "#F0F6FC",
+      "set": "GP 魔幻与高级色",
       "finish": "pearl",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        97.1786,
-        -1.3486,
-        -4.2629
+        96.601,
+        -0.8876,
+        -3.5644
       ],
       "mixable": false
     },
@@ -71822,16 +71822,16 @@
       "id": "gaia-GP-05",
       "brand": "Gaia",
       "code": "GP-05",
-      "name": "超级海洋蓝",
-      "hex": "#0047AB",
-      "set": "Gaia Notes",
+      "name": "超级群青海洋蓝 / Ultra Marine Blue",
+      "hex": "#003EB8",
+      "set": "GP 魔幻与高级色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        32.8002,
-        22.5169,
-        -58.4434
+        31.5885,
+        33.8052,
+        -68.1564
       ],
       "mixable": true
     },
@@ -71839,16 +71839,16 @@
       "id": "gaia-GP-05p",
       "brand": "Gaia",
       "code": "GP-05p",
-      "name": "超级珍珠蓝",
-      "hex": "#4169E1",
-      "set": "Gaia Notes",
+      "name": "超级珍珠海洋蓝 (限定) / Pearl Ultra Marine Blue",
+      "hex": "#2B5CE6",
+      "set": "GP 魔幻与高级色",
       "finish": "pearl",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        47.8301,
-        26.2631,
-        -65.2637
+        44.0585,
+        33.9991,
+        -74.2655
       ],
       "mixable": false
     },
@@ -71856,16 +71856,16 @@
       "id": "gaia-GP-06",
       "brand": "Gaia",
       "code": "GP-06",
-      "name": "透明海洋蓝",
-      "hex": "#0000CD",
-      "set": "Gaia Notes",
+      "name": "透明群青海洋蓝 (限定) / Clear Ultra Marine Blue",
+      "hex": "#0026B8",
+      "set": "GP 魔幻与高级色",
       "finish": "clear",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        24.9714,
-        67.1765,
-        -91.5002
+        26.2904,
+        48.4599,
+        -76.9178
       ],
       "mixable": false
     },
@@ -71873,16 +71873,16 @@
       "id": "gaia-GP-07",
       "brand": "Gaia",
       "code": "GP-07",
-      "name": "高级电镀银",
-      "hex": "#DCDCDC",
-      "set": "Gaia Notes",
+      "name": "高级电镀银 / Premium Plated Silver",
+      "hex": "#DCDFE4",
+      "set": "GP 魔幻与高级色",
       "finish": "metallic",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        87.7609,
-        0,
-        0
+        88.7294,
+        -0.0931,
+        -2.7932
       ],
       "mixable": true
     },
@@ -71890,16 +71890,16 @@
       "id": "gaia-GP-08",
       "brand": "Gaia",
       "code": "GP-08",
-      "name": "镜面电镀银",
-      "hex": "#E3E4E5",
-      "set": "Gaia Notes",
+      "name": "镜面电镀银 (高反光铬) / Premium Mirror Chrome",
+      "hex": "#E6E9ED",
+      "set": "GP 魔幻与高级色",
       "finish": "metallic",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        90.5397,
-        -0.1561,
-        -0.6044
+        92.2273,
+        -0.2763,
+        -2.2871
       ],
       "mixable": true
     },
@@ -71907,33 +71907,33 @@
       "id": "gaia-GP-09",
       "brand": "Gaia",
       "code": "GP-09",
-      "name": "棱镜蓝黑",
-      "hex": "#0A0A1A",
-      "set": "Gaia Notes",
-      "finish": "standard",
+      "name": "棱镜偏光蓝黑 / Prism Blue Black",
+      "hex": "#121730",
+      "set": "GP 魔幻与高级色",
+      "finish": "pearl",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        3.2173,
-        3.3419,
-        -9.0785
+        8.6084,
+        6.6552,
+        -17.4543
       ],
-      "mixable": true
+      "mixable": false
     },
     {
       "id": "gaia-NC001",
       "brand": "Gaia",
       "code": "NC001",
-      "name": "钢白",
-      "hex": "#E6E6FA",
-      "set": "Gaia Notes",
+      "name": "钢白 / Steel White",
+      "hex": "#EAECEF",
+      "set": "NAZCA 机甲专业色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        91.8275,
-        3.7078,
-        -9.6613
+        93.3266,
+        -0.1271,
+        -1.6828
       ],
       "mixable": true
     },
@@ -71941,16 +71941,16 @@
       "id": "gaia-NC002",
       "brand": "Gaia",
       "code": "NC002",
-      "name": "冰霜黑",
-      "hex": "#2C2C2C",
-      "set": "Gaia Notes",
+      "name": "冰霜消光黑 / Frost Matt Black",
+      "hex": "#222428",
+      "set": "NAZCA 机甲专业色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        18.0029,
-        0,
-        0
+        14.1452,
+        0.1399,
+        -2.9706
       ],
       "mixable": true
     },
@@ -71958,16 +71958,16 @@
       "id": "gaia-NC003",
       "brand": "Gaia",
       "code": "NC003",
-      "name": "火焰红",
-      "hex": "#FF4500",
-      "set": "Gaia Notes",
+      "name": "火焰红 / Flame Red",
+      "hex": "#E83820",
+      "set": "NAZCA 机甲专业色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        57.5817,
-        67.7827,
-        68.9586
+        51.9434,
+        65.3791,
+        54.1384
       ],
       "mixable": true
     },
@@ -71975,16 +71975,16 @@
       "id": "gaia-NC004",
       "brand": "Gaia",
       "code": "NC004",
-      "name": "万蓝色",
-      "hex": "#6495ED",
-      "set": "Gaia Notes",
+      "name": "百万蓝 / Million Blue",
+      "hex": "#3B78D8",
+      "set": "NAZCA 机甲专业色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        61.9259,
-        9.333,
-        -49.2981
+        51.0576,
+        12.799,
+        -54.9843
       ],
       "mixable": true
     },
@@ -71992,16 +71992,16 @@
       "id": "gaia-NC005",
       "brand": "Gaia",
       "code": "NC005",
-      "name": "浅暖灰",
-      "hex": "#D3D3D3",
-      "set": "Gaia Notes",
+      "name": "暖浅灰 / Warm Light Gray",
+      "hex": "#C8C4BC",
+      "set": "NAZCA 机甲专业色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        84.5561,
-        0,
-        0
+        79.2656,
+        -0.0303,
+        4.5024
       ],
       "mixable": true
     },
@@ -72009,16 +72009,16 @@
       "id": "gaia-NC006",
       "brand": "Gaia",
       "code": "NC006",
-      "name": "蓝雾白",
-      "hex": "#F0F8FF",
-      "set": "Gaia Notes",
+      "name": "蓝雾白 / Blue Fog White",
+      "hex": "#E6EEF6",
+      "set": "NAZCA 机甲专业色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        97.1786,
-        -1.3486,
-        -4.2629
+        93.7214,
+        -1.1689,
+        -4.776
       ],
       "mixable": true
     },
@@ -72026,16 +72026,16 @@
       "id": "gaia-NC007",
       "brand": "Gaia",
       "code": "NC007",
-      "name": "关节灰",
-      "hex": "#708090",
-      "set": "Gaia Notes",
+      "name": "关节灰 / Joint Gray",
+      "hex": "#5C646E",
+      "set": "NAZCA 机甲专业色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        52.8357,
-        -2.1428,
-        -10.571
+        42.0235,
+        -0.7786,
+        -6.6813
       ],
       "mixable": true
     },
@@ -72043,9 +72043,9 @@
       "id": "gaia-tl-001-train-line-45543e",
       "brand": "Gaia",
       "code": "TL-001",
-      "name": "NATOグリーン",
+      "name": "北约绿 / NATO Green",
       "hex": "#45543E",
-      "set": "Train Line",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -72060,9 +72060,9 @@
       "id": "gaia-tl-002-train-line-544437",
       "brand": "Gaia",
       "code": "TL-002",
-      "name": "NATOブラウン",
+      "name": "北约棕 / NATO Brown",
       "hex": "#544437",
-      "set": "Train Line",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -72077,9 +72077,9 @@
       "id": "gaia-tl-003-train-line-2f3335",
       "brand": "Gaia",
       "code": "TL-003",
-      "name": "NATOブラック",
+      "name": "北约黑 / NATO Black",
       "hex": "#2F3335",
-      "set": "Train Line",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -72094,9 +72094,9 @@
       "id": "gaia-tl-004-train-line-838882",
       "brand": "Gaia",
       "code": "TL-004",
-      "name": "ライトグレーFS36251",
+      "name": "FS36251 浅灰 / Light Grey",
       "hex": "#838882",
-      "set": "Train Line",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -72111,9 +72111,9 @@
       "id": "gaia-tl-005-train-line-7a8894",
       "brand": "Gaia",
       "code": "TL-005",
-      "name": "ダークグレーFS36176",
+      "name": "FS36176 深灰 / Dark Grey",
       "hex": "#7A8894",
-      "set": "Train Line",
+      "set": "军事色系列",
       "finish": "standard",
       "source": "modkit-swatch",
       "approx": true,
@@ -72128,16 +72128,16 @@
       "id": "gaia-VO-01",
       "brand": "Gaia",
       "code": "VO-01",
-      "name": "暖白",
-      "hex": "#FDF5E6",
-      "set": "Gaia Notes",
+      "name": "电脑战机 暖白 / Warm White",
+      "hex": "#F7F3E8",
+      "set": "VO 电脑战机限定色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        96.78,
-        0.171,
-        8.1662
+        95.873,
+        -0.542,
+        5.769
       ],
       "mixable": true
     },
@@ -72145,16 +72145,16 @@
       "id": "gaia-VO-02",
       "brand": "Gaia",
       "code": "VO-02",
-      "name": "冰钴蓝",
-      "hex": "#0047AB",
-      "set": "Gaia Notes",
+      "name": "电脑战机 冰钴蓝 / Ice Cobalt Blue",
+      "hex": "#1C56B8",
+      "set": "VO 电脑战机限定色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        32.8002,
-        22.5169,
-        -58.4434
+        38.4837,
+        19.1219,
+        -56.8709
       ],
       "mixable": true
     },
@@ -72162,16 +72162,16 @@
       "id": "gaia-VO-03",
       "brand": "Gaia",
       "code": "VO-03",
-      "name": "鲜艳橙",
-      "hex": "#FF4500",
-      "set": "Gaia Notes",
+      "name": "电脑战机 鲜艳橙 / Vivid Orange",
+      "hex": "#FF5510",
+      "set": "VO 电脑战机限定色",
       "finish": "standard",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        57.5817,
-        67.7827,
-        68.9586
+        59.7088,
+        62.1724,
+        66.889
       ],
       "mixable": true
     },
@@ -72179,16 +72179,16 @@
       "id": "gaia-VO-04",
       "brand": "Gaia",
       "code": "VO-04",
-      "name": "骨架金属色",
-      "hex": "#555555",
-      "set": "Gaia Notes",
+      "name": "电脑战机 骨架金属色1 / Frame Metallic 1",
+      "hex": "#52565C",
+      "set": "VO 电脑战机限定色",
       "finish": "metallic",
       "source": "gk-mixer",
       "approx": true,
       "lab": [
-        36.1459,
-        0,
-        0
+        36.4083,
+        -0.2274,
+        -4.0224
       ],
       "mixable": true
     },
@@ -87775,9 +87775,9 @@
       "source": "jumpwind-official",
       "approx": true,
       "lab": [
-        100.0,
-        0.0,
-        0.0
+        100,
+        0,
+        0
       ],
       "mixable": true
     },
@@ -87793,8 +87793,8 @@
       "approx": true,
       "lab": [
         5.0633,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true
     },
@@ -87912,8 +87912,8 @@
       "approx": true,
       "lab": [
         96.5375,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true
     },
@@ -87929,8 +87929,8 @@
       "approx": true,
       "lab": [
         90.5889,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true
     },
@@ -87946,8 +87946,8 @@
       "approx": true,
       "lab": [
         83.1236,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true
     },
@@ -87963,8 +87963,8 @@
       "approx": true,
       "lab": [
         75.8806,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true
     },
@@ -87980,8 +87980,8 @@
       "approx": true,
       "lab": [
         68.1182,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true
     },
@@ -87997,8 +87997,8 @@
       "approx": true,
       "lab": [
         59.4048,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true
     },
@@ -88014,8 +88014,8 @@
       "approx": true,
       "lab": [
         50.0344,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true
     },
@@ -88031,8 +88031,8 @@
       "approx": true,
       "lab": [
         40.7305,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true
     },
@@ -88048,8 +88048,8 @@
       "approx": true,
       "lab": [
         31.0261,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true
     },
@@ -179755,9 +179755,9 @@
       "source": "night-works-official",
       "approx": true,
       "lab": [
-        100.0,
-        -0.0,
-        0.0
+        100,
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170430138",
@@ -182215,9 +182215,9 @@
       "source": "night-works-official",
       "approx": true,
       "lab": [
-        100.0,
-        -0.0,
-        0.0
+        100,
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170430909",
@@ -184415,9 +184415,9 @@
       "source": "night-works-official",
       "approx": true,
       "lab": [
-        100.0,
-        -0.0,
-        0.0
+        100,
+        0,
+        0
       ],
       "mixable": false,
       "barcode": "6975170434976",
@@ -184655,9 +184655,9 @@
       "source": "night-works-official",
       "approx": true,
       "lab": [
-        100.0,
-        -0.0,
-        0.0
+        100,
+        0,
+        0
       ],
       "mixable": false,
       "barcode": "6978546263026",
@@ -185056,8 +185056,8 @@
       "approx": true,
       "lab": [
         68.4918,
-        -0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": false,
       "barcode": "6975170435058",
@@ -185296,8 +185296,8 @@
       "approx": true,
       "lab": [
         12.74,
-        -0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": false,
       "barcode": "6975170433993",
@@ -186256,8 +186256,8 @@
       "approx": true,
       "lab": [
         99.6549,
-        -0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170438776",
@@ -187616,8 +187616,8 @@
       "approx": true,
       "lab": [
         2.7417,
-        -0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170432903",
@@ -187635,9 +187635,9 @@
       "source": "night-works-official",
       "approx": true,
       "lab": [
-        100.0,
-        -0.0,
-        0.0
+        100,
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170431937",
@@ -187656,8 +187656,8 @@
       "approx": true,
       "lab": [
         61.7011,
-        -0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170438240",
@@ -187695,9 +187695,9 @@
       "source": "night-works-official",
       "approx": true,
       "lab": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170431227",
@@ -187716,8 +187716,8 @@
       "approx": true,
       "lab": [
         2.7417,
-        -0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170439070",
@@ -187735,9 +187735,9 @@
       "source": "night-works-official",
       "approx": true,
       "lab": [
-        100.0,
-        -0.0,
-        0.0
+        100,
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170438585",
@@ -187756,8 +187756,8 @@
       "approx": true,
       "lab": [
         61.7011,
-        -0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170436994",
@@ -187776,8 +187776,8 @@
       "approx": true,
       "lab": [
         80.965,
-        -0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": true,
       "barcode": "6975170432934",
@@ -187856,8 +187856,8 @@
       "approx": true,
       "lab": [
         68.4918,
-        -0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": false,
       "barcode": "",
@@ -188096,8 +188096,8 @@
       "approx": true,
       "lab": [
         12.74,
-        -0.0,
-        0.0
+        0,
+        0
       ],
       "mixable": false,
       "barcode": "",
@@ -188483,6 +188483,1434 @@
       "barcode": "",
       "paintType": "水性漆",
       "shopUrl": "https://m.tb.cn/h.8CDUKqPH9x4BRh3"
+    },
+    {
+      "id": "gaia-126-d8c690",
+      "brand": "Gaia",
+      "code": "126",
+      "name": "星光香槟金 / Star Bright Champagne Gold",
+      "hex": "#D8C690",
+      "set": "星光与金属色",
+      "finish": "metallic",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        80.1809,
+        -1.6162,
+        29.3993
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ex09-e2e8f0",
+      "brand": "Gaia",
+      "code": "EX09",
+      "name": "Ex-半光泽透明 Premium (含氟50ml) / Ex-Semi-Gloss Clear",
+      "hex": "#E2E8F0",
+      "set": "EX 大瓶装系列",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        91.7623,
+        -0.5209,
+        -4.5695
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-ex10-d5dce4",
+      "brand": "Gaia",
+      "code": "EX10",
+      "name": "Ex-消光透明 Premium (含氟50ml) / Ex-Flat Clear Premium",
+      "hex": "#D5DCE4",
+      "set": "EX 大瓶装系列",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        87.4527,
+        -0.8517,
+        -4.7303
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-gp-10-c8c6bc",
+      "brand": "Gaia",
+      "code": "GP-10",
+      "name": "高级钛银 / Premium Titanium Silver",
+      "hex": "#C8C6BC",
+      "set": "GP 魔幻与高级色",
+      "finish": "metallic",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        79.7835,
+        -1.085,
+        5.2502
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-nc008-f4f5f6",
+      "brand": "Gaia",
+      "code": "NC008",
+      "name": "中性白 / Neutral White",
+      "hex": "#F4F5F6",
+      "set": "NAZCA 机甲专业色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        96.4889,
+        -0.1541,
+        -0.5962
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-nc009-6e58a8",
+      "brand": "Gaia",
+      "code": "NC009",
+      "name": "钴紫 / Cobalt Violet",
+      "hex": "#6E58A8",
+      "set": "NAZCA 机甲专业色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        42.9454,
+        27.5617,
+        -40.0113
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-nc010-f26419",
+      "brand": "Gaia",
+      "code": "NC010",
+      "name": "柑橘橙 / Mandarin Orange",
+      "hex": "#F26419",
+      "set": "NAZCA 机甲专业色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        59.9498,
+        51.5094,
+        63.5899
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-nc011-a8b0b8",
+      "brand": "Gaia",
+      "code": "NC011",
+      "name": "消光平光银 / Flat Silver",
+      "hex": "#A8B0B8",
+      "set": "NAZCA 机甲专业色",
+      "finish": "metallic",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        71.4434,
+        -1.2087,
+        -5.0453
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-nc012-545842",
+      "brand": "Gaia",
+      "code": "NC012",
+      "name": "深卡其 / Deep Khaki",
+      "hex": "#545842",
+      "set": "NAZCA 机甲专业色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        36.4757,
+        -5.8927,
+        12.2625
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-nc013-827e5c",
+      "brand": "Gaia",
+      "code": "NC013",
+      "name": "爆破卡其 / Blast Khaki",
+      "hex": "#827E5C",
+      "set": "NAZCA 机甲专业色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        52.3318,
+        -4.2531,
+        19.1074
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-nc014-f5b800",
+      "brand": "Gaia",
+      "code": "NC014",
+      "name": "柑橘黄 / Mandarin Yellow",
+      "hex": "#F5B800",
+      "set": "NAZCA 机甲专业色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        78.2852,
+        9.7508,
+        80.6549
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-nc015-242238",
+      "brand": "Gaia",
+      "code": "NC015",
+      "name": "暗蓝紫 / Dark Bluish Purple",
+      "hex": "#242238",
+      "set": "NAZCA 机甲专业色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        14.4265,
+        7.1931,
+        -13.9315
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-np001-52565e",
+      "brand": "Gaia",
+      "code": "NP001",
+      "name": "NAZCA 机械水补土 重装灰 / Mech Surfacer Heavy",
+      "hex": "#52565E",
+      "set": "NAZCA 机甲专业色",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        36.4753,
+        0.2436,
+        -5.1724
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-np002-848a94",
+      "brand": "Gaia",
+      "code": "NP002",
+      "name": "NAZCA 机械水补土 轻装灰 / Mech Surfacer Light",
+      "hex": "#848A94",
+      "set": "NAZCA 机甲专业色",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        57.2895,
+        -0.1003,
+        -6.0789
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-np004-e8a8b4",
+      "brand": "Gaia",
+      "code": "NP004",
+      "name": "NAZCA 粉色水补土 (红黄发色底漆) / Pink Surfacer",
+      "hex": "#E8A8B4",
+      "set": "NAZCA 机甲专业色",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        75.1137,
+        25.235,
+        3.2045
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-np005-34373d",
+      "brand": "Gaia",
+      "code": "NP005",
+      "name": "NAZCA 机械水补土 超重装黑铁 / Mech Surfacer Super Heavy",
+      "hex": "#34373D",
+      "set": "NAZCA 机甲专业色",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        22.9966,
+        0.2068,
+        -4.1754
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-gs-01-94989e",
+      "brand": "Gaia",
+      "code": "GS-01",
+      "name": "水补土 Evo 标准灰 (50ml) / Surfacer Evo Gray",
+      "hex": "#94989E",
+      "set": "GS 水补土 Evo",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        62.6936,
+        -0.2407,
+        -3.6439
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-gs-02-f5f7f8",
+      "brand": "Gaia",
+      "code": "GS-02",
+      "name": "水补土 Evo 白色 (50ml) / Surfacer Evo White",
+      "hex": "#F5F7F8",
+      "set": "GS 水补土 Evo",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        97.1103,
+        -0.4835,
+        -0.7113
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-gs-03-1c1e21",
+      "brand": "Gaia",
+      "code": "GS-03",
+      "name": "水补土 Evo 黑色 (50ml) / Surfacer Evo Black",
+      "hex": "#1C1E21",
+      "set": "GS 水补土 Evo",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        11.1717,
+        -0.1261,
+        -2.3678
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-gs-04-7c362c",
+      "brand": "Gaia",
+      "code": "GS-04",
+      "name": "水补土 Evo 铁锈红 (50ml) / Surfacer Evo Oxide Red",
+      "hex": "#7C362C",
+      "set": "GS 水补土 Evo",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        32.0481,
+        29.6201,
+        20.9747
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-gs-05-f4d2be",
+      "brand": "Gaia",
+      "code": "GS-05",
+      "name": "水补土 Evo 肤色底漆 (50ml) / Surfacer Evo Flesh",
+      "hex": "#F4D2BE",
+      "set": "GS 水补土 Evo",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        86.5269,
+        8.8519,
+        14.3065
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-gs-06-b8bec4",
+      "brand": "Gaia",
+      "code": "GS-06",
+      "name": "水补土 Evo 银色底漆 (50ml) / Surfacer Evo Silver",
+      "hex": "#B8BEC4",
+      "set": "GS 水补土 Evo",
+      "finish": "metallic",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        76.6805,
+        -0.9191,
+        -3.738
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-gs-07-f2bac8",
+      "brand": "Gaia",
+      "code": "GS-07",
+      "name": "水补土 Evo 樱花粉 (50ml) / Surfacer Evo Pastel Pink",
+      "hex": "#F2BAC8",
+      "set": "GS 水补土 Evo",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        80.832,
+        22.2365,
+        0.775
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-gs-08-8cc8e8",
+      "brand": "Gaia",
+      "code": "GS-08",
+      "name": "水补土 Evo 天空蓝 (50ml) / Surfacer Evo Sky Blue",
+      "hex": "#8CC8E8",
+      "set": "GS 水补土 Evo",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        77.7019,
+        -11.2386,
+        -21.9303
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-gs-09-f6e478",
+      "brand": "Gaia",
+      "code": "GS-09",
+      "name": "水补土 Evo 柠檬黄 (50ml) / Surfacer Evo Lemon Yellow",
+      "hex": "#F6E478",
+      "set": "GS 水补土 Evo",
+      "finish": "other",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        90.0624,
+        -7.4851,
+        54.368
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-gs-10-44484e",
+      "brand": "Gaia",
+      "code": "GS-10",
+      "name": "水补土 Evo 枪铁色 (50ml) / Surfacer Evo Gun Metal",
+      "hex": "#44484E",
+      "set": "GS 水补土 Evo",
+      "finish": "metallic",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        30.433,
+        -0.2178,
+        -4.1411
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-04-76ff40",
+      "brand": "Gaia",
+      "code": "EV-04",
+      "name": "EVA 初号机夜光霓虹绿 / EVA Neon Green",
+      "hex": "#76FF40",
+      "set": "EVA 福音战士限定色",
+      "finish": "fluorescent",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        89.7376,
+        -68.5225,
+        74.3137
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-ev-05-f59e0b",
+      "brand": "Gaia",
+      "code": "EV-05",
+      "name": "EVA 初号机橙黄 / EVA Orange Yellow",
+      "hex": "#F59E0B",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        72.1585,
+        23.4931,
+        75.2246
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-06-d61f26",
+      "brand": "Gaia",
+      "code": "EV-06",
+      "name": "EVA 二号机红 / EVA Red",
+      "hex": "#D61F26",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        46.2053,
+        66.8284,
+        44.8605
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-07-f7c816",
+      "brand": "Gaia",
+      "code": "EV-07",
+      "name": "EVA 二号机黄 / EVA Yellow",
+      "hex": "#F7C816",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        82.4564,
+        2.5274,
+        81.2183
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-08-e86818",
+      "brand": "Gaia",
+      "code": "EV-08",
+      "name": "EVA 二号机橙 / EVA Orange",
+      "hex": "#E86818",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        59.0922,
+        45.9507,
+        62.5531
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-09-5c586e",
+      "brand": "Gaia",
+      "code": "EV-09",
+      "name": "EVA 紫灰 / EVA Purple Gray",
+      "hex": "#5C586E",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        38.5168,
+        6.5699,
+        -11.9568
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-10-3b3e45",
+      "brand": "Gaia",
+      "code": "EV-10",
+      "name": "EVA 内构暗灰 / EVA Dark Gray",
+      "hex": "#3B3E45",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        26.1709,
+        0.4434,
+        -4.7046
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-11-e8a618",
+      "brand": "Gaia",
+      "code": "EV-11",
+      "name": "EVA 零号机黄 / EVA Proto Yellow",
+      "hex": "#E8A618",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        72.5603,
+        13.8961,
+        72.6719
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-12-e66898",
+      "brand": "Gaia",
+      "code": "EV-12",
+      "name": "EVA 八号机粉 / EVA Pink",
+      "hex": "#E66898",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        60.7772,
+        53.6524,
+        -1.9934
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-13-382454",
+      "brand": "Gaia",
+      "code": "EV-13",
+      "name": "EVA 十三号机暗紫 / EVA Dark Purple",
+      "hex": "#382454",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        18.982,
+        21.1042,
+        -25.8672
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-14-1b2854",
+      "brand": "Gaia",
+      "code": "EV-14",
+      "name": "EVA Mark.06 深蓝 / EVA Dark Blue",
+      "hex": "#1B2854",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        17.4157,
+        10.5813,
+        -28.5259
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-15-e04028",
+      "brand": "Gaia",
+      "code": "EV-15",
+      "name": "EVA Mark.06 朱红 / EVA Vermilion",
+      "hex": "#E04028",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        51.4648,
+        60.4859,
+        49.4542
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-16-f08cae",
+      "brand": "Gaia",
+      "code": "EV-16",
+      "name": "EVA 真希波战斗服珍珠粉 / EVA Mari Pink",
+      "hex": "#F08CAE",
+      "set": "EVA 福音战士限定色",
+      "finish": "pearl",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        69.712,
+        41.9783,
+        -1.2332
+      ],
+      "mixable": false
+    },
+    {
+      "id": "gaia-ev-17-5c3c32",
+      "brand": "Gaia",
+      "code": "EV-17",
+      "name": "EVA 真希波发色棕 / EVA Mari Brown",
+      "hex": "#5C3C32",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        28.7411,
+        12.7203,
+        11.9154
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-18-dc1e28",
+      "brand": "Gaia",
+      "code": "EV-18",
+      "name": "EVA 明日香战斗服红 / EVA Asuka Red",
+      "hex": "#DC1E28",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        47.3689,
+        68.6709,
+        45.3343
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-19-d86c28",
+      "brand": "Gaia",
+      "code": "EV-19",
+      "name": "EVA 明日香发色橘 / EVA Asuka Orange",
+      "hex": "#D86C28",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        57.5416,
+        38.1825,
+        54.5536
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-20-f4f6fa",
+      "brand": "Gaia",
+      "code": "EV-20",
+      "name": "EVA 绫波丽战斗服白 / EVA Rei White",
+      "hex": "#F4F6FA",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        96.8393,
+        0.0533,
+        -2.1484
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-21-7cb8e8",
+      "brand": "Gaia",
+      "code": "EV-21",
+      "name": "EVA 绫波丽发色浅蓝 / EVA Rei Light Blue",
+      "hex": "#7CB8E8",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        72.488,
+        -6.6786,
+        -29.9775
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-ev-22-efece6",
+      "brand": "Gaia",
+      "code": "EV-22",
+      "name": "EVA 量产机白 / EVA White",
+      "hex": "#EFECE6",
+      "set": "EVA 福音战士限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        93.4744,
+        -0.0373,
+        3.2578
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-05-1468e0",
+      "brand": "Gaia",
+      "code": "VO-05",
+      "name": "电脑战机 鲜艳蓝 / Vivid Blue",
+      "hex": "#1468E0",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        46.2159,
+        22.5748,
+        -67.3759
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-06-e61e46",
+      "brand": "Gaia",
+      "code": "VO-06",
+      "name": "电脑战机 玫瑰亮红 / Rose Bright Red",
+      "hex": "#E61E46",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        49.7369,
+        72.3059,
+        31.3376
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-07-9e1432",
+      "brand": "Gaia",
+      "code": "VO-07",
+      "name": "电脑战机 玫瑰深红 / Rose Deep Red",
+      "hex": "#9E1432",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        33.9872,
+        54.3071,
+        20.9666
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-08-1c3278",
+      "brand": "Gaia",
+      "code": "VO-08",
+      "name": "电脑战机 玛兹深蓝 / Marz Deep Blue",
+      "hex": "#1C3278",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        23.2829,
+        18.1302,
+        -42.5453
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-09-162048",
+      "brand": "Gaia",
+      "code": "VO-09",
+      "name": "电脑战机 玛兹暗蓝 / Marz Dark Blue",
+      "hex": "#162048",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        13.6581,
+        10.585,
+        -26.4083
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-10-c8ced6",
+      "brand": "Gaia",
+      "code": "VO-10",
+      "name": "电脑战机 玛兹浅灰 / Marz Light Gray",
+      "hex": "#C8CED6",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        82.5272,
+        -0.5248,
+        -4.6707
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-11-dce2ea",
+      "brand": "Gaia",
+      "code": "VO-11",
+      "name": "电脑战机 雪原浅灰 / Snow Light Gray",
+      "hex": "#DCE2EA",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        89.6492,
+        -0.5218,
+        -4.5917
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-12-646c78",
+      "brand": "Gaia",
+      "code": "VO-12",
+      "name": "电脑战机 雪原深灰 / Snow Dark Gray",
+      "hex": "#646C78",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        45.3456,
+        -0.3155,
+        -7.698
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-13-f6788e",
+      "brand": "Gaia",
+      "code": "VO-13",
+      "name": "电脑战机 珊瑚粉 / Coral Pink",
+      "hex": "#F6788E",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        65.7361,
+        50.2589,
+        11.18
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-14-f88848",
+      "brand": "Gaia",
+      "code": "VO-14",
+      "name": "电脑战机 珊瑚橙 / Coral Orange",
+      "hex": "#F88848",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        68.0487,
+        37.7908,
+        52.0249
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-15-6c7078",
+      "brand": "Gaia",
+      "code": "VO-15",
+      "name": "电脑战机 骨架金属色2 / Frame Metallic 2",
+      "hex": "#6C7078",
+      "set": "VO 电脑战机限定色",
+      "finish": "metallic",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        47.1477,
+        0.2046,
+        -4.9463
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-16-4a3b36",
+      "brand": "Gaia",
+      "code": "VO-16",
+      "name": "电脑战机 雪原暗褐 / Snow Dark Brown",
+      "hex": "#4A3B36",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        26.304,
+        5.6733,
+        5.5808
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-17-c456a0",
+      "brand": "Gaia",
+      "code": "VO-17",
+      "name": "电脑战机 风暴粉紫 / Storm Pink Purple",
+      "hex": "#C456A0",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        52.8751,
+        52.542,
+        -19.0098
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-18-4a2a68",
+      "brand": "Gaia",
+      "code": "VO-18",
+      "name": "电脑战机 风暴暗紫 / Storm Dark Purple",
+      "hex": "#4A2A68",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        24.036,
+        28.1642,
+        -30.8576
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-19-64a8e8",
+      "brand": "Gaia",
+      "code": "VO-19",
+      "name": "电脑战机 风暴浅蓝 / Storm Light Blue",
+      "hex": "#64A8E8",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        66.9288,
+        -3.1489,
+        -38.6841
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-20-1c2438",
+      "brand": "Gaia",
+      "code": "VO-20",
+      "name": "电脑战机 风暴黑蓝 / Storm Black Blue",
+      "hex": "#1C2438",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        14.3671,
+        2.956,
+        -14.078
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-21-a8e028",
+      "brand": "Gaia",
+      "code": "VO-21",
+      "name": "电脑战机 萌黄绿 / Moegi Yellow Green",
+      "hex": "#A8E028",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        82.8009,
+        -41.4721,
+        75.3763
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-22-28a860",
+      "brand": "Gaia",
+      "code": "VO-22",
+      "name": "电脑战机 萌绿 / Moegi Green",
+      "hex": "#28A860",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        61.0445,
+        -50.4447,
+        27.6838
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-23-484e58",
+      "brand": "Gaia",
+      "code": "VO-23",
+      "name": "电脑战机 阴影灰 / Shadow Gray",
+      "hex": "#484E58",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        32.9863,
+        -0.0003,
+        -6.6907
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-24-f0568c",
+      "brand": "Gaia",
+      "code": "VO-24",
+      "name": "电脑战机 迈泽尔粉 / Myzr Pink",
+      "hex": "#F0568C",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        59.0479,
+        63.3063,
+        2.6418
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-25-6c3b9e",
+      "brand": "Gaia",
+      "code": "VO-25",
+      "name": "电脑战机 迈泽尔紫 / Myzr Purple",
+      "hex": "#6C3B9E",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        35.5665,
+        41.2755,
+        -45.8457
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-26-e8341c",
+      "brand": "Gaia",
+      "code": "VO-26",
+      "name": "电脑战机 焰朱红 / Homura Shu",
+      "hex": "#E8341C",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        51.4978,
+        66.4876,
+        55.4832
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-27-7c2832",
+      "brand": "Gaia",
+      "code": "VO-27",
+      "name": "电脑战机 焰赤豆红 / Homura Azuki",
+      "hex": "#7C2832",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        29.4987,
+        37.1215,
+        13.8195
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-28-5c7494",
+      "brand": "Gaia",
+      "code": "VO-28",
+      "name": "电脑战机 风暴灰蓝 / Storm Gray Blue",
+      "hex": "#5C7494",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        48.1381,
+        -0.3649,
+        -20.1788
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-29-7ce698",
+      "brand": "Gaia",
+      "code": "VO-29",
+      "name": "电脑战机 萌浅绿 / Moegi Light Green",
+      "hex": "#7CE698",
+      "set": "VO 电脑战机限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        83.5174,
+        -47.2904,
+        28.7492
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-vo-30-d2d8e0",
+      "brand": "Gaia",
+      "code": "VO-30",
+      "name": "电脑战机 刀刃银 / Blade Silver",
+      "hex": "#D2D8E0",
+      "set": "VO 电脑战机限定色",
+      "finish": "metallic",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        86.1037,
+        -0.5234,
+        -4.6302
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-01-fad6be",
+      "brand": "Gaia",
+      "code": "FG-01",
+      "name": "机娘限定 塑胶原色肤色 / Plastic Fresh",
+      "hex": "#FAD6BE",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        88.0346,
+        8.9784,
+        16.5057
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-02-f8ccb0",
+      "brand": "Gaia",
+      "code": "FG-02",
+      "name": "机娘限定 基底肤色 / Base Fresh",
+      "hex": "#F8CCB0",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        85.1389,
+        11.5589,
+        19.8001
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-03-e6a88a",
+      "brand": "Gaia",
+      "code": "FG-03",
+      "name": "机娘限定 阴影肤色 / Shadow Fresh",
+      "hex": "#E6A88A",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        73.9759,
+        19.0701,
+        24.4859
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-04-d6dce2",
+      "brand": "Gaia",
+      "code": "FG-04",
+      "name": "机娘限定 装甲浅灰 / Armor Gray",
+      "hex": "#D6DCE2",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        87.4719,
+        -0.9016,
+        -3.6389
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-05-282a30",
+      "brand": "Gaia",
+      "code": "FG-05",
+      "name": "机娘限定 四肢内构黑 / Inner Black",
+      "hex": "#282A30",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        17.0862,
+        0.6636,
+        -4.1941
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-06-f5e4b8",
+      "brand": "Gaia",
+      "code": "FG-06",
+      "name": "机娘限定 白金发色基底 / Platinum Blond Base",
+      "hex": "#F5E4B8",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        90.9447,
+        -0.8864,
+        23.612
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-07-dbc088",
+      "brand": "Gaia",
+      "code": "FG-07",
+      "name": "机娘限定 白金发色阴影 / Platinum Blond Shadow",
+      "hex": "#DBC088",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        78.775,
+        1.7539,
+        31.7637
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-08-f0c850",
+      "brand": "Gaia",
+      "code": "FG-08",
+      "name": "机娘限定 金发基底 / Blond Base",
+      "hex": "#F0C850",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        82.064,
+        1.5072,
+        63.1148
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-09-cfa032",
+      "brand": "Gaia",
+      "code": "FG-09",
+      "name": "机娘限定 金发阴影 / Blond Shadow",
+      "hex": "#CFA032",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        68.4897,
+        6.9877,
+        60.4388
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-10-fce4d6",
+      "brand": "Gaia",
+      "code": "FG-10",
+      "name": "机娘限定 白皙肤色 / White Flesh",
+      "hex": "#FCE4D6",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        92.149,
+        5.9755,
+        9.8092
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-11-c88e68",
+      "brand": "Gaia",
+      "code": "FG-11",
+      "name": "机娘限定 小麦褐色肤色 / Plastic Brown Fresh",
+      "hex": "#C88E68",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        63.8581,
+        17.5237,
+        28.9546
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-12-5c4838",
+      "brand": "Gaia",
+      "code": "FG-12",
+      "name": "机娘限定 轰雷装甲棕 / Gourai Armor Brown",
+      "hex": "#5C4838",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        32.2489,
+        5.9643,
+        12.8442
+      ],
+      "mixable": true
+    },
+    {
+      "id": "gaia-fg-13-2c5898",
+      "brand": "Gaia",
+      "code": "FG-13",
+      "name": "机娘限定 短剑装甲蓝 / Stiletto Armored Blue",
+      "hex": "#2C5898",
+      "set": "FG 机娘联名限定色",
+      "finish": "standard",
+      "source": "gaianotes-official",
+      "approx": true,
+      "lab": [
+        37.4462,
+        7.1868,
+        -39.4947
+      ],
+      "mixable": true
     }
   ]
 }

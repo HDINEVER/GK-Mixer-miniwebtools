@@ -7,6 +7,7 @@ import {
   autoArrangeLeftRight,
   autoArrangeTopBottom,
   buildExtendedMarginCanvasAndColors,
+  buildFreeExpandCanvasAndColors,
   ExpandFillMode,
   ExtractLeaderLineStyle,
   getCanvasMarginRecord,
@@ -58,8 +59,10 @@ export interface SwatchStudioControlsProps {
   canvasSize?: { w: number; h: number };
   onExportImage?: () => void;
   isExporting?: boolean;
-  activeCanvasTool?: "none" | "expand" | "bucket";
-  onToggleCanvasTool?: (tool: "expand" | "bucket") => void;
+  activeCanvasTool?: "none" | "expand";
+  onToggleCanvasTool?: (tool: "expand") => void;
+  blankCustomColor?: string | null;
+  onChangeBlankColor?: (nextColor: string | null) => void;
 }
 
 export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
@@ -86,6 +89,8 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
   isExporting,
   activeCanvasTool = "none",
   onToggleCanvasTool,
+  blankCustomColor,
+  onChangeBlankColor,
 }) => {
   const [isExpanded, setIsExpanded] = useState(!isCompact);
   const [applyToAll, setApplyToAll] = useState<boolean>(false);
@@ -97,7 +102,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
     existingMarginRecord?.ratio || 0.36
   );
   const [marginCustomColor, setMarginCustomColor] = useState<string | null>(
-    existingMarginRecord?.customColor ?? null
+    blankCustomColor !== undefined ? blankCustomColor : existingMarginRecord?.customColor ?? null
   );
   const [marginFillMode, setMarginFillMode] = useState<ExpandFillMode>(
     existingMarginRecord?.expandState?.fillMode || "solid"
@@ -108,13 +113,21 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
   const [isApplyingMargin, setIsApplyingMargin] = useState<boolean>(false);
 
   useEffect(() => {
+    if (blankCustomColor !== undefined) {
+      setMarginCustomColor(blankCustomColor);
+    }
+  }, [blankCustomColor]);
+
+  useEffect(() => {
     if (!imageSrc) return;
     let cancelled = false;
     const rec = getCanvasMarginRecord(imageSrc);
     if (rec) {
       setMarginMode(rec.mode);
       setMarginRatio(rec.ratio);
-      setMarginCustomColor(rec.customColor);
+      if (blankCustomColor === undefined) {
+        setMarginCustomColor(rec.customColor);
+      }
       setMarginFillMode(rec.expandState?.fillMode || "solid");
       setSampledEdgeColors(rec.sampledEdgeColors);
       return;
@@ -123,20 +136,22 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
       if (cancelled || !sampledRec) return;
       setMarginMode(sampledRec.mode);
       setMarginRatio(sampledRec.ratio);
-      setMarginCustomColor(sampledRec.customColor);
+      if (blankCustomColor === undefined) {
+        setMarginCustomColor(sampledRec.customColor);
+      }
       setMarginFillMode(sampledRec.expandState?.fillMode || "solid");
       setSampledEdgeColors(sampledRec.sampledEdgeColors);
     });
     return () => {
       cancelled = true;
     };
-  }, [imageSrc]);
+  }, [imageSrc, blankCustomColor]);
 
   const handleApplyMarginExtension = async (
     nextMode: MarginExtendMode,
     nextRatio: number = marginRatio,
     nextCustomColor: string | null = marginCustomColor,
-    nextFillMode: ExpandFillMode = marginFillMode
+    nextFillMode: ExpandFillMode = "solid"
   ) => {
     if (!imageSrc || !colors || !onUpdateImageAndColors || isApplyingMargin) return;
     setIsApplyingMargin(true);
@@ -159,6 +174,49 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
       onUpdateImageAndColors(res.imageSrc, res.colors);
     } catch (err) {
       console.error("[SwatchStudioControls] Margin extension failed:", err);
+    } finally {
+      setIsApplyingMargin(false);
+    }
+  };
+
+  const handleSelectBlankColor = async (nextColor: string | null) => {
+    setMarginCustomColor(nextColor);
+    if (onChangeBlankColor) {
+      onChangeBlankColor(nextColor);
+      return;
+    }
+    if (!imageSrc || !colors || !onUpdateImageAndColors || isApplyingMargin) return;
+    const rec = getCanvasMarginRecord(imageSrc);
+    const hasExpanded =
+      rec &&
+      rec.mode !== "none" &&
+      rec.expandState &&
+      (rec.expandState.leftPx > 0 ||
+        rec.expandState.rightPx > 0 ||
+        rec.expandState.topPx > 0 ||
+        rec.expandState.bottomPx > 0);
+    if (!hasExpanded) return;
+
+    setIsApplyingMargin(true);
+    try {
+      const res = await buildFreeExpandCanvasAndColors(
+        imageSrc,
+        colors,
+        {
+          ...rec.expandState!,
+          fillMode: "solid",
+          fillColor: nextColor || rec.sampledEdgeColors.overall,
+        },
+        settings.cardScale,
+        settings.cardBaseWidth,
+        rec.mode,
+        nextColor,
+        false
+      );
+      setSampledEdgeColors(res.record.sampledEdgeColors);
+      onUpdateImageAndColors(res.imageSrc, res.colors);
+    } catch (err) {
+      console.error("[SwatchStudioControls] Update blank color failed:", err);
     } finally {
       setIsApplyingMargin(false);
     }
@@ -566,67 +624,39 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
 
       {isExpanded && (
         <div className="space-y-3.5">
-          {/* Smart Edge-Color Margin Extension (画布边缘留白扩展 · 防止模型整体被遮挡) */}
+          {/* Simplified Outer Dimension Expansion & Blank Area Color Setting */}
           {imageSrc && onUpdateImageAndColors && (
             <div className="bp-subcard rounded-xl border border-slate-200/85 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 p-2.5 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <FrameCornersIcon className="h-3.5 w-3.5 text-[var(--accent-color)] shrink-0" weight="bold" />
                   <span className="text-[11px] font-black text-slate-800 dark:text-slate-100 truncate">
-                    画布越界扩边与背景合成（防遮挡模型）
+                    图片外部尺寸拓展（防遮挡模型）
                   </span>
                 </div>
-                {sampledEdgeColors && (
-                  <div className="flex items-center gap-1 shrink-0" title="自动吸取原图边缘背景色">
-                    <span
-                      className="h-3.5 w-3.5 rounded-full border border-black/20 dark:border-white/25 shadow-2xs"
-                      style={{
-                        backgroundColor: marginCustomColor || sampledEdgeColors.overall,
-                      }}
-                    />
-                    <span className="font-mono text-[9px] font-bold text-slate-400">
-                      {marginCustomColor ? `自定义 ${marginCustomColor}` : `原图色 ${sampledEdgeColors.overall}`}
-                    </span>
-                  </div>
-                )}
               </div>
 
-              {onToggleCanvasTool && (
-                <div className="grid grid-cols-2 gap-1.5">
+              {/* Row 1: Free Drag Entry + Preset Buttons */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {onToggleCanvasTool && (
                   <button
                     type="button"
                     onClick={() => onToggleCanvasTool("expand")}
-                    className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-2 text-[11px] font-extrabold transition cursor-pointer ${
+                    className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-1.5 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
                       activeCanvasTool === "expand"
                         ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-xs"
                         : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
                     }`}
-                    title="开启画布 8 手柄自由向外拉出留白或向内裁切，按住 Alt 对称扩边"
+                    title="开启画布边缘手柄，向四周自由拖拽放大留白区域"
                   >
-                    <span>✂️ 8手柄自由扩边</span>
+                    <span>✂️ 自由扩边</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onToggleCanvasTool("bucket")}
-                    className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-2 text-[11px] font-extrabold transition cursor-pointer ${
-                      activeCanvasTool === "bucket"
-                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-xs"
-                        : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
-                    }`}
-                    title="开启油漆桶泛洪填色，一键将外扩留白区与原图背景刷成干净底色"
-                  >
-                    <span>🪣 油漆桶背景填色</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Primary Dual-Side / Reset Buttons */}
-              <div className="grid grid-cols-3 gap-1.5">
+                )}
                 <button
                   type="button"
                   disabled={isApplyingMargin}
                   onClick={() => handleApplyMarginExtension("leftRight")}
-                  className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-2 text-[11px] font-extrabold transition cursor-pointer ${
+                  className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-1.5 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
                     marginMode === "leftRight"
                       ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-xs"
                       : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
@@ -639,7 +669,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                   type="button"
                   disabled={isApplyingMargin}
                   onClick={() => handleApplyMarginExtension("topBottom")}
-                  className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-2 text-[11px] font-extrabold transition cursor-pointer ${
+                  className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-1.5 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
                     marginMode === "topBottom"
                       ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-xs"
                       : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
@@ -652,7 +682,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                   type="button"
                   disabled={isApplyingMargin || marginMode === "none"}
                   onClick={() => handleApplyMarginExtension("none")}
-                  className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-2 text-[11px] font-bold transition cursor-pointer ${
+                  className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-1.5 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
                     marginMode === "none"
                       ? "border-slate-200/70 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/40 text-slate-400 cursor-default"
                       : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-slate-400"
@@ -663,150 +693,77 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                 </button>
               </div>
 
-              {/* Single-Side Buttons: Left / Right / Top / Bottom */}
-              <div className="grid grid-cols-4 gap-1">
-                {(
-                  [
-                    { id: "left" as const, label: "← 左留白" },
-                    { id: "right" as const, label: "右留白 →" },
-                    { id: "top" as const, label: "↑ 上留白" },
-                    { id: "bottom" as const, label: "↓ 下留白" },
-                  ]
-                ).map((opt) => (
+              {/* Row 2: Blank Area Color Setting (Auto Original / White / Black / Custom) */}
+              <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  空白区域颜色:
+                </span>
+                <div className="flex items-center gap-1.5">
                   <button
-                    key={opt.id}
                     type="button"
                     disabled={isApplyingMargin}
-                    onClick={() => handleApplyMarginExtension(opt.id)}
-                    className={`bp-btn rounded-lg border py-1 px-1.5 text-[10px] font-bold transition cursor-pointer whitespace-nowrap ${
-                      marginMode === opt.id
-                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-2xs"
-                        : "border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-[var(--accent-color)]"
+                    onClick={() => handleSelectBlankColor(null)}
+                    className={`bp-btn inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-bold transition cursor-pointer ${
+                      marginCustomColor === null
+                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white"
+                        : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
                     }`}
+                    title="自动采样并匹配原图边缘背景色"
                   >
-                    {opt.label}
+                    <span
+                      className="h-3 w-3 rounded-full border border-black/20 shrink-0"
+                      style={{ backgroundColor: sampledEdgeColors?.overall || "#F1F5F9" }}
+                    />
+                    <span>原图色</span>
                   </button>
-                ))}
-              </div>
-
-              {/* 3 Fill Modes: Solid / Edge-Clamp / Ambient-Blur */}
-              <div className="grid grid-cols-3 gap-1 pt-0.5">
-                {(
-                  [
-                    { id: "solid" as const, label: "🎨 纯色填充" },
-                    { id: "edge-clamp" as const, label: "↔️ 边缘拉伸" },
-                    { id: "ambient-blur" as const, label: "🌫️ 环境模糊" },
-                  ]
-                ).map((fm) => (
                   <button
-                    key={fm.id}
                     type="button"
                     disabled={isApplyingMargin}
-                    onClick={() => {
-                      const targetMode = marginMode === "none" ? "leftRight" : marginMode;
-                      handleApplyMarginExtension(targetMode, marginRatio, marginCustomColor, fm.id);
-                    }}
-                    className={`bp-btn rounded-lg border py-1 px-1.5 text-[10px] font-bold transition cursor-pointer whitespace-nowrap ${
-                      marginFillMode === fm.id && marginMode !== "none"
-                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-2xs"
-                        : "border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-[var(--accent-color)]"
+                    onClick={() => handleSelectBlankColor("#FFFFFF")}
+                    className={`bp-btn inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-bold transition cursor-pointer ${
+                      marginCustomColor?.toUpperCase() === "#FFFFFF"
+                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white"
+                        : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
                     }`}
+                    title="纯白留白背景 (#FFFFFF)"
                   >
-                    {fm.label}
+                    <span className="h-3 w-3 rounded-full border border-slate-300 bg-white shrink-0" />
+                    <span>白色</span>
                   </button>
-                ))}
-              </div>
-
-              {/* Extra Controls when Margin Extension is Active: Width Ratio + Edge Color Picker */}
-              {marginMode !== "none" && (
-                <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold text-slate-400">留白宽度</span>
-                    {(
-                      [
-                        { val: 0.28, label: "紧凑" },
-                        { val: 0.36, label: "标准" },
-                        { val: 0.48, label: "宽敞" },
-                      ]
-                    ).map((r) => (
-                      <button
-                        key={r.val}
-                        type="button"
-                        disabled={isApplyingMargin}
-                        onClick={() =>
-                          handleApplyMarginExtension(marginMode, r.val, marginCustomColor, marginFillMode)
-                        }
-                        className={`bp-btn rounded-md px-1.5 py-0.5 text-[10px] font-bold transition cursor-pointer ${
-                          Math.abs(marginRatio - r.val) < 0.04
-                            ? "bp-pill-active bg-[var(--accent-color)] text-white"
-                            : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                        }`}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={isApplyingMargin}
-                      onClick={() => handleApplyMarginExtension(marginMode, marginRatio, null, "solid")}
-                      className={`bp-btn rounded-md px-1.5 py-0.5 text-[10px] font-bold transition cursor-pointer ${
-                        marginCustomColor === null && marginFillMode === "solid"
-                          ? "bp-pill-active bg-[var(--accent-color)] text-white"
-                          : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                      }`}
-                      title="自动吸取原图四边背景颜色"
-                    >
-                      ✨原图色
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isApplyingMargin}
-                      onClick={() =>
-                        handleApplyMarginExtension(marginMode, marginRatio, "#F8FAFC", "solid")
-                      }
-                      className="h-5 w-5 rounded-md border border-slate-300 bg-[#F8FAFC] cursor-pointer"
-                      title="纯白留白底色 (#F8FAFC)"
+                  <button
+                    type="button"
+                    disabled={isApplyingMargin}
+                    onClick={() => handleSelectBlankColor("#111827")}
+                    className={`bp-btn inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-bold transition cursor-pointer ${
+                      marginCustomColor?.toUpperCase() === "#111827"
+                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white"
+                        : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
+                    }`}
+                    title="纯黑留白背景 (#111827)"
+                  >
+                    <span className="h-3 w-3 rounded-full border border-slate-600 bg-[#111827] shrink-0" />
+                    <span>黑色</span>
+                  </button>
+                  <label
+                    className="relative flex h-6 w-6 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden cursor-pointer shadow-2xs"
+                    title="自定义留白背景色"
+                  >
+                    <input
+                      type="color"
+                      value={marginCustomColor || sampledEdgeColors?.overall || "#FFFFFF"}
+                      onChange={(e) => handleSelectBlankColor(e.target.value.toUpperCase())}
+                      className="absolute inset-0 h-8 w-8 -left-1 -top-1 cursor-pointer opacity-0"
                     />
-                    <button
-                      type="button"
-                      disabled={isApplyingMargin}
-                      onClick={() =>
-                        handleApplyMarginExtension(marginMode, marginRatio, "#1E293B", "solid")
-                      }
-                      className="h-5 w-5 rounded-md border border-slate-600 bg-[#1E293B] cursor-pointer"
-                      title="深灰暗棚留白底色 (#1E293B)"
+                    <span
+                      className="h-full w-full"
+                      style={{
+                        background:
+                          "conic-gradient(from 0deg, #f87171, #fbbf24, #34d399, #60a5fa, #a78bfa, #f87171)",
+                      }}
                     />
-                    <label
-                      className="relative flex h-5 w-5 items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 overflow-hidden cursor-pointer"
-                      title="自定义留白背景色"
-                    >
-                      <input
-                        type="color"
-                        value={marginCustomColor || sampledEdgeColors?.overall || "#F1F5F9"}
-                        onChange={(e) =>
-                          handleApplyMarginExtension(
-                            marginMode,
-                            marginRatio,
-                            e.target.value.toUpperCase(),
-                            "solid"
-                          )
-                        }
-                        className="absolute inset-0 h-8 w-8 -left-1 -top-1 cursor-pointer opacity-0"
-                      />
-                      <span
-                        className="h-full w-full"
-                        style={{
-                          background:
-                            "conic-gradient(from 0deg, #f87171, #fbbf24, #34d399, #60a5fa, #a78bfa, #f87171)",
-                        }}
-                      />
-                    </label>
-                  </div>
+                  </label>
                 </div>
-              )}
+              </div>
             </div>
           )}
 

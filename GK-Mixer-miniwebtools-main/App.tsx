@@ -1812,6 +1812,17 @@ const App: React.FC = () => {
                             >
                                 🎨 {lang === 'zh' ? '试色改色' : 'Color Studio'}
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                  setSwatchEditorMode('pro');
+                                  setIsSwatchEditorOpen(true);
+                                }}
+                                className="gk-btn-secondary px-2.5 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-100 text-xs font-extrabold rounded border border-slate-200 dark:border-slate-600 hover:border-coral whitespace-nowrap cursor-pointer"
+                                title="拓展图片外部留白尺寸（支持白/黑/原图色）并编辑悬浮色卡排版"
+                            >
+                                ✂️ {lang === 'zh' ? '扩边/色卡排版' : 'Expand & Swatches'}
+                            </button>
                             <input
                                 ref={changeImageInputRef}
                                 type="file"
@@ -1883,6 +1894,7 @@ const App: React.FC = () => {
                                 canvas.height = img.naturalHeight;
                                 ctx.drawImage(img, 0, 0);
                                 requestAnimationFrame(syncCanvasBox);
+                                window.setTimeout(syncCanvasBox, 60);
                             }
                         }}/>
 
@@ -1962,19 +1974,18 @@ const App: React.FC = () => {
                             </button>
                         )}
                         <div className="absolute top-3 right-3 z-20 flex gap-2">
-                          {assignedMarkers.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSwatchEditorMode('pro');
-                                setIsSwatchEditorOpen(true);
-                              }}
-                              className="bp-btn flex items-center gap-1 rounded-lg bg-white/90 dark:bg-slate-800/90 px-2.5 py-1.5 text-[10px] font-bold text-slate-800 dark:text-slate-100 shadow-lg backdrop-blur-sm hover:bg-white border border-slate-200/70 dark:border-slate-700 cursor-pointer"
-                            >
-                              <SwatchesIcon className="h-3.5 w-3.5 text-accent" />
-                              {lang === 'zh' ? '编辑色卡' : 'Edit Swatches'}
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSwatchEditorMode('pro');
+                              setIsSwatchEditorOpen(true);
+                            }}
+                            className="bp-btn flex items-center gap-1 rounded-lg bg-white/90 dark:bg-slate-800/90 px-2.5 py-1.5 text-[10px] font-bold text-slate-800 dark:text-slate-100 shadow-lg backdrop-blur-sm hover:bg-white border border-slate-200/70 dark:border-slate-700 cursor-pointer"
+                            title="拓展图片外部尺寸并编辑色卡排版"
+                          >
+                            <SwatchesIcon className="h-3.5 w-3.5 text-accent" />
+                            {lang === 'zh' ? '扩边 / 编辑色卡' : 'Expand & Edit Swatches'}
+                          </button>
                           <button
                             type="button"
                             onClick={() => setIsSaveToProjectOpen(true)}

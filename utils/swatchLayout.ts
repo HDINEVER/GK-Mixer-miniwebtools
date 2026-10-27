@@ -1,4 +1,15 @@
 import { CatalogPaint } from '../types';
+import {
+  composeExpandedStageCanvas,
+  computeStageDimensions,
+  ExpandCropState,
+  ExpandFillMode,
+  sampleStagePixelHex,
+  scanlineFloodFillCanvas,
+} from '../services/canvasExpandEngine';
+
+export type { ExpandCropState, ExpandFillMode };
+export { sampleStagePixelHex };
 
 export type ExtractLeaderLineStyle = 'stepped' | 'roundedStepped' | 'straight' | 'curved';
 
@@ -651,7 +662,8 @@ export type MarginExtendMode =
   | 'left'
   | 'right'
   | 'top'
-  | 'bottom';
+  | 'bottom'
+  | 'custom';
 
 export interface SampledEdgeColors {
   left: string;
@@ -662,7 +674,9 @@ export interface SampledEdgeColors {
 }
 
 export interface CanvasMarginRecord {
-  /** Unpadded original image dataURL / URL */
+  /** Pristine untouched original image dataURL / URL (restored on '恢复原图') */
+  rawOriginalImageSrc?: string;
+  /** Unpadded original image dataURL / URL (may include background bucket-fill edits) */
   originalImageSrc: string;
   origWidth: number;
   origHeight: number;
@@ -672,11 +686,15 @@ export interface CanvasMarginRecord {
   innerWidthNw: number;
   innerHeightNh: number;
   mode: MarginExtendMode;
-  /** Ratio per extended side relative to original width/height (e.g. 0.24, 0.32, 0.42) */
+  /** Ratio per extended side relative to original width/height (e.g. 0.28, 0.36, 0.48) */
   ratio: number;
   /** Null = auto-follow original image edge colors; otherwise user custom hex */
   customColor: string | null;
   sampledEdgeColors: SampledEdgeColors;
+  /** 8-Handle Out-of-Bounds Crop & Expand Matrix state */
+  expandState?: ExpandCropState;
+  /** Undo history stack of stage dataURLs for Bucket Fill operations */
+  bucketUndoStack?: string[];
 }
 
 const canvasMarginRegistry = new Map<string, CanvasMarginRecord>();
@@ -800,10 +818,13 @@ export async function inspectOrSampleImageMargins(imageSrc: string): Promise<Can
   try {
     const img = await loadHtmlImage(imageSrc);
     const sampledEdgeColors = sampleImageEdgeColors(img);
+    const origWidth = img.naturalWidth || img.width || 800;
+    const origHeight = img.naturalHeight || img.height || 600;
     const record: CanvasMarginRecord = {
+      rawOriginalImageSrc: imageSrc,
       originalImageSrc: imageSrc,
-      origWidth: img.naturalWidth || img.width || 800,
-      origHeight: img.naturalHeight || img.height || 600,
+      origWidth,
+      origHeight,
       innerLeftNx: 0,
       innerTopNy: 0,
       innerWidthNw: 1,
@@ -812,6 +833,15 @@ export async function inspectOrSampleImageMargins(imageSrc: string): Promise<Can
       ratio: 0.36,
       customColor: null,
       sampledEdgeColors,
+      expandState: {
+        leftPx: 0,
+        rightPx: 0,
+        topPx: 0,
+        bottomPx: 0,
+        fillMode: 'solid',
+        fillColor: sampledEdgeColors.overall,
+      },
+      bucketUndoStack: [],
     };
     canvasMarginRegistry.set(imageSrc, record);
     return record;
@@ -823,7 +853,7 @@ export async function inspectOrSampleImageMargins(imageSrc: string): Promise<Can
 /**
  * Places swatch cards neatly inside the extended margin zone(s) so 0% of the model is covered.
  */
-function arrangeCardsIntoMarginZone<
+export function arrangeCardsIntoMarginZone<
   T extends { id: string; sampleX?: number; sampleY?: number; assignedPaint?: CatalogPaint }
 >(
   colors: T[],
@@ -831,7 +861,8 @@ function arrangeCardsIntoMarginZone<
   newW: number,
   newH: number,
   cardScale = 1.0,
-  cardBaseWidth = BASE_CARD_W
+  cardBaseWidth = BASE_CARD_W,
+  preferredDirection?: 'leftRight' | 'topBottom'
 ): { [id: string]: { nx: number; ny: number } } {
   const assigned = colors.filter(
     (c) => Number.isFinite(c.sampleX) && Number.isFinite(c.sampleY) && !!c.assignedPaint
@@ -847,14 +878,23 @@ function arrangeCardsIntoMarginZone<
   const results: { [id: string]: { nx: number; ny: number } } = {};
   const { mode, innerLeftNx, innerTopNy, innerWidthNw, innerHeightNh } = record;
 
-  if (mode === 'none') {
+  const leftMarginW = Math.max(0, innerLeftNx);
+  const rightMarginW = Math.max(0, 1 - (innerLeftNx + innerWidthNw));
+  const topMarginH = Math.max(0, innerTopNy);
+  const botMarginH = Math.max(0, 1 - (innerTopNy + innerHeightNh));
+  const hasAnyMargin =
+    leftMarginW > 0.06 || rightMarginW > 0.06 || topMarginH > 0.06 || botMarginH > 0.06;
+
+  if (mode === 'none' && !hasAnyMargin) {
     const markers = assigned.map((c) => ({
       id: c.id,
       nx: c.sampleX ?? 0.5,
       ny: c.sampleY ?? 0.5,
       paint: c.assignedPaint,
     }));
-    return autoArrangeLeftRight(markers, newW, newH, cardScale, 12, cardBaseWidth);
+    return preferredDirection === 'topBottom'
+      ? autoArrangeTopBottom(markers, newW, newH, cardScale, 12, cardBaseWidth)
+      : autoArrangeLeftRight(markers, newW, newH, cardScale, 12, cardBaseWidth);
   }
 
   // Helper to distribute cards vertically in a horizontal column band [bandLeft, bandRight]
@@ -885,7 +925,6 @@ function arrangeCardsIntoMarginZone<
     const minX = 0.02;
     const maxX = Math.max(minX, 1 - cardWNorm - 0.02);
 
-    // If many cards and band is tall enough for 2 staggered rows, split into 2 rows to prevent horizontal crowding
     if (sorted.length > 4 && bandH >= cardHNorm * 1.75) {
       const topRowY = Math.max(0.008, bandTop + (bandH - cardHNorm * 2 - 0.012) / 2);
       const botRowY = Math.min(1 - cardHNorm - 0.008, topRowY + cardHNorm + 0.012);
@@ -927,12 +966,7 @@ function arrangeCardsIntoMarginZone<
     });
   };
 
-  if (mode === 'left') {
-    placeVerticalColumn(assigned, 0.008, Math.max(0.05, innerLeftNx - 0.008));
-  } else if (mode === 'right') {
-    const rightStart = innerLeftNx + innerWidthNw;
-    placeVerticalColumn(assigned, Math.min(0.95, rightStart + 0.008), 0.992);
-  } else if (mode === 'leftRight') {
+  const arrangeSplitLR = () => {
     const midX = innerLeftNx + innerWidthNw / 2;
     let leftGroup = assigned.filter((c) => (c.sampleX ?? 0.5) < midX);
     let rightGroup = assigned.filter((c) => (c.sampleX ?? 0.5) >= midX);
@@ -943,15 +977,16 @@ function arrangeCardsIntoMarginZone<
       leftGroup = sortedX.slice(0, half);
       rightGroup = sortedX.slice(half);
     }
-    placeVerticalColumn(leftGroup, 0.008, Math.max(0.05, innerLeftNx - 0.008));
-    const rightStart = innerLeftNx + innerWidthNw;
-    placeVerticalColumn(rightGroup, Math.min(0.95, rightStart + 0.008), 0.992);
-  } else if (mode === 'top') {
-    placeHorizontalRow(assigned, 0.008, Math.max(0.05, innerTopNy - 0.008));
-  } else if (mode === 'bottom') {
-    const botStart = innerTopNy + innerHeightNh;
-    placeHorizontalRow(assigned, Math.min(0.95, botStart + 0.008), 0.992);
-  } else if (mode === 'topBottom') {
+    const leftEnd = leftMarginW > 0.05 ? Math.max(0.05, innerLeftNx - 0.008) : Math.min(0.26, cardWNorm + 0.02);
+    const rightStart =
+      rightMarginW > 0.05
+        ? Math.min(0.95, innerLeftNx + innerWidthNw + 0.008)
+        : Math.max(0.74, 1 - cardWNorm - 0.02);
+    placeVerticalColumn(leftGroup, 0.008, leftEnd);
+    placeVerticalColumn(rightGroup, rightStart, 0.992);
+  };
+
+  const arrangeSplitTB = () => {
     const midY = innerTopNy + innerHeightNh / 2;
     let topGroup = assigned.filter((c) => (c.sampleY ?? 0.5) < midY);
     let botGroup = assigned.filter((c) => (c.sampleY ?? 0.5) >= midY);
@@ -962,20 +997,85 @@ function arrangeCardsIntoMarginZone<
       topGroup = sortedY.slice(0, half);
       botGroup = sortedY.slice(half);
     }
-    placeHorizontalRow(topGroup, 0.008, Math.max(0.05, innerTopNy - 0.008));
+    const topEnd = topMarginH > 0.05 ? Math.max(0.05, innerTopNy - 0.008) : Math.min(0.22, cardHNorm + 0.02);
+    const botStart =
+      botMarginH > 0.05
+        ? Math.min(0.95, innerTopNy + innerHeightNh + 0.008)
+        : Math.max(0.78, 1 - cardHNorm - 0.02);
+    placeHorizontalRow(topGroup, 0.008, topEnd);
+    placeHorizontalRow(botGroup, botStart, 0.992);
+  };
+
+  if (preferredDirection === 'leftRight') {
+    if (leftMarginW > 0.05 && rightMarginW <= 0.05) {
+      placeVerticalColumn(assigned, 0.008, Math.max(0.05, innerLeftNx - 0.008));
+    } else if (rightMarginW > 0.05 && leftMarginW <= 0.05) {
+      placeVerticalColumn(assigned, Math.min(0.95, innerLeftNx + innerWidthNw + 0.008), 0.992);
+    } else {
+      arrangeSplitLR();
+    }
+    return results;
+  }
+
+  if (preferredDirection === 'topBottom') {
+    if (topMarginH > 0.05 && botMarginH <= 0.05) {
+      placeHorizontalRow(assigned, 0.008, Math.max(0.05, innerTopNy - 0.008));
+    } else if (botMarginH > 0.05 && topMarginH <= 0.05) {
+      placeHorizontalRow(assigned, Math.min(0.95, innerTopNy + innerHeightNh + 0.008), 0.992);
+    } else {
+      arrangeSplitTB();
+    }
+    return results;
+  }
+
+  if (mode === 'left') {
+    placeVerticalColumn(assigned, 0.008, Math.max(0.05, innerLeftNx - 0.008));
+  } else if (mode === 'right') {
+    const rightStart = innerLeftNx + innerWidthNw;
+    placeVerticalColumn(assigned, Math.min(0.95, rightStart + 0.008), 0.992);
+  } else if (mode === 'leftRight') {
+    arrangeSplitLR();
+  } else if (mode === 'top') {
+    placeHorizontalRow(assigned, 0.008, Math.max(0.05, innerTopNy - 0.008));
+  } else if (mode === 'bottom') {
     const botStart = innerTopNy + innerHeightNh;
-    placeHorizontalRow(botGroup, Math.min(0.95, botStart + 0.008), 0.992);
+    placeHorizontalRow(assigned, Math.min(0.95, botStart + 0.008), 0.992);
+  } else if (mode === 'topBottom') {
+    arrangeSplitTB();
+  } else {
+    // mode === 'custom' (free 8-handle expansion): automatically pick the dominant pulled-out margin zone(s)
+    const lrSpace = leftMarginW + rightMarginW;
+    const tbSpace = topMarginH + botMarginH;
+    if (lrSpace >= tbSpace && lrSpace > 0.05) {
+      if (leftMarginW > 0.05 && rightMarginW > 0.05) {
+        arrangeSplitLR();
+      } else if (leftMarginW > rightMarginW) {
+        placeVerticalColumn(assigned, 0.008, Math.max(0.05, innerLeftNx - 0.008));
+      } else {
+        placeVerticalColumn(assigned, Math.min(0.95, innerLeftNx + innerWidthNw + 0.008), 0.992);
+      }
+    } else if (tbSpace > 0.05) {
+      if (topMarginH > 0.05 && botMarginH > 0.05) {
+        arrangeSplitTB();
+      } else if (topMarginH > botMarginH) {
+        placeHorizontalRow(assigned, 0.008, Math.max(0.05, innerTopNy - 0.008));
+      } else {
+        placeHorizontalRow(assigned, Math.min(0.95, innerTopNy + innerHeightNh + 0.008), 0.992);
+      }
+    } else {
+      arrangeSplitLR();
+    }
   }
 
   return results;
 }
 
 /**
- * Generates an expanded canvas dataURL with extra margin space on Left/Right/Top/Bottom
- * filled with the original image's edge colors (or custom color), remaps sample pins so they
- * stay locked to the exact model positions, and arranges swatch cards into the margin zones.
+ * Generates an expanded/cropped canvas dataURL using arbitrary 4-side pixel offsets (`ExpandCropState`)
+ * via the Dual-Engine service (`solid`, `edge-clamp`, `ambient-blur`), remaps sample pins so they stay
+ * locked on the model armor, and automatically places swatch cards into the newly pulled-out margin space.
  */
-export async function buildExtendedMarginCanvasAndColors<
+export async function buildFreeExpandCanvasAndColors<
   T extends {
     id: string;
     sampleX?: number;
@@ -987,23 +1087,36 @@ export async function buildExtendedMarginCanvasAndColors<
 >(
   currentImageSrc: string,
   colors: T[],
-  mode: MarginExtendMode,
-  ratio = 0.36,
-  customColor: string | null = null,
+  nextExpandState: ExpandCropState,
   cardScale = 1.0,
-  cardBaseWidth = BASE_CARD_W
+  cardBaseWidth = BASE_CARD_W,
+  modeOverride: MarginExtendMode = 'custom',
+  customColorOverride?: string | null,
+  autoArrange = true
 ): Promise<{
   imageSrc: string;
   colors: T[];
   record: CanvasMarginRecord;
 }> {
   const prevRecord = (await inspectOrSampleImageMargins(currentImageSrc))!;
-  const origImg = await loadHtmlImage(prevRecord.originalImageSrc);
+  const isReset =
+    modeOverride === 'none' ||
+    (nextExpandState.leftPx === 0 &&
+      nextExpandState.rightPx === 0 &&
+      nextExpandState.topPx === 0 &&
+      nextExpandState.bottomPx === 0 &&
+      modeOverride !== 'custom');
+
+  const baseSrc = isReset
+    ? prevRecord.rawOriginalImageSrc || prevRecord.originalImageSrc
+    : prevRecord.originalImageSrc;
+
+  const origImg = await loadHtmlImage(baseSrc);
   const origW = origImg.naturalWidth || origImg.width || prevRecord.origWidth || 800;
   const origH = origImg.naturalHeight || origImg.height || prevRecord.origHeight || 600;
   const sampledEdgeColors = prevRecord.sampledEdgeColors;
 
-  // Recover each color's unpadded normalized pin coordinate (origX, origY) on the original image
+  // 1. Recover each color's unpadded normalized pin coordinate (origX, origY) on the original image
   const unpaddedColors = colors.map((c) => {
     if (!Number.isFinite(c.sampleX) || !Number.isFinite(c.sampleY)) return c;
     const origX = Math.max(
@@ -1021,9 +1134,18 @@ export async function buildExtendedMarginCanvasAndColors<
     };
   });
 
-  if (mode === 'none') {
+  if (isReset) {
+    const resetExpand: ExpandCropState = {
+      leftPx: 0,
+      rightPx: 0,
+      topPx: 0,
+      bottomPx: 0,
+      fillMode: nextExpandState.fillMode || 'solid',
+      fillColor: sampledEdgeColors.overall,
+    };
     const noneRecord: CanvasMarginRecord = {
-      originalImageSrc: prevRecord.originalImageSrc,
+      rawOriginalImageSrc: baseSrc,
+      originalImageSrc: baseSrc,
       origWidth: origW,
       origHeight: origH,
       innerLeftNx: 0,
@@ -1031,11 +1153,13 @@ export async function buildExtendedMarginCanvasAndColors<
       innerWidthNw: 1,
       innerHeightNh: 1,
       mode: 'none',
-      ratio,
-      customColor,
+      ratio: prevRecord.ratio || 0.36,
+      customColor: null,
       sampledEdgeColors,
+      expandState: resetExpand,
+      bucketUndoStack: [],
     };
-    canvasMarginRegistry.set(prevRecord.originalImageSrc, noneRecord);
+    canvasMarginRegistry.set(baseSrc, noneRecord);
     const arranged = arrangeCardsIntoMarginZone(
       unpaddedColors,
       noneRecord,
@@ -1048,94 +1172,54 @@ export async function buildExtendedMarginCanvasAndColors<
       arranged[c.id] ? { ...c, labelNx: arranged[c.id].nx, labelNy: arranged[c.id].ny } : c
     );
     return {
-      imageSrc: prevRecord.originalImageSrc,
+      imageSrc: baseSrc,
       colors: nextColors,
       record: noneRecord,
     };
   }
 
-  // Compute pixel padding on each side
-  const safeRatio = Math.max(0.2, Math.min(0.6, ratio));
-  const singleSideRatio = Math.min(0.6, safeRatio * 1.18);
-  const padLeft =
-    mode === 'leftRight'
-      ? Math.round(origW * safeRatio)
-      : mode === 'left'
-      ? Math.round(origW * singleSideRatio)
-      : 0;
-  const padRight =
-    mode === 'leftRight'
-      ? Math.round(origW * safeRatio)
-      : mode === 'right'
-      ? Math.round(origW * singleSideRatio)
-      : 0;
-  const padTop =
-    mode === 'topBottom'
-      ? Math.round(origH * safeRatio)
-      : mode === 'top'
-      ? Math.round(origH * singleSideRatio)
-      : 0;
-  const padBottom =
-    mode === 'topBottom'
-      ? Math.round(origH * safeRatio)
-      : mode === 'bottom'
-      ? Math.round(origH * singleSideRatio)
-      : 0;
+  const { stageW, stageH, leftPx, rightPx, topPx, bottomPx } = computeStageDimensions(
+    origW,
+    origH,
+    nextExpandState
+  );
 
-  const newW = origW + padLeft + padRight;
-  const newH = origH + padTop + padBottom;
+  const resolvedExpandState: ExpandCropState = {
+    leftPx,
+    rightPx,
+    topPx,
+    bottomPx,
+    fillMode: nextExpandState.fillMode,
+    fillColor: nextExpandState.fillColor || sampledEdgeColors.overall,
+  };
 
-  const canvas = document.createElement('canvas');
-  canvas.width = newW;
-  canvas.height = newH;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    throw new Error('Failed to create margin extension canvas context');
-  }
+  const useDirectionalSolid =
+    resolvedExpandState.fillMode === 'solid' && customColorOverride === null;
 
-  // Fill base background with overall or custom color
-  ctx.fillStyle = customColor || sampledEdgeColors.overall;
-  ctx.fillRect(0, 0, newW, newH);
+  const canvas = composeExpandedStageCanvas(
+    origImg,
+    resolvedExpandState,
+    sampledEdgeColors,
+    useDirectionalSolid
+  );
 
-  // Fill directional margins with their respective sampled edge colors (when customColor is not set)
-  if (!customColor) {
-    if (padLeft > 0) {
-      ctx.fillStyle = sampledEdgeColors.left;
-      ctx.fillRect(0, 0, padLeft, newH);
-    }
-    if (padRight > 0) {
-      ctx.fillStyle = sampledEdgeColors.right;
-      ctx.fillRect(padLeft + origW, 0, padRight, newH);
-    }
-    if (padTop > 0) {
-      ctx.fillStyle = sampledEdgeColors.top;
-      ctx.fillRect(0, 0, newW, padTop);
-    }
-    if (padBottom > 0) {
-      ctx.fillStyle = sampledEdgeColors.bottom;
-      ctx.fillRect(0, padTop + origH, newW, padBottom);
-    }
-  }
+  const innerLeftNx = leftPx / stageW;
+  const innerTopNy = topPx / stageH;
+  const innerWidthNw = origW / stageW;
+  const innerHeightNh = origH / stageH;
 
-  // Draw the original unpadded image at (padLeft, padTop)
-  ctx.drawImage(origImg, padLeft, padTop, origW, origH);
-
-  const innerLeftNx = padLeft / newW;
-  const innerTopNy = padTop / newH;
-  const innerWidthNw = origW / newW;
-  const innerHeightNh = origH / newH;
-
-  // Remap sample pins into the new canvas coordinate space
+  // 2. Remap sample pins into the new stage coordinate space so pins stay locked onto the model armor
   const remappedColors = unpaddedColors.map((c) => {
     if (!Number.isFinite(c.sampleX) || !Number.isFinite(c.sampleY)) return c;
     return {
       ...c,
-      sampleX: innerLeftNx + c.sampleX! * innerWidthNw,
-      sampleY: innerTopNy + c.sampleY! * innerHeightNh,
+      sampleX: Math.max(0.005, Math.min(0.995, innerLeftNx + c.sampleX! * innerWidthNw)),
+      sampleY: Math.max(0.005, Math.min(0.995, innerTopNy + c.sampleY! * innerHeightNh)),
     };
   });
 
   const newRecord: CanvasMarginRecord = {
+    rawOriginalImageSrc: prevRecord.rawOriginalImageSrc || prevRecord.originalImageSrc,
     originalImageSrc: prevRecord.originalImageSrc,
     origWidth: origW,
     origHeight: origH,
@@ -1143,24 +1227,31 @@ export async function buildExtendedMarginCanvasAndColors<
     innerTopNy,
     innerWidthNw,
     innerHeightNh,
-    mode,
-    ratio: safeRatio,
-    customColor,
+    mode: modeOverride,
+    ratio: prevRecord.ratio || 0.36,
+    customColor:
+      customColorOverride !== undefined
+        ? customColorOverride
+        : resolvedExpandState.fillColor,
     sampledEdgeColors,
+    expandState: resolvedExpandState,
+    bucketUndoStack: prevRecord.bucketUndoStack ? [...prevRecord.bucketUndoStack] : [],
   };
 
-  const arranged = arrangeCardsIntoMarginZone(
-    remappedColors,
-    newRecord,
-    newW,
-    newH,
-    cardScale,
-    cardBaseWidth
-  );
-
-  const finalColors = remappedColors.map((c) =>
-    arranged[c.id] ? { ...c, labelNx: arranged[c.id].nx, labelNy: arranged[c.id].ny } : c
-  );
+  let finalColors = remappedColors;
+  if (autoArrange) {
+    const arranged = arrangeCardsIntoMarginZone(
+      remappedColors,
+      newRecord,
+      stageW,
+      stageH,
+      cardScale,
+      cardBaseWidth
+    );
+    finalColors = remappedColors.map((c) =>
+      arranged[c.id] ? { ...c, labelNx: arranged[c.id].nx, labelNy: arranged[c.id].ny } : c
+    );
+  }
 
   const expandedDataUrl = canvas.toDataURL('image/jpeg', 0.94);
   canvasMarginRegistry.set(expandedDataUrl, newRecord);
@@ -1169,5 +1260,235 @@ export async function buildExtendedMarginCanvasAndColors<
     imageSrc: expandedDataUrl,
     colors: finalColors,
     record: newRecord,
+  };
+}
+
+/**
+ * Generates an expanded canvas dataURL with extra margin space on Left/Right/Top/Bottom
+ * filled with the original image's edge colors (or custom color / edge-clamp / ambient-blur),
+ * remaps sample pins so they stay locked to the exact model positions, and arranges swatch cards into the margin zones.
+ */
+export async function buildExtendedMarginCanvasAndColors<
+  T extends {
+    id: string;
+    sampleX?: number;
+    sampleY?: number;
+    labelNx?: number;
+    labelNy?: number;
+    assignedPaint?: CatalogPaint;
+  }
+>(
+  currentImageSrc: string,
+  colors: T[],
+  mode: MarginExtendMode,
+  ratio = 0.36,
+  customColor: string | null = null,
+  cardScale = 1.0,
+  cardBaseWidth = BASE_CARD_W,
+  fillMode?: ExpandFillMode
+): Promise<{
+  imageSrc: string;
+  colors: T[];
+  record: CanvasMarginRecord;
+}> {
+  const prevRecord = (await inspectOrSampleImageMargins(currentImageSrc))!;
+  const origW = prevRecord.origWidth || 800;
+  const origH = prevRecord.origHeight || 600;
+  const safeRatio = Math.max(0.2, Math.min(0.6, ratio));
+  const singleSideRatio = Math.min(0.6, safeRatio * 1.18);
+
+  const leftPx =
+    mode === 'leftRight'
+      ? Math.round(origW * safeRatio)
+      : mode === 'left'
+      ? Math.round(origW * singleSideRatio)
+      : mode === 'custom'
+      ? prevRecord.expandState?.leftPx ?? 0
+      : 0;
+  const rightPx =
+    mode === 'leftRight'
+      ? Math.round(origW * safeRatio)
+      : mode === 'right'
+      ? Math.round(origW * singleSideRatio)
+      : mode === 'custom'
+      ? prevRecord.expandState?.rightPx ?? 0
+      : 0;
+  const topPx =
+    mode === 'topBottom'
+      ? Math.round(origH * safeRatio)
+      : mode === 'top'
+      ? Math.round(origH * singleSideRatio)
+      : mode === 'custom'
+      ? prevRecord.expandState?.topPx ?? 0
+      : 0;
+  const bottomPx =
+    mode === 'topBottom'
+      ? Math.round(origH * safeRatio)
+      : mode === 'bottom'
+      ? Math.round(origH * singleSideRatio)
+      : mode === 'custom'
+      ? prevRecord.expandState?.bottomPx ?? 0
+      : 0;
+
+  const resolvedFillMode: ExpandFillMode =
+    fillMode || prevRecord.expandState?.fillMode || 'solid';
+  const resolvedFillColor =
+    customColor || prevRecord.expandState?.fillColor || prevRecord.sampledEdgeColors.overall;
+
+  const res = await buildFreeExpandCanvasAndColors(
+    currentImageSrc,
+    colors,
+    {
+      leftPx,
+      rightPx,
+      topPx,
+      bottomPx,
+      fillMode: resolvedFillMode,
+      fillColor: resolvedFillColor,
+    },
+    cardScale,
+    cardBaseWidth,
+    mode,
+    customColor,
+    true
+  );
+  res.record.ratio = safeRatio;
+  return res;
+}
+
+/**
+ * Executes the Canvas Bucket Fill Tool (`🪣 油漆桶填色`) at normalized `(seedNx, seedNy)` on the active stage image.
+ * Supports clicking in the outer margin OR original image backdrop, with 1.5px anti-aliased edge feathering
+ * and an undo stack for `[↶ 撤销填色]`.
+ */
+export async function applyBucketFillOnStage(
+  currentImageSrc: string,
+  seedNx: number,
+  seedNy: number,
+  fillHex: string,
+  tolerance = 32,
+  connectMarginAndBackdrop = true
+): Promise<{
+  imageSrc: string;
+  record: CanvasMarginRecord;
+  changedPixels: number;
+}> {
+  const prevRecord = (await inspectOrSampleImageMargins(currentImageSrc))!;
+  const stageImg = await loadHtmlImage(currentImageSrc);
+  const stageW = stageImg.naturalWidth || stageImg.width || 800;
+  const stageH = stageImg.naturalHeight || stageImg.height || 600;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = stageW;
+  canvas.height = stageH;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) {
+    throw new Error('Failed to create bucket fill canvas context');
+  }
+  ctx.drawImage(stageImg, 0, 0, stageW, stageH);
+
+  const innerRect = {
+    left: Math.round(prevRecord.innerLeftNx * stageW),
+    top: Math.round(prevRecord.innerTopNy * stageH),
+    width: Math.round(prevRecord.innerWidthNw * stageW),
+    height: Math.round(prevRecord.innerHeightNh * stageH),
+  };
+
+  const seedX = Math.round(seedNx * stageW);
+  const seedY = Math.round(seedNy * stageH);
+
+  const { changedPixels } = scanlineFloodFillCanvas(
+    canvas,
+    seedX,
+    seedY,
+    fillHex,
+    tolerance,
+    {
+      connectMarginAndBackdrop,
+      innerRect,
+    }
+  );
+
+  // Also extract the updated inner original image region so subsequent 8-handle expansions preserve the bucket fill!
+  let updatedOrigDataUrl = prevRecord.originalImageSrc;
+  if (innerRect.width > 16 && innerRect.height > 16) {
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = prevRecord.origWidth;
+    cropCanvas.height = prevRecord.origHeight;
+    const cropCtx = cropCanvas.getContext('2d');
+    if (cropCtx) {
+      cropCtx.drawImage(
+        canvas,
+        innerRect.left,
+        innerRect.top,
+        innerRect.width,
+        innerRect.height,
+        0,
+        0,
+        prevRecord.origWidth,
+        prevRecord.origHeight
+      );
+      updatedOrigDataUrl = cropCanvas.toDataURL('image/jpeg', 0.94);
+    }
+  }
+
+  const nextDataUrl = canvas.toDataURL('image/jpeg', 0.94);
+  const nextUndoStack = [...(prevRecord.bucketUndoStack || []), currentImageSrc].slice(-12);
+
+  const nextExpandState: ExpandCropState = prevRecord.expandState
+    ? {
+        ...prevRecord.expandState,
+        fillMode: 'solid',
+        fillColor: fillHex.toUpperCase(),
+      }
+    : {
+        leftPx: Math.max(0, innerRect.left),
+        rightPx: Math.max(0, stageW - (innerRect.left + innerRect.width)),
+        topPx: Math.max(0, innerRect.top),
+        bottomPx: Math.max(0, stageH - (innerRect.top + innerRect.height)),
+        fillMode: 'solid',
+        fillColor: fillHex.toUpperCase(),
+      };
+
+  const nextRecord: CanvasMarginRecord = {
+    ...prevRecord,
+    rawOriginalImageSrc: prevRecord.rawOriginalImageSrc || prevRecord.originalImageSrc,
+    originalImageSrc: updatedOrigDataUrl,
+    customColor: fillHex.toUpperCase(),
+    expandState: nextExpandState,
+    bucketUndoStack: nextUndoStack,
+  };
+
+  canvasMarginRegistry.set(nextDataUrl, nextRecord);
+
+  return {
+    imageSrc: nextDataUrl,
+    record: nextRecord,
+    changedPixels,
+  };
+}
+
+/**
+ * Pops and restores the previous stage image before the last Bucket Fill operation (`[↶ 撤销填色]`).
+ */
+export function undoBucketFillOnStage(currentImageSrc: string): {
+  imageSrc: string;
+  record: CanvasMarginRecord;
+} | null {
+  const rec = getCanvasMarginRecord(currentImageSrc);
+  if (!rec || !rec.bucketUndoStack || rec.bucketUndoStack.length === 0) {
+    return null;
+  }
+  const nextStack = [...rec.bucketUndoStack];
+  const prevImageSrc = nextStack.pop()!;
+  const prevRec = getCanvasMarginRecord(prevImageSrc) || {
+    ...rec,
+    bucketUndoStack: nextStack,
+  };
+  prevRec.bucketUndoStack = nextStack;
+  canvasMarginRegistry.set(prevImageSrc, prevRec);
+  return {
+    imageSrc: prevImageSrc,
+    record: prevRec,
   };
 }

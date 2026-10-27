@@ -195,7 +195,10 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
         rec.expandState.rightPx > 0 ||
         rec.expandState.topPx > 0 ||
         rec.expandState.bottomPx > 0);
-    if (!hasExpanded) return;
+    if (!hasExpanded) {
+      await handleApplyMarginExtension("leftRight", marginRatio, nextColor, "solid");
+      return;
+    }
 
     setIsApplyingMargin(true);
     try {
@@ -634,66 +637,36 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                     图片外部尺寸拓展（防遮挡模型）
                   </span>
                 </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {onToggleCanvasTool && (
+                    <button
+                      type="button"
+                      onClick={() => onToggleCanvasTool("expand")}
+                      className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1 px-2 text-[10px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                        activeCanvasTool === "expand"
+                          ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-xs"
+                          : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
+                      }`}
+                      title="开启画布边缘手柄，向四周自由拖拽放大留白区域"
+                    >
+                      <span>✂️ 自由拖拽扩边</span>
+                    </button>
+                  )}
+                  {marginMode !== "none" && (
+                    <button
+                      type="button"
+                      disabled={isApplyingMargin}
+                      onClick={() => handleApplyMarginExtension("none")}
+                      className="bp-btn flex items-center justify-center gap-1 rounded-lg border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 py-1 px-2 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-slate-400 transition cursor-pointer whitespace-nowrap"
+                    >
+                      <ArrowCounterClockwiseIcon className="h-3 w-3 shrink-0" weight="bold" />
+                      <span>恢复原图</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Row 1: Free Drag Entry + Preset Buttons */}
-              <div className="grid grid-cols-4 gap-1.5">
-                {onToggleCanvasTool && (
-                  <button
-                    type="button"
-                    onClick={() => onToggleCanvasTool("expand")}
-                    className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-1.5 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
-                      activeCanvasTool === "expand"
-                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-xs"
-                        : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
-                    }`}
-                    title="开启画布边缘手柄，向四周自由拖拽放大留白区域"
-                  >
-                    <span>✂️ 自由扩边</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  disabled={isApplyingMargin}
-                  onClick={() => handleApplyMarginExtension("leftRight")}
-                  className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-1.5 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
-                    marginMode === "leftRight"
-                      ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-xs"
-                      : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
-                  }`}
-                >
-                  <ColumnsIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-                  <span>左右加宽</span>
-                </button>
-                <button
-                  type="button"
-                  disabled={isApplyingMargin}
-                  onClick={() => handleApplyMarginExtension("topBottom")}
-                  className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-1.5 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
-                    marginMode === "topBottom"
-                      ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-xs"
-                      : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
-                  }`}
-                >
-                  <RowsIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-                  <span>上下加高</span>
-                </button>
-                <button
-                  type="button"
-                  disabled={isApplyingMargin || marginMode === "none"}
-                  onClick={() => handleApplyMarginExtension("none")}
-                  className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-1.5 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
-                    marginMode === "none"
-                      ? "border-slate-200/70 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/40 text-slate-400 cursor-default"
-                      : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-slate-400"
-                  }`}
-                >
-                  <ArrowCounterClockwiseIcon className="h-3 w-3 shrink-0" weight="bold" />
-                  <span>恢复原图</span>
-                </button>
-              </div>
-
-              {/* Row 2: Blank Area Color Setting (Auto Original / White / Black / Custom) */}
+              {/* Blank Area Color Setting (Auto Original / White / Black / Custom) */}
               <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
                   空白区域颜色:

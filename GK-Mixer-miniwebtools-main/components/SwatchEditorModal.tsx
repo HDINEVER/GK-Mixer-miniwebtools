@@ -16,8 +16,6 @@ import {
   XIcon,
   SparkleIcon,
   FolderPlusIcon,
-  ColumnsIcon,
-  RowsIcon,
   ArrowCounterClockwiseIcon,
   ScissorsIcon,
   ArrowsOutLineHorizontalIcon,
@@ -100,7 +98,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
 
   const [canvasSize, setCanvasSize] = useState<{ w: number; h: number }>({ w: 600, h: 450 });
   const [stageViewportSize, setStageViewportSize] = useState<{ w: number; h: number }>({ w: 680, h: 480 });
-  const [activeTool, setActiveTool] = useState<"none" | "expand">("none");
+  const [activeTool, setActiveTool] = useState<"none" | "expand">("expand");
 
   // Margin & 8-Handle Out-of-Bounds Expand State
   const [marginRecord, setMarginRecord] = useState<CanvasMarginRecord | null>(() =>
@@ -126,6 +124,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
   const handleDragRef = useRef<ActiveHandleDrag | null>(null);
   const [isProcessingCanvas, setIsProcessingCanvas] = useState<boolean>(false);
   const [statusToast, setStatusToast] = useState<string | null>(null);
+  const [naturalImgSize, setNaturalImgSize] = useState<{ w: number; h: number } | null>(null);
 
   // Sync margin record when imageSrc changes
   useEffect(() => {
@@ -167,16 +166,8 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
-    const el = imgContainerRef.current;
     const vp = stageViewportRef.current;
     const update = () => {
-      // Do not overwrite canvasSize while dragging handles
-      if (!handleDragRef.current && el) {
-        const rect = el.getBoundingClientRect();
-        if (rect.width > 10 && rect.height > 10) {
-          setCanvasSize({ w: rect.width, h: rect.height });
-        }
-      }
       if (vp) {
         const vRect = vp.getBoundingClientRect();
         if (vRect.width > 20 && vRect.height > 20) {
@@ -186,7 +177,6 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
     };
     update();
     const ro = new ResizeObserver(update);
-    if (el) ro.observe(el);
     if (vp) ro.observe(vp);
     return () => ro.disconnect();
   }, [isOpen, imageSrc]);
@@ -209,24 +199,30 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
 
   const hasTonal = !!(activeAssigned?.tonalGradient && activeAssigned.tonalGradient.length > 0);
 
-  const origW = marginRecord?.origWidth || 1000;
-  const origH = marginRecord?.origHeight || 800;
+  const origW = marginRecord?.origWidth || naturalImgSize?.w || 1000;
+  const origH = marginRecord?.origHeight || naturalImgSize?.h || 800;
   const activeExpand = liveDragState ? liveDragState.state : expandState;
   const totalStageW = Math.max(64, origW + activeExpand.leftPx + activeExpand.rightPx);
   const totalStageH = Math.max(64, origH + activeExpand.topPx + activeExpand.bottomPx);
   const resolvedBlankHex =
     blankCustomColor || marginRecord?.sampledEdgeColors?.overall || expandState.fillColor || "#F1F5F9";
 
-  // Exact geometry preview during 8-handle drag so outward expansion never squeezes or shrinks back
-  const livePreviewBox = useMemo(() => {
-    if (!liveDragState) return null;
-    const cur = liveDragState.state;
+  // Unified stage geometry for BOTH live drag and committed state so releasing the mouse never snaps back
+  const stageDisplayBox = useMemo(() => {
+    const cur = liveDragState ? liveDragState.state : expandState;
     const nextW = Math.max(64, origW + cur.leftPx + cur.rightPx);
     const nextH = Math.max(64, origH + cur.topPx + cur.bottomPx);
-    const fitScale = Math.min(
-      liveDragState.availW / nextW,
-      liveDragState.availH / nextH
-    );
+    const availW = liveDragState
+      ? liveDragState.availW
+      : Math.max(240, stageViewportSize.w - 40);
+    const cssMaxH =
+      typeof window !== "undefined"
+        ? window.innerHeight * (window.innerWidth >= 1024 ? 0.54 : 0.42)
+        : 460;
+    const availH = liveDragState
+      ? liveDragState.availH
+      : Math.max(220, Math.min(cssMaxH, stageViewportSize.h - 36));
+    const fitScale = Math.min(availW / nextW, availH / nextH);
     return {
       stageScreenW: Math.max(80, Math.round(nextW * fitScale)),
       stageScreenH: Math.max(80, Math.round(nextH * fitScale)),
@@ -234,18 +230,144 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
       origTopScreen: Math.round(cur.topPx * fitScale),
       origScreenW: Math.max(40, Math.round(origW * fitScale)),
       origScreenH: Math.max(40, Math.round(origH * fitScale)),
+      availW,
+      availH,
     };
-  }, [liveDragState, origW, origH]);
+  }, [liveDragState, expandState, origW, origH, stageViewportSize]);
+
+  useEffect(() => {
+    if (stageDisplayBox.stageScreenW > 10 && stageDisplayBox.stageScreenH > 10) {
+      setCanvasSize({
+        w: stageDisplayBox.stageScreenW,
+        h: stageDisplayBox.stageScreenH,
+      });
+    }
+  }, [stageDisplayBox.stageScreenW, stageDisplayBox.stageScreenH]);
 
   const innerFrameStyle = useMemo(() => {
-    if (!marginRecord) return { left: "0%", top: "0%", width: "100%", height: "100%" };
+    const cur = liveDragState ? liveDragState.state : expandState;
+    const nextW = Math.max(64, origW + cur.leftPx + cur.rightPx);
+    const nextH = Math.max(64, origH + cur.topPx + cur.bottomPx);
     return {
-      left: `${Math.max(0, Math.min(100, marginRecord.innerLeftNx * 100))}%`,
-      top: `${Math.max(0, Math.min(100, marginRecord.innerTopNy * 100))}%`,
-      width: `${Math.max(5, Math.min(100, marginRecord.innerWidthNw * 100))}%`,
-      height: `${Math.max(5, Math.min(100, marginRecord.innerHeightNh * 100))}%`,
+      left: `${Math.max(0, Math.min(100, (cur.leftPx / nextW) * 100))}%`,
+      top: `${Math.max(0, Math.min(100, (cur.topPx / nextH) * 100))}%`,
+      width: `${Math.max(5, Math.min(100, (origW / nextW) * 100))}%`,
+      height: `${Math.max(5, Math.min(100, (origH / nextH) * 100))}%`,
     };
-  }, [marginRecord]);
+  }, [liveDragState, expandState, origW, origH]);
+
+  const commitFreeExpandRef = useRef<
+    (nextState: ExpandCropState, customColorOverride?: string | null, autoArrange?: boolean) => Promise<void>
+  >(async () => {});
+  const isSymmetricExpandRef = useRef(isSymmetricExpand);
+  isSymmetricExpandRef.current = isSymmetricExpand;
+  const resolvedBlankHexRef = useRef(resolvedBlankHex);
+  resolvedBlankHexRef.current = resolvedBlankHex;
+  const blankCustomColorRef = useRef(blankCustomColor);
+  blankCustomColorRef.current = blankCustomColor;
+
+  // Global window pointermove / pointerup so dragging handles outside the box never drops or snaps back
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onWindowPointerMove = (e: PointerEvent) => {
+      const drag = handleDragRef.current;
+      if (!drag) return;
+      e.preventDefault();
+
+      const dxPx = Math.round((e.clientX - drag.startClientX) * drag.pxPerScreenPx);
+      const dyPx = Math.round((e.clientY - drag.startClientY) * drag.pxPerScreenPx);
+      const symmetric = e.altKey || isSymmetricExpandRef.current;
+
+      const maxExpandX = Math.round(drag.origW * 1.5);
+      const maxExpandY = Math.round(drag.origH * 1.5);
+      const clampX = (v: number) => Math.max(0, Math.min(maxExpandX, v));
+      const clampY = (v: number) => Math.max(0, Math.min(maxExpandY, v));
+
+      let { leftPx, rightPx, topPx, bottomPx } = drag.initialState;
+      const h = drag.handle;
+
+      if (h.includes("w")) {
+        leftPx = clampX(drag.initialState.leftPx - dxPx);
+        if (symmetric) {
+          rightPx = clampX(drag.initialState.rightPx - dxPx);
+        }
+      }
+      if (h.includes("e")) {
+        rightPx = clampX(drag.initialState.rightPx + dxPx);
+        if (symmetric) {
+          leftPx = clampX(drag.initialState.leftPx + dxPx);
+        }
+      }
+      if (h.includes("n")) {
+        topPx = clampY(drag.initialState.topPx - dyPx);
+        if (symmetric) {
+          bottomPx = clampY(drag.initialState.bottomPx - dyPx);
+        }
+      }
+      if (h.includes("s")) {
+        bottomPx = clampY(drag.initialState.bottomPx + dyPx);
+        if (symmetric) {
+          topPx = clampY(drag.initialState.topPx + dyPx);
+        }
+      }
+
+      const nextState: ExpandCropState = {
+        ...drag.initialState,
+        leftPx,
+        rightPx,
+        topPx,
+        bottomPx,
+        fillColor: resolvedBlankHexRef.current,
+      };
+
+      drag.latestState = nextState;
+
+      const nextStageW = Math.max(64, drag.origW + leftPx + rightPx);
+      const nextStageH = Math.max(64, drag.origH + topPx + bottomPx);
+
+      const parts: string[] = [];
+      if (h.includes("w") || (symmetric && h.includes("e"))) parts.push(`← 左扩 +${leftPx}px`);
+      if (h.includes("e") || (symmetric && h.includes("w"))) parts.push(`右扩 → +${rightPx}px`);
+      if (h.includes("n") || (symmetric && h.includes("s"))) parts.push(`↑ 上扩 +${topPx}px`);
+      if (h.includes("s") || (symmetric && h.includes("n"))) parts.push(`↓ 下扩 +${bottomPx}px`);
+
+      setLiveDragState({
+        handle: h,
+        state: nextState,
+        hudText: `${parts.join(" · ")} · 总画布 ${nextStageW} × ${nextStageH}`,
+        availW: drag.availW,
+        availH: drag.availH,
+      });
+    };
+
+    const onWindowPointerUp = async () => {
+      const drag = handleDragRef.current;
+      if (!drag) return;
+      handleDragRef.current = null;
+
+      const committed = drag.latestState;
+      const changed =
+        committed.leftPx !== drag.initialState.leftPx ||
+        committed.rightPx !== drag.initialState.rightPx ||
+        committed.topPx !== drag.initialState.topPx ||
+        committed.bottomPx !== drag.initialState.bottomPx;
+
+      setExpandState(committed);
+      setLiveDragState(null);
+
+      if (changed) {
+        await commitFreeExpandRef.current(committed, blankCustomColorRef.current, true);
+      }
+    };
+
+    window.addEventListener("pointermove", onWindowPointerMove, { passive: false });
+    window.addEventListener("pointerup", onWindowPointerUp);
+    return () => {
+      window.removeEventListener("pointermove", onWindowPointerMove);
+      window.removeEventListener("pointerup", onWindowPointerUp);
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -343,46 +465,51 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
       setIsProcessingCanvas(false);
     }
   };
+  commitFreeExpandRef.current = handleCommitFreeExpand;
 
   const handleChangeBlankColor = async (nextColor: string | null) => {
     setBlankCustomColor(nextColor);
     const nextFillHex =
       nextColor || marginRecord?.sampledEdgeColors?.overall || "#F1F5F9";
-    const updatedExpand: ExpandCropState = {
-      ...expandState,
-      fillMode: "solid",
-      fillColor: nextFillHex,
-    };
-    setExpandState(updatedExpand);
 
     const hasMargin =
-      updatedExpand.leftPx > 0 ||
-      updatedExpand.rightPx > 0 ||
-      updatedExpand.topPx > 0 ||
-      updatedExpand.bottomPx > 0;
+      expandState.leftPx > 0 ||
+      expandState.rightPx > 0 ||
+      expandState.topPx > 0 ||
+      expandState.bottomPx > 0;
 
-    if (hasMargin) {
-      await handleCommitFreeExpand(updatedExpand, nextColor, false);
+    const defaultSidePx = Math.max(80, Math.round(origW * 0.28));
+    const updatedExpand: ExpandCropState = hasMargin
+      ? {
+          ...expandState,
+          fillMode: "solid",
+          fillColor: nextFillHex,
+        }
+      : {
+          leftPx: defaultSidePx,
+          rightPx: defaultSidePx,
+          topPx: 0,
+          bottomPx: 0,
+          fillMode: "solid",
+          fillColor: nextFillHex,
+        };
+
+    setExpandState(updatedExpand);
+    if (!hasMargin) {
+      setActiveTool("expand");
     }
+    await handleCommitFreeExpand(updatedExpand, nextColor, !hasMargin);
   };
 
-  // 8-Handle Pointer Down / Move / Up
+  // 8-Handle Pointer Down (move & up are handled on window so dragging never drops or snaps back)
   const startHandleDrag = (e: React.PointerEvent<HTMLDivElement>, handle: HandleId) => {
     if (isProcessingCanvas) return;
     e.preventDefault();
     e.stopPropagation();
 
-    const imgRect = imgElRef.current?.getBoundingClientRect();
-    const vpRect = stageViewportRef.current?.getBoundingClientRect();
-    const startScreenW = imgRect && imgRect.width > 40 ? imgRect.width : canvasSize.w;
-    const startScreenH = imgRect && imgRect.height > 40 ? imgRect.height : canvasSize.h;
-
-    const availW = vpRect ? Math.max(240, vpRect.width - 40) : Math.max(320, stageViewportSize.w - 40);
-    const cssMaxH =
-      typeof window !== "undefined"
-        ? window.innerHeight * (window.innerWidth >= 1024 ? 0.56 : 0.44)
-        : 480;
-    const availH = Math.max(startScreenH, Math.min(cssMaxH, vpRect ? vpRect.height - 32 : cssMaxH));
+    const startScreenW = Math.max(80, stageDisplayBox.stageScreenW);
+    const availW = stageDisplayBox.availW;
+    const availH = stageDisplayBox.availH;
 
     const safeInitial: ExpandCropState = {
       ...expandState,
@@ -395,7 +522,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
     };
 
     const curStageW = Math.max(64, origW + safeInitial.leftPx + safeInitial.rightPx);
-    const pxPerScreenPx = curStageW / Math.max(80, startScreenW);
+    const pxPerScreenPx = curStageW / startScreenW;
 
     handleDragRef.current = {
       handle,
@@ -409,113 +536,6 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
       availW,
       availH,
     };
-
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
-  };
-
-  const moveHandleDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    const drag = handleDragRef.current;
-    if (!drag) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    const dxPx = Math.round((e.clientX - drag.startClientX) * drag.pxPerScreenPx);
-    const dyPx = Math.round((e.clientY - drag.startClientY) * drag.pxPerScreenPx);
-    const symmetric = e.altKey || isSymmetricExpand;
-
-    const maxExpandX = Math.round(drag.origW * 1.25);
-    const maxExpandY = Math.round(drag.origH * 1.25);
-    const clampX = (v: number) => Math.max(0, Math.min(maxExpandX, v));
-    const clampY = (v: number) => Math.max(0, Math.min(maxExpandY, v));
-
-    let { leftPx, rightPx, topPx, bottomPx } = drag.initialState;
-    const h = drag.handle;
-
-    if (h.includes("w")) {
-      leftPx = clampX(drag.initialState.leftPx - dxPx);
-      if (symmetric) {
-        rightPx = clampX(drag.initialState.rightPx - dxPx);
-      }
-    }
-    if (h.includes("e")) {
-      rightPx = clampX(drag.initialState.rightPx + dxPx);
-      if (symmetric) {
-        leftPx = clampX(drag.initialState.leftPx + dxPx);
-      }
-    }
-    if (h.includes("n")) {
-      topPx = clampY(drag.initialState.topPx - dyPx);
-      if (symmetric) {
-        bottomPx = clampY(drag.initialState.bottomPx - dyPx);
-      }
-    }
-    if (h.includes("s")) {
-      bottomPx = clampY(drag.initialState.bottomPx + dyPx);
-      if (symmetric) {
-        topPx = clampY(drag.initialState.topPx + dyPx);
-      }
-    }
-
-    const nextState: ExpandCropState = {
-      ...drag.initialState,
-      leftPx,
-      rightPx,
-      topPx,
-      bottomPx,
-      fillColor: resolvedBlankHex,
-    };
-
-    drag.latestState = nextState;
-
-    const nextStageW = Math.max(64, drag.origW + leftPx + rightPx);
-    const nextStageH = Math.max(64, drag.origH + topPx + bottomPx);
-
-    const parts: string[] = [];
-    if (h.includes("w") || (symmetric && h.includes("e"))) parts.push(`← 左扩 +${leftPx}px`);
-    if (h.includes("e") || (symmetric && h.includes("w"))) parts.push(`右扩 → +${rightPx}px`);
-    if (h.includes("n") || (symmetric && h.includes("s"))) parts.push(`↑ 上扩 +${topPx}px`);
-    if (h.includes("s") || (symmetric && h.includes("n"))) parts.push(`↓ 下扩 +${bottomPx}px`);
-
-    setLiveDragState({
-      handle: h,
-      state: nextState,
-      hudText: `${parts.join(" · ")} · 总画布 ${nextStageW} × ${nextStageH}`,
-      availW: drag.availW,
-      availH: drag.availH,
-    });
-  };
-
-  const endHandleDrag = async (e: React.PointerEvent<HTMLDivElement>) => {
-    const drag = handleDragRef.current;
-    if (!drag) return;
-    e.preventDefault();
-    e.stopPropagation();
-    handleDragRef.current = null;
-
-    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {
-        // ignore
-      }
-    }
-
-    const committed = drag.latestState;
-    const changed =
-      committed.leftPx !== drag.initialState.leftPx ||
-      committed.rightPx !== drag.initialState.rightPx ||
-      committed.topPx !== drag.initialState.topPx ||
-      committed.bottomPx !== drag.initialState.bottomPx;
-
-    if (changed) {
-      setExpandState(committed);
-      await handleCommitFreeExpand(committed, blankCustomColor, true);
-    }
-    setLiveDragState(null);
   };
 
   const handleDefinitions: Array<{
@@ -618,34 +638,6 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    disabled={isProcessingCanvas}
-                    onClick={() => handleQuickMarginPreset("leftRight")}
-                    className={`bp-btn inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-bold transition cursor-pointer ${
-                      marginRecord?.mode === "leftRight"
-                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white"
-                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-[var(--accent-color)]"
-                    }`}
-                  >
-                    <ColumnsIcon className="h-3 w-3 shrink-0" weight="bold" />
-                    <span>左右加宽</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isProcessingCanvas}
-                    onClick={() => handleQuickMarginPreset("topBottom")}
-                    className={`bp-btn inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-bold transition cursor-pointer ${
-                      marginRecord?.mode === "topBottom"
-                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white"
-                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-[var(--accent-color)]"
-                    }`}
-                  >
-                    <RowsIcon className="h-3 w-3 shrink-0" weight="bold" />
-                    <span>上下加高</span>
-                  </button>
-
                   {isExpandedMargin && (
                     <button
                       type="button"
@@ -661,7 +653,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
 
                 {/* Blank Area Color Quick Selector: Original Edge Color / White / Black / Custom */}
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] font-bold text-slate-400 mr-0.5">空白区:</span>
+                  <span className="text-[10px] font-bold text-slate-400 mr-0.5">空白区域颜色:</span>
                   <button
                     type="button"
                     disabled={isProcessingCanvas}
@@ -745,57 +737,53 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                     <span className="text-emerald-300">{statusToast}</span>
                   ) : (
                     <span>
-                      ✂️ 向外拖动四周手柄放大留白区域 · 总画布 {totalStageW} × {totalStageH}
+                      ✂️ 拖动四周手柄自由调节留白尺寸 · 总画布 {totalStageW} × {totalStageH}
                     </span>
                   )}
                 </div>
               )}
 
-              {/* Stage Wrapper: Exact Live Geometry Preview during drag, Standard Stage Image otherwise */}
+              {/* Unified Stage Wrapper: Always uses exact stageDisplayBox so releasing handle never snaps back */}
               <div
-                style={
-                  livePreviewBox
-                    ? {
-                        width: livePreviewBox.stageScreenW,
-                        height: livePreviewBox.stageScreenH,
-                        backgroundColor: resolvedBlankHex,
-                      }
-                    : undefined
-                }
-                className="relative inline-block rounded-xl"
+                ref={imgContainerRef}
+                style={{
+                  width: stageDisplayBox.stageScreenW,
+                  height: stageDisplayBox.stageScreenH,
+                  backgroundColor: resolvedBlankHex,
+                }}
+                className="relative rounded-xl"
               >
-                {livePreviewBox ? (
-                  /* Live Drag Preview: Outer Blank Stage + Original Image Positioned Inside */
+                {liveDragState || isProcessingCanvas ? (
+                  /* Live Drag / Processing Preview: Outer Blank Stage + Original Image Positioned Inside */
                   <div className="relative w-full h-full rounded-xl overflow-hidden border-2 border-sky-400">
                     <img
                       src={marginRecord?.originalImageSrc || imageSrc}
                       alt="Original Preview"
                       style={{
                         position: "absolute",
-                        left: livePreviewBox.origLeftScreen,
-                        top: livePreviewBox.origTopScreen,
-                        width: livePreviewBox.origScreenW,
-                        height: livePreviewBox.origScreenH,
+                        left: stageDisplayBox.origLeftScreen,
+                        top: stageDisplayBox.origTopScreen,
+                        width: stageDisplayBox.origScreenW,
+                        height: stageDisplayBox.origScreenH,
                       }}
                       className="block select-none pointer-events-none border border-dashed border-amber-300/80"
                       draggable={false}
                     />
                   </div>
                 ) : (
-                  <div ref={imgContainerRef} className="relative inline-block max-w-full">
+                  <div className="relative w-full h-full">
                     <img
                       ref={imgElRef}
                       src={imageSrc}
                       alt="Swatch Canvas"
-                      onLoad={() => {
-                        const el = imgContainerRef.current;
-                        if (!el || handleDragRef.current) return;
-                        const rect = el.getBoundingClientRect();
-                        if (rect.width > 10 && rect.height > 10) {
-                          setCanvasSize({ w: rect.width, h: rect.height });
+                      onLoad={(e) => {
+                        const nw = e.currentTarget.naturalWidth;
+                        const nh = e.currentTarget.naturalHeight;
+                        if (nw > 0 && nh > 0 && !marginRecord) {
+                          setNaturalImgSize({ w: nw, h: nh });
                         }
                       }}
-                      className="bp-swatch block max-h-[44dvh] lg:max-h-[56dvh] w-auto h-auto max-w-full rounded-xl select-none"
+                      className="bp-swatch block w-full h-full object-contain rounded-xl select-none"
                       draggable={false}
                     />
 
@@ -822,7 +810,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                         <div className="absolute top-1/3 left-0 right-0 h-px bg-sky-300/35" />
                         <div className="absolute top-2/3 left-0 right-0 h-px bg-sky-300/35" />
 
-                        {marginRecord && marginRecord.mode !== "none" && (
+                        {isExpandedMargin && (
                           <div
                             style={innerFrameStyle}
                             className="absolute border border-dashed border-amber-300/80 bg-amber-400/5"
@@ -843,17 +831,14 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                     <div
                       key={h.id}
                       onPointerDown={(e) => startHandleDrag(e, h.id)}
-                      onPointerMove={moveHandleDrag}
-                      onPointerUp={endHandleDrag}
-                      onPointerCancel={endHandleDrag}
                       className={`absolute z-30 ${h.posClass} ${h.cursorClass} flex items-center justify-center touch-none select-none group`}
                       style={{ width: 28, height: 28 }}
-                      title="向外拖动放大留白区域"
+                      title="拖动自由调节外部留白区域尺寸"
                     >
                       <span
-                        className={`block rounded-xs border-2 border-slate-950 bg-white shadow-md transition-transform group-hover:scale-125 group-active:scale-125 group-active:bg-sky-400 ${
-                          h.isCorner ? "h-3.5 w-3.5" : "h-3 w-3"
-                        }`}
+                        className={`block rounded-xs border-2 border-slate-950 bg-white shadow-md transition-transform group-hover:scale-125 ${
+                          liveDragState?.handle === h.id ? "scale-125 bg-sky-400" : ""
+                        } ${h.isCorner ? "h-3.5 w-3.5" : "h-3 w-3"}`}
                       />
                     </div>
                   ))}

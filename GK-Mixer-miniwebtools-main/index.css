@@ -569,6 +569,25 @@ html.dark[data-ui-style="blueprint"] .bp-subcard-lg {
   background-color: #111827 !important;
   box-shadow: 3px 3px 0px #020617 !important;
 }
+/* Allow Chroma Studio backdrop switcher (暗黑底色 / 50%中性灰 / 纯白底色) to override blueprint card bg */
+html[data-ui-style="blueprint"] .bp-subcard-lg[data-backdrop-theme="dark"],
+html.dark[data-ui-style="blueprint"] .bp-subcard-lg[data-backdrop-theme="dark"] {
+  background-color: #0B0D13 !important;
+  color: #F1F5F9 !important;
+  border-color: #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-subcard-lg[data-backdrop-theme="neutral"],
+html.dark[data-ui-style="blueprint"] .bp-subcard-lg[data-backdrop-theme="neutral"] {
+  background-color: #808080 !important;
+  color: #FFFFFF !important;
+  border-color: #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-subcard-lg[data-backdrop-theme="light"],
+html.dark[data-ui-style="blueprint"] .bp-subcard-lg[data-backdrop-theme="light"] {
+  background-color: #FFFFFF !important;
+  color: #1E293B !important;
+  border-color: #0F172A !important;
+}
 
 /* Project / Swatch Cover Cards in Library (2px solid border + 4px hard shadow) */
 html[data-ui-style="blueprint"] .bp-project-card {

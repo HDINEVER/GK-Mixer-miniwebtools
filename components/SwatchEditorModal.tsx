@@ -211,7 +211,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
   };
 
   const assignedColors = useMemo(
-    () => colors.filter((c): c is ColorData & { assignedPaint: CatalogPaint } => !!c.assignedPaint),
+    () => (colors || []).filter((c): c is ColorData & { assignedPaint: CatalogPaint } => !!c.assignedPaint),
     [colors]
   );
   const activeAssigned =
@@ -269,6 +269,16 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
       autoFitScale,
     };
   }, [liveDragState, expandState, origW, origH, canvasSize.w, canvasSize.h, stageViewportSize.w, stageViewportSize.h]);
+
+  const innerFrameStyle = useMemo(() => {
+    if (!marginRecord) return { left: "0%", top: "0%", width: "100%", height: "100%" };
+    return {
+      left: `${Math.max(0, Math.min(100, marginRecord.innerLeftNx * 100))}%`,
+      top: `${Math.max(0, Math.min(100, marginRecord.innerTopNy * 100))}%`,
+      width: `${Math.max(5, Math.min(100, marginRecord.innerWidthNw * 100))}%`,
+      height: `${Math.max(5, Math.min(100, marginRecord.innerHeightNh * 100))}%`,
+    };
+  }, [marginRecord]);
 
   if (!isOpen) return null;
 
@@ -560,16 +570,6 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
     { id: "sw", posClass: "-bottom-2 -left-2", cursorClass: "cursor-nesw-resize", isCorner: true },
     { id: "w", posClass: "top-1/2 -left-2 -translate-y-1/2", cursorClass: "cursor-ew-resize", isCorner: false },
   ];
-
-  const innerFrameStyle = useMemo(() => {
-    if (!marginRecord) return { left: "0%", top: "0%", width: "100%", height: "100%" };
-    return {
-      left: `${Math.max(0, Math.min(100, marginRecord.innerLeftNx * 100))}%`,
-      top: `${Math.max(0, Math.min(100, marginRecord.innerTopNy * 100))}%`,
-      width: `${Math.max(5, Math.min(100, marginRecord.innerWidthNw * 100))}%`,
-      height: `${Math.max(5, Math.min(100, marginRecord.innerHeightNh * 100))}%`,
-    };
-  }, [marginRecord]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/65 backdrop-blur-md p-0 sm:p-4 animate-fadeIn">

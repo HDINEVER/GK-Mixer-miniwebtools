@@ -1099,13 +1099,17 @@ export async function buildFreeExpandCanvasAndColors<
   record: CanvasMarginRecord;
 }> {
   const prevRecord = (await inspectOrSampleImageMargins(currentImageSrc))!;
+  const safeLeftPx = Math.max(0, Math.round(nextExpandState.leftPx));
+  const safeRightPx = Math.max(0, Math.round(nextExpandState.rightPx));
+  const safeTopPx = Math.max(0, Math.round(nextExpandState.topPx));
+  const safeBottomPx = Math.max(0, Math.round(nextExpandState.bottomPx));
+
   const isReset =
     modeOverride === 'none' ||
-    (nextExpandState.leftPx === 0 &&
-      nextExpandState.rightPx === 0 &&
-      nextExpandState.topPx === 0 &&
-      nextExpandState.bottomPx === 0 &&
-      modeOverride !== 'custom');
+    (safeLeftPx === 0 &&
+      safeRightPx === 0 &&
+      safeTopPx === 0 &&
+      safeBottomPx === 0);
 
   const baseSrc = isReset
     ? prevRecord.rawOriginalImageSrc || prevRecord.originalImageSrc
@@ -1115,6 +1119,8 @@ export async function buildFreeExpandCanvasAndColors<
   const origW = origImg.naturalWidth || origImg.width || prevRecord.origWidth || 800;
   const origH = origImg.naturalHeight || origImg.height || prevRecord.origHeight || 600;
   const sampledEdgeColors = prevRecord.sampledEdgeColors;
+  const effectiveCustomColor =
+    customColorOverride !== undefined ? customColorOverride : prevRecord.customColor;
 
   // 1. Recover each color's unpadded normalized pin coordinate (origX, origY) on the original image
   const unpaddedColors = colors.map((c) => {
@@ -1140,8 +1146,8 @@ export async function buildFreeExpandCanvasAndColors<
       rightPx: 0,
       topPx: 0,
       bottomPx: 0,
-      fillMode: nextExpandState.fillMode || 'solid',
-      fillColor: sampledEdgeColors.overall,
+      fillMode: 'solid',
+      fillColor: effectiveCustomColor || sampledEdgeColors.overall,
     };
     const noneRecord: CanvasMarginRecord = {
       rawOriginalImageSrc: baseSrc,
@@ -1154,7 +1160,7 @@ export async function buildFreeExpandCanvasAndColors<
       innerHeightNh: 1,
       mode: 'none',
       ratio: prevRecord.ratio || 0.36,
-      customColor: null,
+      customColor: effectiveCustomColor,
       sampledEdgeColors,
       expandState: resetExpand,
       bucketUndoStack: [],
@@ -1181,7 +1187,12 @@ export async function buildFreeExpandCanvasAndColors<
   const { stageW, stageH, leftPx, rightPx, topPx, bottomPx } = computeStageDimensions(
     origW,
     origH,
-    nextExpandState
+    {
+      leftPx: safeLeftPx,
+      rightPx: safeRightPx,
+      topPx: safeTopPx,
+      bottomPx: safeBottomPx,
+    }
   );
 
   const resolvedExpandState: ExpandCropState = {
@@ -1189,12 +1200,12 @@ export async function buildFreeExpandCanvasAndColors<
     rightPx,
     topPx,
     bottomPx,
-    fillMode: nextExpandState.fillMode,
-    fillColor: nextExpandState.fillColor || sampledEdgeColors.overall,
+    fillMode: nextExpandState.fillMode || 'solid',
+    fillColor: effectiveCustomColor || sampledEdgeColors.overall,
   };
 
   const useDirectionalSolid =
-    resolvedExpandState.fillMode === 'solid' && customColorOverride === null;
+    resolvedExpandState.fillMode === 'solid' && effectiveCustomColor === null;
 
   const canvas = composeExpandedStageCanvas(
     origImg,
@@ -1229,13 +1240,10 @@ export async function buildFreeExpandCanvasAndColors<
     innerHeightNh,
     mode: modeOverride,
     ratio: prevRecord.ratio || 0.36,
-    customColor:
-      customColorOverride !== undefined
-        ? customColorOverride
-        : resolvedExpandState.fillColor,
+    customColor: effectiveCustomColor,
     sampledEdgeColors,
     expandState: resolvedExpandState,
-    bucketUndoStack: prevRecord.bucketUndoStack ? [...prevRecord.bucketUndoStack] : [],
+    bucketUndoStack: [],
   };
 
   let finalColors = remappedColors;

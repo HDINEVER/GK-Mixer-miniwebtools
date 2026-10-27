@@ -1079,7 +1079,10 @@ export const ChromaStudioPanel: React.FC<ChromaStudioPanelProps> = ({
       {/* 模块三：主工作台布局（左侧色卡主画布 + 右侧双色零接缝与调色建议） */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start pr-1.5 pb-1.5">
         {/* 左侧 8 列：色卡主画布 */}
-        <div className={`bp-subcard-lg lg:col-span-8 rounded-2xl border p-3 sm:p-5 transition-colors duration-200 ${backdropClasses[backdropTheme]}`}>
+        <div
+          data-backdrop-theme={backdropTheme}
+          className={`bp-subcard-lg lg:col-span-8 rounded-2xl border p-3 sm:p-5 transition-colors duration-200 ${backdropClasses[backdropTheme]}`}
+        >
           {/* 画布顶部坐标说明栏 */}
           <div className={`flex items-center justify-between text-xs mb-3 pb-2 border-b ${backdropTheme === 'light' ? 'border-slate-200' : 'border-white/10'}`}>
             <div className="flex items-center gap-1.5 sm:gap-2">

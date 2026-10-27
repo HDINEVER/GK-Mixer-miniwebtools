@@ -1956,7 +1956,7 @@ const App: React.FC = () => {
                             </div>
                         </div>
 
-                        {isPicking && (
+                        {isPicking ? (
                             <button
                                 type="button"
                                 onClick={(e) => {
@@ -1965,37 +1965,26 @@ const App: React.FC = () => {
                                   setIsContinuousPicking(false);
                                   hideLoupe();
                                 }}
-                                className="bp-pill-active absolute top-4 left-4 z-20 flex items-center gap-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs px-3 py-1 font-medium shadow-md backdrop-blur-sm transition-colors active:scale-95 cursor-pointer"
+                                className="bp-pill-active absolute top-3 left-3 z-20 flex items-center gap-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs px-3 py-1 font-medium shadow-md backdrop-blur-sm transition-colors active:scale-95 cursor-pointer max-w-[calc(100%-1.5rem)]"
                                 title={lang === 'zh' ? '点击退出取色模式' : lang === 'ja' ? 'クリックして終了' : 'Click to exit pick mode'}
                             >
-                                <span className="bp-dot w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                <span>{t.clickToPick}</span>
-                                <span className="ml-1 text-[11px] opacity-75 hover:opacity-100 font-bold">✕</span>
+                                <span className="bp-dot w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                                <span className="truncate">{t.clickToPick}</span>
+                                <span className="ml-1 text-[11px] opacity-75 hover:opacity-100 font-bold shrink-0">✕</span>
                             </button>
+                        ) : (
+                            <div className="absolute top-3 right-3 z-20 flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setIsSaveToProjectOpen(true)}
+                                disabled={!extractMarkers.some((marker) => marker.paint)}
+                                className="bp-btn flex items-center gap-1.5 rounded-lg bg-slate-900/85 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg backdrop-blur-sm hover:bg-slate-900 disabled:opacity-40 cursor-pointer"
+                              >
+                                <FolderPlusIcon className="h-3.5 w-3.5 text-accent" />
+                                <span>{lang === 'zh' ? '存入涂装库' : 'Save to Library'}</span>
+                              </button>
+                            </div>
                         )}
-                        <div className="absolute top-3 right-3 z-20 flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSwatchEditorMode('pro');
-                              setIsSwatchEditorOpen(true);
-                            }}
-                            className="bp-btn flex items-center gap-1 rounded-lg bg-white/90 dark:bg-slate-800/90 px-2.5 py-1.5 text-[10px] font-bold text-slate-800 dark:text-slate-100 shadow-lg backdrop-blur-sm hover:bg-white border border-slate-200/70 dark:border-slate-700 cursor-pointer"
-                            title="拓展图片外部尺寸并编辑色卡排版"
-                          >
-                            <SwatchesIcon className="h-3.5 w-3.5 text-accent" />
-                            {lang === 'zh' ? '扩边 / 编辑色卡' : 'Expand & Edit Swatches'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsSaveToProjectOpen(true)}
-                            disabled={!extractMarkers.some((marker) => marker.paint)}
-                            className="bp-btn flex items-center gap-1.5 rounded-lg bg-slate-900/85 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg backdrop-blur-sm hover:bg-slate-900 disabled:opacity-40 cursor-pointer"
-                          >
-                            <FolderPlusIcon className="h-3.5 w-3.5 text-accent" />
-                            <span>{lang === 'zh' ? '存入涂装库' : 'Save to Library'}</span>
-                          </button>
-                        </div>
                     </div>
 
                     {/* Source Image Bottom Helper Caption & Apple Music-style ••• Secondary Action Menu */}

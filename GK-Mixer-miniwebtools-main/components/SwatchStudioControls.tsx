@@ -3,9 +3,11 @@ import { CatalogPaint, ColorData, Language } from "../types";
 import { translations } from "../utils/translations";
 import {
   alignMarkers,
+  arrangeCardsIntoMarginZone,
   autoArrangeLeftRight,
   autoArrangeTopBottom,
   buildExtendedMarginCanvasAndColors,
+  ExpandFillMode,
   ExtractLeaderLineStyle,
   getCanvasMarginRecord,
   getCanvasScale,
@@ -56,6 +58,8 @@ export interface SwatchStudioControlsProps {
   canvasSize?: { w: number; h: number };
   onExportImage?: () => void;
   isExporting?: boolean;
+  activeCanvasTool?: "none" | "expand" | "bucket";
+  onToggleCanvasTool?: (tool: "expand" | "bucket") => void;
 }
 
 export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
@@ -80,6 +84,8 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
   canvasSize = { w: 600, h: 450 },
   onExportImage,
   isExporting,
+  activeCanvasTool = "none",
+  onToggleCanvasTool,
 }) => {
   const [isExpanded, setIsExpanded] = useState(!isCompact);
   const [applyToAll, setApplyToAll] = useState<boolean>(false);
@@ -92,6 +98,9 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
   );
   const [marginCustomColor, setMarginCustomColor] = useState<string | null>(
     existingMarginRecord?.customColor ?? null
+  );
+  const [marginFillMode, setMarginFillMode] = useState<ExpandFillMode>(
+    existingMarginRecord?.expandState?.fillMode || "solid"
   );
   const [sampledEdgeColors, setSampledEdgeColors] = useState<SampledEdgeColors | null>(
     existingMarginRecord?.sampledEdgeColors ?? null
@@ -106,6 +115,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
       setMarginMode(rec.mode);
       setMarginRatio(rec.ratio);
       setMarginCustomColor(rec.customColor);
+      setMarginFillMode(rec.expandState?.fillMode || "solid");
       setSampledEdgeColors(rec.sampledEdgeColors);
       return;
     }
@@ -114,6 +124,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
       setMarginMode(sampledRec.mode);
       setMarginRatio(sampledRec.ratio);
       setMarginCustomColor(sampledRec.customColor);
+      setMarginFillMode(sampledRec.expandState?.fillMode || "solid");
       setSampledEdgeColors(sampledRec.sampledEdgeColors);
     });
     return () => {
@@ -124,13 +135,15 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
   const handleApplyMarginExtension = async (
     nextMode: MarginExtendMode,
     nextRatio: number = marginRatio,
-    nextCustomColor: string | null = marginCustomColor
+    nextCustomColor: string | null = marginCustomColor,
+    nextFillMode: ExpandFillMode = marginFillMode
   ) => {
     if (!imageSrc || !colors || !onUpdateImageAndColors || isApplyingMargin) return;
     setIsApplyingMargin(true);
     setMarginMode(nextMode);
     setMarginRatio(nextRatio);
     setMarginCustomColor(nextCustomColor);
+    setMarginFillMode(nextFillMode);
     try {
       const res = await buildExtendedMarginCanvasAndColors(
         imageSrc,
@@ -139,7 +152,8 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
         nextRatio,
         nextCustomColor,
         settings.cardScale,
-        settings.cardBaseWidth
+        settings.cardBaseWidth,
+        nextFillMode
       );
       setSampledEdgeColors(res.record.sampledEdgeColors);
       onUpdateImageAndColors(res.imageSrc, res.colors);
@@ -196,6 +210,24 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
       return;
     }
     if (!onUpdateColors) return;
+    const rec = imageSrc ? getCanvasMarginRecord(imageSrc) : undefined;
+    if (rec && (rec.mode !== "none" || rec.innerLeftNx > 0.05 || rec.innerWidthNw < 0.94)) {
+      const arranged = arrangeCardsIntoMarginZone(
+        assignedColors,
+        rec,
+        cw,
+        ch,
+        settings.cardScale,
+        settings.cardBaseWidth,
+        "leftRight"
+      );
+      onUpdateColors((prev) =>
+        prev.map((c) =>
+          arranged[c.id] ? { ...c, labelNx: arranged[c.id].nx, labelNy: arranged[c.id].ny } : c
+        )
+      );
+      return;
+    }
     const markers = assignedColors.map((c) => ({
       id: c.id,
       nx: c.sampleX,
@@ -223,6 +255,24 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
       return;
     }
     if (!onUpdateColors) return;
+    const rec = imageSrc ? getCanvasMarginRecord(imageSrc) : undefined;
+    if (rec && (rec.mode !== "none" || rec.innerTopNy > 0.05 || rec.innerHeightNh < 0.94)) {
+      const arranged = arrangeCardsIntoMarginZone(
+        assignedColors,
+        rec,
+        cw,
+        ch,
+        settings.cardScale,
+        settings.cardBaseWidth,
+        "topBottom"
+      );
+      onUpdateColors((prev) =>
+        prev.map((c) =>
+          arranged[c.id] ? { ...c, labelNx: arranged[c.id].nx, labelNy: arranged[c.id].ny } : c
+        )
+      );
+      return;
+    }
     const markers = assignedColors.map((c) => ({
       id: c.id,
       nx: c.sampleX,
@@ -523,7 +573,7 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                 <div className="flex items-center gap-1.5 min-w-0">
                   <FrameCornersIcon className="h-3.5 w-3.5 text-[var(--accent-color)] shrink-0" weight="bold" />
                   <span className="text-[11px] font-black text-slate-800 dark:text-slate-100 truncate">
-                    画布边缘留白扩展（防遮挡模型）
+                    画布越界扩边与背景合成（防遮挡模型）
                   </span>
                 </div>
                 {sampledEdgeColors && (
@@ -541,9 +591,34 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                 )}
               </div>
 
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
-                参考原图边缘色在左/右或上/下增加额外留白，并将色卡自动排入留白区，防止模型被色卡遮挡。
-              </div>
+              {onToggleCanvasTool && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onToggleCanvasTool("expand")}
+                    className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-2 text-[11px] font-extrabold transition cursor-pointer ${
+                      activeCanvasTool === "expand"
+                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-xs"
+                        : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
+                    }`}
+                    title="开启画布 8 手柄自由向外拉出留白或向内裁切，按住 Alt 对称扩边"
+                  >
+                    <span>✂️ 8手柄自由扩边</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggleCanvasTool("bucket")}
+                    className={`bp-btn flex items-center justify-center gap-1 rounded-lg border py-1.5 px-2 text-[11px] font-extrabold transition cursor-pointer ${
+                      activeCanvasTool === "bucket"
+                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-xs"
+                        : "border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
+                    }`}
+                    title="开启油漆桶泛洪填色，一键将外扩留白区与原图背景刷成干净底色"
+                  >
+                    <span>🪣 油漆桶背景填色</span>
+                  </button>
+                </div>
+              )}
 
               {/* Primary Dual-Side / Reset Buttons */}
               <div className="grid grid-cols-3 gap-1.5">
@@ -614,6 +689,34 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                 ))}
               </div>
 
+              {/* 3 Fill Modes: Solid / Edge-Clamp / Ambient-Blur */}
+              <div className="grid grid-cols-3 gap-1 pt-0.5">
+                {(
+                  [
+                    { id: "solid" as const, label: "🎨 纯色填充" },
+                    { id: "edge-clamp" as const, label: "↔️ 边缘拉伸" },
+                    { id: "ambient-blur" as const, label: "🌫️ 环境模糊" },
+                  ]
+                ).map((fm) => (
+                  <button
+                    key={fm.id}
+                    type="button"
+                    disabled={isApplyingMargin}
+                    onClick={() => {
+                      const targetMode = marginMode === "none" ? "leftRight" : marginMode;
+                      handleApplyMarginExtension(targetMode, marginRatio, marginCustomColor, fm.id);
+                    }}
+                    className={`bp-btn rounded-lg border py-1 px-1.5 text-[10px] font-bold transition cursor-pointer whitespace-nowrap ${
+                      marginFillMode === fm.id && marginMode !== "none"
+                        ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-2xs"
+                        : "border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-[var(--accent-color)]"
+                    }`}
+                  >
+                    {fm.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Extra Controls when Margin Extension is Active: Width Ratio + Edge Color Picker */}
               {marginMode !== "none" && (
                 <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
@@ -630,7 +733,9 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                         key={r.val}
                         type="button"
                         disabled={isApplyingMargin}
-                        onClick={() => handleApplyMarginExtension(marginMode, r.val, marginCustomColor)}
+                        onClick={() =>
+                          handleApplyMarginExtension(marginMode, r.val, marginCustomColor, marginFillMode)
+                        }
                         className={`bp-btn rounded-md px-1.5 py-0.5 text-[10px] font-bold transition cursor-pointer ${
                           Math.abs(marginRatio - r.val) < 0.04
                             ? "bp-pill-active bg-[var(--accent-color)] text-white"
@@ -646,9 +751,9 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                     <button
                       type="button"
                       disabled={isApplyingMargin}
-                      onClick={() => handleApplyMarginExtension(marginMode, marginRatio, null)}
+                      onClick={() => handleApplyMarginExtension(marginMode, marginRatio, null, "solid")}
                       className={`bp-btn rounded-md px-1.5 py-0.5 text-[10px] font-bold transition cursor-pointer ${
-                        marginCustomColor === null
+                        marginCustomColor === null && marginFillMode === "solid"
                           ? "bp-pill-active bg-[var(--accent-color)] text-white"
                           : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                       }`}
@@ -659,14 +764,18 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                     <button
                       type="button"
                       disabled={isApplyingMargin}
-                      onClick={() => handleApplyMarginExtension(marginMode, marginRatio, "#F8FAFC")}
+                      onClick={() =>
+                        handleApplyMarginExtension(marginMode, marginRatio, "#F8FAFC", "solid")
+                      }
                       className="h-5 w-5 rounded-md border border-slate-300 bg-[#F8FAFC] cursor-pointer"
                       title="纯白留白底色 (#F8FAFC)"
                     />
                     <button
                       type="button"
                       disabled={isApplyingMargin}
-                      onClick={() => handleApplyMarginExtension(marginMode, marginRatio, "#1E293B")}
+                      onClick={() =>
+                        handleApplyMarginExtension(marginMode, marginRatio, "#1E293B", "solid")
+                      }
                       className="h-5 w-5 rounded-md border border-slate-600 bg-[#1E293B] cursor-pointer"
                       title="深灰暗棚留白底色 (#1E293B)"
                     />
@@ -678,7 +787,12 @@ export const SwatchStudioControls: React.FC<SwatchStudioControlsProps> = ({
                         type="color"
                         value={marginCustomColor || sampledEdgeColors?.overall || "#F1F5F9"}
                         onChange={(e) =>
-                          handleApplyMarginExtension(marginMode, marginRatio, e.target.value.toUpperCase())
+                          handleApplyMarginExtension(
+                            marginMode,
+                            marginRatio,
+                            e.target.value.toUpperCase(),
+                            "solid"
+                          )
                         }
                         className="absolute inset-0 h-8 w-8 -left-1 -top-1 cursor-pointer opacity-0"
                       />

@@ -29,6 +29,11 @@ import {
   localizedBrand,
   paintPrefix,
 } from "../utils/paintCatalog";
+import {
+  BRAND_EDITION,
+  IS_NIGHTWORKS_EDITION,
+  IS_SINGLE_BRAND_EDITION,
+} from "../utils/brandEdition";
 
 interface PaintCatalogBrowserProps {
   lang: Language;
@@ -94,7 +99,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
     initialPaints && initialPaints.length > 0 ? preSortCatalogPaints(initialPaints) : []
   );
   const [isReady, setIsReady] = useState<boolean>(false);
-  const [brand, setBrand] = useState<string>("ALL");
+  const [brand, setBrand] = useState<string>(IS_SINGLE_BRAND_EDITION ? BRAND_EDITION : "ALL");
   const [search, setSearch] = useState<string>("");
   const [solidsOnly, setSolidsOnly] = useState<boolean>(false);
   const [prefix, setPrefix] = useState<string | null>(null);
@@ -224,7 +229,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
 
   // If the active brand has no paints under the newly switched applicationFilter, reset to ALL
   useEffect(() => {
-    if (brand !== "ALL" && !brands.includes(brand)) {
+    if (!IS_SINGLE_BRAND_EDITION && brand !== "ALL" && !brands.includes(brand)) {
       setBrand("ALL");
       setPrefix(null);
     }
@@ -564,7 +569,7 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
         {/* Top Control Row: [喷涂 vs 手涂 筛选器] + [🔍 搜索开关] + [常用品牌 / 展开不常用品牌 切换开关] */}
         <div className="flex flex-wrap items-center justify-between gap-2 pr-11 lg:pr-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            {/* Application Mode Filter: 全部用途 | 💨 喷涂漆 | 🖌️ 手涂漆 */}
+            {/* Application Mode Filter: 全部用途 | (Single-brand brush-first: 🖌️ 手涂漆 | 💨 喷涂漆) */}
             <div className="bp-segmented inline-flex rounded-full bg-slate-200/85 dark:bg-slate-800 p-0.5 border border-slate-200/80 dark:border-slate-700">
               <button
                 type="button"
@@ -577,32 +582,65 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
               >
                 全部用途
               </button>
-              <button
-                type="button"
-                onClick={() => setApplicationFilter("airbrush")}
-                className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
-                  applicationFilter === "airbrush"
-                    ? "bp-segmented-item-active bg-sky-600 text-white shadow-2xs"
-                    : "text-slate-600 dark:text-slate-300 hover:text-sky-600"
-                }`}
-                title="筛选适合高达/GK喷笔喷涂的硝基漆、预调喷涂漆与喷涂专用水性漆"
-              >
-                <span>💨</span>
-                <span>喷涂漆</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setApplicationFilter("brush")}
-                className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
-                  applicationFilter === "brush"
-                    ? "bp-segmented-item-active bg-amber-600 text-white shadow-2xs"
-                    : "text-slate-600 dark:text-slate-300 hover:text-amber-600"
-                }`}
-                title="筛选适合手涂/笔涂的战棋水性漆、薄涂漆、对比漆与渍洗漆"
-              >
-                <span>🖌️</span>
-                <span>手涂/笔涂漆</span>
-              </button>
+              {IS_SINGLE_BRAND_EDITION ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setApplicationFilter("brush")}
+                    className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                      applicationFilter === "brush"
+                        ? "bp-segmented-item-active bg-amber-600 text-white shadow-2xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-amber-600"
+                    }`}
+                    title="筛选适合手涂/笔涂的战棋水性漆、薄涂漆、对比漆与渍洗漆"
+                  >
+                    <span>🖌️</span>
+                    <span>手涂/笔涂漆</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setApplicationFilter("airbrush")}
+                    className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                      applicationFilter === "airbrush"
+                        ? "bp-segmented-item-active bg-sky-600 text-white shadow-2xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-sky-600"
+                    }`}
+                    title="筛选适合喷笔喷涂的预调喷涂漆与水补土"
+                  >
+                    <span>💨</span>
+                    <span>喷涂漆</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setApplicationFilter("airbrush")}
+                    className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                      applicationFilter === "airbrush"
+                        ? "bp-segmented-item-active bg-sky-600 text-white shadow-2xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-sky-600"
+                    }`}
+                    title="筛选适合高达/GK喷笔喷涂的硝基漆、预调喷涂漆与喷涂专用水性漆"
+                  >
+                    <span>💨</span>
+                    <span>喷涂漆</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setApplicationFilter("brush")}
+                    className={`bp-segmented-item flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                      applicationFilter === "brush"
+                        ? "bp-segmented-item-active bg-amber-600 text-white shadow-2xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-amber-600"
+                    }`}
+                    title="筛选适合手涂/笔涂的战棋水性漆、薄涂漆、对比漆与渍洗漆"
+                  >
+                    <span>🖌️</span>
+                    <span>手涂/笔涂漆</span>
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Manual Search Bar Toggle Button right next to Application Mode Tab */}
@@ -642,29 +680,31 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
             </button>
           </div>
 
-          {/* Toggle Switch: Default Common Brands Only vs Include Uncommon Brands */}
-          <button
-            type="button"
-            onClick={() => {
-              const next = !showUncommonBrands;
-              setShowUncommonBrands(next);
-              if (!next && brand !== "ALL" && !commonBrandsSet.has(brand)) {
-                setBrand("ALL");
+          {/* Toggle Switch: Default Common Brands Only vs Include Uncommon Brands (Hidden in Single-Brand Edition) */}
+          {!IS_SINGLE_BRAND_EDITION && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = !showUncommonBrands;
+                setShowUncommonBrands(next);
+                if (!next && brand !== "ALL" && !commonBrandsSet.has(brand)) {
+                  setBrand("ALL");
+                }
+              }}
+              className={`bp-pill inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                showUncommonBrands
+                  ? "bp-pill-active border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200"
+                  : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-accent"
+              }`}
+              title={
+                showUncommonBrands
+                  ? "当前已开启全部生僻/海外小众品牌，点击恢复默认仅显示主流常用品牌"
+                  : "默认隐藏不常用的海外小众品牌，点击可展开并允许搜索全部品牌"
               }
-            }}
-            className={`bp-pill inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
-              showUncommonBrands
-                ? "bp-pill-active border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200"
-                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-accent"
-            }`}
-            title={
-              showUncommonBrands
-                ? "当前已开启全部生僻/海外小众品牌，点击恢复默认仅显示主流常用品牌"
-                : "默认隐藏不常用的海外小众品牌，点击可展开并允许搜索全部品牌"
-            }
-          >
-            <span>{showUncommonBrands ? "🌐 已含生僻品牌 (点击收起)" : `🌟 默认仅常用品牌 (展开 +${uncommonBrandCount} 个不常用品牌)`}</span>
-          </button>
+            >
+              <span>{showUncommonBrands ? "🌐 已含生僻品牌 (点击收起)" : `🌟 默认仅常用品牌 (展开 +${uncommonBrandCount} 个不常用品牌)`}</span>
+            </button>
+          )}
         </div>
 
         {/* Collapsible Search Bar + Quick Chips (Only expanded when user clicks [🔍 搜索]) */}
@@ -674,7 +714,11 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
               value={search}
               onChange={setSearch}
               placeholder={
-                lang === "zh"
+                IS_NIGHTWORKS_EDITION
+                  ? lang === "zh"
+                    ? "多关键词空格组合搜索：如「薄涂 红」「笔涂 金属」「NAL029」"
+                    : "Multi-keyword search: e.g. Night Works red NAL029"
+                  : lang === "zh"
                   ? "多关键词空格组合搜索：如「盖亚 黑」「匠域 金属」「002」"
                   : "Multi-keyword search: e.g. Gaia black 002"
               }
@@ -703,41 +747,56 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
 
         {/* Horizontal Scrollable Brand Rail (ALL + Brands in Liquid Glass Capsules) */}
         <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pt-0.5 pb-1 pr-1.5 no-scrollbar scroll-smooth">
-          <button
-            type="button"
-            onClick={() => {
-              setBrand("ALL");
-              setPrefix(null);
-            }}
-            className={`min-h-[36px] px-3.5 py-1 rounded-full text-xs font-black transition shrink-0 cursor-pointer whitespace-nowrap ${
-              brand === "ALL"
-                ? "bp-pill-active bg-coral text-white shadow-sm"
-                : "bp-pill bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700/70 hover:bg-white"
-            }`}
-          >
-            {showUncommonBrands ? `全部品牌 (${scopedPaintsCount})` : `常用全部 (${scopedPaintsCount})`}
-          </button>
-          {brands.map((item) => {
-            const active = item === brand;
-            return (
+          {IS_SINGLE_BRAND_EDITION ? (
+            <button
+              type="button"
+              onClick={() => {
+                setBrand(BRAND_EDITION);
+                setPrefix(null);
+              }}
+              className="bp-pill-active min-h-[36px] px-3.5 py-1 rounded-full text-xs font-black bg-coral text-white shadow-sm shrink-0 cursor-pointer whitespace-nowrap"
+            >
+              {`${localizedBrand(BRAND_EDITION, lang)} (${scopedPaintsCount})`}
+            </button>
+          ) : (
+            <>
               <button
-                key={item}
                 type="button"
                 onClick={() => {
-                  setBrand(item);
+                  setBrand("ALL");
                   setPrefix(null);
-                  setCollapsed(new Set());
                 }}
-                className={`min-h-[36px] px-3.5 py-1 rounded-full text-xs font-bold transition shrink-0 cursor-pointer whitespace-nowrap ${
-                  active
+                className={`min-h-[36px] px-3.5 py-1 rounded-full text-xs font-black transition shrink-0 cursor-pointer whitespace-nowrap ${
+                  brand === "ALL"
                     ? "bp-pill-active bg-coral text-white shadow-sm"
                     : "bp-pill bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700/70 hover:bg-white"
                 }`}
               >
-                {localizedBrand(item, lang)}
+                {showUncommonBrands ? `全部品牌 (${scopedPaintsCount})` : `常用全部 (${scopedPaintsCount})`}
               </button>
-            );
-          })}
+              {brands.map((item) => {
+                const active = item === brand;
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => {
+                      setBrand(item);
+                      setPrefix(null);
+                      setCollapsed(new Set());
+                    }}
+                    className={`min-h-[36px] px-3.5 py-1 rounded-full text-xs font-bold transition shrink-0 cursor-pointer whitespace-nowrap ${
+                      active
+                        ? "bp-pill-active bg-coral text-white shadow-sm"
+                        : "bp-pill bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700/70 hover:bg-white"
+                    }`}
+                  >
+                    {localizedBrand(item, lang)}
+                  </button>
+                );
+              })}
+            </>
+          )}
         </div>
 
         {/* Single-Row Notion-Style Filter Pills ([+ 系列 ⌄] [+ 光泽/类型 ⌄] [+ 油性/水性 ⌄] [仅实色]) + View Mode Switcher */}

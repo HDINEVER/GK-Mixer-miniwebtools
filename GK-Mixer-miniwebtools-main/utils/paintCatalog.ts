@@ -1,7 +1,8 @@
 import { CatalogPaint, PaintBrand, PaintBrandGroup, PaintMatch } from "../types";
+import { BRAND_EDITION, IS_SINGLE_BRAND_EDITION } from "./brandEdition";
 import { deltaE2000, labFromHex, Lab } from "./ciede2000";
 
-export const FEATURED_BRANDS = [
+const ALL_FEATURED_BRANDS = [
   "Gaia",
   "Jumpwind",
   "Hobby Mio",
@@ -25,7 +26,7 @@ export const FEATURED_BRANDS = [
  * Default mainstream brands shown in the Paint Catalog Browser by default
  * (hides niche/uncommon overseas miniature & craft paint brands unless toggled on).
  */
-export const COMMON_MODEL_BRANDS = [
+const ALL_COMMON_MODEL_BRANDS = [
   "Gaia",
   "Jumpwind",
   "Hobby Mio",
@@ -39,6 +40,14 @@ export const COMMON_MODEL_BRANDS = [
   "AK",
   "AK Real Colors",
 ];
+
+export const FEATURED_BRANDS: string[] = IS_SINGLE_BRAND_EDITION
+  ? [BRAND_EDITION]
+  : ALL_FEATURED_BRANDS;
+
+export const COMMON_MODEL_BRANDS: string[] = IS_SINGLE_BRAND_EDITION
+  ? [BRAND_EDITION]
+  : ALL_COMMON_MODEL_BRANDS;
 
 export type PaintApplicationType = "airbrush" | "brush";
 export type PaintSolventType = "oil" | "water";
@@ -377,7 +386,15 @@ export const loadPaintCatalog = (): Promise<CatalogPaint[]> => {
         if (!response.ok) throw new Error(`Paint catalog ${response.status}`);
         return response.json() as Promise<CatalogFile>;
       })
-      .then((data) => data.paints ?? [])
+      .then((data) => {
+        const cleaned = (data.paints ?? []).map((p) => ({
+          ...p,
+          name: (p.name || "").replace(/<br\s*\/?>/gi, " / ").replace(/\s+/g, " ").trim(),
+        }));
+        return IS_SINGLE_BRAND_EDITION
+          ? cleaned.filter((p) => p.brand === BRAND_EDITION)
+          : cleaned;
+      })
       .catch((error) => {
         console.warn("Failed to load paint catalog", error);
         catalogPromise = null;

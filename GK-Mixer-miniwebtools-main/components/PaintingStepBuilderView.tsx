@@ -232,21 +232,21 @@ export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = (
             涂装工序流水线 ({steps.length} 步)
           </h4>
           <p className="text-[11px] text-slate-400">
-            NOMOKEN 1 规范：点按工序内胶囊免打字切换口径、稀释比、气压(Bar/PSI)与手法
+            点按工序内胶囊免打字切换口径、稀释比、气压(Bar/PSI)与手法
           </p>
         </div>
 
         <div className="flex items-center gap-2 relative">
-          {/* NOMOKEN 1 Technique Hints Toggle */}
+          {/* Technique Hints Toggle */}
           <button
             type="button"
             onClick={toggleTechniqueHints}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-extrabold transition cursor-pointer ${
+            className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-extrabold transition cursor-pointer ${
               showTechniqueHints
                 ? "bp-pill-active bg-amber-100 dark:bg-amber-900/60 border-amber-300 dark:border-amber-600 text-amber-800 dark:text-amber-200"
                 : "bp-pill bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             }`}
-            title="切换《NOMOKEN 1》作例标准技法说明与气压参数注释"
+            title="切换涂装标准技法说明与气压参数注释"
           >
             <span>💡</span>
             <span>技法提示</span>
@@ -255,7 +255,7 @@ export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = (
           <button
             type="button"
             onClick={handleSmartInfer}
-            className="bp-pill flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-700 px-3 py-1.5 text-xs font-extrabold text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition cursor-pointer"
+            className="bp-pill inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-700 px-3 text-xs font-extrabold text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition cursor-pointer"
             title="根据当前零件已指派的油漆自动推导完整工序"
           >
             <SparkleIcon className="h-3.5 w-3.5" weight="fill" />
@@ -265,7 +265,7 @@ export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = (
           <button
             type="button"
             onClick={() => setShowPresetMenu((v) => !v)}
-            className="bp-pill-active flex items-center gap-1.5 rounded-full bg-coral px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 transition cursor-pointer"
+            className="bp-pill-active inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-coral px-3.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 transition cursor-pointer"
           >
             <PlusIcon className="h-3.5 w-3.5" weight="bold" />
             <span>添加工序</span>
@@ -639,12 +639,12 @@ export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = (
                     )}
                   </div>
 
-                  {/* NOMOKEN 1 Technique Tip Card */}
+                  {/* Technique Tip Card */}
                   {showTechniqueHints && preset?.nomokenTip && (
                     <div className="bp-dashed-box flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-800 dark:text-amber-200/90 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 rounded-xl px-2.5 py-1.5">
                       <span className="shrink-0 text-amber-600 dark:text-amber-400 font-bold">💡</span>
                       <span>
-                        <strong className="font-semibold text-amber-900 dark:text-amber-100">《NOMOKEN 1》提示：</strong>
+                        <strong className="font-semibold text-amber-900 dark:text-amber-100">提示：</strong>
                         {preset.nomokenTip}
                       </span>
                     </div>

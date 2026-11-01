@@ -37,7 +37,11 @@ import { ProjectLibraryView } from './components/ProjectLibraryView';
 import { SwatchEditorModal } from './components/SwatchEditorModal';
 import { SaveToProjectModal } from './components/SaveToProjectModal';
 import QuickPaintAssignSheet from './components/QuickPaintAssignSheet';
-import ColoringSandboxLab, { SandboxSyncPayload } from './components/ColoringSandboxLab';
+import ColoringSandboxLab, {
+  SandboxIncomingSession,
+  SandboxSessionApi,
+  SandboxSyncPayload,
+} from './components/ColoringSandboxLab';
 import DualBrandPaintMixerCard from './components/DualBrandPaintMixerCard';
 import WorkflowGuideModal from './components/WorkflowGuideModal';
 import ColorLoupe, { ColorLoupeHandle, resolveTouchSamplePoint, sampleCanvasAtClient } from './components/ColorLoupe';
@@ -91,13 +95,17 @@ import {
 import {
   UIStyle,
   WorkflowMode,
+  AccentThemeId,
   THEME_SYNC_EVENT,
   loadUIStyle,
   saveUIStyle,
   loadWorkflowMode,
   saveWorkflowMode,
   loadHideTopBar,
+  loadAccentTheme,
+  getAccentTheme,
 } from './utils/accentTheme';
+import GradientASCII from './components/GradientASCII';
 
 // Default base colors for BasicColorMixer
 const DEFAULT_BASE_COLORS: BaseColor[] = [
@@ -116,14 +124,18 @@ const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('zh');
   const [theme, setTheme] = useState<Theme>('light');
   const [uiStyle, setUiStyle] = useState<UIStyle>(() => loadUIStyle());
+  const [accentThemeId, setAccentThemeId] = useState<AccentThemeId>(() => loadAccentTheme());
   const [workflowMode, setWorkflowMode] = useState<WorkflowMode>(() => loadWorkflowMode());
   const [hideTopBar, setHideTopBar] = useState<boolean>(() => loadHideTopBar());
   const [showAdvancedNavMenu, setShowAdvancedNavMenu] = useState(false);
   const [colorSpace, setColorSpace] = useState<ColorSpace>('srgb');
 
+  const activeAsciiTheme = useMemo(() => getAccentTheme(accentThemeId).ascii, [accentThemeId]);
+
   useEffect(() => {
     const syncStyle = () => {
       setUiStyle(loadUIStyle());
+      setAccentThemeId(loadAccentTheme());
       setHideTopBar(loadHideTopBar());
       const nextWf = loadWorkflowMode();
       setWorkflowMode((prev) => {
@@ -251,7 +263,13 @@ const App: React.FC = () => {
     };
 
     const handlePointerDownCapture = (e: PointerEvent) => {
-      if (document.documentElement.getAttribute('data-ui-style') !== 'blueprint') return;
+      const activeUiStyle = document.documentElement.getAttribute('data-ui-style');
+      if (
+        activeUiStyle !== 'blueprint' &&
+        activeUiStyle !== 'craft' &&
+        activeUiStyle !== 'ascii'
+      )
+        return;
       if (!(e.target instanceof Element)) return;
       const target = e.target.closest(BP_INTERACTIVE_SELECTOR) as HTMLElement | null;
       if (!target) return;
@@ -354,6 +372,8 @@ const App: React.FC = () => {
     label?: string;
     token: number;
   } | null>(null);
+  const [coloringIncomingSession, setColoringIncomingSession] = useState<SandboxIncomingSession | null>(null);
+  const sandboxSessionApiRef = useRef<SandboxSessionApi | null>(null);
   const [focusProjectId, setFocusProjectId] = useState<string | null>(null);
   // Beginner Mode Sandbox -> Brand & Tint synced state
   const [sandboxSyncState, setSandboxSyncState] = useState<SandboxSyncPayload | null>(null);
@@ -486,8 +506,49 @@ const App: React.FC = () => {
   );
 
   const handleSendImageToColoring = useCallback(
-    (url: string, label?: string) => {
+    (
+      url: string,
+      label?: string,
+      resumeExisting?: boolean,
+      resumeRef?: { projectId: string; partId: string }
+    ) => {
       if (!url) return;
+      if (resumeExisting) {
+        const proj = resumeRef ? projects.find((p) => p.id === resumeRef.projectId) : undefined;
+        const part = proj?.parts.find((pt) => pt.id === resumeRef?.partId);
+        if (part?.studioSession?.rawSourceImageDataUrl) {
+          // Restore full traceable session: raw model photo + painted regions + staged paints
+          setSandboxColors([]);
+          sandboxExpandedRef.current = null;
+          setColoringIncomingSession({
+            snapshot: part.studioSession,
+            token: Date.now(),
+            label,
+            projectId: proj!.id,
+            partId: part.id,
+          });
+          handleSwitchDesktopTab('coloring');
+          showToast(
+            lang === 'zh'
+              ? `🎨 已恢复「${label || part.partName}」的模拟上色进度（${part.studioSession.regions.length} 个已涂区域 · ${part.studioSession.stagedSwatches.length} 个备选漆号）`
+              : '🎨 Restored previous coloring session'
+          );
+          return;
+        }
+        // Legacy project without session snapshot: load the original (un-expanded) part image as a new base
+        const rec = getCanvasMarginRecord(url);
+        const baseUrl = rec?.rawOriginalImageSrc || rec?.originalImageSrc || url;
+        sandboxExpandedRef.current = null;
+        setSandboxColors([]);
+        setColoringIncomingImage({ url: baseUrl, label, token: Date.now() });
+        handleSwitchDesktopTab('coloring');
+        showToast(
+          lang === 'zh'
+            ? '🎨 该工程为旧版存档（无上色回溯数据），已载入工程图片作为底图继续试色；之后存入涂装库将自动保存可回溯进度'
+            : '🎨 Loaded project image into Color Studio'
+        );
+        return;
+      }
       setColoringIncomingImage({ url, label, token: Date.now() });
       handleSwitchDesktopTab('coloring');
       showToast(
@@ -496,7 +557,7 @@ const App: React.FC = () => {
           : '✨ Loaded model image into Color Studio'
       );
     },
-    [handleSwitchDesktopTab, lang, showToast]
+    [handleSwitchDesktopTab, lang, showToast, projects]
   );
 
   // Swatch card display and leader line settings
@@ -600,11 +661,34 @@ const App: React.FC = () => {
   const syncCanvasBox = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const elemW = canvas.offsetWidth;
+    const elemH = canvas.offsetHeight;
+    const bmpW = canvas.width || elemW;
+    const bmpH = canvas.height || elemH;
+    let renderW = elemW;
+    let renderH = elemH;
+    let padLeft = 0;
+    let padTop = 0;
+    if (bmpW > 0 && bmpH > 0 && elemW > 0 && elemH > 0) {
+      const bmpAspect = bmpW / bmpH;
+      const elemAspect = elemW / elemH;
+      if (Math.abs(bmpAspect - elemAspect) > 0.005) {
+        if (elemAspect > bmpAspect) {
+          renderH = elemH;
+          renderW = elemH * bmpAspect;
+          padLeft = (elemW - renderW) / 2;
+        } else {
+          renderW = elemW;
+          renderH = elemW / bmpAspect;
+          padTop = (elemH - renderH) / 2;
+        }
+      }
+    }
     setCanvasBox({
-      left: canvas.offsetLeft,
-      top: canvas.offsetTop,
-      width: canvas.offsetWidth,
-      height: canvas.offsetHeight,
+      left: canvas.offsetLeft + padLeft,
+      top: canvas.offsetTop + padTop,
+      width: renderW,
+      height: renderH,
     });
   }, []);
 
@@ -612,18 +696,33 @@ const App: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas || !sourceImage) return;
     syncCanvasBox();
+    const id = requestAnimationFrame(syncCanvasBox);
     const observer = new ResizeObserver(syncCanvasBox);
     observer.observe(canvas);
-    return () => observer.disconnect();
-  }, [sourceImage, scale, syncCanvasBox]);
+    return () => {
+      cancelAnimationFrame(id);
+      observer.disconnect();
+    };
+  }, [sourceImage, scale, mobileMainTab, workbenchSubpage, desktopTab, syncCanvasBox]);
 
-  // Dark Mode Effect
+  // Dark Mode Effect (suppress transitions on theme swap to prevent color smearing)
   useEffect(() => {
+    const style = document.createElement('style');
+    style.appendChild(document.createTextNode('*,*::before,*::after{transition:none !important}'));
+    document.head.appendChild(style);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
+    void document.body?.offsetHeight;
+    const raf1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => style.remove());
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      style.remove();
+    };
   }, [theme]);
 
   const handleImageLoaded = (_file: File, img: HTMLImageElement) => {
@@ -1060,13 +1159,37 @@ const App: React.FC = () => {
     handleBatchMoveLabels(newPositions);
   }, [canvasBox.width, canvasBox.height, extractMarkers, swatchSettings.cardScale, swatchSettings.cardBaseWidth, selectedColorId, handleBatchMoveLabels]);
 
-  const handleExportAnnotated = async () => {
-    const canvas = canvasRef.current;
-    const assigned = extractMarkers.filter((marker) => marker.paint);
-    if (!canvas || !assigned.length) return;
+  const handleExportAnnotated = async (
+    overrideImageSrc?: string,
+    overrideColors?: ColorData[]
+  ) => {
+    const validOverrideSrc =
+      typeof overrideImageSrc === 'string' &&
+      (overrideImageSrc.startsWith('data:') ||
+        overrideImageSrc.startsWith('blob:') ||
+        overrideImageSrc.startsWith('http'))
+        ? overrideImageSrc
+        : undefined;
+    const activeColors = Array.isArray(overrideColors) ? overrideColors : colors;
+    const markers = colorsToMarkers(activeColors);
+    const assigned = markers.filter((marker) => marker.paint);
+    if (!assigned.length) return;
     setIsExporting(true);
     try {
-      const res = await exportAnnotatedImage(canvas, extractMarkers, swatchSettings);
+      const targetSrc = validOverrideSrc || sourceImage;
+      let exportSource: HTMLImageElement | HTMLCanvasElement | null = canvasRef.current;
+      if (targetSrc) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('Failed to load workbench source image'));
+          img.src = targetSrc;
+        });
+        exportSource = img;
+      }
+      if (!exportSource) return;
+      const res = await exportAnnotatedImage(exportSource, markers, swatchSettings);
       if (res) {
         setExportResult(res);
         setIsExportModalOpen(true);
@@ -1086,13 +1209,38 @@ const App: React.FC = () => {
     [sandboxColors, selectedSandboxColorId]
   );
 
+  const sandboxExpandedRef = useRef<{
+    expandedImageSrc: string;
+    rawImageSrc: string;
+  } | null>(null);
+
   const handleSyncSandboxState = useCallback(
     (payload: SandboxSyncPayload) => {
-      let activeMarginRec: ReturnType<typeof getCanvasMarginRecord> = undefined;
+      const tracked = sandboxExpandedRef.current;
+      const trackedRec = tracked?.expandedImageSrc
+        ? getCanvasMarginRecord(tracked.expandedImageSrc)
+        : undefined;
+      const isSameSandboxBase =
+        tracked &&
+        tracked.expandedImageSrc !== payload.compositeDataUrl &&
+        (tracked.rawImageSrc === payload.compositeDataUrl ||
+          trackedRec?.rawOriginalImageSrc === payload.compositeDataUrl ||
+          trackedRec?.originalImageSrc === payload.compositeDataUrl);
+
       setSandboxSyncState((prev) => {
+        if (isSameSandboxBase && tracked) {
+          return {
+            ...payload,
+            compositeDataUrl: tracked.expandedImageSrc,
+          };
+        }
         const rec = prev?.compositeDataUrl ? getCanvasMarginRecord(prev.compositeDataUrl) : undefined;
-        if (rec && rec.mode !== 'none' && rec.originalImageSrc === payload.compositeDataUrl) {
-          activeMarginRec = rec;
+        if (
+          rec &&
+          rec.mode !== 'none' &&
+          (rec.rawOriginalImageSrc === payload.compositeDataUrl ||
+            rec.originalImageSrc === payload.compositeDataUrl)
+        ) {
           return {
             ...payload,
             compositeDataUrl: prev!.compositeDataUrl,
@@ -1106,12 +1254,16 @@ const App: React.FC = () => {
             (c) => c.id === sw.id || c.hex.toUpperCase() === sw.hex.toUpperCase()
           );
           const rgb = hexToRgb(sw.hex) || { r: 128, g: 128, b: 128 };
-          const sampleX = activeMarginRec
-            ? activeMarginRec.innerLeftNx + sw.anchorX * activeMarginRec.innerWidthNw
-            : existing?.sampleX ?? sw.anchorX;
-          const sampleY = activeMarginRec
-            ? activeMarginRec.innerTopNy + sw.anchorY * activeMarginRec.innerHeightNh
-            : existing?.sampleY ?? sw.anchorY;
+          const sampleX =
+            existing?.sampleX ??
+            (isSameSandboxBase && trackedRec
+              ? trackedRec.innerLeftNx + sw.anchorX * trackedRec.innerWidthNw
+              : sw.anchorX);
+          const sampleY =
+            existing?.sampleY ??
+            (isSameSandboxBase && trackedRec
+              ? trackedRec.innerTopNy + sw.anchorY * trackedRec.innerHeightNh
+              : sw.anchorY);
           return {
             id: sw.id,
             hex: sw.hex.toUpperCase(),
@@ -1185,9 +1337,24 @@ const App: React.FC = () => {
     [selectedSandboxColor, sandboxColors, lang, handleAssignCatalogPaint, showToast]
   );
 
-  const handleExportSandboxAnnotated = async () => {
-    const dataUrl = sandboxSyncState?.compositeDataUrl;
-    if (!dataUrl || sandboxColors.length === 0) return;
+  const handleExportSandboxAnnotated = async (
+    overrideImageSrc?: string,
+    overrideColors?: ColorData[]
+  ) => {
+    const validOverrideSrc =
+      typeof overrideImageSrc === 'string' &&
+      (overrideImageSrc.startsWith('data:') ||
+        overrideImageSrc.startsWith('blob:') ||
+        overrideImageSrc.startsWith('http'))
+        ? overrideImageSrc
+        : undefined;
+    const dataUrl =
+      validOverrideSrc ||
+      sandboxExpandedRef.current?.expandedImageSrc ||
+      sandboxSyncState?.compositeDataUrl ||
+      sandboxSessionApiRef.current?.exportCompositeDataUrl?.();
+    const activeColors = Array.isArray(overrideColors) ? overrideColors : sandboxColors;
+    if (!dataUrl || activeColors.length === 0) return;
     setIsExporting(true);
     try {
       const img = new Image();
@@ -1197,7 +1364,7 @@ const App: React.FC = () => {
         img.onerror = () => reject(new Error('Failed to load sandbox composite image'));
         img.src = dataUrl;
       });
-      const markers = colorsToMarkers(sandboxColors);
+      const markers = colorsToMarkers(activeColors);
       const res = await exportAnnotatedImage(img, markers, swatchSettings);
       if (res) {
         setExportResult(res);
@@ -1210,47 +1377,109 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSaveSandboxToProject = useCallback(() => {
-    const dataUrl = sandboxSyncState?.compositeDataUrl;
-    if (!dataUrl || sandboxColors.length === 0) return;
-    const nodes = colorsToFloatingNodes(sandboxColors).map((node) => {
-      const swMeta = sandboxSyncState?.syncedSwatches.find(
-        (s) => s.id === node.id || s.hex.toUpperCase() === node.hex.toUpperCase()
-      );
-      return {
-        ...node,
-        basePaintHex: swMeta?.basePaintHex,
-        tintBadgeText: swMeta?.tintBadgeText,
-        recipeSummary: swMeta?.recipeSummary,
+  const handleSaveSandboxToProject = useCallback(
+    (overrideImageSrc?: string, overrideColors?: ColorData[]) => {
+      const validOverrideSrc =
+        typeof overrideImageSrc === 'string' &&
+        (overrideImageSrc.startsWith('data:') ||
+          overrideImageSrc.startsWith('blob:') ||
+          overrideImageSrc.startsWith('http'))
+          ? overrideImageSrc
+          : undefined;
+      const studioSession = sandboxSessionApiRef.current?.exportSnapshot() || undefined;
+      const dataUrl =
+        validOverrideSrc ||
+        sandboxExpandedRef.current?.expandedImageSrc ||
+        sandboxSyncState?.compositeDataUrl ||
+        studioSession?.compositedPreviewDataUrl ||
+        sandboxSessionApiRef.current?.exportCompositeDataUrl?.() ||
+        studioSession?.rawSourceImageDataUrl;
+      const activeColors = Array.isArray(overrideColors) ? overrideColors : sandboxColors;
+      if (!dataUrl || activeColors.length === 0) return;
+      const nodes = colorsToFloatingNodes(activeColors).map((node) => {
+        const swMeta = sandboxSyncState?.syncedSwatches.find(
+          (s) => s.id === node.id || s.hex.toUpperCase() === node.hex.toUpperCase()
+        );
+        return {
+          ...node,
+          basePaintHex: swMeta?.basePaintHex,
+          tintBadgeText: swMeta?.tintBadgeText,
+          recipeSummary: swMeta?.recipeSummary,
+        };
+      });
+      const steps = inferStepsFromNodes(nodes);
+      const now = Date.now();
+      const resumeTarget = sandboxSessionApiRef.current?.getResumeTarget() || null;
+      const targetProject = resumeTarget
+        ? projects.find((p) => p.id === resumeTarget.projectId)
+        : undefined;
+      const targetPart = targetProject?.parts.find((pt) => pt.id === resumeTarget?.partId);
+
+      if (targetProject && targetPart) {
+        // Continue-editing flow: update the original project part in place (keeps title, part name & custom steps)
+        setProjects((prev) =>
+          prev.map((p) => {
+            if (p.id !== targetProject.id) return p;
+            const nextParts = p.parts.map((pt) =>
+              pt.id === targetPart.id
+                ? {
+                    ...pt,
+                    sourceImageDataUrl: dataUrl,
+                    nodes,
+                    steps: pt.steps && pt.steps.length > 0 ? pt.steps : steps,
+                    studioSession: studioSession || pt.studioSession,
+                  }
+                : pt
+            );
+            const isFirstPart = p.parts[0]?.id === targetPart.id;
+            return {
+              ...p,
+              parts: nextParts,
+              coverImageDataUrl:
+                !p.customCoverImageDataUrl && isFirstPart ? dataUrl : p.coverImageDataUrl,
+              updatedAt: now,
+            };
+          })
+        );
+        setFocusProjectId(targetProject.id);
+        handleSwitchDesktopTab('studio');
+        showToast(
+          lang === 'zh'
+            ? `✅ 已更新涂装库「${targetProject.title} · ${targetPart.partName}」的上色进度与色卡 (${nodes.length}个)`
+            : `Updated project ${targetProject.title}`
+        );
+        return;
+      }
+
+      const part: PartCanvas = {
+        id: `part-${now}`,
+        partName: '试色与微调总成',
+        sourceImageDataUrl: dataUrl,
+        nodes,
+        steps,
+        createdAt: now,
+        studioSession,
       };
-    });
-    const steps = inferStepsFromNodes(nodes);
-    const now = Date.now();
-    const part: PartCanvas = {
-      id: `part-${now}`,
-      partName: '试色与微调总成',
-      sourceImageDataUrl: dataUrl,
-      nodes,
-      steps,
-      createdAt: now,
-    };
-    const newProj: PaintProject = {
-      id: `proj-sandbox-${now}`,
-      title: '试色与选漆微调方案',
-      coverImageDataUrl: dataUrl,
-      createdAt: now,
-      updatedAt: now,
-      parts: [part],
-    };
-    setProjects((prev) => [newProj, ...prev]);
-    setFocusProjectId(newProj.id);
-    handleSwitchDesktopTab('studio');
-    showToast(
-      lang === 'zh'
-        ? `✅ 已存入涂装库「${newProj.title}」(${nodes.length}个色卡)，可继续添加涂装工序、生成扫码名片或打包工程！`
-        : `Saved project ${newProj.title}`
-    );
-  }, [sandboxSyncState, sandboxColors, handleSwitchDesktopTab, lang, showToast]);
+      const newProj: PaintProject = {
+        id: `proj-sandbox-${now}`,
+        title: '试色与选漆微调方案',
+        coverImageDataUrl: dataUrl,
+        createdAt: now,
+        updatedAt: now,
+        parts: [part],
+      };
+      setProjects((prev) => [newProj, ...prev]);
+      sandboxSessionApiRef.current?.setResumeTarget({ projectId: newProj.id, partId: part.id });
+      setFocusProjectId(newProj.id);
+      handleSwitchDesktopTab('studio');
+      showToast(
+        lang === 'zh'
+          ? `✅ 已存入涂装库「${newProj.title}」(${nodes.length}个色卡)，可继续添加涂装工序、生成扫码名片或打包工程！`
+          : `Saved project ${newProj.title}`
+      );
+    },
+    [sandboxSyncState, sandboxColors, handleSwitchDesktopTab, lang, showToast, projects]
+  );
 
   const assignedMarkers = extractMarkers.filter((marker) => marker.paint);
 
@@ -1581,24 +1810,31 @@ const App: React.FC = () => {
   }, [isPicking, hideLoupe]);
 
   React.useEffect(() => {
-    if (sourceImage && canvasRef.current && imageRef.current) {
-        const canvas = canvasRef.current;
-        // Use user-selected colorspace for accurate color display
-        const canvasColorSpace = colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace;
-        const ctx = canvas.getContext('2d', { 
-          colorSpace: canvasColorSpace,
-          willReadFrequently: true 
-        });
-        const img = imageRef.current;
-        
-        if (ctx && img) {
-             ctx.clearRect(0, 0, canvas.width, canvas.height);
-             canvas.width = img.naturalWidth;
-             canvas.height = img.naturalHeight;
-             ctx.drawImage(img, 0, 0);
-             requestAnimationFrame(syncCanvasBox);
-        }
-    }
+    if (!sourceImage || !canvasRef.current) return;
+    let cancelled = false;
+    const loader = new Image();
+    loader.crossOrigin = 'anonymous';
+    loader.onload = () => {
+      if (cancelled || !canvasRef.current) return;
+      const canvas = canvasRef.current;
+      const canvasColorSpace = colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace;
+      const ctx = canvas.getContext('2d', {
+        colorSpace: canvasColorSpace,
+        willReadFrequently: true,
+      });
+      if (ctx && loader.naturalWidth > 0 && loader.naturalHeight > 0) {
+        canvas.width = loader.naturalWidth;
+        canvas.height = loader.naturalHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(loader, 0, 0);
+        requestAnimationFrame(syncCanvasBox);
+        window.setTimeout(syncCanvasBox, 60);
+      }
+    };
+    loader.src = sourceImage;
+    return () => {
+      cancelled = true;
+    };
   }, [sourceImage, colorSpace, syncCanvasBox]);
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -1623,31 +1859,116 @@ const App: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const mobileSettingsBtnStyleClass =
+    uiStyle === 'blueprint'
+      ? 'rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-400 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-[2px_2px_0px_#0F172A] dark:shadow-[2px_2px_0px_#020617]'
+      : uiStyle === 'craft'
+        ? 'rounded-[12px] border border-transparent bg-[var(--neu-base)] text-[var(--neu-text)] shadow-[4px_4px_8px_var(--neu-dark),-4px_-4px_8px_var(--neu-light)]'
+        : uiStyle === 'ascii'
+          ? 'rounded-none border-[1.5px] border-[var(--tui-border)] bg-[var(--tui-surface)] text-[var(--tui-ink)] shadow-[2.5px_2.5px_0px_var(--tui-shadow)] dark:shadow-[2.5px_2.5px_0px_var(--accent-color)]'
+          : uiStyle === 'catalog'
+            ? 'rounded-none border border-[var(--ft-stage-ink)] bg-[var(--ft-acid)] text-[var(--ft-stage-ink)] shadow-none hover:bg-[var(--ft-ink)] hover:text-[var(--ft-solid-fg)]'
+            : 'rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800';
+
+  const renderMobileInlineSettingsBtn = () => (
+    <button
+      type="button"
+      onClick={() => setIsSettingsOpen(true)}
+      className={`h-9 w-9 aspect-square shrink-0 flex items-center justify-center transition-all active:scale-[0.96] cursor-pointer ${mobileSettingsBtnStyleClass}`}
+      title={lang === 'zh' ? '打开软件设置 (当前已隐藏顶部栏)' : 'Open Settings'}
+      aria-label="Open Settings"
+    >
+      <ListIcon className="w-4 h-4" weight="bold" />
+    </button>
+  );
+
   return (
     <KonstaApp
       theme="material"
       dark={theme === 'dark'}
       safeAreas={false}
-      className="min-h-screen bg-slate-50 dark:bg-slate-950 gk-page-bg transition-colors duration-300 flex flex-col overflow-x-hidden font-mono"
+      className={`min-h-screen ${desktopTab === 'coloring' && hideTopBar ? 'lg:h-screen lg:overflow-hidden' : ''} bg-slate-50 dark:bg-slate-950 gk-page-bg transition-colors duration-300 flex flex-col overflow-x-hidden font-mono relative`}
     >
-      {/* Header with iOS 26/27 Soft Progressive Blur Edge Effect (or Floating 3-Bar Square Button when Top Bar is Hidden) */}
+      {/* Live WebGL2 <GradientASCII /> Backdrop for ASCII Terminal Theme (syncs with Accent Preset & Light/Dark Mode) */}
+      {uiStyle === 'ascii' && (
+        <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true">
+          <GradientASCII
+            colors={theme === 'dark' ? activeAsciiTheme.darkColors : activeAsciiTheme.lightColors}
+            shape={activeAsciiTheme.shape}
+            characters={activeAsciiTheme.characters}
+            cellSize={18}
+            density={0.82}
+            glyphOpacity={theme === 'light' ? 0.82 : 0.88}
+            gradientOpacity={theme === 'light' ? 0.88 : 0.92}
+            glow={theme === 'light' ? 0.16 : 0.28}
+            flicker={0.18}
+            softness={0.52}
+            scale={1.08}
+            flow={0.48}
+            speed={0.85}
+            grain={0.07}
+            lightMode={theme === 'light'}
+            fontFamily='"Geist Mono", "Silkscreen", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
+          />
+        </div>
+      )}
+
+      {/* Fieldwork Type (FT System — Independent Type Foundry Specimen Stage & Editorial Footer Rule) */}
+      {uiStyle === 'catalog' && (
+        <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true">
+          {/* Top-Right Subtle Editorial Specimen Watermark (FT System Variable Axis Specimen) */}
+          <div
+            className="hidden xl:flex fixed top-14 right-8 select-none pointer-events-none opacity-[0.045] dark:opacity-[0.055] text-[var(--ft-ink)]"
+            style={{
+              fontFamily: '"FT", "Roboto Flex", sans-serif',
+              fontSize: '210px',
+              lineHeight: 0.88,
+              letterSpacing: '-0.055em',
+              fontVariationSettings: "'wght' 760, 'wdth' 125, 'opsz' 144",
+            }}
+          >
+            Aa
+          </div>
+          {/* Bottom Fieldwork Type Running Specimen Rule */}
+          <div className="hidden lg:flex fixed bottom-0 inset-x-0 items-center justify-between px-6 py-1 bg-[var(--ft-paper)] border-t border-[var(--ft-line)] text-[11px] text-[var(--ft-muted)] pointer-events-none z-10">
+            <div className="flex items-center gap-4">
+              <span
+                className="text-[var(--ft-ink)]"
+                style={{
+                  fontFamily: '"FT", "Roboto Flex", sans-serif',
+                  fontVariationSettings: "'wght' 760, 'wdth' 110, 'opsz' 50",
+                  letterSpacing: '-0.04em',
+                }}
+              >
+                fieldwork<sup className="text-[8px] ml-0.5 font-sans">®</sup>
+              </span>
+              <span>FT System · No. 05 / Variable Specimen</span>
+            </div>
+            <div className="flex items-center gap-5 tabular-nums">
+              <span>Upright · Weight 100–900 · Width 50–151 · Optical 8–144</span>
+              <span className="text-[var(--ft-ink)]">Good things take type.</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header with iOS 26/27 Soft Progressive Blur Edge Effect (or Mobile-Only Floating 3-Bar Square Button on non-tab-bar mobile views when Top Bar is Hidden; on Workbench/Tuning & Desktop it sits inline with Top Tabs) */}
       {hideTopBar ? (
-        <button
-          type="button"
-          onClick={() => setIsSettingsOpen(true)}
-          className={`fixed top-3 right-3 z-[45] flex h-10 w-10 items-center justify-center transition-all active:scale-95 cursor-pointer ${
-            uiStyle === 'blueprint'
-              ? 'rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-400 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-[3px_3px_0px_#0F172A] dark:shadow-[3px_3px_0px_#020617]'
-              : 'rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl text-slate-700 dark:text-slate-200 shadow-lg hover:bg-white dark:hover:bg-slate-800'
-          }`}
-          title={lang === 'zh' ? '打开软件设置 (当前已隐藏顶部栏)' : 'Open Settings'}
-          aria-label="Open Settings"
-        >
-          <ListIcon className="w-5 h-5" weight="bold" />
-        </button>
+        mobileMainTab !== 'workbench' && mobileMainTab !== 'tuning' ? (
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            style={{ top: 'calc(var(--mobile-hide-topbar-pt, 44px) + 6px)', right: '16px' }}
+            className={`lg:hidden fixed z-[45] flex h-9 w-9 items-center justify-center transition-all active:scale-[0.96] cursor-pointer ${mobileSettingsBtnStyleClass}`}
+            title={lang === 'zh' ? '打开软件设置 (当前已隐藏顶部栏)' : 'Open Settings'}
+            aria-label="Open Settings"
+          >
+            <ListIcon className="w-4 h-4" weight="bold" />
+          </button>
+        ) : null
       ) : (
         <header className="gk-app-header gk-header sticky top-0 z-40 pt-[env(safe-area-inset-top,0px)] transition-all duration-300 bg-gradient-to-b from-white/90 via-white/65 to-transparent dark:from-slate-950/90 dark:via-slate-950/65 dark:to-transparent backdrop-blur-xl">
-          <div className="max-w-[1920px] mx-auto px-4 md:px-6 h-14 flex justify-between items-center gap-3">
+          <div className="w-full px-3 md:px-4 h-12 flex justify-between items-center gap-3">
             <div className="flex items-center gap-2.5">
               <img
                 src="/app-logo.png"
@@ -1657,14 +1978,45 @@ const App: React.FC = () => {
                   (e.currentTarget as HTMLImageElement).style.display = 'none';
                 }}
               />
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-macaron-pink"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-macaron-blue"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-macaron-green"></div>
-              </div>
-              <h1 className="ml-0.5 font-bold text-slate-800 dark:text-slate-100 tracking-tight text-base sm:text-lg">
-                GK-Mixer
-              </h1>
+              {uiStyle === 'ascii' ? (
+                <div className="flex items-center gap-1 font-mono text-xs sm:text-sm tracking-tight">
+                  <span className="font-bold" style={{ color: 'var(--accent-color)' }}>&gt;</span>
+                  <h1 className="font-bold text-slate-900 dark:text-slate-100">
+                    gk-mixer <span className="hidden sm:inline opacity-70">--tui --color-lab</span>
+                  </h1>
+                  <span className="tui-caret" aria-hidden="true">▮</span>
+                </div>
+              ) : uiStyle === 'catalog' ? (
+                <div className="flex items-baseline gap-3">
+                  <h1
+                    className="text-[var(--ft-ink)] text-lg sm:text-xl leading-none"
+                    style={{
+                      fontFamily: '"FT", "Roboto Flex", sans-serif',
+                      fontVariationSettings: "'wght' 760, 'wdth' 110, 'opsz' 50",
+                      letterSpacing: '-1.1px',
+                    }}
+                  >
+                    fieldwork<span className="text-[10px] align-top ml-0.5 font-sans tracking-normal">®</span>
+                  </h1>
+                  <span className="text-xs px-1.5 py-0.5 bg-[var(--ft-acid)] text-[var(--ft-stage-ink)] font-medium">
+                    FT System · 夜之工坊
+                  </span>
+                  <span className="hidden md:inline-block text-[11px] text-[var(--ft-muted)] tabular-nums">
+                    No. 05 / Variable sans · wght 100–900 · wdth 50–151
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-macaron-pink"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-macaron-blue"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-macaron-green"></div>
+                  </div>
+                  <h1 className="ml-0.5 font-bold text-slate-800 dark:text-slate-100 tracking-tight text-base sm:text-lg">
+                    GK-Mixer
+                  </h1>
+                </>
+              )}
             </div>
             
             {/* Desktop Controls (hidden on mobile): Theme + Settings (Workflow / Color Space / Language integrated inside SettingsModal) */}
@@ -1707,7 +2059,7 @@ const App: React.FC = () => {
       {/* Color Space Info Banner */}
       {colorSpace !== 'srgb' && (
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-b border-purple-100 dark:border-purple-800">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-2">
+          <div className="w-full px-3 md:px-4 py-1.5">
             <div className="flex items-center gap-2 text-xs text-purple-700 dark:text-purple-300">
               <span className="font-bold flex items-center gap-1"><PaletteIcon className="w-3.5 h-3.5" /> {t.colorSpace}:</span>
               <span>{colorSpace === 'display-p3' ? t.colorSpaceP3 : t.colorSpaceAdobe}</span>
@@ -1718,17 +2070,17 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-[1920px] mx-auto w-full p-2.5 sm:p-4 md:p-6 pb-28 lg:pb-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 xl:gap-8 overflow-x-hidden min-w-0">
+      {/* Main Content (Flattened Full-Viewport Studio Layout: px-2.5 py-2, gap-2, no max-w restriction) */}
+      <main className={`relative z-10 flex-1 w-full px-2.5 py-2 pb-28 lg:pb-2 grid grid-cols-1 lg:grid-cols-12 gap-2.5 overflow-x-hidden min-w-0 min-h-0 ${hideTopBar ? 'gk-main-hide-topbar' : ''}`}>
         
         {/* Left Column: Image & Palette */}
         {/* Left column stays mounted in wide mode (hidden via class) to avoid costly canvas/image remounts */}
         {(
-          <div className={`flex flex-col gap-6 lg:col-span-5 xl:col-span-4 min-w-0 pr-1.5 pb-1.5 ${mobileMainTab === 'workbench' && workbenchSubpage === 'extract' ? 'block' : 'hidden'} ${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' || (workflowMode === 'beginner' && (desktopTab === 'brands' || desktopTab === 'studio' || desktopTab === 'catalog')) ? 'lg:hidden' : 'lg:block'}`}>
+          <div className={`flex flex-col gap-4 lg:col-span-5 xl:col-span-4 min-w-0 ${mobileMainTab === 'workbench' && workbenchSubpage === 'extract' ? 'block' : 'hidden'} ${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' || (workflowMode === 'beginner' && (desktopTab === 'brands' || desktopTab === 'studio' || desktopTab === 'catalog')) ? 'lg:hidden' : 'lg:block'}`}>
             <div className="gk-panel-card gk-card bg-white dark:bg-slate-900 p-2.5 sm:p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors duration-300">
-              {/* Mobile Top Segmented Control for Workbench (拾色 | 调色分解 | 明度色卡) */}
-              <div className={`lg:hidden mb-4 ${hideTopBar ? 'pr-11' : ''}`}>
-                <div className="gk-tab-bar flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
+              {/* Mobile Top Segmented Control for Workbench (拾色 | 调色分解 | 明度色卡) + Inline [☰] Settings Button */}
+              <div className="lg:hidden mb-4 flex items-center gap-2">
+                <div className="gk-tab-bar flex-1 min-w-0 flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
                   <button
                     type="button"
                     onClick={() => handleSwitchWorkbenchSubpage('extract')}
@@ -1771,6 +2123,7 @@ const App: React.FC = () => {
                     <span>{lang === 'zh' ? '明度色卡' : lang === 'ja' ? '色階' : 'Chroma'}</span>
                   </button>
                 </div>
+                {hideTopBar && renderMobileInlineSettingsBtn()}
               </div>
 
               <h2 className="text-xs font-bold text-slate-400 mb-4 tracking-widest">
@@ -2086,6 +2439,10 @@ const App: React.FC = () => {
                           setSelectedColorId(c.id);
                           setQuickAssignColorId(c.id);
                         }}
+                        onAssignPaint={(paint, colorId) => {
+                          handleAssignCatalogPaint(paint, colorId);
+                        }}
+                        catalogPaints={catalogPaints}
                         onUnassignPaint={handleUnassignPaint}
                         onNavigateToMixer={(c) => {
                           setSelectedColorId(c.id);
@@ -2212,14 +2569,14 @@ const App: React.FC = () => {
         </div>
         )}
 
-        {/* Right Column: Tools & Output */}
-        <div className={`${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' || (workflowMode === 'beginner' && (desktopTab === 'brands' || desktopTab === 'studio' || desktopTab === 'catalog')) ? "col-span-12" : "lg:col-span-7 xl:col-span-8"} ${!(mobileMainTab === 'workbench' && workbenchSubpage === 'extract') ? 'block' : 'hidden lg:block'} w-full max-w-full min-w-0 pr-1.5 pb-1.5`}>
-           <div className="gk-panel-card gk-card bg-white dark:bg-slate-900 p-2.5 sm:p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full flex flex-col w-full max-w-full min-w-0">
+        {/* Right Column: Tools & Output (Flattened outer wrapper: sits directly on root grid background with gap-2) */}
+        <div className={`${(isWideVisualizer && desktopTab === 'studio') || desktopTab === 'coloring' || (workflowMode === 'beginner' && (desktopTab === 'brands' || desktopTab === 'studio' || desktopTab === 'catalog')) ? "col-span-12" : "lg:col-span-7 xl:col-span-8"} ${!(mobileMainTab === 'workbench' && workbenchSubpage === 'extract') ? 'block' : 'hidden lg:block'} w-full max-w-full min-w-0 min-h-0`}>
+           <div className="h-full flex flex-col gap-2 w-full max-w-full min-w-0 min-h-0">
                 
                 {/* Mobile Top Segmented Control for Workbench (when on mobile in workbench: mixer or chroma) */}
                 {mobileMainTab === 'workbench' && (
-                  <div className={`lg:hidden mb-4 ${hideTopBar ? 'pr-11' : ''}`}>
-                    <div className="gk-tab-bar flex bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
+                  <div className="lg:hidden mb-2 flex items-center gap-2">
+                    <div className="gk-tab-bar flex-1 min-w-0 flex bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
                       <button
                         type="button"
                         onClick={() => handleSwitchWorkbenchSubpage('extract')}
@@ -2262,13 +2619,14 @@ const App: React.FC = () => {
                         <span>{lang === 'zh' ? '明度色卡' : lang === 'ja' ? '色階' : 'Chroma'}</span>
                       </button>
                     </div>
+                    {hideTopBar && renderMobileInlineSettingsBtn()}
                   </div>
                 )}
 
                 {/* Mobile Top Segmented Control for Tuning (自选 | 基础 | 近邻) */}
                 {mobileMainTab === 'tuning' && (
-                  <div className={`lg:hidden mb-4 ${hideTopBar ? 'pr-11' : ''}`}>
-                    <div className="gk-tab-bar flex bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
+                  <div className="lg:hidden mb-2 flex items-center gap-2">
+                    <div className="gk-tab-bar flex-1 min-w-0 flex bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-xs">
                       <button
                         type="button"
                         onClick={() => handleSwitchTuningSubpage('custom')}
@@ -2306,12 +2664,13 @@ const App: React.FC = () => {
                         <span>{lang === 'zh' ? '近邻' : lang === 'ja' ? '近似色' : 'Matches'}</span>
                       </button>
                     </div>
+                    {hideTopBar && renderMobileInlineSettingsBtn()}
                   </div>
                 )}
 
                 {/* Mobile Quick Color Switcher (hidden in coloring/studio/catalog/brands standalone where dedicated headers exist) */}
                 {colors.length > 0 && mobileMainTab !== 'coloring' && mobileMainTab !== 'studio' && mobileMainTab !== 'catalog' && !(mobileMainTab === 'tuning' && tuningSubpage === 'brands') && (
-                  <div className="gk-dashed-divider-b lg:hidden mt-1 mb-5 pt-1.5 pb-3 border-b border-slate-200/80 dark:border-slate-700/80 flex items-center gap-2.5 overflow-x-auto no-scrollbar">
+                  <div className="gk-dashed-divider-b lg:hidden mt-1 mb-3 pt-1.5 pb-2.5 border-b border-slate-200/80 dark:border-slate-700/80 flex items-center gap-2.5 overflow-x-auto no-scrollbar">
                     <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex-shrink-0 pl-0.5 whitespace-nowrap">
                       {lang === 'zh' ? '当前色:' : lang === 'ja' ? '対象色:' : 'Target:'}
                     </span>
@@ -2338,74 +2697,74 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {/* Desktop Tabs Bar: Dual Workflow Support (Beginner 4-Step Guided vs Pro 8-Tab Full) */}
-                <div className="hidden lg:flex w-full items-center mb-6 relative z-40" translate="no">
+                {/* Desktop Top Navigation Row: Compact 100% Default Tabs Bar + Inline [☰] Menu Button on Same Row (when hideTopBar is active) */}
+                <div className="hidden lg:flex items-center gap-2 w-full shrink-0 relative z-40" translate="no">
                   {workflowMode === 'beginner' ? (
-                    <div className="gk-tab-bar w-full flex items-center flex-nowrap bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-full p-1 gap-1.5 border border-slate-200/60 dark:border-slate-700/60">
+                    <div className="gk-tab-bar flex-1 min-w-0 flex items-center flex-nowrap bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-full p-1 gap-1 border border-slate-200/60 dark:border-slate-700/60">
                       <button
                         type="button"
                         onClick={() => handleSwitchDesktopTab('coloring')}
-                        className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-black rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                        className={`gk-tab-pill flex-1 justify-center py-1.5 px-2.5 text-xs font-extrabold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
                           desktopTabUI === 'coloring'
                             ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white'
                             : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                         }`}
                         title="第1步：在模型/线稿图上自由换色，自动推导四层光影"
                       >
-                        <PaletteIcon className="w-4 h-4 shrink-0" />
+                        <PaletteIcon className="w-3.5 h-3.5 shrink-0" />
                         <span>{lang === 'zh' ? '模拟试色台' : 'Color Studio'}</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleSwitchDesktopTab('brands')}
-                        className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-black rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                        className={`gk-tab-pill flex-1 justify-center py-1.5 px-2.5 text-xs font-extrabold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
                           desktopTabUI === 'brands'
                             ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white'
                             : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                         }`}
                         title="第2步：查找最接近的现成品牌油漆，或获取『现成品牌漆 + 几滴白/黑微调』补正方案"
                       >
-                        <TagIcon className="w-4 h-4 shrink-0" />
+                        <TagIcon className="w-3.5 h-3.5 shrink-0" />
                         <span>{lang === 'zh' ? '选漆与微调' : 'Brand & Tint'}</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleSwitchDesktopTab('studio')}
-                        className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-black rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                        className={`gk-tab-pill flex-1 justify-center py-1.5 px-2.5 text-xs font-extrabold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
                           desktopTabUI === 'studio'
                             ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white'
                             : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                         }`}
                         title="第3步：查看涂装库工程、导出带微调色卡的分享海报与二维码名片"
                       >
-                        <StackIcon className="w-4 h-4 shrink-0" />
+                        <StackIcon className="w-3.5 h-3.5 shrink-0" />
                         <span>{lang === 'zh' ? '涂装库与色卡' : 'Paint Library'}</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleSwitchDesktopTab('catalog')}
-                        className={`gk-tab-pill flex-1 justify-center px-3 py-1.5 text-xs font-black rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                        className={`gk-tab-pill flex-1 justify-center py-1.5 px-2.5 text-xs font-extrabold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
                           desktopTabUI === 'catalog'
                             ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white'
                             : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                         }`}
                         title="第4步：检索 10,999+ 款全球模型油漆完整数据库"
                       >
-                        <DatabaseIcon className="w-4 h-4 shrink-0" />
+                        <DatabaseIcon className="w-3.5 h-3.5 shrink-0" />
                         <span>{lang === 'zh' ? '油漆数据库' : 'Catalog'}</span>
                       </button>
 
-                      <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5 shrink-0" />
+                      <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5 shrink-0" />
 
                       {/* Collapsible Advanced Mixing Dropdown for Beginners */}
                       <div className="relative shrink-0">
                         <button
                           type="button"
                           onClick={() => setShowAdvancedNavMenu((v) => !v)}
-                          className={`gk-tab-pill px-3 py-1.5 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                          className={`gk-tab-pill py-1.5 px-2.5 text-xs font-extrabold rounded-full transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer ${
                             desktopTabUI === 'mixer' ||
                             desktopTabUI === 'chroma' ||
                             desktopTabUI === 'custom' ||
@@ -2506,54 +2865,54 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="gk-tab-bar w-full flex items-center flex-nowrap overflow-x-auto no-scrollbar bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-full p-1 gap-1 border border-slate-200/60 dark:border-slate-700/60">
+                    <div className="gk-tab-bar flex-1 min-w-0 flex items-center flex-nowrap overflow-x-auto no-scrollbar bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-full p-1 gap-1 border border-slate-200/60 dark:border-slate-700/60">
                         {/* 混色台组 */}
                         <button 
                             onClick={() => handleSwitchDesktopTab('mixer')}
-                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'mixer' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center py-1.5 px-2 xl:px-3 text-xs font-semibold rounded-full transition-all duration-200 ease-out flex items-center gap-1 whitespace-nowrap shrink-0 ${desktopTabUI === 'mixer' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <FlaskIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '调色分解' : 'Mixer'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('chroma')}
-                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'chroma' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center py-1.5 px-2 xl:px-3 text-xs font-semibold rounded-full transition-all duration-200 ease-out flex items-center gap-1 whitespace-nowrap shrink-0 ${desktopTabUI === 'chroma' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <SquaresFourIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '明度色卡' : 'Chroma Matrix'}</span>
                         </button>
                         
-                        <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5 shrink-0" />
+                        <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5 shrink-0" />
 
                         {/* 调色台组 */}
                         <button 
                             onClick={() => handleSwitchDesktopTab('custom')}
-                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'custom' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center py-1.5 px-2 xl:px-3 text-xs font-semibold rounded-full transition-all duration-200 ease-out flex items-center gap-1 whitespace-nowrap shrink-0 ${desktopTabUI === 'custom' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <SlidersHorizontalIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '自选调色' : 'Custom'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('basic')}
-                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-2.5 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'basic' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center py-1.5 px-2 xl:px-2.5 text-xs font-semibold rounded-full transition-all duration-200 ease-out flex items-center gap-1 whitespace-nowrap shrink-0 ${desktopTabUI === 'basic' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <DropIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '基础色' : 'Basic'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('brands')}
-                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-2.5 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'brands' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center py-1.5 px-2 xl:px-2.5 text-xs font-semibold rounded-full transition-all duration-200 ease-out flex items-center gap-1 whitespace-nowrap shrink-0 ${desktopTabUI === 'brands' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <TagIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '品牌近邻' : 'Brand Matches'}</span>
                         </button>
 
-                        <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5 shrink-0" />
+                        <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-700 my-auto mx-0.5 shrink-0" />
 
                         {/* 试色台、涂装库与数据库 */}
                         <button 
                             onClick={() => handleSwitchDesktopTab('coloring')}
-                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'coloring' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center py-1.5 px-2 xl:px-3 text-xs font-semibold rounded-full transition-all duration-200 ease-out flex items-center gap-1 whitespace-nowrap shrink-0 ${desktopTabUI === 'coloring' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                             title="GKMixer STUDIO · AI 智能分件试色台 (COLOR STUDIO)"
                         >
                             <PaletteIcon className="w-3.5 h-3.5 shrink-0" />
@@ -2561,19 +2920,42 @@ const App: React.FC = () => {
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('studio')}
-                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'studio' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center py-1.5 px-2 xl:px-3 text-xs font-semibold rounded-full transition-all duration-200 ease-out flex items-center gap-1 whitespace-nowrap shrink-0 ${desktopTabUI === 'studio' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <StackIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '涂装库' : 'Paint Library'}</span>
                         </button>
                         <button 
                             onClick={() => handleSwitchDesktopTab('catalog')}
-                            className={`gk-tab-pill flex-1 justify-center px-2 xl:px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ease-out flex items-center gap-1.5 whitespace-nowrap shrink-0 ${desktopTabUI === 'catalog' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`gk-tab-pill flex-1 justify-center py-1.5 px-2 xl:px-3 text-xs font-semibold rounded-full transition-all duration-200 ease-out flex items-center gap-1 whitespace-nowrap shrink-0 ${desktopTabUI === 'catalog' ? 'gk-tab-pill-active bg-white dark:bg-slate-600 shadow text-accent dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <DatabaseIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === 'zh' ? '数据库' : 'Catalog'}</span>
                         </button>
                     </div>
+                  )}
+
+                  {/* Inline Right-Aligned [☰] Menu Button (shown when top header bar is hidden so there's no duplicate button) */}
+                  {hideTopBar && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSettingsOpen(true)}
+                      className={`h-9 w-9 aspect-square shrink-0 flex items-center justify-center transition-all active:scale-[0.96] cursor-pointer ${
+                        uiStyle === 'blueprint'
+                          ? 'rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-400 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-[2px_2px_0px_#0F172A] dark:shadow-[2px_2px_0px_#020617] hover:bg-slate-50 dark:hover:bg-slate-800'
+                          : uiStyle === 'craft'
+                            ? 'rounded-[12px] border border-transparent bg-[var(--neu-base)] text-[var(--neu-text)] shadow-[4px_4px_8px_var(--neu-dark),-4px_-4px_8px_var(--neu-light)]'
+                            : uiStyle === 'ascii'
+                              ? 'rounded-none border-[1.5px] border-[var(--tui-border)] bg-[var(--tui-surface)] text-[var(--tui-ink)] shadow-[3px_3px_0px_var(--tui-shadow)] dark:shadow-[3px_3px_0px_var(--accent-color)]'
+                              : uiStyle === 'catalog'
+                                ? 'rounded-none border border-[var(--ft-stage-ink)] bg-[var(--ft-acid)] text-[var(--ft-stage-ink)] shadow-none hover:bg-[var(--ft-ink)] hover:text-[var(--ft-solid-fg)]'
+                                : 'rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800'
+                      }`}
+                      title={lang === 'zh' ? '打开软件设置与工作流切换' : 'Open Settings'}
+                      aria-label="Open Settings"
+                    >
+                      <ListIcon className="w-4 h-4" weight="bold" />
+                    </button>
                   )}
                 </div>
 
@@ -2684,7 +3066,7 @@ const App: React.FC = () => {
                                 <button
                                   type="button"
                                   disabled={!sandboxSyncState?.compositeDataUrl || sandboxColors.length === 0}
-                                  onClick={handleSaveSandboxToProject}
+                                  onClick={() => handleSaveSandboxToProject()}
                                   className="bp-btn flex items-center gap-1.5 rounded-lg bg-accent hover:bg-accent-hover px-3 py-1.5 text-[11px] font-extrabold text-white shadow-xs disabled:opacity-40 cursor-pointer"
                                   title="存入涂装项目库，可继续添加涂装工序、制作项目二维码名片及导出 .gkmix 工程文件"
                                 >
@@ -2764,12 +3146,12 @@ const App: React.FC = () => {
                                         (s) => s.id === sc.id || s.hex.toUpperCase() === sc.hex.toUpperCase()
                                       );
                                       const paint = sc.assignedPaint;
-                                      const labelText = paint
-                                        ? `${paint.brand} ${paint.code}`
-                                        : swMeta
-                                        ? `${swMeta.brand} ${swMeta.code}`
-                                        : sc.hex;
-                                      const subName = paint?.name || swMeta?.name || sc.hex;
+                                      const brandName = paint ? localizedBrand(paint.brand, lang) : swMeta?.brand || '';
+                                      const codeText = paint ? paint.code : swMeta?.code || '';
+                                      const rawPaintName = paint?.name || swMeta?.name || sc.hex;
+                                      const cleanPaintName = rawPaintName.includes(' / ') && /[\u4e00-\u9fa5]/.test(rawPaintName.split(' / ')[0])
+                                        ? rawPaintName.split(' / ')[0].trim()
+                                        : rawPaintName;
                                       return (
                                         <button
                                           key={sc.id}
@@ -2783,7 +3165,7 @@ const App: React.FC = () => {
                                               ? 'bp-subcard-active border-accent bg-accent/10 dark:bg-accent/20 shadow-xs'
                                               : 'border-slate-200 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/80 hover:border-accent/60'
                                           }`}
-                                          title="点击在右侧匹配品牌油漆或微调滴数，指派后实时更新左侧色卡预览图"
+                                          title={`${brandName} ${codeText} · ${rawPaintName} (${sc.hex}) — 点击在右侧匹配品牌油漆或微调滴数`}
                                         >
                                           <div className="flex items-center gap-1.5">
                                             <span
@@ -2796,12 +3178,18 @@ const App: React.FC = () => {
                                               </span>
                                             )}
                                           </div>
-                                          <div className="truncate text-[11px] font-black text-slate-800 dark:text-slate-100 leading-tight">
-                                            {labelText}
+                                          {/* 大标题：油漆名称 */}
+                                          <div className="truncate text-[11px] font-black text-slate-900 dark:text-white leading-tight">
+                                            {cleanPaintName}
                                           </div>
-                                          <div className="flex items-center justify-between gap-1 text-[9px] font-mono text-slate-400">
-                                            <span className="truncate">{subName}</span>
-                                            <span>{sc.hex}</span>
+                                          {/* 小标题：品牌名称 + 色号 */}
+                                          <div className="flex items-center justify-between gap-1 text-[9.5px] font-bold text-slate-500 dark:text-slate-400 leading-tight">
+                                            <span className="truncate">{brandName || sc.hex}</span>
+                                            {codeText && (
+                                              <span className="font-mono font-extrabold text-slate-700 dark:text-slate-200 shrink-0">
+                                                {codeText}
+                                              </span>
+                                            )}
                                           </div>
                                         </button>
                                       );
@@ -2906,6 +3294,11 @@ const App: React.FC = () => {
                         hex={selectedColor?.hex || colors[0]?.hex || '#4A7BD0'}
                         lang={lang}
                         standaloneMode={true}
+                        sandboxSwatches={sandboxSyncState?.syncedSwatches || []}
+                        onSelectSandboxSwatch={(hex) => {
+                          handleAddColor(hex);
+                        }}
+                        onNavigateToSandbox={() => handleSwitchDesktopTab('coloring')}
                         hasSamplePoint={!!selectedColor && hasSamplePoint(selectedColor)}
                         assignedId={selectedColor?.assignedPaint?.id || null}
                         assignedPaint={selectedColor?.assignedPaint || null}
@@ -2932,7 +3325,10 @@ const App: React.FC = () => {
                         lang={lang}
                         theme={theme}
                         setTheme={setTheme}
+                        hideTopBar={hideTopBar}
                         incomingImage={coloringIncomingImage}
+                        incomingSession={coloringIncomingSession}
+                        sessionApiRef={sandboxSessionApiRef}
                         externalCatalogPaints={catalogPaints}
                         isActiveTab={desktopTab === 'coloring'}
                         onSyncSandboxState={handleSyncSandboxState}
@@ -2989,7 +3385,7 @@ const App: React.FC = () => {
                           onUpdateSwatchSettings={setSwatchSettings}
                           lang={lang}
                           isWideMode={isWideVisualizer}
-                          onToggleWideMode={() => setIsWideVisualizer((v) => !v)}
+                          onToggleWideMode={workflowMode === 'pro' ? () => setIsWideVisualizer((v) => !v) : undefined}
                           focusProjectId={focusProjectId}
                           onClearFocusProject={() => setFocusProjectId(null)}
                           onSendImageToColoring={handleSendImageToColoring}
@@ -3026,7 +3422,31 @@ const App: React.FC = () => {
         }}
         onUpdateColors={swatchEditorMode === 'sandbox' ? setSandboxColors : setColors}
         onUpdateImageAndColors={(newImageSrc, nextColors) => {
+          const prevImg =
+            swatchEditorMode === 'sandbox'
+              ? sandboxSyncState?.compositeDataUrl
+              : sourceImage;
+          const rec = getCanvasMarginRecord(newImageSrc);
+          const candidateOldUrls = new Set<string>(
+            [
+              prevImg || '',
+              rec?.originalImageSrc || '',
+              rec?.rawOriginalImageSrc || '',
+              sandboxExpandedRef.current?.rawImageSrc || '',
+              sandboxExpandedRef.current?.expandedImageSrc || '',
+            ].filter(Boolean)
+          );
+
           if (swatchEditorMode === 'sandbox') {
+            sandboxExpandedRef.current = {
+              expandedImageSrc: newImageSrc,
+              rawImageSrc:
+                rec?.rawOriginalImageSrc ||
+                sandboxExpandedRef.current?.rawImageSrc ||
+                rec?.originalImageSrc ||
+                prevImg ||
+                newImageSrc,
+            };
             setSandboxSyncState((prev) =>
               prev ? { ...prev, compositeDataUrl: newImageSrc } : prev
             );
@@ -3034,6 +3454,44 @@ const App: React.FC = () => {
           } else {
             setSourceImage(newImageSrc);
             setColors(nextColors);
+          }
+
+          // Also sync any matching project parts & folder cover previews in Paint Library (涂装库与色卡)
+          if (candidateOldUrls.size > 0) {
+            const updatedNodes = colorsToFloatingNodes(nextColors);
+            setProjects((prevProjects) => {
+              let anyUpdated = false;
+              const nextProjects = prevProjects.map((proj) => {
+                let projChanged = false;
+                const nextParts = proj.parts.map((part, pIdx) => {
+                  if (
+                    part.sourceImageDataUrl &&
+                    candidateOldUrls.has(part.sourceImageDataUrl)
+                  ) {
+                    projChanged = true;
+                    anyUpdated = true;
+                    return {
+                      ...part,
+                      sourceImageDataUrl: newImageSrc,
+                      nodes: updatedNodes.length > 0 ? updatedNodes : part.nodes,
+                    };
+                  }
+                  return part;
+                });
+                if (!projChanged) return proj;
+                const shouldUpdateCover =
+                  !proj.customCoverImageDataUrl &&
+                  ((proj.coverImageDataUrl && candidateOldUrls.has(proj.coverImageDataUrl)) ||
+                    nextParts[0]?.sourceImageDataUrl === newImageSrc);
+                return {
+                  ...proj,
+                  coverImageDataUrl: shouldUpdateCover ? newImageSrc : proj.coverImageDataUrl,
+                  parts: nextParts,
+                  updatedAt: Date.now(),
+                };
+              });
+              return anyUpdated ? nextProjects : prevProjects;
+            });
           }
         }}
         settings={swatchSettings}
@@ -3045,10 +3503,12 @@ const App: React.FC = () => {
             : handleExportAnnotated
         }
         isExporting={isExporting}
-        onSaveToProject={() => {
-          if (swatchEditorMode === 'sandbox' && sandboxSyncState?.compositeDataUrl) {
-            handleSaveSandboxToProject();
+        onSaveToProject={(overrideImageSrc, overrideColors) => {
+          if (swatchEditorMode === 'sandbox' && (overrideImageSrc || sandboxSyncState?.compositeDataUrl)) {
+            handleSaveSandboxToProject(overrideImageSrc, overrideColors);
           } else {
+            if (overrideImageSrc) setSourceImage(overrideImageSrc);
+            if (overrideColors) setColors(overrideColors);
             setIsSaveToProjectOpen(true);
           }
         }}
@@ -3120,16 +3580,16 @@ const App: React.FC = () => {
         onClose={() => setIsWorkflowGuideOpen(false)}
         onSaveToProject={
           workflowMode === 'beginner' && sandboxSyncState?.compositeDataUrl && sandboxColors.length > 0
-            ? handleSaveSandboxToProject
+            ? () => handleSaveSandboxToProject()
             : sourceImage && assignedMarkers.length > 0
             ? () => setIsSaveToProjectOpen(true)
             : undefined
         }
         onExportPng={
           workflowMode === 'beginner' && sandboxSyncState?.compositeDataUrl && sandboxColors.length > 0
-            ? handleExportSandboxAnnotated
+            ? () => handleExportSandboxAnnotated()
             : sourceImage && assignedMarkers.length > 0
-            ? handleExportAnnotated
+            ? () => handleExportAnnotated()
             : undefined
         }
         onNavigateToStudio={() => handleSwitchDesktopTab('studio')}

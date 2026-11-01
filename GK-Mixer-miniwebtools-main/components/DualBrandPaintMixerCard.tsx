@@ -3,6 +3,7 @@ import { CatalogPaint, ColorData, Language } from "../types";
 import { lerp } from "../utils/mixbox";
 import { rgbToHex } from "../utils/colorUtils";
 import {
+  COMMON_MODEL_BRANDS,
   FEATURED_BRANDS,
   PaintMatchEngine,
   getPaintSolventType,
@@ -11,7 +12,12 @@ import {
   matchQuality,
   matchQualityLabel,
 } from "../utils/paintCatalog";
-import { PaintBottleImg } from "./PaintBottleHover";
+import {
+  BRAND_EDITION,
+  IS_NIGHTWORKS_EDITION,
+  IS_SINGLE_BRAND_EDITION,
+} from "../utils/brandEdition";
+import PaintBottleHover from "./PaintBottleHover";
 import {
   FlaskIcon,
   ArrowsLeftRightIcon,
@@ -70,10 +76,12 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
       const defA =
         paints.find((p) => p.brand === "Gaia" && p.code === "004") ||
         paints.find((p) => p.brand === "Gaia" && p.code === "003") ||
+        paints.find((p) => p.brand === "Night Works" && p.code === "NAL057") ||
         paints[0];
       const defB =
         paints.find((p) => p.brand === "Gaia" && p.code === "005") ||
         paints.find((p) => p.brand === "Gaia" && p.code === "001") ||
+        paints.find((p) => p.brand === "Night Works" && p.code === "NAL038") ||
         paints[Math.min(1, paints.length - 1)];
       setPaintA((prev) => prev || defA || null);
       setPaintB((prev) => prev || defB || null);
@@ -270,37 +278,41 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
           </span>
         </div>
 
-        {/* Toggle Button: Default Same-Brand Only vs Manual Cross-Brand with Warning */}
-        <button
-          type="button"
-          onClick={handleToggleCrossBrand}
-          className={`bp-pill inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold transition cursor-pointer shrink-0 ${
-            allowCrossBrand
-              ? "bp-pill-active border-amber-500 bg-amber-500/15 text-amber-800 dark:text-amber-200"
-              : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:border-amber-400"
-          }`}
-          title={
-            allowCrossBrand
-              ? "当前已手动开启跨品牌混合，点击恢复默认仅限同品牌混合"
-              : "默认锁定同一品牌油漆混合以保证相容性，点击可手动开启跨品牌混色"
-          }
-        >
-          {allowCrossBrand ? (
-            <>
-              <LockKeyOpenIcon className="h-3 w-3 text-amber-600 dark:text-amber-300 shrink-0" weight="bold" />
-              <span>已开启跨品牌混合 (点击锁定同品牌)</span>
-            </>
-          ) : (
-            <>
-              <LockKeyIcon className="h-3 w-3 text-emerald-600 dark:text-emerald-300 shrink-0" weight="bold" />
-              <span>默认仅同品牌混合 (点击允许跨品牌)</span>
-            </>
-          )}
-        </button>
+        {/* Toggle Button: Default Same-Brand Only vs Manual Cross-Brand with Warning (Hidden in Single-Brand Edition) */}
+        {!IS_SINGLE_BRAND_EDITION && (
+          <button
+            type="button"
+            onClick={handleToggleCrossBrand}
+            className={`bp-pill inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold transition cursor-pointer shrink-0 ${
+              allowCrossBrand
+                ? "bp-pill-active border-amber-500 bg-amber-500/15 text-amber-800 dark:text-amber-200"
+                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:border-amber-400"
+            }`}
+            title={
+              allowCrossBrand
+                ? "当前已手动开启跨品牌混合，点击恢复默认仅限同品牌混合"
+                : "默认锁定同一品牌油漆混合以保证相容性，点击可手动开启跨品牌混色"
+            }
+          >
+            {allowCrossBrand ? (
+              <>
+                <LockKeyOpenIcon className="h-3 w-3 text-amber-600 dark:text-amber-300 shrink-0" weight="bold" />
+                <span>已开启跨品牌混合 (点击锁定同品牌)</span>
+              </>
+            ) : (
+              <>
+                <LockKeyIcon className="h-3 w-3 text-emerald-600 dark:text-emerald-300 shrink-0" weight="bold" />
+                <span>默认仅同品牌混合 (点击允许跨品牌)</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-        {allowCrossBrand
+        {IS_SINGLE_BRAND_EDITION
+          ? `自由选择两款「${localizedBrand(BRAND_EDITION, lang)}」油漆，通过 Mixbox 2.0 物理颜料混色模拟手涂/湿盘调色效果与近似现成色号。`
+          : allowCrossBrand
           ? "已手动开启跨品牌混色模式：可自由选择不同品牌油漆预览 Mixbox 混色与同色快匹。"
           : `当前默认锁定同一品牌（${paintA ? localizedBrand(paintA.brand, lang) : "同品牌"}）内部混色，确保溶剂与树脂体系一致；如需不同品牌混色可点击右上角手动开启。`}
       </p>
@@ -341,22 +353,33 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
               : "border-slate-200 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/80 hover:border-accent/60"
           }`}
         >
-          <div
-            className="bp-swatch relative h-10 w-10 rounded-lg border border-black/15 shrink-0 overflow-hidden flex items-center justify-center"
-            style={{ backgroundColor: paintA?.hex || "#3B82F6" }}
-          >
-            {paintA && (
-              <PaintBottleImg
-                brand={paintA.brand}
-                code={paintA.code}
-                hex={paintA.hex}
-                className="h-full w-full object-contain p-0.5 bg-white/85"
-              />
-            )}
-            <span className="absolute left-0.5 top-0.5 rounded bg-slate-900/85 px-1 text-[8px] font-mono font-black text-white">
-              A·{pctA}%
-            </span>
-          </div>
+          {paintA ? (
+            <PaintBottleHover
+              brand={paintA.brand}
+              code={paintA.code}
+              name={paintA.name}
+              hex={paintA.hex}
+              className="shrink-0"
+            >
+              <div
+                className="bp-swatch relative h-10 w-10 rounded-lg border border-black/15 shrink-0 overflow-hidden flex items-center justify-center"
+                style={{ backgroundColor: paintA.hex }}
+              >
+                <span className="absolute left-0.5 top-0.5 rounded bg-slate-900/85 px-1 text-[8px] font-mono font-black text-white">
+                  A·{pctA}%
+                </span>
+              </div>
+            </PaintBottleHover>
+          ) : (
+            <div
+              className="bp-swatch relative h-10 w-10 rounded-lg border border-black/15 shrink-0 overflow-hidden flex items-center justify-center"
+              style={{ backgroundColor: "#3B82F6" }}
+            >
+              <span className="absolute left-0.5 top-0.5 rounded bg-slate-900/85 px-1 text-[8px] font-mono font-black text-white">
+                A·{pctA}%
+              </span>
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-1">
               <span className="truncate text-[10px] font-extrabold text-accent">
@@ -402,22 +425,33 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
               : "border-slate-200 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/80 hover:border-accent/60"
           }`}
         >
-          <div
-            className="bp-swatch relative h-10 w-10 rounded-lg border border-black/15 shrink-0 overflow-hidden flex items-center justify-center"
-            style={{ backgroundColor: paintB?.hex || "#EAB308" }}
-          >
-            {paintB && (
-              <PaintBottleImg
-                brand={paintB.brand}
-                code={paintB.code}
-                hex={paintB.hex}
-                className="h-full w-full object-contain p-0.5 bg-white/85"
-              />
-            )}
-            <span className="absolute left-0.5 top-0.5 rounded bg-slate-900/85 px-1 text-[8px] font-mono font-black text-white">
-              B·{pctB}%
-            </span>
-          </div>
+          {paintB ? (
+            <PaintBottleHover
+              brand={paintB.brand}
+              code={paintB.code}
+              name={paintB.name}
+              hex={paintB.hex}
+              className="shrink-0"
+            >
+              <div
+                className="bp-swatch relative h-10 w-10 rounded-lg border border-black/15 shrink-0 overflow-hidden flex items-center justify-center"
+                style={{ backgroundColor: paintB.hex }}
+              >
+                <span className="absolute left-0.5 top-0.5 rounded bg-slate-900/85 px-1 text-[8px] font-mono font-black text-white">
+                  B·{pctB}%
+                </span>
+              </div>
+            </PaintBottleHover>
+          ) : (
+            <div
+              className="bp-swatch relative h-10 w-10 rounded-lg border border-black/15 shrink-0 overflow-hidden flex items-center justify-center"
+              style={{ backgroundColor: "#EAB308" }}
+            >
+              <span className="absolute left-0.5 top-0.5 rounded bg-slate-900/85 px-1 text-[8px] font-mono font-black text-white">
+                B·{pctB}%
+              </span>
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-1">
               <span className="truncate text-[10px] font-extrabold text-accent">
@@ -494,7 +528,7 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
           )}
 
           {/* Brand Pills (Locked to paintA.brand when selecting Slot B in default same-brand mode) */}
-          {!allowCrossBrand && activePickerSlot === "B" && paintA ? (
+          {IS_SINGLE_BRAND_EDITION ? null : !allowCrossBrand && activePickerSlot === "B" && paintA ? (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[10px]">
               <span className="font-extrabold text-emerald-800 dark:text-emerald-200">
                 🔒 默认仅允许同一品牌「{localizedBrand(paintA.brand, lang)}」内部混色
@@ -511,14 +545,10 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
               {[
                 { id: "COMMON", label: "🌟 常用品牌" },
-                { id: "Gaia", label: "盖亚" },
-                { id: "Jumpwind", label: "匠域" },
-                { id: "Hobby Mio", label: "喵匠" },
-                { id: "Night Works", label: "夜之工坊" },
-                { id: "Gunze", label: "郡士水性" },
-                { id: "Mr.Hobby", label: "郡士" },
-                { id: "Tamiya", label: "田宫" },
-                { id: "Vallejo", label: "AV水性" },
+                ...COMMON_MODEL_BRANDS.slice(0, 8).map((id) => ({
+                  id,
+                  label: localizedBrand(id, lang),
+                })),
                 { id: "ALL", label: "全部" },
               ].map((b) => (
                 <button
@@ -544,7 +574,11 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
               type="text"
               value={pickerQuery}
               onChange={(e) => setPickerQuery(e.target.value)}
-              placeholder="搜索色号或名称 (如 004 / 钴蓝 / EX01 / GP-01)…"
+              placeholder={
+                IS_NIGHTWORKS_EDITION
+                  ? "搜索色号或名称 (如 NAL057 / 钴蓝 / NDL033)…"
+                  : "搜索色号或名称 (如 004 / 钴蓝 / EX01 / GP-01)…"
+              }
               className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-8 pr-3 py-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-accent"
             />
           </div>
@@ -723,17 +757,18 @@ export const DualBrandPaintMixerCard: React.FC<DualBrandPaintMixerCardProps> = (
                       className="flex items-center gap-1.5 min-w-0 flex-1 text-left cursor-pointer"
                       title="点击在右侧查看该油漆详情"
                     >
-                      <span
-                        className="h-6 w-6 rounded-md border border-black/15 shrink-0 overflow-hidden flex items-center justify-center"
-                        style={{ backgroundColor: p.hex }}
+                      <PaintBottleHover
+                        brand={p.brand}
+                        code={p.code}
+                        name={p.name}
+                        hex={p.hex}
+                        className="shrink-0"
                       >
-                        <PaintBottleImg
-                          brand={p.brand}
-                          code={p.code}
-                          hex={p.hex}
-                          className="h-full w-full object-contain p-0.5 bg-white/85"
+                        <span
+                          className="h-6 w-6 rounded-md border border-black/15 shrink-0 overflow-hidden flex items-center justify-center block"
+                          style={{ backgroundColor: p.hex }}
                         />
-                      </span>
+                      </PaintBottleHover>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[10px] font-black text-slate-800 dark:text-slate-100">
                           {localizedBrand(p.brand, lang)} {p.code}

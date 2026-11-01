@@ -11,6 +11,7 @@ import {
   QRStep,
 } from '../types';
 import { detectQRFromImageFile } from './qrCode';
+import { isValidImageSrc, resolvePartImageSrc } from './studioSession';
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -879,15 +880,15 @@ export async function restoreProjectFromPoster(
 // ==========================================
 
 export function getEffectiveProjectCover(project: PaintProject): string | undefined {
-  if (project.customCoverImageDataUrl) {
+  if (isValidImageSrc(project.customCoverImageDataUrl)) {
     return project.customCoverImageDataUrl;
   }
-  if (project.coverImageDataUrl) {
-    return project.coverImageDataUrl;
+  for (const p of project.parts) {
+    const resolved = resolvePartImageSrc(p);
+    if (resolved) return resolved;
   }
-  const firstWithImage = project.parts.find((p) => Boolean(p.sourceImageDataUrl));
-  if (firstWithImage) {
-    return firstWithImage.sourceImageDataUrl;
+  if (isValidImageSrc(project.coverImageDataUrl)) {
+    return project.coverImageDataUrl;
   }
   return undefined;
 }

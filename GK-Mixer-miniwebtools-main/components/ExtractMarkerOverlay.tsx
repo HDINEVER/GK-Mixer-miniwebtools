@@ -4,12 +4,15 @@ import { ColorData } from "../types";
 import { colorsToMarkers, ExtractMarker } from "../utils/exportAnnotatedImage";
 import {
   calculateLeaderLine,
+  cleanPaintCardName,
   DEFAULT_SWATCH_SETTINGS,
   getCanvasScale,
   getCardBaseDimensions,
+  getMarkerCardDimensions,
+  REFERENCE_CANVAS_DIM,
   SwatchSettings,
 } from "../utils/swatchLayout";
-import { PaintBottleImg } from "./PaintBottleHover";
+import { localizedBrand } from "../utils/paintCatalog";
 
 export interface ExtractMarkerOverlayProps {
   markers?: ExtractMarker[];
@@ -17,6 +20,8 @@ export interface ExtractMarkerOverlayProps {
   selectedId: string | null;
   viewScale?: number;
   settings?: Partial<SwatchSettings>;
+  /** When provided (e.g. inside ProjectAnnotatedCanvas), locks the overlay to this exact reference stage size without DOM re-measurement */
+  fixedStageSize?: { w: number; h: number };
   onSelect?: (idOrColor: any) => void;
   onRemove?: (id: string) => void;
   onRequestAssign?: (id: string) => void;
@@ -74,6 +79,7 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
   selectedId,
   viewScale = 1,
   settings: settingsProp,
+  fixedStageSize,
   onSelect,
   onRemove,
   onRequestAssign,
@@ -97,6 +103,7 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
   const moveCallback = onMoveLabel || onUpdatePosition;
   const ui = 1 / Math.max(viewScale, 0.01);
   const rootRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   const onMoveLabelRef = useRef(moveCallback);
   onMoveLabelRef.current = moveCallback;
 
@@ -106,62 +113,133 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
   const dragRafRef = useRef<number | null>(null);
   const dragRef = useRef<ActiveDragState | null>(null);
 
-  const [overlayBox, setOverlayBox] = useState({ w: 0, h: 0 });
+  const [overlayBox, setOverlayBox] = useState({ left: 0, top: 0, w: 800, h: 600 });
 
-  const boxW = overlayBox.w || 1;
-  const boxH = overlayBox.h || 1;
+  const overlayLeft = fixedStageSize ? 0 : overlayBox.left;
+  const overlayTop = fixedStageSize ? 0 : overlayBox.top;
+  const boxW = Math.max(1, fixedStageSize ? fixedStageSize.w : overlayBox.w || 800);
+  const boxH = Math.max(1, fixedStageSize ? fixedStageSize.h : overlayBox.h || 600);
+
+  // Core Reference Stage Law: All swatch cards & leader lines are calculated in a fixed 800px reference width
+  // and scaled uniformly via CSS transform: scale(boxW / 800).
+  const refW = REFERENCE_CANVAS_DIM; // 800
+  const stageAspect = boxW / Math.max(1, boxH);
+  const refH = refW / Math.max(0.05, stageAspect);
+  const stageScale = boxW / refW;
+
   const { baseW, baseH } = getCardBaseDimensions(settings.cardBaseWidth);
-  const canvasScale = getCanvasScale(boxW, boxH, baseW);
+  const canvasScale = getCanvasScale(refW, refH, baseW);
   const cardScale = settings.cardScale ?? 1.0;
   const visualScale = canvasScale * cardScale * ui;
 
   useLayoutEffect(() => {
+    if (fixedStageSize) return;
     const el = rootRef.current;
     if (!el) return;
     let frame = 0;
-    const applySize = (w: number, h: number) => {
+    const applySize = (left: number, top: number, w: number, h: number) => {
       if (!w || !h) return;
       setOverlayBox((prev) =>
-        Math.abs(prev.w - w) < 0.5 && Math.abs(prev.h - h) < 0.5 ? prev : { w, h }
+        Math.abs(prev.left - left) < 0.5 &&
+        Math.abs(prev.top - top) < 0.5 &&
+        Math.abs(prev.w - w) < 0.5 &&
+        Math.abs(prev.h - h) < 0.5
+          ? prev
+          : { left, top, w, h }
       );
     };
     const measureAndApply = () => {
-      const target = el.parentElement || el;
+      const parent = el.parentElement;
+      const siblingImg = parent?.querySelector("img") || null;
+
+      if (siblingImg && siblingImg.clientWidth > 1 && siblingImg.clientHeight > 1) {
+        const imgLeft = siblingImg.offsetLeft;
+        const imgTop = siblingImg.offsetTop;
+        const imgW = siblingImg.clientWidth;
+        const imgH = siblingImg.clientHeight;
+        let renderW = imgW;
+        let renderH = imgH;
+        const isFullStage = siblingImg.getAttribute("data-full-stage") === "true";
+        if (!isFullStage && siblingImg.naturalWidth > 0 && siblingImg.naturalHeight > 0) {
+          const natRatio = siblingImg.naturalWidth / siblingImg.naturalHeight;
+          const boxRatio = imgW / imgH;
+          if (Math.abs(natRatio - boxRatio) > 0.004) {
+            if (boxRatio > natRatio) {
+              renderH = imgH;
+              renderW = imgH * natRatio;
+            } else {
+              renderW = imgW;
+              renderH = imgW / natRatio;
+            }
+          }
+        }
+        const left = imgLeft + (imgW - renderW) / 2;
+        const top = imgTop + (imgH - renderH) / 2;
+        applySize(left, top, renderW, renderH);
+        return;
+      }
+
+      const target = parent || el;
       const w = el.clientWidth || target.clientWidth;
       const h = el.clientHeight || target.clientHeight;
       if (w > 1 && h > 1) {
-        applySize(w, h);
+        applySize(0, 0, w, h);
       } else {
         const rect = el.getBoundingClientRect();
         const scale = Math.max(viewScale, 0.01);
         if (rect.width > 1 && rect.height > 1) {
-          applySize(rect.width / scale, rect.height / scale);
+          applySize(0, 0, rect.width / scale, rect.height / scale);
         }
       }
     };
-    const observer = new ResizeObserver(() => {
+    const scheduleMeasure = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(measureAndApply);
-    });
+    };
+    const observer = new ResizeObserver(scheduleMeasure);
     observer.observe(el);
     const parent = el.parentElement;
-    const siblingImg = parent?.querySelector("img") || null;
+    let currentImg: HTMLImageElement | null = parent?.querySelector("img") || null;
     const siblingCanvas = parent?.querySelector("canvas") || null;
     if (parent) observer.observe(parent);
-    if (siblingImg) {
-      observer.observe(siblingImg);
-      siblingImg.addEventListener("load", measureAndApply);
+    if (currentImg) {
+      observer.observe(currentImg);
+      currentImg.addEventListener("load", measureAndApply);
     }
     if (siblingCanvas) observer.observe(siblingCanvas);
+
+    const mutObserver = parent
+      ? new MutationObserver(() => {
+          const nextImg = parent.querySelector("img") || null;
+          if (nextImg !== currentImg) {
+            if (currentImg) currentImg.removeEventListener("load", measureAndApply);
+            currentImg = nextImg;
+            if (currentImg) {
+              observer.observe(currentImg);
+              currentImg.addEventListener("load", measureAndApply);
+            }
+          }
+          scheduleMeasure();
+        })
+      : null;
+    if (parent && mutObserver) {
+      mutObserver.observe(parent, { childList: true, attributes: true, subtree: true });
+    }
+
+    window.addEventListener("resize", scheduleMeasure);
+    window.addEventListener("orientationchange", scheduleMeasure);
     measureAndApply();
     return () => {
       cancelAnimationFrame(frame);
-      if (siblingImg) {
-        siblingImg.removeEventListener("load", measureAndApply);
+      if (currentImg) {
+        currentImg.removeEventListener("load", measureAndApply);
       }
+      mutObserver?.disconnect();
+      window.removeEventListener("resize", scheduleMeasure);
+      window.removeEventListener("orientationchange", scheduleMeasure);
       observer.disconnect();
     };
-  }, [markers.length, viewScale]);
+  }, [fixedStageSize, markers.length, viewScale]);
 
   useEffect(() => {
     return () => {
@@ -173,44 +251,56 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
 
   useEffect(() => {
     const move = onMoveLabelRef.current;
-    if (!move || overlayBox.w < 2 || overlayBox.h < 2) return;
+    if (!move || refW < 2 || refH < 2) return;
     for (const marker of markers) {
       if (!marker.paint || marker.labelNx != null) continue;
       const mScale = (marker.labelScale ?? cardScale) * canvasScale * ui;
+      const { baseW: mBaseW, baseH: mBaseH } = getMarkerCardDimensions(
+        marker.paint,
+        settings.cardBaseWidth
+      );
       const fallback = defaultLabel(
         marker.nx,
         marker.ny,
-        overlayBox.w,
-        overlayBox.h,
-        baseW * mScale,
-        baseH * mScale
+        refW,
+        refH,
+        mBaseW * mScale,
+        mBaseH * mScale
       );
       move(marker.id, fallback.left, fallback.top);
     }
-  }, [markers, overlayBox.w, overlayBox.h, baseW, baseH, cardScale, canvasScale, ui]);
+  }, [markers, refW, refH, settings.cardBaseWidth, cardScale, canvasScale, ui]);
 
   const positions = useMemo(() => {
-    const w = overlayBox.w || 1;
-    const h = overlayBox.h || 1;
     return markers
       .filter((marker) => Number.isFinite(marker.nx) && Number.isFinite(marker.ny))
       .map((marker) => {
         const mScale = (marker.labelScale ?? cardScale) * canvasScale * ui;
+        const { baseW: mBaseW, baseH: mBaseH } = getMarkerCardDimensions(
+          marker.paint,
+          settings.cardBaseWidth
+        );
         const hasTonal = marker.tonalGradient && marker.tonalGradient.length > 0;
-        const cW = baseW * mScale;
-        const cH = (baseH + (hasTonal ? 12 : 0)) * mScale;
-        const fallback = defaultLabel(marker.nx, marker.ny, w, h, cW, cH);
+        const cW = mBaseW * mScale;
+        const cH = (mBaseH + (hasTonal ? 12 : 0)) * mScale;
+        const fallback = defaultLabel(marker.nx, marker.ny, refW, refH, cW, cH);
         const isBeingDragged = dragRef.current?.id === marker.id;
+        const rawLeft = isBeingDragged ? dragRef.current!.latestNx : (marker.labelNx ?? fallback.left);
+        const rawTop = isBeingDragged ? dragRef.current!.latestNy : (marker.labelNy ?? fallback.top);
+        const maxLeft = Math.max(0, 1 - cW / refW);
+        const maxTop = Math.max(0, 1 - cH / refH);
         return {
           marker,
-          left: isBeingDragged ? dragRef.current!.latestNx : (marker.labelNx ?? fallback.left),
-          top: isBeingDragged ? dragRef.current!.latestNy : (marker.labelNy ?? fallback.top),
+          left: Math.min(Math.max(0, rawLeft), maxLeft),
+          top: Math.min(Math.max(0, rawTop), maxTop),
           mScale,
+          mBaseW,
+          mBaseH,
           cW,
           cH,
         };
       });
-  }, [markers, overlayBox.w, overlayBox.h, baseW, baseH, cardScale, canvasScale, ui, selectedId]);
+  }, [markers, refW, refH, settings.cardBaseWidth, cardScale, canvasScale, ui, selectedId]);
 
   const flushDragVisuals = () => {
     dragRafRef.current = null;
@@ -274,30 +364,32 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
     }
     event.preventDefault();
 
-    // Measure live DOM dimensions on pointerdown so expanded-margin canvases never use a stale boxW/boxH
-    const el = rootRef.current;
+    // Measure live screen rect for pointer delta normalization while keeping internal coordinates in (refW, refH)
+    const el = innerRef.current || rootRef.current;
     const rect = el.getBoundingClientRect();
     const scale = Math.max(viewScale, 0.01);
     const rectW = Math.max(rect.width || boxW * scale, 1);
     const rectH = Math.max(rect.height || boxH * scale, 1);
-    const liveBoxW = Math.max(el.clientWidth || rectW / scale || boxW, 1);
-    const liveBoxH = Math.max(el.clientHeight || rectH / scale || boxH, 1);
 
-    if (Math.abs(liveBoxW - boxW) > 0.5 || Math.abs(liveBoxH - boxH) > 0.5) {
-      setOverlayBox({ w: liveBoxW, h: liveBoxH });
-    }
+    const liveAspect = rectW / Math.max(1, rectH);
+    const liveRefW = REFERENCE_CANVAS_DIM; // 800
+    const liveRefH = liveRefW / Math.max(0.05, liveAspect);
 
-    const liveCanvasScale = getCanvasScale(liveBoxW, liveBoxH, baseW);
+    const liveCanvasScale = getCanvasScale(liveRefW, liveRefH, baseW);
     const liveMScale = (marker.labelScale ?? cardScale) * liveCanvasScale * ui;
+    const { baseW: mBaseW, baseH: mBaseH } = getMarkerCardDimensions(
+      marker.paint,
+      settings.cardBaseWidth
+    );
     const hasTonal = Boolean(marker.tonalGradient && marker.tonalGradient.length > 0);
-    const liveCW = baseW * liveMScale || cW;
-    const liveCH = (baseH + (hasTonal ? 12 : 0)) * liveMScale || cH;
+    const liveCW = mBaseW * liveMScale || cW;
+    const liveCH = (mBaseH + (hasTonal ? 12 : 0)) * liveMScale || cH;
 
     const normX = (event.clientX - rect.left) / rectW;
     const normY = (event.clientY - rect.top) / rectH;
 
-    const cardWNorm = liveCW / liveBoxW;
-    const cardHNorm = liveCH / liveBoxH;
+    const cardWNorm = liveCW / liveRefW;
+    const cardHNorm = liveCH / liveRefH;
 
     dragRef.current = {
       id: marker.id,
@@ -307,14 +399,14 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
       rectTop: rect.top,
       rectW,
       rectH,
-      boxW: liveBoxW,
-      boxH: liveBoxH,
+      boxW: liveRefW,
+      boxH: liveRefH,
       cW: liveCW,
       cH: liveCH,
       maxX: Math.max(0, 1 - cardWNorm),
       maxY: Math.max(0, 1 - cardHNorm),
-      pinX: marker.nx * liveBoxW,
-      pinY: marker.ny * liveBoxH,
+      pinX: marker.nx * liveRefW,
+      pinY: marker.ny * liveRefH,
       pinRadius: 6 * liveCanvasScale * cardScale * ui,
       mScale: liveMScale || mScale,
       latestNx: left,
@@ -386,161 +478,183 @@ export const ExtractMarkerOverlay: React.FC<ExtractMarkerOverlayProps> = ({
 
   return (
     <div ref={rootRef} className="pointer-events-none absolute inset-0 overflow-hidden select-none">
-      {/* Leader lines SVG */}
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
-        viewBox={`0 0 ${boxW} ${boxH}`}
-        preserveAspectRatio="none"
+      <div
+        className="pointer-events-none absolute overflow-hidden select-none"
+        style={{
+          left: overlayLeft,
+          top: overlayTop,
+          width: boxW,
+          height: boxH,
+        }}
       >
-        {positions.map(({ marker, left, top, mScale, cW, cH }) => {
-          if (!marker.paint) return null;
-          const cardRect = {
-            x: left * boxW,
-            y: top * boxH,
-            w: cW,
-            h: cH,
-          };
-          const pin = {
-            x: marker.nx * boxW,
-            y: marker.ny * boxH,
-          };
-          const pinRadius = 6 * visualScale;
-          const line = calculateLeaderLine(
-            cardRect,
-            pin,
-            settings.lineStyle,
-            pinRadius,
-            mScale
-          );
+        <div
+          ref={innerRef}
+          className="pointer-events-none absolute top-0 left-0 overflow-hidden select-none"
+          style={{
+            width: `${refW}px`,
+            height: `${refH}px`,
+            transform: Math.abs(stageScale - 1) > 0.0005 ? `scale(${stageScale})` : undefined,
+            transformOrigin: "top left",
+          }}
+        >
+          {/* Leader lines SVG in 1:1 Reference Stage pixel coordinates (800 × refH) */}
+          <svg
+            width={refW}
+            height={refH}
+            viewBox={`0 0 ${refW} ${refH}`}
+            className="pointer-events-none absolute inset-0 overflow-visible"
+          >
+            {positions.map(({ marker, left, top, mScale, cW, cH }) => {
+              if (!marker.paint) return null;
+              const cardRect = {
+                x: left * refW,
+                y: top * refH,
+                w: cW,
+                h: cH,
+              };
+              const pin = {
+                x: marker.nx * refW,
+                y: marker.ny * refH,
+              };
+              const pinRadius = 6 * visualScale;
+              const line = calculateLeaderLine(
+                cardRect,
+                pin,
+                settings.lineStyle,
+                pinRadius,
+                mScale
+              );
 
-          const paintHex = marker.paint.hex.toUpperCase();
-          const strokeColor = settings.lineMatchPaintColor
-            ? paintHex
-            : "rgba(255,255,255,0.95)";
-          const shadowColor = settings.lineMatchPaintColor
-            ? "rgba(0,0,0,0.65)"
-            : "rgba(0,0,0,0.45)";
-          const innerW = settings.lineWidth * canvasScale * ui;
-          const outerW = innerW * 1.75;
+              const paintHex = marker.paint.hex.toUpperCase();
+              const strokeColor = settings.lineMatchPaintColor
+                ? paintHex
+                : "rgba(255,255,255,0.95)";
+              const shadowColor = settings.lineMatchPaintColor
+                ? "rgba(0,0,0,0.65)"
+                : "rgba(0,0,0,0.45)";
+              const innerW = settings.lineWidth * canvasScale * ui;
+              const outerW = innerW * 1.75;
 
-          return (
-            <g key={marker.id}>
-              <path
-                ref={(el) => {
-                  outerPathRefs.current[marker.id] = el;
-                }}
-                d={line.svgPath}
-                fill="none"
-                stroke={shadowColor}
-                strokeWidth={outerW}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                ref={(el) => {
-                  innerPathRefs.current[marker.id] = el;
-                }}
-                d={line.svgPath}
-                fill="none"
-                stroke={strokeColor}
-                strokeWidth={innerW}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </g>
-          );
-        })}
-      </svg>
-
-      {positions.map(({ marker, left, top, mScale, cW, cH }) => {
-        const active = marker.id === selectedId;
-        const paint = marker.paint;
-        const paintHex = paint ? paint.hex.toUpperCase() : marker.hex.toUpperCase();
-        const pinScale = canvasScale * ui;
-        const hasTonal = marker.tonalGradient && marker.tonalGradient.length > 0;
-        const cardH = baseH + (hasTonal ? 12 : 0);
-
-        return (
-          <div key={marker.id}>
-            {/* Sample pin dot */}
-            <button
-              type="button"
-              className="bp-pin-dot pointer-events-auto absolute rounded-full transition-transform hover:scale-125"
-              style={{
-                left: `${marker.nx * 100}%`,
-                top: `${marker.ny * 100}%`,
-                width: 14,
-                height: 14,
-                backgroundColor: settings.lineMatchPaintColor && paint ? paintHex : marker.hex,
-                border: active
-                  ? "2.5px solid var(--accent-color)"
-                  : `2px solid ${settings.lineMatchPaintColor && paint ? "#ffffff" : "#ffffff"}`,
-                boxShadow: "0 1px 4px rgba(0,0,0,0.65)",
-                transform: `translate(-50%, -50%) scale(${pinScale})`,
-              }}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.stopPropagation();
-                triggerSelect(marker);
-                if (onRequestAssign && (!paint || active)) {
-                  onRequestAssign(marker.id);
-                }
-              }}
-              aria-label={marker.hex}
-              title={marker.hex}
-            />
-
-            {/* Floating swatch card positioned with GPU-composited translate3d */}
-            {paint && (
-              <div
-                data-marker-id={marker.id}
-                className={`pointer-events-auto absolute top-0 left-0 select-none ${
-                  allowDrag ? "touch-none cursor-grab active:cursor-grabbing" : "cursor-pointer"
-                }`}
-                style={{
-                  width: cW,
-                  height: cH,
-                  transform: `translate3d(${left * boxW}px, ${top * boxH}px, 0)`,
-                  willChange: allowDrag ? "transform" : "auto",
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                  touchAction: allowDrag ? "none" : "pan-x pan-y",
-                  userSelect: "none",
-                  WebkitUserSelect: "none",
-                }}
-                onPointerDown={(event) => startLabelDrag(event, marker, left, top, cW, cH, mScale)}
-                onPointerMove={moveLabelDrag}
-                onPointerUp={endLabelDrag}
-                onPointerCancel={endLabelDrag}
-                onMouseDown={(event) => event.stopPropagation()}
-                onTouchStart={(event) => event.stopPropagation()}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div
-                  style={{
-                    width: baseW,
-                    height: cardH,
-                    transform: `scale(${mScale})`,
-                    transformOrigin: "top left",
-                    contain: "layout style",
-                    userSelect: "none",
-                  }}
-                >
-                  <SwatchCard
-                    marker={marker}
-                    baseW={baseW}
-                    baseH={baseH}
-                    active={active}
-                    glassEffect={settings.cardGlassEffect}
-                    showRemove={showRemove && !!onRemove}
-                    onRemove={() => onRemove?.(marker.id)}
+              return (
+                <g key={marker.id}>
+                  <path
+                    ref={(el) => {
+                      outerPathRefs.current[marker.id] = el;
+                    }}
+                    d={line.svgPath}
+                    fill="none"
+                    stroke={shadowColor}
+                    strokeWidth={outerW}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
-                </div>
+                  <path
+                    ref={(el) => {
+                      innerPathRefs.current[marker.id] = el;
+                    }}
+                    d={line.svgPath}
+                    fill="none"
+                    stroke={strokeColor}
+                    strokeWidth={innerW}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
+          {positions.map(({ marker, left, top, mScale, mBaseW, mBaseH, cW, cH }) => {
+            const active = marker.id === selectedId;
+            const paint = marker.paint;
+            const paintHex = paint ? paint.hex.toUpperCase() : marker.hex.toUpperCase();
+            const pinScale = canvasScale * ui;
+            const hasTonal = marker.tonalGradient && marker.tonalGradient.length > 0;
+            const cardH = mBaseH + (hasTonal ? 12 : 0);
+
+            return (
+              <div key={marker.id}>
+                {/* Sample pin dot */}
+                <button
+                  type="button"
+                  className="bp-pin-dot pointer-events-auto absolute p-0 m-0 min-w-0 min-h-0 leading-none appearance-none rounded-full transition-transform hover:scale-125"
+                  style={{
+                    left: `${marker.nx * refW}px`,
+                    top: `${marker.ny * refH}px`,
+                    width: 14,
+                    height: 14,
+                    backgroundColor: settings.lineMatchPaintColor && paint ? paintHex : marker.hex,
+                    border: active
+                      ? "2.5px solid var(--accent-color)"
+                      : `2px solid ${settings.lineMatchPaintColor && paint ? "#ffffff" : "#ffffff"}`,
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.65)",
+                    transform: `translate(-50%, -50%) scale(${pinScale})`,
+                  }}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    triggerSelect(marker);
+                    if (onRequestAssign && (!paint || active)) {
+                      onRequestAssign(marker.id);
+                    }
+                  }}
+                  aria-label={marker.hex}
+                  title={marker.hex}
+                />
+
+                {/* Floating swatch card positioned with GPU-composited translate3d in 800 × refH space */}
+                {paint && (
+                  <div
+                    data-marker-id={marker.id}
+                    className={`pointer-events-auto absolute top-0 left-0 select-none ${
+                      allowDrag ? "touch-none cursor-grab active:cursor-grabbing" : "cursor-pointer"
+                    }`}
+                    style={{
+                      width: cW,
+                      height: cH,
+                      transform: `translate3d(${left * refW}px, ${top * refH}px, 0)`,
+                      willChange: allowDrag ? "transform" : "auto",
+                      backfaceVisibility: "hidden",
+                      WebkitBackfaceVisibility: "hidden",
+                      touchAction: allowDrag ? "none" : "pan-x pan-y",
+                      userSelect: "none",
+                      WebkitUserSelect: "none",
+                    }}
+                    onPointerDown={(event) => startLabelDrag(event, marker, left, top, cW, cH, mScale)}
+                    onPointerMove={moveLabelDrag}
+                    onPointerUp={endLabelDrag}
+                    onPointerCancel={endLabelDrag}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onTouchStart={(event) => event.stopPropagation()}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div
+                      style={{
+                        width: mBaseW,
+                        height: cardH,
+                        transform: `scale(${mScale})`,
+                        transformOrigin: "top left",
+                        contain: "layout style",
+                        userSelect: "none",
+                      }}
+                    >
+                      <SwatchCard
+                        marker={marker}
+                        baseW={mBaseW}
+                        baseH={mBaseH}
+                        active={active}
+                        glassEffect={settings.cardGlassEffect}
+                        showRemove={showRemove && !!onRemove}
+                        onRemove={() => onRemove?.(marker.id)}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
@@ -560,7 +674,9 @@ const SwatchCard = React.memo<{
   const showSample = sampleHex !== paintHex;
   const hasTonal = marker.tonalGradient && marker.tonalGradient.length > 0;
   const totalH = baseH + (hasTonal ? 12 : 0);
-  const thumbW = Math.round(baseW * 0.31);
+  const swatchW = 46;
+  const titleText = cleanPaintCardName(paint.name || paint.code);
+  const brandCodeText = `${localizedBrand(paint.brand, "zh")} ${paint.code}`.trim();
 
   const isLightHex = (hex: string) => {
     const clean = hex.replace("#", "");
@@ -572,73 +688,109 @@ const SwatchCard = React.memo<{
 
   return (
     <div
-      style={{ width: `${baseW}px`, height: `${totalH}px` }}
-      className={`bp-floating-swatch group relative flex flex-col rounded-xl ${
+      style={{
+        width: `${baseW}px`,
+        height: `${totalH}px`,
+        boxShadow: glassEffect
+          ? "0 8px 20px rgba(15,23,42,0.22)"
+          : active
+          ? "2.5px 2.5px 0px #EF5350"
+          : "2.5px 2.5px 0px #0F172A",
+      }}
+      className={`bp-floating-swatch group relative flex flex-col rounded-[10px] ${
         glassEffect
-          ? "bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border border-white/55 dark:border-white/20 shadow-xl"
-          : "bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700 shadow-lg"
+          ? "bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-[1.5px] border-white/75 dark:border-white/25"
+          : "bg-white dark:bg-slate-900 border-[1.5px] border-slate-900 dark:border-slate-500"
       } ${active ? "bp-floating-swatch-active ring-2 ring-[var(--accent-color)] border-[var(--accent-color)]" : ""}`}
     >
-      {/* Locked Aspect Ratio Main Body with Strict Overflow Clipping */}
+      {/* Main Body with Strict 1:1 Pixel Metrics matching exportAnnotatedImage.ts */}
       <div
         style={{ height: `${baseH}px` }}
-        className="bp-floating-swatch-body flex w-full items-stretch overflow-hidden rounded-t-[11px]"
+        className="bp-floating-swatch-body flex w-full items-stretch overflow-hidden rounded-t-[8.5px]"
       >
-        {/* Fixed-ratio Left Thumbnail / Bottle */}
+        {/* Left Pure Color Swatch Block (46px wide, no bottle thumbnail inside card) */}
         <div
-          style={{ width: `${thumbW}px`, height: `${baseH}px` }}
-          className={`bp-floating-swatch-thumb flex flex-shrink-0 items-center justify-center overflow-hidden px-0.5 ${
-            !hasTonal ? "rounded-bl-[11px]" : ""
-          } ${
+          style={{
+            width: `${swatchW}px`,
+            height: `${baseH}px`,
+            backgroundColor: paintHex,
+            padding: "3px",
+          }}
+          className={`bp-floating-swatch-thumb relative flex flex-shrink-0 items-end justify-start overflow-hidden border-r-[1.5px] ${
             glassEffect
-              ? "bg-white/40 dark:bg-slate-800/40 border-r border-white/30 dark:border-white/10"
-              : "bg-slate-50 dark:bg-slate-800 border-r border-slate-100 dark:border-slate-800"
-          }`}
+              ? "border-black/15 dark:border-white/15"
+              : "border-slate-900/85 dark:border-slate-600"
+          } ${!hasTonal ? "rounded-bl-[8.5px]" : ""}`}
         >
-          <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
-            <svg viewBox="0 0 40 44" className="h-10 w-8 shrink-0">
-              <polygon
-                points="20,2 38,12 38,32 20,42 2,32 2,12"
-                fill={paintHex}
-                stroke="rgba(0,0,0,0.18)"
-                strokeWidth="1"
-              />
-            </svg>
+          {/* Inner subtle highlight sheen */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-[35%]"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 100%)",
+            }}
+          />
+          {/* Sample hex corner dot if different from assigned paint hex */}
+          {showSample && (
             <span
-              className="absolute max-w-[38px] truncate text-center font-mono text-[7px] font-bold leading-none"
+              className="absolute rounded-sm border border-white shadow-xs"
               style={{
-                color: isLightHex(paintHex) ? "#000" : "#fff",
+                right: "3px",
+                top: "3px",
+                width: "9px",
+                height: "9px",
+                backgroundColor: sampleHex,
               }}
-            >
-              {paint.code}
-            </span>
-            <PaintBottleImg
-              brand={paint.brand}
-              code={paint.code}
-              className="absolute inset-0 h-full w-full object-contain p-0.5"
+              title={`原图取样色: ${sampleHex}`}
             />
-          </div>
+          )}
+          <span
+            className="relative z-10 max-w-full truncate font-mono font-black leading-none"
+            style={{
+              fontSize: "7.5px",
+              padding: "1.5px 3px",
+              borderRadius: "2.5px",
+              backgroundColor: isLightHex(paintHex)
+                ? "rgba(15,23,42,0.16)"
+                : "rgba(0,0,0,0.32)",
+              color: isLightHex(paintHex) ? "#0F172A" : "#FFFFFF",
+            }}
+          >
+            {paint.code}
+          </span>
         </div>
 
-        {/* Right Text Info (strictly min-w-0 + overflow-hidden so long names never stretch or overflow) */}
-        <div className="min-w-0 flex-1 flex flex-col justify-center overflow-hidden px-2 py-1">
-          <div className="truncate text-[11px] font-extrabold leading-tight text-slate-800 dark:text-slate-100">
-            {paint.brand} {paint.code}
+        {/* Right Hierarchy: Line 1 = Paint Name (Large Title), Line 2 = Brand + Code (Subtitle), Line 3 = HEX */}
+        <div
+          className="min-w-0 flex-1 flex flex-col justify-center overflow-hidden"
+          style={{ padding: "4px 7px" }}
+        >
+          <div
+            className="truncate font-black text-slate-900 dark:text-slate-50"
+            style={{ fontSize: "12px", lineHeight: 1.15 }}
+            title={titleText}
+          >
+            {titleText}
           </div>
           <div
-            className={`truncate leading-tight text-slate-500 dark:text-slate-400 mt-0.5 ${
-              (paint.name || "").length > 10 ? "text-[9px]" : "text-[10px]"
-            }`}
-            title={paint.name}
+            className="truncate font-extrabold text-slate-500 dark:text-slate-400"
+            style={{ marginTop: "2px", fontSize: "10px", lineHeight: 1.15 }}
+            title={brandCodeText}
           >
-            {paint.name}
+            {brandCodeText}
           </div>
-          <div className="mt-1 flex items-center gap-1 overflow-hidden">
+          <div
+            className="flex items-center overflow-hidden"
+            style={{ marginTop: "3px", gap: "4px" }}
+          >
             <span
-              className="bp-badge inline-block truncate rounded px-1.5 py-px font-mono text-[9px] font-bold tabular-nums"
+              className="bp-badge inline-block truncate font-mono font-bold leading-none tabular-nums border border-black/15"
               style={{
+                fontSize: "9px",
+                padding: "1.5px 5px",
+                borderRadius: "3px",
                 backgroundColor: paintHex,
-                color: isLightHex(paintHex) ? "#000" : "#fff",
+                color: isLightHex(paintHex) ? "#0F172A" : "#FFFFFF",
               }}
             >
               {paintHex}
@@ -649,7 +801,10 @@ const SwatchCard = React.memo<{
 
       {/* Optional 3-Step Tonal Gradient Bar at bottom */}
       {hasTonal && marker.tonalGradient && (
-        <div className="bp-floating-swatch-tonal flex h-[12px] w-full shrink-0 overflow-hidden rounded-b-[11px] border-t border-black/10">
+        <div
+          className="bp-floating-swatch-tonal flex w-full shrink-0 overflow-hidden rounded-b-[8.5px] border-t border-slate-900/20"
+          style={{ height: "12px" }}
+        >
           {marker.tonalGradient.map((step) => (
             <div
               key={step.id}
@@ -661,22 +816,11 @@ const SwatchCard = React.memo<{
         </div>
       )}
 
-      {/* Sample hex badge if different */}
-      {showSample && (
-        <span
-          className="bp-badge absolute -right-1 -top-4 z-20 rounded-full px-1.5 py-px font-mono text-[8px] font-bold text-white shadow"
-          style={{ backgroundColor: sampleHex }}
-          title={`采样色: ${sampleHex}`}
-        >
-          {sampleHex}
-        </span>
-      )}
-
       {/* Remove button */}
       {showRemove && (
         <button
           type="button"
-          className="bp-delete-btn absolute -right-2 -top-2 z-30 flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-white opacity-0 shadow-md pointer-events-none hover:bg-red-500 group-hover:pointer-events-auto group-hover:opacity-100 transition-opacity"
+          className="bp-delete-btn absolute -right-2 -top-2 z-30 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white opacity-0 shadow-md pointer-events-none hover:bg-red-500 group-hover:pointer-events-auto group-hover:opacity-100 transition-opacity"
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();

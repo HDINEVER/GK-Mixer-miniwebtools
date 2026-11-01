@@ -1,6 +1,7 @@
 import { CatalogPaint, Language } from "../types";
 import { deltaE2000, labFromHex } from "./ciede2000";
 import { FEATURED_BRANDS, localizedBrand } from "./paintCatalog";
+import { IS_NIGHTWORKS_EDITION } from "./brandEdition";
 
 export interface BrandTintModifierItem {
   name: string; // e.g. "纯白 / 光泽白 (White)"
@@ -136,13 +137,21 @@ export function computeBrandTintRecipe(
       basePct: 100,
       baseDrops: 10,
       modifier: null,
-      effectTag: "直喷",
-      compactPillText: `✅ [${brandZh} ${basePaint.code}] 原瓶直喷 (接近度 ${Math.max(96, similarityPct)}%)`,
-      shortFormulaText: `${brandZh} ${basePaint.code} (直喷)`,
+      effectTag: IS_NIGHTWORKS_EDITION || basePaint.brand === "Night Works" ? "直涂" : "直喷",
+      compactPillText: `✅ [${brandZh} ${basePaint.code}] ${
+        IS_NIGHTWORKS_EDITION || basePaint.brand === "Night Works" ? "原瓶直涂" : "原瓶直喷"
+      } (接近度 ${Math.max(96, similarityPct)}%)`,
+      shortFormulaText: `${brandZh} ${basePaint.code} (${
+        IS_NIGHTWORKS_EDITION || basePaint.brand === "Night Works" ? "直涂" : "直喷"
+      })`,
       spokenTip: `✅ 完美匹配【${brandZh} ${basePaint.code} ${basePaint.name}】（接近度 ${Math.max(
         96,
         similarityPct
-      )}% · ΔE ${dE}），无需自己调色，直接开瓶喷涂即可！`,
+      )}% · ΔE ${dE}），无需自己调色，${
+        IS_NIGHTWORKS_EDITION || basePaint.brand === "Night Works"
+          ? "直接开瓶涂装即可！"
+          : "直接开瓶喷涂即可！"
+      }`,
     };
   }
 

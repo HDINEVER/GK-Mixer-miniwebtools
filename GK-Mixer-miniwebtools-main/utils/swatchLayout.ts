@@ -1,4 +1,5 @@
 import { CatalogPaint } from '../types';
+import { localizedBrand } from './paintCatalog';
 import {
   composeExpandedStageCanvas,
   computeStageDimensions,
@@ -36,6 +37,33 @@ export const BASE_CARD_H = 72;
 export const CARD_ASPECT_RATIO = BASE_CARD_H / BASE_CARD_W; // 0.45 locked aspect ratio
 export const REFERENCE_CANVAS_DIM = 800;
 
+export function cleanPaintCardName(rawName?: string): string {
+  if (!rawName) return '';
+  return rawName.replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+let sharedTextMeasureCtx: CanvasRenderingContext2D | null = null;
+
+function measureTextWidthAtFont(text: string, font: string, fallbackCharPx: number): number {
+  if (!text) return 0;
+  if (typeof document !== 'undefined') {
+    if (!sharedTextMeasureCtx) {
+      const c = document.createElement('canvas');
+      sharedTextMeasureCtx = c.getContext('2d');
+    }
+    if (sharedTextMeasureCtx) {
+      sharedTextMeasureCtx.font = font;
+      return sharedTextMeasureCtx.measureText(text).width;
+    }
+  }
+  let w = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    w += code > 255 ? fallbackCharPx : fallbackCharPx * 0.6;
+  }
+  return w;
+}
+
 export function getCardBaseDimensions(cardBaseWidth = BASE_CARD_W): { baseW: number; baseH: number } {
   const baseW = Math.min(220, Math.max(120, cardBaseWidth || BASE_CARD_W));
   const baseH = Math.round(baseW * CARD_ASPECT_RATIO);
@@ -43,8 +71,49 @@ export function getCardBaseDimensions(cardBaseWidth = BASE_CARD_W): { baseW: num
 }
 
 /**
+ * Dynamically computes the base width & height for a floating swatch card so that
+ * longer paint names (`paint.name`) and localized brand + code (`localizedBrand(brand) + code`)
+ * automatically widen the card in both the editor preview AND high-res canvas export.
+ */
+export function getMarkerCardDimensions(
+  paint?: { brand?: string; code?: string; name?: string } | null,
+  cardBaseWidth = BASE_CARD_W
+): { baseW: number; baseH: number } {
+  const { baseW, baseH } = getCardBaseDimensions(cardBaseWidth);
+  if (!paint) return { baseW, baseH };
+
+  const widthRatio = baseH / BASE_CARD_H; // 1.0 when cardBaseWidth == 160 (baseH == 72)
+  const titleText = cleanPaintCardName(paint.name || paint.code || '');
+  const brandLabel = paint.brand ? localizedBrand(paint.brand, 'zh') : '';
+  const subText = [brandLabel, paint.code || ''].filter(Boolean).join(' ');
+
+  const titleW = measureTextWidthAtFont(
+    titleText,
+    '900 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif',
+    12.8
+  );
+  const subW = measureTextWidthAtFont(
+    subText,
+    '800 10px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif',
+    10.6
+  );
+
+  // At 1x base scale (baseH = 72): left swatch square (46) + borders (3) + text horizontal padding (16) = 65px chrome + safety buffer
+  const chromeWAt1x = 68;
+  const neededTextWAt1x = Math.ceil(Math.max(titleW * 1.06, subW * 1.06, 58)) + 16;
+  const dynamicWAt1x = Math.min(320, Math.max(BASE_CARD_W, chromeWAt1x + neededTextWAt1x));
+  const resolvedW = Math.max(baseW, Math.round(dynamicWAt1x * widthRatio));
+
+  return {
+    baseW: resolvedW,
+    baseH,
+  };
+}
+
+/**
  * Computes proportional canvas scale factor for cards & lines given image dimensions.
- * Matches iOS ExtractLabelMetrics.canvasScale with narrow aspect-ratio adaptation.
+ * Strictly linear with canvas dimensions (`width`, `height`) so preview DOM overlays
+ * and high-resolution exported canvases maintain 100% identical relative card proportions.
  */
 export function getCanvasScale(width: number, height: number, cardBaseWidth = BASE_CARD_W): number {
   const maxSide = Math.max(width, height);
@@ -65,8 +134,7 @@ export function getCanvasScale(width: number, height: number, cardBaseWidth = BA
     scale = maxCardWidth / baseW;
   }
 
-  // Set a reasonable floor so interactive cards remain legible on compact screens
-  return Math.max(0.26, scale);
+  return Math.max(0.05, scale);
 }
 
 export interface LeaderLinePath {
@@ -173,7 +241,7 @@ export function calculateLeaderLine(
     } else {
       const lead = Math.max(14 * scale, 10);
       elbowX = Math.max(from.x + lead, cardRect.x + cardRect.w + lead);
-      finalX = pin.x < elbowX ? Math.max(elbowX, pin.x + pinRadius) : Math.min(elbowX, pin.x - pinRadius);
+      finalX = pin.x < elbowX ? Math.min(elbowX, pin.x + pinRadius) : Math.max(elbowX, pin.x - pinRadius);
     }
   } else {
     endX = Math.min(from.x, pin.x + pinRadius);
@@ -192,7 +260,7 @@ export function calculateLeaderLine(
     } else {
       const lead = Math.max(14 * scale, 10);
       elbowX = Math.min(from.x - lead, cardRect.x - lead);
-      finalX = pin.x > elbowX ? Math.min(elbowX, pin.x - pinRadius) : Math.max(elbowX, pin.x + pinRadius);
+      finalX = pin.x > elbowX ? Math.max(elbowX, pin.x - pinRadius) : Math.min(elbowX, pin.x + pinRadius);
     }
   }
 
@@ -211,7 +279,7 @@ export function calculateLeaderLine(
     };
   }
 
-  // Rounded stepped fillet
+  // Rounded stepped fillet (handle each corner independently so short tail segments never break the first corner or Canvas rendering)
   const nominalRadius = Math.max(14 * scale, 8);
   const d1x = p1.x - from.x;
   const d2y = p2.y - p1.y;
@@ -224,7 +292,7 @@ export function calculateLeaderLine(
   const r1 = Math.min(nominalRadius, len1 * 0.45, len2 * 0.45);
   const r2 = Math.min(nominalRadius, len2 * 0.45, len3 * 0.45);
 
-  if (r1 <= 2 || r2 <= 2) {
+  if (r1 <= 1.5 && r2 <= 1.5) {
     return {
       svgPath: `M ${from.x} ${from.y} L ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${to.x} ${to.y}`,
       from,
@@ -239,12 +307,17 @@ export function calculateLeaderLine(
   const sign2y = d2y >= 0 ? 1 : -1;
   const sign3x = d3x >= 0 ? 1 : -1;
 
-  const t1 = { x: p1.x - sign1x * r1, y: p1.y };
-  const t2 = { x: p1.x, y: p1.y + sign2y * r1 };
-  const t3 = { x: p2.x, y: p2.y - sign2y * r2 };
-  const t4 = { x: p2.x + sign3x * r2, y: p2.y };
+  const useR1 = r1 > 1.5 ? r1 : 0;
+  const useR2 = r2 > 1.5 ? r2 : 0;
 
-  const svgPath = `M ${from.x} ${from.y} L ${t1.x} ${t1.y} Q ${p1.x} ${p1.y} ${t2.x} ${t2.y} L ${t3.x} ${t3.y} Q ${p2.x} ${p2.y} ${t4.x} ${t4.y} L ${to.x} ${to.y}`;
+  const t1 = { x: p1.x - sign1x * useR1, y: p1.y };
+  const t2 = { x: p1.x, y: p1.y + sign2y * useR1 };
+  const t3 = { x: p2.x, y: p2.y - sign2y * useR2 };
+  const t4 = { x: p2.x + sign3x * useR2, y: p2.y };
+
+  const seg1 = useR1 > 0 ? `L ${t1.x} ${t1.y} Q ${p1.x} ${p1.y} ${t2.x} ${t2.y}` : `L ${p1.x} ${p1.y}`;
+  const seg2 = useR2 > 0 ? `L ${t3.x} ${t3.y} Q ${p2.x} ${p2.y} ${t4.x} ${t4.y}` : `L ${p2.x} ${p2.y}`;
+  const svgPath = `M ${from.x} ${from.y} ${seg1} ${seg2} L ${to.x} ${to.y}`;
 
   return {
     svgPath,
@@ -261,7 +334,8 @@ export function calculateLeaderLine(
 }
 
 /**
- * Draws leader line on HTML5 Canvas.
+ * Draws leader line on HTML5 Canvas using the exact `svgPath` (via Path2D)
+ * so SVG DOM overlays and Canvas exports are 100% mathematically identical.
  */
 export function drawLeaderLineOnCanvas(
   ctx: CanvasRenderingContext2D,
@@ -271,17 +345,30 @@ export function drawLeaderLineOnCanvas(
   shadowColor: string,
   scale = 1.0
 ) {
-  const outerWidth = lineWidth * 1.7 * scale;
+  const outerWidth = lineWidth * 1.75 * scale;
   const innerWidth = lineWidth * scale;
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (typeof Path2D !== 'undefined' && line.svgPath) {
+    const path2d = new Path2D(line.svgPath);
+    ctx.strokeStyle = shadowColor;
+    ctx.lineWidth = outerWidth;
+    ctx.stroke(path2d);
+
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = innerWidth;
+    ctx.stroke(path2d);
+    ctx.restore();
+    return;
+  }
 
   const tracePath = () => {
     ctx.beginPath();
     ctx.moveTo(line.from.x, line.from.y);
     if (line.style === 'straight') {
-      ctx.lineTo(line.to.x, line.to.y);
-    } else if (line.style === 'stepped' && line.p1 && line.p2) {
-      ctx.lineTo(line.p1.x, line.p1.y);
-      ctx.lineTo(line.p2.x, line.p2.y);
       ctx.lineTo(line.to.x, line.to.y);
     } else if (line.style === 'roundedStepped' && line.p1 && line.p2 && line.t1 && line.t2 && line.t3 && line.t4) {
       ctx.lineTo(line.t1.x, line.t1.y);
@@ -289,16 +376,16 @@ export function drawLeaderLineOnCanvas(
       ctx.lineTo(line.t3.x, line.t3.y);
       ctx.quadraticCurveTo(line.p2.x, line.p2.y, line.t4.x, line.t4.y);
       ctx.lineTo(line.to.x, line.to.y);
+    } else if ((line.style === 'stepped' || line.style === 'roundedStepped') && line.p1 && line.p2) {
+      ctx.lineTo(line.p1.x, line.p1.y);
+      ctx.lineTo(line.p2.x, line.p2.y);
+      ctx.lineTo(line.to.x, line.to.y);
     } else if (line.style === 'curved' && line.p1 && line.p2) {
       ctx.bezierCurveTo(line.p1.x, line.p1.y, line.p2.x, line.p2.y, line.to.x, line.to.y);
     } else {
       ctx.lineTo(line.to.x, line.to.y);
     }
   };
-
-  ctx.save();
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
 
   // Contrast / Shadow outline
   tracePath();
@@ -411,7 +498,9 @@ export function autoArrangeLeftRight<T extends { id: string; nx: number; ny: num
 
     for (let i = 0; i < count; i++) {
       const sample = group[i];
-      const cardWNorm = cardW / width;
+      const { baseW: sampleBaseW } = getMarkerCardDimensions(sample.paint, cardBaseWidth);
+      const sampleCardW = sampleBaseW * totalScale;
+      const cardWNorm = sampleCardW / width;
       const padNorm = resolvedEdgePadding / width;
       const maxX = Math.max(0, 1 - cardWNorm);
       const nx = isLeft
@@ -851,6 +940,54 @@ export async function inspectOrSampleImageMargins(imageSrc: string): Promise<Can
 }
 
 /**
+ * 1D non-overlapping distribution helper that keeps items as close as possible
+ * to their desired positions within [minVal, maxVal] with minimum spacing (itemSize + gap).
+ */
+function distribute1D(
+  desired: number[],
+  itemSize: number,
+  gap: number,
+  minVal: number,
+  maxVal: number
+): number[] {
+  const n = desired.length;
+  if (n === 0) return [];
+  if (n === 1) {
+    return [Math.max(minVal, Math.min(maxVal, desired[0]))];
+  }
+
+  const availSpan = Math.max(0.001, maxVal - minVal);
+  const idealStep = itemSize + gap;
+  const step = n - 1 > 0 ? Math.min(idealStep, availSpan / (n - 1)) : 0;
+
+  const pos = desired.map((v) => Math.max(minVal, Math.min(maxVal, v)));
+
+  // Forward pass: push items down/right to prevent overlap
+  for (let i = 1; i < n; i++) {
+    if (pos[i] < pos[i - 1] + step) {
+      pos[i] = pos[i - 1] + step;
+    }
+  }
+
+  // Clamp last item and backward pass: pull items up/left if overflowing maxVal
+  if (pos[n - 1] > maxVal) {
+    pos[n - 1] = maxVal;
+    for (let i = n - 2; i >= 0; i--) {
+      if (pos[i] > pos[i + 1] - step) {
+        pos[i] = pos[i + 1] - step;
+      }
+    }
+  }
+
+  // Final clamp to [minVal, maxVal]
+  for (let i = 0; i < n; i++) {
+    pos[i] = Math.max(minVal, Math.min(maxVal, pos[i]));
+  }
+
+  return pos;
+}
+
+/**
  * Places swatch cards neatly inside the extended margin zone(s) so 0% of the model is covered.
  */
 export function arrangeCardsIntoMarginZone<
@@ -902,10 +1039,6 @@ export function arrangeCardsIntoMarginZone<
     if (items.length === 0) return;
     const sorted = [...items].sort((a, b) => (a.sampleY ?? 0.5) - (b.sampleY ?? 0.5));
     const bandW = Math.max(0.02, bandRight - bandLeft);
-    const nx = Math.max(
-      0.008,
-      Math.min(1 - cardWNorm - 0.008, bandLeft + (bandW - cardWNorm) / 2)
-    );
     const minY = 0.025;
     const maxY = Math.max(minY, 1 - cardHNorm - 0.025);
     const desired = sorted.map((c) =>
@@ -913,6 +1046,12 @@ export function arrangeCardsIntoMarginZone<
     );
     const ys = distribute1D(desired, cardHNorm, 0.016, minY, maxY);
     sorted.forEach((c, idx) => {
+      const { baseW: itemBaseW } = getMarkerCardDimensions(c.assignedPaint, cardBaseWidth);
+      const itemWNorm = Math.min(0.46, (itemBaseW * totalScale) / Math.max(100, newW));
+      const nx = Math.max(
+        0.008,
+        Math.min(1 - itemWNorm - 0.008, bandLeft + (bandW - itemWNorm) / 2)
+      );
       results[c.id] = { nx, ny: ys[idx] };
     });
   };
@@ -1219,13 +1358,24 @@ export async function buildFreeExpandCanvasAndColors<
   const innerWidthNw = origW / stageW;
   const innerHeightNh = origH / stageH;
 
-  // 2. Remap sample pins into the new stage coordinate space so pins stay locked onto the model armor
-  const remappedColors = unpaddedColors.map((c) => {
+  // 2. Remap sample pins (and existing card positions if not auto-arranging) into the new stage coordinate space
+  const remappedColors = unpaddedColors.map((c, idx) => {
     if (!Number.isFinite(c.sampleX) || !Number.isFinite(c.sampleY)) return c;
+    const origC = colors[idx];
+    let nextLabelNx = c.labelNx;
+    let nextLabelNy = c.labelNy;
+    if (!autoArrange && origC && Number.isFinite(origC.labelNx) && Number.isFinite(origC.labelNy)) {
+      const origLabelX = (origC.labelNx! - prevRecord.innerLeftNx) / Math.max(0.0001, prevRecord.innerWidthNw);
+      const origLabelY = (origC.labelNy! - prevRecord.innerTopNy) / Math.max(0.0001, prevRecord.innerHeightNh);
+      nextLabelNx = Math.max(0.008, Math.min(0.92, innerLeftNx + origLabelX * innerWidthNw));
+      nextLabelNy = Math.max(0.008, Math.min(0.92, innerTopNy + origLabelY * innerHeightNh));
+    }
     return {
       ...c,
       sampleX: Math.max(0.005, Math.min(0.995, innerLeftNx + c.sampleX! * innerWidthNw)),
       sampleY: Math.max(0.005, Math.min(0.995, innerTopNy + c.sampleY! * innerHeightNh)),
+      labelNx: nextLabelNx,
+      labelNy: nextLabelNy,
     };
   });
 
@@ -1248,17 +1398,21 @@ export async function buildFreeExpandCanvasAndColors<
 
   let finalColors = remappedColors;
   if (autoArrange) {
-    const arranged = arrangeCardsIntoMarginZone(
-      remappedColors,
-      newRecord,
-      stageW,
-      stageH,
-      cardScale,
-      cardBaseWidth
-    );
-    finalColors = remappedColors.map((c) =>
-      arranged[c.id] ? { ...c, labelNx: arranged[c.id].nx, labelNy: arranged[c.id].ny } : c
-    );
+    try {
+      const arranged = arrangeCardsIntoMarginZone(
+        remappedColors,
+        newRecord,
+        stageW,
+        stageH,
+        cardScale,
+        cardBaseWidth
+      );
+      finalColors = remappedColors.map((c) =>
+        arranged[c.id] ? { ...c, labelNx: arranged[c.id].nx, labelNy: arranged[c.id].ny } : c
+      );
+    } catch (err) {
+      console.warn('[swatchLayout] arrangeCardsIntoMarginZone fallback:', err);
+    }
   }
 
   const expandedDataUrl = canvas.toDataURL('image/jpeg', 0.94);

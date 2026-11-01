@@ -215,6 +215,69 @@ export interface FloatingSwatchNode {
   labelScale?: number;
 }
 
+/** 模拟试色台可回溯工程快照（随涂装库零件持久化，用于「继续编辑模拟上色」） */
+export interface StudioSessionRegionSnapshot {
+  id: number;
+  baseHex: string;
+  shadeHex: string;
+  highlightHex: string;
+  baseLum: number;
+  paintName?: string;
+  paintBrand?: string;
+  paintCode?: string;
+  /** 已涂装像素索引的游程编码 (base64) */
+  pixelsRle: string;
+}
+
+export interface StudioSessionStagedSwatch {
+  hex: string;
+  brand: string;
+  code: string;
+  name: string;
+  pinned?: boolean;
+}
+
+export interface StudioSessionSnapshot {
+  version: 1;
+  /** 原始未上色的模型拍摄图 / 线稿底图（工作分辨率） */
+  rawSourceImageDataUrl: string;
+  /** 当前已上色合成后的预览图（可选缓存） */
+  compositedPreviewDataUrl?: string;
+  workWidth: number;
+  workHeight: number;
+  shadingMode: 'four-layer' | 'intrinsic' | 'flat';
+  scenePreset: string;
+  extractionMode: 'xdog' | 'threshold';
+  algorithmParams: {
+    lineThreshold: number;
+    lineSoftness: number;
+    filterRedStamp: boolean;
+    xdogSigma: number;
+    xdogP: number;
+    xdogEpsilon: number;
+    xdogPhi: number;
+    xdogInkFill: boolean;
+    useCannyBarrier: boolean;
+    cannyLow: number;
+    cannyHigh: number;
+    gapCloseRadius: number;
+    fillTolerance: number;
+    localStepThreshold: number;
+    edgeAbsorb: number;
+    lineOpacity: number;
+    paperBgStyle: 'source' | 'white';
+  };
+  /** 已涂装区域（哪些地方涂了、涂的什么色、绑定的油漆） */
+  regions: StudioSessionRegionSnapshot[];
+  nextRegionId: number;
+  /** 用户线稿补线 / 擦线修补游程编码 */
+  userLineEditsRle: string;
+  /** 备选与最近用色缓存盘（移动选色模块） */
+  stagedSwatches: StudioSessionStagedSwatch[];
+  activeHex: string;
+  savedAt: number;
+}
+
 export interface PartCanvas {
   id: string;
   partName: string;
@@ -222,6 +285,8 @@ export interface PartCanvas {
   nodes: FloatingSwatchNode[];
   steps: PaintingStep[];
   createdAt: number;
+  /** 模拟试色台可回溯快照（点击「继续编辑模拟上色」时完整恢复） */
+  studioSession?: StudioSessionSnapshot;
 }
 
 export interface PaintProject {

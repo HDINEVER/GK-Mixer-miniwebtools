@@ -1,11 +1,13 @@
-name: Deploy to Cloudflare Pages
+name: Deploy to Cloudflare Pages & Sync Brand Editions
 
 on:
   push:
     branches:
       - master
+      - main
     paths:
       - 'GK-Mixer-miniwebtools-main/**'
+      - 'scripts/prepare-nightworks-repo.mjs'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
@@ -30,10 +32,70 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy Main Edition to Cloudflare Pages (gkcolor-mixer.pages.dev)
         uses: cloudflare/wrangler-action@v3
         with:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: GK-Mixer-miniwebtools-main
           command: pages deploy dist --project-name=gkcolor-mixer --branch=main
+
+      - name: Build Night Works Edition (Single-Brand Filtered)
+        working-directory: .
+        run: |
+          node scripts/prepare-nightworks-repo.mjs /tmp/nw-cf-build
+          cp /tmp/nw-cf-build/public/PaintCatalog.json GK-Mixer-miniwebtools-main/public/PaintCatalog.json
+          rm -rf GK-Mixer-miniwebtools-main/public/paints/gaianotes GK-Mixer-miniwebtools-main/public/paints/jumpwind
+          VITE_BRAND_EDITION="Night Works" npm --prefix GK-Mixer-miniwebtools-main run build
+
+      - name: Deploy Night Works Edition to Cloudflare Pages (gk-mixer-nightworks.pages.dev)
+        uses: cloudflare/wrangler-action@v3
+        continue-on-error: true
+        with:
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: GK-Mixer-miniwebtools-main
+          command: pages deploy dist --project-name=gk-mixer-nightworks --branch=main
+
+  sync-nightworks:
+    name: Sync Night Works Edition to Organization Repo
+    runs-on: ubuntu-latest
+    if: ${{ secrets.BRAND_SYNC_TOKEN != '' }}
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Clone or initialize Night Works target repository
+        env:
+          BRAND_SYNC_TOKEN: ${{ secrets.BRAND_SYNC_TOKEN }}
+        run: |
+          if git clone "https://x-access-token:${BRAND_SYNC_TOKEN}@github.com/GK-mixer-Distribution-Network/GK-Mixer-NightWorks.git" /tmp/nw-repo; then
+            find /tmp/nw-repo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          else
+            mkdir -p /tmp/nw-repo
+            git -C /tmp/nw-repo init -b main
+            git -C /tmp/nw-repo remote add origin "https://x-access-token:${BRAND_SYNC_TOKEN}@github.com/GK-mixer-Distribution-Network/GK-Mixer-NightWorks.git"
+          fi
+
+      - name: Prepare filtered Night Works edition
+        run: |
+          node scripts/prepare-nightworks-repo.mjs /tmp/nw-staged
+          cp -R /tmp/nw-staged/. /tmp/nw-repo/
+
+      - name: Commit and push to GK-mixer-Distribution-Network/GK-Mixer-NightWorks
+        run: |
+          cd /tmp/nw-repo
+          git config user.name "GK-Mixer Sync Bot"
+          git config user.email "noreply@github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to sync."
+          else
+            git commit -m "chore(sync): auto-sync Night Works edition from main (${GITHUB_SHA::7})"
+            git push -u origin HEAD:main
+          fi

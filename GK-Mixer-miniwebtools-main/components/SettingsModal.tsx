@@ -24,6 +24,7 @@ import {
   AccentThemeId,
   UIStyle,
   WorkflowMode,
+  UIFontScale,
   THEME_SYNC_EVENT,
   loadAccentTheme,
   saveAccentTheme,
@@ -33,6 +34,8 @@ import {
   saveWorkflowMode,
   loadHideTopBar,
   saveHideTopBar,
+  loadUIFontScale,
+  saveUIFontScale,
   themeSwatches,
 } from '../utils/accentTheme';
 
@@ -64,6 +67,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [uiStyle, setUiStyle] = useState<UIStyle>(() => loadUIStyle());
   const [workflowMode, setWorkflowMode] = useState<WorkflowMode>(() => loadWorkflowMode());
   const [hideTopBar, setHideTopBar] = useState<boolean>(() => loadHideTopBar());
+  const [fontScale, setFontScale] = useState<UIFontScale>(() => loadUIFontScale());
 
   useEffect(() => {
     const sync = () => {
@@ -71,6 +75,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setUiStyle(loadUIStyle());
       setWorkflowMode(loadWorkflowMode());
       setHideTopBar(loadHideTopBar());
+      setFontScale(loadUIFontScale());
     };
     window.addEventListener(THEME_SYNC_EVENT, sync);
     return () => window.removeEventListener(THEME_SYNC_EVENT, sync);
@@ -96,6 +101,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     saveHideTopBar(nextHide);
   };
 
+  const handleFontScaleChange = (nextScale: UIFontScale) => {
+    setFontScale(nextScale);
+    saveUIFontScale(nextScale);
+  };
+
   const handleCopyQQ = () => {
     navigator.clipboard?.writeText('701691238');
     setCopiedQQ(true);
@@ -106,33 +116,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()} shouldScaleBackground={false}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-h-[90vh] max-w-lg flex-col rounded-t-[28px] border border-slate-200/70 bg-white/95 text-slate-800 shadow-2xl backdrop-blur-2xl outline-none transition-colors duration-200 dark:border-slate-800/80 dark:bg-slate-900/95 dark:text-slate-100">
+        <Drawer.Content className="bp-modal-shell fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-h-[90dvh] max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-slate-200/70 bg-white/95 text-slate-800 shadow-2xl backdrop-blur-2xl outline-none transition-colors duration-200 dark:border-slate-800/80 dark:bg-slate-900/95 dark:text-slate-100">
           
-          {/* iOS-style grabber handle */}
-          <div className="my-2.5 mx-auto h-1 w-10 flex-shrink-0 rounded-full bg-slate-300 dark:bg-slate-700" />
+          {/* Modal Header (includes grabber handle so header background & z-index cover the full top cap) */}
+          <div className="bp-modal-header relative z-20 shrink-0 border-b border-slate-100 px-5 pt-2.5 pb-3 dark:border-slate-800">
+            {/* iOS-style grabber handle */}
+            <div className="bp-modal-grabber mb-2.5 mx-auto h-1 w-10 rounded-full bg-slate-300/90 dark:bg-slate-600/90" />
 
-          {/* Modal Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 pb-3 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-macaron-pink" />
-              <div className="h-3 w-3 rounded-full bg-macaron-blue" />
-              <div className="h-3 w-3 rounded-full bg-macaron-green" />
-              <Drawer.Title className="ml-1 text-base font-bold tracking-tight">
-                {lang === 'zh' ? '软件设置' : lang === 'ja' ? '設定' : 'Settings'}
-              </Drawer.Title>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {uiStyle === 'catalog' ? (
+                  <span
+                    className="inline-flex items-center justify-center border border-current px-1.5 py-0.5 text-[10px] font-bold tracking-tight"
+                    style={{ fontFamily: '"FT", Arial, sans-serif' }}
+                  >
+                    FT · 05
+                  </span>
+                ) : uiStyle === 'ascii' ? (
+                  <span className="font-mono text-xs font-bold">[#]</span>
+                ) : (
+                  <>
+                    <div className="h-3 w-3 rounded-full border border-black/10 bg-macaron-pink" />
+                    <div className="h-3 w-3 rounded-full border border-black/10 bg-macaron-blue" />
+                    <div className="h-3 w-3 rounded-full border border-black/10 bg-macaron-green" />
+                  </>
+                )}
+                <Drawer.Title className="ml-1 text-base font-bold tracking-tight">
+                  {lang === 'zh' ? '软件设置' : lang === 'ja' ? '設定' : 'Settings'}
+                </Drawer.Title>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="bp-btn flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-transform active:scale-[0.96] dark:bg-white/10 dark:text-slate-300"
+                aria-label="Close"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-transform active:scale-[0.95] dark:bg-white/10 dark:text-slate-300"
-              aria-label="Close"
-            >
-              <XIcon className="h-4 w-4" />
-            </button>
           </div>
 
           {/* Scrollable Content Body */}
-          <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4 no-scrollbar">
+          <div className="relative z-0 flex-1 min-h-0 space-y-5 overflow-y-auto overscroll-contain px-5 py-4 no-scrollbar">
 
             {/* 0. 双人群工作流模式 / Dual Workflow Mode */}
             <div>
@@ -143,6 +168,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleWorkflowModeChange('pro')}
+                  aria-pressed={workflowMode === 'pro'}
                   className={`relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all active:scale-[0.97] ${
                     workflowMode === 'pro'
                       ? 'border-[var(--accent-color)] bg-[var(--accent-soft)] text-slate-900 ring-1 ring-[var(--accent-color)]/40 dark:text-white'
@@ -168,6 +194,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleWorkflowModeChange('beginner')}
+                  aria-pressed={workflowMode === 'beginner'}
                   className={`relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all active:scale-[0.97] ${
                     workflowMode === 'beginner'
                       ? 'border-[var(--accent-color)] bg-[var(--accent-soft)] text-slate-900 ring-1 ring-[var(--accent-color)]/40 dark:text-white'
@@ -258,6 +285,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setColorSpace('srgb')}
+                  aria-pressed={colorSpace === 'srgb'}
                   className={`rounded-xl border py-2.5 px-2 text-center text-xs font-medium transition-all active:scale-[0.97] ${
                     colorSpace === 'srgb'
                       ? 'border-sky-500 bg-sky-500 font-bold text-white shadow-sm'
@@ -272,6 +300,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setColorSpace('display-p3')}
+                  aria-pressed={colorSpace === 'display-p3'}
                   className={`rounded-xl border py-2.5 px-2 text-center text-xs font-medium transition-all active:scale-[0.97] ${
                     colorSpace === 'display-p3'
                       ? 'border-sky-500 bg-sky-500 font-bold text-white shadow-sm'
@@ -286,6 +315,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setColorSpace('adobe-rgb')}
+                  aria-pressed={colorSpace === 'adobe-rgb'}
                   className={`rounded-xl border py-2.5 px-2 text-center text-xs font-medium transition-all active:scale-[0.97] ${
                     colorSpace === 'adobe-rgb'
                       ? 'border-sky-500 bg-sky-500 font-bold text-white shadow-sm'
@@ -309,6 +339,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setLang('zh')}
+                  aria-pressed={lang === 'zh'}
                   className={`rounded-xl border py-2.5 px-3 text-xs font-medium transition-all active:scale-[0.97] ${
                     lang === 'zh'
                       ? 'border-emerald-500 bg-emerald-500 font-bold text-white shadow-sm'
@@ -320,6 +351,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setLang('en')}
+                  aria-pressed={lang === 'en'}
                   className={`rounded-xl border py-2.5 px-3 text-xs font-medium transition-all active:scale-[0.97] ${
                     lang === 'en'
                       ? 'border-emerald-500 bg-emerald-500 font-bold text-white shadow-sm'
@@ -331,6 +363,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setLang('ja')}
+                  aria-pressed={lang === 'ja'}
                   className={`rounded-xl border py-2.5 px-3 text-xs font-medium transition-all active:scale-[0.97] ${
                     lang === 'ja'
                       ? 'border-emerald-500 bg-emerald-500 font-bold text-white shadow-sm'
@@ -351,6 +384,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setTheme('light')}
+                  aria-pressed={theme === 'light'}
                   className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 text-xs font-medium transition-all active:scale-[0.97] ${
                     theme === 'light'
                       ? 'border-[var(--accent-color)] bg-[var(--accent-color)] font-bold text-white shadow-sm'
@@ -363,6 +397,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setTheme('dark')}
+                  aria-pressed={theme === 'dark'}
                   className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 text-xs font-medium transition-all active:scale-[0.97] ${
                     theme === 'dark'
                       ? 'border-[var(--accent-color)] bg-[var(--accent-color)] font-bold text-white shadow-sm'
@@ -415,17 +450,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
+            {/* 3.3. 网页字体大小比例缩放 / UI Font Scale */}
+            <div>
+              <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <SquaresFourIcon className="h-3.5 w-3.5" />{' '}
+                {lang === 'zh' ? '网页字体大小缩放 (Font Scale)' : lang === 'ja' ? '文字サイズ倍率' : 'UI Font Scale'}
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    {
+                      id: '100' as UIFontScale,
+                      title: '100% 标准 (默认)',
+                      sub: lang === 'zh' ? '紧凑干练·显示最全' : 'Default compact',
+                    },
+                    {
+                      id: '108' as UIFontScale,
+                      title: '108% 适中',
+                      sub: lang === 'zh' ? '字号微幅放大' : 'Slightly larger',
+                    },
+                    {
+                      id: '115' as UIFontScale,
+                      title: '115% 大字号',
+                      sub: lang === 'zh' ? '适合高分大屏' : 'Large display',
+                    },
+                  ]
+                ).map((opt) => {
+                  const active = fontScale === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleFontScaleChange(opt.id)}
+                      aria-pressed={active}
+                      className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border py-2.5 px-2 text-center text-xs font-medium transition-all active:scale-[0.97] ${
+                        active
+                          ? 'border-[var(--accent-color)] bg-[var(--accent-color)] font-bold text-white shadow-sm'
+                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className="font-bold">{opt.title}</span>
+                      <span className="text-[10px] opacity-80 font-normal">{opt.sub}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* 3.5. 界面视觉风格 / UI Visual Style */}
             <div>
               <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <SquaresFourIcon className="h-3.5 w-3.5" /> {lang === 'zh' ? '界面视觉风格 (UI Style)' : lang === 'ja' ? 'UI スタイル' : 'UI Visual Style'}
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => handleUiStyleChange('glass')}
                   aria-pressed={uiStyle === 'glass'}
-                  className={`relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all active:scale-[0.97] ${
+                  className={`relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all active:scale-[0.96] ${
                     uiStyle === 'glass'
                       ? 'border-[var(--accent-color)] bg-[var(--accent-soft)] text-slate-900 ring-1 ring-[var(--accent-color)]/40 dark:text-white'
                       : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
@@ -437,7 +519,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </span>
                     {uiStyle === 'glass' && (
                       <span
-                        className="flex h-4 w-4 items-center justify-center rounded-full text-white"
+                        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-white"
                         style={{ backgroundColor: 'var(--accent-color)' }}
                       >
                         <CheckIcon className="h-2.5 w-2.5" weight="bold" />
@@ -449,25 +531,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       ? '大圆角 · 磨砂半透明 · 柔和弥散阴影'
                       : 'Frosted blur, large radii & soft shadows'}
                   </span>
+                  <span
+                    className="mt-0.5 inline-block rounded bg-slate-200/70 px-1.5 py-0.5 text-[9.5px] text-slate-600 dark:bg-slate-700/70 dark:text-slate-300"
+                    style={{ fontFamily: '"Plus Jakarta Sans", "MiSans", sans-serif' }}
+                  >
+                    Aa 字体：MiSans + Space Grotesk
+                  </span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleUiStyleChange('blueprint')}
                   aria-pressed={uiStyle === 'blueprint'}
-                  className={`relative flex flex-col items-start gap-1 rounded-lg border-2 p-3 text-left transition-all active:scale-[0.97] ${
+                  className={`relative flex flex-col items-start gap-1 rounded-lg border-2 p-3 text-left transition-all active:scale-[0.96] ${
                     uiStyle === 'blueprint'
                       ? 'border-slate-900 bg-[var(--accent-soft)] text-slate-900 shadow-[2px_2px_0px_#0f172a] dark:border-slate-300 dark:text-white'
                       : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
                   }`}
                 >
                   <div className="flex w-full items-center justify-between">
-                    <span className="text-xs font-extrabold">
+                    <span
+                      className="text-xs font-extrabold"
+                      style={{ fontFamily: '"Chakra Petch", "Smiley Sans", sans-serif' }}
+                    >
                       📐 {lang === 'zh' ? '工程线框风 (Blueprint)' : lang === 'ja' ? 'ブループリント' : 'Blueprint Wireframe'}
                     </span>
                     {uiStyle === 'blueprint' && (
                       <span
-                        className="flex h-4 w-4 items-center justify-center rounded text-white border border-slate-900"
+                        className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-white border border-slate-900"
                         style={{ backgroundColor: 'var(--accent-color)' }}
                       >
                         <CheckIcon className="h-2.5 w-2.5" weight="bold" />
@@ -479,6 +570,158 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       ? '24px 工程网格 · 1.5px 硬边框 · 机械硬投影'
                       : '24px grid, 1.5px crisp border & hard offset shadow'}
                   </span>
+                  <span
+                    className="mt-0.5 inline-block rounded border border-slate-400/60 bg-white/80 px-1.5 py-0.5 text-[9.5px] text-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                    style={{ fontFamily: '"Chakra Petch", "Smiley Sans", monospace' }}
+                  >
+                    Aa 字体：得意黑 + Chakra 机甲体
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUiStyleChange('craft')}
+                  aria-pressed={uiStyle === 'craft'}
+                  className={`relative flex flex-col items-start gap-1 rounded-[18px] border border-transparent p-3 text-left transition-all ${
+                    uiStyle === 'craft'
+                      ? 'bg-[var(--neu-light-base,#e0e5ec)] text-[var(--neu-light-text,#001f3f)] shadow-[inset_4px_4px_8px_var(--neu-light-dark,#bec3c9),inset_-4px_-4px_8px_var(--neu-light-light,#ffffff)] ring-1 ring-[var(--accent-color)]/35 dark:bg-[var(--neu-dark-base,#23272e)] dark:text-[var(--neu-dark-text,#f6f5f7)] dark:shadow-[inset_4px_4px_8px_var(--neu-dark-dark,#16181d),inset_-4px_-4px_8px_var(--neu-dark-light,#2e333c)]'
+                      : 'bg-[var(--neu-light-base,#e0e5ec)] text-[var(--neu-light-text,#001f3f)] shadow-[5px_5px_10px_var(--neu-light-dark,#bec3c9),-5px_-5px_10px_var(--neu-light-light,#ffffff)] dark:bg-[var(--neu-dark-base,#23272e)] dark:text-[var(--neu-dark-text,#f6f5f7)] dark:shadow-[5px_5px_10px_var(--neu-dark-dark,#16181d),-5px_-5px_10px_var(--neu-dark-light,#2e333c)]'
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span
+                      className="text-xs font-extrabold"
+                      style={{ fontFamily: '"Plus Jakarta Sans", "Noto Sans JP", "Noto Sans SC", sans-serif' }}
+                    >
+                      ☁️ {lang === 'zh' ? '新拟态软浮雕 (Neumorphism)' : lang === 'ja' ? 'ニューモーフィズム (Soft UI)' : 'Neumorphism (Soft UI)'}
+                    </span>
+                    {uiStyle === 'craft' && (
+                      <span
+                        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-white shadow-[2px_2px_4px_rgba(0,0,0,0.2)]"
+                        style={{ backgroundColor: 'var(--accent-color)' }}
+                      >
+                        <CheckIcon className="h-2.5 w-2.5" weight="bold" />
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+                    {lang === 'zh'
+                      ? '145° 双极明暗柔光阴影 · 同色系软泥凹凸浮雕 · 随主题联动'
+                      : '145° dual soft shadows, extruded/inset clay relief & theme tint'}
+                  </span>
+                  <span
+                    className="mt-0.5 inline-block rounded-lg bg-[var(--neu-light-base,#e0e5ec)] px-1.5 py-0.5 text-[9.5px] text-[var(--neu-light-text,#001f3f)] shadow-[inset_2px_2px_4px_var(--neu-light-dark,#bec3c9),inset_-2px_-2px_4px_var(--neu-light-light,#ffffff)] dark:bg-[var(--neu-dark-base,#23272e)] dark:text-[var(--neu-dark-text,#f6f5f7)] dark:shadow-[inset_2px_2px_4px_var(--neu-dark-dark,#16181d),inset_-2px_-2px_4px_var(--neu-dark-light,#2e333c)]"
+                    style={{ fontFamily: '"Plus Jakarta Sans", "Noto Sans JP", "Noto Sans SC", sans-serif' }}
+                  >
+                    Aa 字体：Plus Jakarta Sans + Noto Sans (neumorphism.io)
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUiStyleChange('ascii')}
+                  aria-pressed={uiStyle === 'ascii'}
+                  className={`relative flex flex-col items-start gap-1 rounded-none border-[1.5px] p-3 text-left transition-none ${
+                    uiStyle === 'ascii'
+                      ? 'border-[var(--tui-border,#1B2F4A)] bg-[var(--tui-subsurface,#E1EBF7)] text-[var(--tui-ink,#101C2B)] outline outline-1 -outline-offset-4 outline-[var(--tui-border,#1B2F4A)] shadow-[3px_3px_0px_var(--accent-color)] dark:border-[#3E5C82] dark:bg-[#121E30] dark:text-[#E2ECF7] dark:outline-[#3E5C82]'
+                      : 'border-slate-800 bg-[#EBF2FA] text-slate-900 shadow-[3px_3px_0px_rgba(27,47,74,0.28)] hover:bg-slate-900 hover:text-white dark:border-[#3E5C82] dark:bg-[#0D1522] dark:text-[#E2ECF7] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.75)]'
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span
+                      className="text-xs font-bold tracking-wider"
+                      style={{ fontFamily: '"Silkscreen", "Geist Mono", "Zpix", "DotGothic16", monospace' }}
+                    >
+                      📟 {lang === 'zh' ? '终端字符风 (ASCII)' : lang === 'ja' ? 'ASCII ターミナル' : 'ASCII Terminal'}
+                    </span>
+                    {uiStyle === 'ascii' && (
+                      <span
+                        className="flex h-4 px-1 shrink-0 items-center justify-center rounded-none text-[10px] font-mono font-bold text-white"
+                        style={{ backgroundColor: 'var(--accent-color)' }}
+                      >
+                        [*]
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] leading-snug text-slate-600 dark:text-slate-400">
+                    {lang === 'zh'
+                      ? '0px 双线制表框 · 动态 ASCII 光场背景 · 低饱和主题联动'
+                      : '0px double box-drawing, live GradientASCII shader & desaturated TUI'}
+                  </span>
+                  <span
+                    className="mt-0.5 inline-block rounded-none border border-[var(--tui-border,#1B2F4A)] bg-[var(--tui-header-tint,#D6E4F4)] px-1.5 py-0.5 text-[9.5px] text-[var(--tui-ink,#101C2B)] dark:border-[#3E5C82] dark:bg-[#16253B] dark:text-[#E2ECF7]"
+                    style={{ fontFamily: '"Silkscreen", "Geist Mono", "Zpix", "DotGothic16", monospace' }}
+                  >
+                    [Aa] 字体：Silkscreen + Geist Mono + Zpix / DotGothic16
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUiStyleChange('catalog')}
+                  aria-pressed={uiStyle === 'catalog'}
+                  className={`sm:col-span-2 relative flex flex-col items-start gap-1.5 rounded-none border p-3.5 text-left transition-colors duration-200 ${
+                    uiStyle === 'catalog'
+                      ? 'border-[var(--ft-light-stage-ink,#24352b)] bg-[var(--ft-light-acid,#e5ed85)] text-[var(--ft-light-stage-ink,#24352b)] shadow-none dark:border-[var(--ft-dark-acid,#e5ed85)] dark:bg-[var(--ft-dark-surface,#24352b)] dark:text-[var(--ft-dark-ink,#f7f8f2)]'
+                      : 'border-[var(--ft-light-line,rgba(36,53,43,0.35))] bg-[var(--ft-light-paper,#f7f8f2)] text-[var(--ft-light-ink,#24352b)] shadow-none hover:bg-[var(--ft-light-acid,#e5ed85)] hover:border-[var(--ft-light-stage-ink,#24352b)] dark:border-[var(--ft-dark-line,rgba(247,248,242,0.28))] dark:bg-[var(--ft-dark-paper,#1b2820)] dark:text-[var(--ft-dark-ink,#f7f8f2)] dark:hover:bg-[var(--ft-dark-surface,#24352b)]'
+                  }`}
+                >
+                  <div className="flex w-full items-baseline justify-between gap-2 border-b border-current/25 pb-1.5">
+                    <div className="flex items-baseline gap-2.5">
+                      <span
+                        className="text-base leading-none text-current"
+                        style={{
+                          fontFamily: '"FT", "Roboto Flex", sans-serif',
+                          fontVariationSettings: "'wght' 760, 'wdth' 110, 'opsz' 50",
+                          letterSpacing: '-0.04em',
+                        }}
+                      >
+                        fieldwork<sup className="text-[9px] ml-0.5 font-sans">®</sup>
+                      </span>
+                      <span
+                        className="text-xs font-medium tracking-tight"
+                        style={{
+                          fontFamily: '"FT", "Roboto Flex", "Noto Sans SC", sans-serif',
+                          fontVariationSettings: "'wght' 550, 'wdth' 102, 'opsz' 32",
+                        }}
+                      >
+                        {lang === 'zh'
+                          ? 'Fieldwork Type 铸字厂样本风 (FT System)'
+                          : lang === 'ja'
+                            ? 'Fieldwork Type 活字見本帳 (FT System)'
+                            : 'Fieldwork Type · FT System Specimen'}
+                      </span>
+                    </div>
+                    {uiStyle === 'catalog' ? (
+                      <span
+                        className="inline-flex h-5 px-2 shrink-0 items-center justify-center text-[10px] font-medium tracking-tight bg-[var(--ft-light-stage-ink,#24352b)] text-[var(--ft-light-acid,#e5ed85)] dark:bg-[var(--ft-dark-acid,#e5ed85)] dark:text-[var(--ft-dark-stage-ink,#24352b)]"
+                        style={{ fontFamily: '"FT", Arial, sans-serif' }}
+                      >
+                        No. 05 · Active →
+                      </span>
+                    ) : (
+                      <span className="text-[11px] opacity-70 tabular-nums">No. 05 / Variable sans</span>
+                    )}
+                  </div>
+                  <span className="text-[10.5px] leading-relaxed opacity-85">
+                    {lang === 'zh'
+                      ? 'Oil UI 独立铸字厂样本美学 · 随 7 套主题色联动切换专属三色印刷样本板 (高明度舞台块 × 深色铸字油墨 × 温润样本纸) · 零阴影 1px 标尺线'
+                      : 'Oil UI independent type foundry specimen: 7 adaptive foundry color triads (luminous specimen stage × deep chromatic ink × warm paper), zero offset shadows & 1px axis rules'}
+                  </span>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                    <span
+                      className="inline-block border border-current/35 bg-[var(--ft-light-paper,#f7f8f2)] px-2 py-0.5 text-[10px] text-[var(--ft-light-ink,#24352b)] dark:bg-[var(--ft-dark-paper,#1b2820)] dark:text-[var(--ft-dark-acid,#e5ed85)]"
+                      style={{
+                        fontFamily: '"FT", "Roboto Flex", "Noto Sans SC", sans-serif',
+                        fontVariationSettings: "'wght' 520, 'wdth' 105, 'opsz' 24",
+                      }}
+                    >
+                      Aa 字体：FT System (Roboto Flex 可变三轴 wght 100–900 · wdth 50–151 · opsz 8–144) + Arial + 思源黑体
+                    </span>
+                    <span className="inline-flex items-center gap-1 border border-current/35 bg-[var(--ft-light-plate,#ced9f0)] px-2 py-0.5 text-[10px] text-[var(--ft-light-stage-ink,#24352b)] tabular-nums">
+                      <span>Good things take type.</span>
+                    </span>
+                  </div>
                 </button>
               </div>
             </div>
@@ -491,7 +734,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="grid grid-cols-4 gap-2">
                 {ACCENT_THEMES.map((item) => {
                   const active = accentTheme === item.id;
-                  const [a, b, c] = themeSwatches(item);
+                  const [a, b, c] = themeSwatches(item, uiStyle);
                   return (
                     <button
                       key={item.id}
@@ -525,10 +768,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
               <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
                 {lang === 'zh'
-                  ? '切换全局强调色（按钮、选中态、标签等），不影响颜料与取色结果。'
+                  ? uiStyle === 'ascii'
+                    ? 'ASCII 模式下切换预设将同步切换背后 GradientASCII 动态字符光场配色、几何形态及低饱和终端面板色调，不影响颜料取色结果。'
+                    : '切换全局强调色（按钮、选中态、标签等），不影响颜料与取色结果。'
                   : lang === 'ja'
-                  ? 'UI のアクセントカラーを切り替えます。塗料データには影響しません。'
-                  : 'Changes UI accent colours only — paint data and picked colours are unaffected.'}
+                  ? 'UI のアクセントカラーと ASCII 背景光フィールドを切り替えます。塗料データには影響しません。'
+                  : 'Switches UI accent palette (and live GradientASCII background in ASCII mode) without affecting paint data.'}
               </p>
             </div>
 

@@ -1,3 +1,4 @@
+/* Hallmark · genre: editorial · macrostructure: Workbench · theme: Almanac + Studio + Terrazzo (Night Works Catalog 2026) · enrichment: full · nav: N8 · footer: Ft1 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -22,7 +23,7 @@ html {
   overflow-x: clip;
   overflow-y: auto;
   scrollbar-gutter: stable;
-  max-width: 100vw;
+  max-width: 100%;
 }
 
 body {
@@ -34,7 +35,7 @@ body {
   touch-action: pan-y pinch-zoom;
   overflow-x: clip;
   scrollbar-gutter: stable;
-  max-width: 100vw;
+  max-width: 100%;
 }
 
 /* 3. Re-enable text selection for input, textarea, and editable content */
@@ -55,6 +56,7 @@ select,
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+  --mobile-hide-topbar-pt: max(calc(env(safe-area-inset-top, 0px) + 16px), 44px);
   --accent-color: #EF5350;
   --accent-rgb: 239 83 80;
   --accent-hover: #E53935;
@@ -69,6 +71,24 @@ select,
 
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Portrait / Mobile (< 1024px) Top Safe-Area, Status Bar & Dynamic Island Clearance when Top Bar is Hidden */
+@media (max-width: 1023px) {
+  main.gk-main-hide-topbar {
+    padding-top: var(--mobile-hide-topbar-pt) !important;
+  }
+}
+
+/* Global Modal Shell & Header Layering Guard (prevents scrolling body cards from overlapping modal header) */
+.bp-modal-shell {
+  overflow: hidden;
+}
+
+.bp-modal-header {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
 }
 
 /* 5. Physical active press feedback for mobile app texture */
@@ -88,12 +108,38 @@ html.dark {
   background-color: #020617; /* slate-950 for dark mode */
 }
 
+@font-face {
+  font-family: "Smiley Sans";
+  src: url("https://cdn.jsdelivr.net/npm/smiley-sans@2.0.1/build/SmileySans-Oblique.ttf.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 body {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "Plus Jakarta Sans", "MiSans", "HarmonyOS Sans SC", "PingFang SC", -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
   transition: background-color 0.3s, color 0.3s;
   background-color: #f8fafc; /* slate-50 */
   min-height: 100vh;
   min-height: 100dvh; /* Use dynamic viewport height for mobile */
+}
+
+/* --- Style 0: Liquid Glass Open-Source Typography (MiSans + Plus Jakarta Sans + Space Grotesk) --- */
+html[data-ui-style="glass"],
+html[data-ui-style="glass"] body,
+html[data-ui-style="glass"] .k-app {
+  font-family: "Plus Jakarta Sans", "MiSans", "HarmonyOS Sans SC", "PingFang SC", -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif !important;
+}
+html[data-ui-style="glass"] :where(h1, h2, h3, h4, .gk-app-header h1) {
+  font-family: "Space Grotesk", "Plus Jakarta Sans", "MiSans", "PingFang SC", sans-serif !important;
+  letter-spacing: -0.02em;
+}
+html[data-ui-style="glass"] :where(button, .bp-pill, .bp-btn, .bp-segmented-item, .gk-tab-pill, label) {
+  font-family: "Plus Jakarta Sans", "MiSans", "PingFang SC", sans-serif !important;
+}
+html[data-ui-style="glass"] :where(.font-mono, .tabular-nums, code, output, input[type="number"]) {
+  font-family: "Space Grotesk", "JetBrains Mono", "MiSans", ui-monospace, monospace !important;
+  font-variant-numeric: tabular-nums !important;
 }
 
 /* Touch and gesture conflict guards for stage and canvas draggable areas */
@@ -322,6 +368,21 @@ html[data-ui-style="blueprint"] .gk-page-bg {
     linear-gradient(to right, rgba(15, 23, 42, 0.05) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(15, 23, 42, 0.05) 1px, transparent 1px) !important;
   background-size: 24px 24px !important;
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", "PingFang SC", "Microsoft YaHei", sans-serif !important;
+}
+
+/* Blueprint Open-Source Typography (Smiley Sans 得意黑 + Chakra Petch 45° Mecha + JetBrains Mono) */
+html[data-ui-style="blueprint"] :where(h1, h2, h3, h4, .gk-app-header h1, .gk-panel-card h2, .gk-panel-card h3, .bp-modal-header, .gk-tab-pill, .bp-segmented-item, .gk-mech-primary, .gk-btn-primary) {
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", "PingFang SC", sans-serif !important;
+  letter-spacing: 0.03em !important;
+}
+html[data-ui-style="blueprint"] :where(button, .bp-pill, .bp-btn, .bp-use-btn, .gk-mech-btn, .bp-badge, label) {
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", "PingFang SC", sans-serif !important;
+  letter-spacing: 0.02em;
+}
+html[data-ui-style="blueprint"] :where(.font-mono, .tabular-nums, .bp-input, input, output, code) {
+  font-family: "Chakra Petch", "JetBrains Mono", "Smiley Sans", ui-monospace, monospace !important;
+  font-variant-numeric: tabular-nums !important;
 }
 
 html.dark[data-ui-style="blueprint"],
@@ -360,8 +421,7 @@ html.dark[data-ui-style="blueprint"] .gk-header {
 
 /* Main cards & panels in blueprint mode */
 html[data-ui-style="blueprint"] .gk-panel-card,
-html[data-ui-style="blueprint"] .gk-card,
-html[data-ui-style="blueprint"] main > div > .rounded-2xl {
+html[data-ui-style="blueprint"] .gk-card {
   border-radius: 6px !important;
   border: 1.5px solid #0F172A !important;
   box-shadow: 3px 3px 0px #0F172A !important;
@@ -369,8 +429,7 @@ html[data-ui-style="blueprint"] main > div > .rounded-2xl {
 }
 
 html.dark[data-ui-style="blueprint"] .gk-panel-card,
-html.dark[data-ui-style="blueprint"] .gk-card,
-html.dark[data-ui-style="blueprint"] main > div > .rounded-2xl {
+html.dark[data-ui-style="blueprint"] .gk-card {
   border-radius: 6px !important;
   border: 1.5px solid #334155 !important;
   box-shadow: 3px 3px 0px #020617 !important;
@@ -380,13 +439,11 @@ html.dark[data-ui-style="blueprint"] main > div > .rounded-2xl {
 /* Portrait (< 1024px) Blueprint hard-shadow & spacing compaction */
 @media (max-width: 1023px) {
   html[data-ui-style="blueprint"] .gk-panel-card,
-  html[data-ui-style="blueprint"] .gk-card,
-  html[data-ui-style="blueprint"] main > div > .rounded-2xl {
+  html[data-ui-style="blueprint"] .gk-card {
     box-shadow: 2px 2px 0px #0F172A !important;
   }
   html.dark[data-ui-style="blueprint"] .gk-panel-card,
-  html.dark[data-ui-style="blueprint"] .gk-card,
-  html.dark[data-ui-style="blueprint"] main > div > .rounded-2xl {
+  html.dark[data-ui-style="blueprint"] .gk-card {
     box-shadow: 2px 2px 0px #020617 !important;
   }
   html[data-ui-style="blueprint"] nav.gk-mobile-dock {
@@ -527,17 +584,17 @@ html.dark[data-ui-style="blueprint"] nav.gk-mobile-dock {
    (data-ui-style="glass") remains 100% untouched.
    ========================================================================== */
 
-/* 1. Internal Sub-Cards (2px hard shadow & 3px hard shadow variants) */
+/* 1. Internal Sub-Cards (Quieter unselected baseline, tactile active elevation) */
 html[data-ui-style="blueprint"] .bp-subcard {
   border-radius: 6px !important;
-  border: 1.5px solid #0F172A !important;
+  border: 1px solid #CBD5E1 !important;
   background-color: #FFFFFF !important;
-  box-shadow: 2px 2px 0px #0F172A !important;
+  box-shadow: none !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-subcard {
-  border-color: #475569 !important;
+  border-color: #334155 !important;
   background-color: #111827 !important;
-  box-shadow: 2px 2px 0px #020617 !important;
+  box-shadow: none !important;
 }
 html[data-ui-style="blueprint"] .bp-subcard-active {
   border-radius: 6px !important;
@@ -551,10 +608,12 @@ html.dark[data-ui-style="blueprint"] .bp-subcard-active {
   box-shadow: 3px 3px 0px #020617 !important;
 }
 html[data-ui-style="blueprint"] .bp-subcard-interactive:hover:not(:active):not([data-bp-pressed="true"]) {
-  border-color: var(--accent-color) !important;
+  border-color: #0F172A !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-subcard-interactive:hover:not(:active):not([data-bp-pressed="true"]) {
   border-color: var(--accent-color) !important;
+  box-shadow: 2px 2px 0px #020617 !important;
 }
 
 /* Larger internal panels / TOP 6 cards / Chroma Studio sub-cards (3px hard shadow) */
@@ -631,7 +690,7 @@ html.dark[data-ui-style="blueprint"] .bp-segmented {
 html[data-ui-style="blueprint"] .bp-segmented-item {
   border-radius: 4px !important;
   border: 1.5px solid transparent !important;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
 }
 html[data-ui-style="blueprint"] .bp-segmented-item:not(.bp-segmented-item-active):hover:not(:active):not([data-bp-pressed="true"]) {
   border-color: #0F172A !important;
@@ -648,7 +707,7 @@ html[data-ui-style="blueprint"] .bp-segmented-item-active {
   border: 1.5px solid #0F172A !important;
   background-color: var(--accent-color) !important;
   color: #FFFFFF !important;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
   box-shadow: 2px 2px 0px #0F172A !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-segmented-item-active {
@@ -658,11 +717,11 @@ html.dark[data-ui-style="blueprint"] .bp-segmented-item-active {
 
 /* Filter Pills / Brand Chips / Category Tags */
 html[data-ui-style="blueprint"] .bp-pill {
-  border-radius: 5px !important;
+  border-radius: 6px !important;
   border: 1.5px solid #0F172A !important;
   background-color: #FFFFFF !important;
   color: #0F172A !important;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
   box-shadow: 2px 2px 0px #0F172A !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-pill {
@@ -678,11 +737,11 @@ html.dark[data-ui-style="blueprint"] .bp-pill:hover {
   border-color: var(--accent-color) !important;
 }
 html[data-ui-style="blueprint"] .bp-pill-active {
-  border-radius: 5px !important;
+  border-radius: 6px !important;
   border: 1.5px solid #0F172A !important;
   background-color: var(--accent-color) !important;
   color: #FFFFFF !important;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
   box-shadow: 2px 2px 0px #0F172A !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-pill-active {
@@ -695,11 +754,13 @@ html[data-ui-style="blueprint"] .bp-input {
   border-radius: 5px !important;
   border: 1.5px solid #0F172A !important;
   background-color: #FFFFFF !important;
+  color: #0F172A !important;
   box-shadow: 2px 2px 0px #0F172A !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-input {
   border-color: #475569 !important;
   background-color: #0F172A !important;
+  color: #F8FAFC !important;
   box-shadow: 2px 2px 0px #020617 !important;
 }
 html[data-ui-style="blueprint"] .bp-input:focus {
@@ -745,7 +806,7 @@ html.dark[data-ui-style="blueprint"] .bp-matrix-cell-active {
 html[data-ui-style="blueprint"] .bp-badge {
   border-radius: 3px !important;
   border: 1px solid #0F172A !important;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-badge {
   border-color: #64748B !important;
@@ -764,7 +825,7 @@ html[data-ui-style="blueprint"] .bp-btn {
   border-radius: 4px !important;
   border: 1.5px solid #0F172A !important;
   box-shadow: 2px 2px 0px #0F172A !important;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-btn {
   border-color: #475569 !important;
@@ -776,7 +837,7 @@ html[data-ui-style="blueprint"] .bp-use-btn {
   border: 1.5px solid #0F172A !important;
   background-color: var(--accent-soft) !important;
   color: #0F172A !important;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
   box-shadow: 1.5px 1.5px 0px #0F172A !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-use-btn {
@@ -794,7 +855,7 @@ html[data-ui-style="blueprint"] .bp-use-btn-used {
   border: 1.5px solid #0F172A !important;
   background-color: #059669 !important;
   color: #FFFFFF !important;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+  font-family: "Chakra Petch", "Smiley Sans", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
   box-shadow: 1.5px 1.5px 0px #0F172A !important;
 }
 
@@ -920,11 +981,9 @@ html[data-ui-style="blueprint"] .bp-floating-swatch-body {
 html[data-ui-style="blueprint"] .bp-floating-swatch-thumb {
   border-bottom-left-radius: 2.5px !important;
   border-right: 1.5px solid #0F172A !important;
-  background-color: #F8FAFC !important;
 }
 html.dark[data-ui-style="blueprint"] .bp-floating-swatch-thumb {
   border-right-color: #475569 !important;
-  background-color: #1E293B !important;
 }
 html[data-ui-style="blueprint"] .bp-floating-swatch-tonal {
   border-bottom-left-radius: 2.5px !important;
@@ -1058,6 +1117,10 @@ html[data-ui-style="blueprint"] input[type="range"].bp-range-slider::-moz-range-
   background-color: var(--accent-color) !important;
   box-shadow: 1.5px 1.5px 0px #0F172A !important;
   cursor: pointer;
+}
+html[data-ui-style="blueprint"] input[type="range"].bp-range-slider:focus-visible {
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: 3px !important;
 }
 
 /* Mixed Result Preview Large Block */
@@ -1249,6 +1312,1997 @@ html.dark[data-ui-style="blueprint"]
   box-shadow: 0px 0px 0px #020617 !important;
   transition: transform 0.025s ease-out, box-shadow 0.025s ease-out !important;
 }
+
+/* ==========================================================================
+   12. Global UI Font Scale Switch (100% Default | 108% Medium | 115% Large)
+   ========================================================================== */
+html[data-font-scale="108"],
+html[data-font-scale="115"] {
+  --gk-font-scale: 1.08;
+}
+html[data-font-scale="115"] {
+  --gk-font-scale: 1.15;
+}
+html[data-font-scale="108"] .text-\[8px\],
+html[data-font-scale="115"] .text-\[8px\] {
+  font-size: calc(8px * var(--gk-font-scale, 1)) !important;
+}
+html[data-font-scale="108"] .text-\[9px\],
+html[data-font-scale="115"] .text-\[9px\] {
+  font-size: calc(9px * var(--gk-font-scale, 1)) !important;
+}
+html[data-font-scale="108"] .text-\[9\.5px\],
+html[data-font-scale="115"] .text-\[9\.5px\] {
+  font-size: calc(9.5px * var(--gk-font-scale, 1)) !important;
+}
+html[data-font-scale="108"] .text-\[10px\],
+html[data-font-scale="115"] .text-\[10px\] {
+  font-size: calc(10px * var(--gk-font-scale, 1)) !important;
+}
+html[data-font-scale="108"] .text-\[11px\],
+html[data-font-scale="115"] .text-\[11px\] {
+  font-size: calc(11px * var(--gk-font-scale, 1)) !important;
+}
+html[data-font-scale="108"] .text-\[12px\],
+html[data-font-scale="115"] .text-\[12px\] {
+  font-size: calc(12px * var(--gk-font-scale, 1)) !important;
+}
+html[data-font-scale="108"] .text-\[13px\],
+html[data-font-scale="115"] .text-\[13px\] {
+  font-size: calc(13px * var(--gk-font-scale, 1)) !important;
+}
+
+/* ==========================================================================
+   13. WCAG 2.2 Accessible Motion (prefers-reduced-motion)
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   14. Style C: Neumorphism / Soft UI (data-ui-style="craft")
+   Faithfully modeled after https://github.com/adamgiebl/neumorphism (`neumorphism.io`):
+   - Monochromatic Soft Clay Surface (`--neu-base`): Page background, cards,
+     subcards, buttons, and inputs share the same continuous monochromatic
+     surface color with zero hard borders (`border-color: transparent`).
+   - Dual Opposing 145° Soft Shadows (`colorLuminance(base, ±0.15)`):
+     Bottom-right dark shadow (`--neu-dark`) + top-left light highlight (`--neu-light`).
+   - 4 Neumorphic Shapes (`ShapeSwitcher.js` & `Configuration.js`):
+     * Shape 0 (Flat Extruded): Outer panels & subcards (`+d +d 2d dark, -d -d 2d light`)
+     * Shape 1 (Pressed Inset): Recessed wells, inputs, slider grooves, active toggles,
+       and `:active` pressed buttons (`inset +d +d 2d dark, inset -d -d 2d light`)
+     * Shape 2 (Concave 145°): `linear-gradient(145deg, -10%, +7%)`
+     * Shape 3 (Convex 145°): Tactile buttons & knobs (`linear-gradient(145deg, +7%, -10%)`)
+   - Dynamic 7-Theme Adaptation: Adapts `--neu-base`, `--neu-dark`, `--neu-light`,
+     and `--neu-grad-*` across all 7 accent themes in both Light & Dark modes.
+   ========================================================================== */
+html[data-ui-style="craft"] {
+  --neu-base: var(--neu-light-base, #e0e5ec);
+  --neu-dark: var(--neu-light-dark, #bec3c9);
+  --neu-light: var(--neu-light-light, #ffffff);
+  --neu-grad-first: var(--neu-light-grad-first, #f0f5fc);
+  --neu-grad-second: var(--neu-light-grad-second, #cacfd4);
+  --neu-text: var(--neu-light-text, #001f3f);
+  --neu-muted: var(--neu-light-muted, #556478);
+
+  --neu-grad-convex: linear-gradient(145deg, var(--neu-grad-first), var(--neu-grad-second));
+  --neu-grad-concave: linear-gradient(145deg, var(--neu-grad-second), var(--neu-grad-first));
+
+  --neu-card-shadow:
+    7px 7px 14px var(--neu-dark),
+    -7px -7px 14px var(--neu-light);
+  --neu-subcard-shadow:
+    3px 3px 6px var(--neu-dark),
+    -3px -3px 6px var(--neu-light);
+  --neu-btn-shadow:
+    2.5px 2.5px 5px var(--neu-dark),
+    -2.5px -2.5px 5px var(--neu-light);
+  --neu-btn-shadow-hover:
+    4px 4px 8px var(--neu-dark),
+    -4px -4px 8px var(--neu-light);
+  --neu-inset-shadow:
+    inset 3px 3px 6px var(--neu-dark),
+    inset -3px -3px 6px var(--neu-light);
+  --neu-inset-shadow-sm:
+    inset 2px 2px 4px var(--neu-dark),
+    inset -2px -2px 4px var(--neu-light);
+  --neu-divider: color-mix(in srgb, var(--neu-dark) 45%, transparent);
+  --neu-image-outline: oklch(0 0 0 / 0.1);
+
+  scroll-padding-block-start: 68px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+}
+
+html.dark[data-ui-style="craft"] {
+  --neu-base: var(--neu-dark-base, #23272e);
+  --neu-dark: var(--neu-dark-dark, #16181d);
+  --neu-light: var(--neu-dark-light, #2e333c);
+  --neu-grad-first: var(--neu-dark-grad-first, #262b32);
+  --neu-grad-second: var(--neu-dark-grad-second, #1f2228);
+  --neu-text: var(--neu-dark-text, #f6f5f7);
+  --neu-muted: var(--neu-dark-muted, #98a4b3);
+
+  --neu-grad-convex: linear-gradient(145deg, var(--neu-grad-first), var(--neu-grad-second));
+  --neu-grad-concave: linear-gradient(145deg, var(--neu-grad-second), var(--neu-grad-first));
+
+  --neu-card-shadow:
+    6px 6px 13px var(--neu-dark),
+    -6px -6px 13px var(--neu-light);
+  --neu-subcard-shadow:
+    3px 3px 6px var(--neu-dark),
+    -3px -3px 6px var(--neu-light);
+  --neu-btn-shadow:
+    2.5px 2.5px 5px var(--neu-dark),
+    -2.5px -2.5px 5px var(--neu-light);
+  --neu-btn-shadow-hover:
+    4px 4px 8px var(--neu-dark),
+    -4px -4px 8px var(--neu-light);
+  --neu-inset-shadow:
+    inset 3px 3px 6px var(--neu-dark),
+    inset -3px -3px 6px var(--neu-light);
+  --neu-inset-shadow-sm:
+    inset 2px 2px 4px var(--neu-dark),
+    inset -2px -2px 4px var(--neu-light);
+  --neu-divider: color-mix(in srgb, var(--neu-light) 55%, transparent);
+  --neu-image-outline: oklch(1 0 0 / 0.1);
+}
+
+/* 1. Continuous Monochromatic Soft Clay Canvas (Zero grid noise, pure neumorphism.io surface) */
+html[data-ui-style="craft"],
+html[data-ui-style="craft"] body,
+html[data-ui-style="craft"] .k-app,
+html[data-ui-style="craft"] .gk-page-bg,
+html[data-ui-style="craft"] .engineering-viewport-grid,
+html[data-ui-style="craft"] .gk-canvas-backdrop {
+  background-color: var(--neu-base) !important;
+  background-image: none !important;
+  color: var(--neu-text) !important;
+  font-family: "Plus Jakarta Sans", "Noto Sans JP", "Noto Sans SC", "PingFang SC", sans-serif !important;
+}
+
+/* Strip frosted glass blur from cards & buttons for pure tactile soft-extruded relief */
+html[data-ui-style="craft"] .gk-panel-card,
+html[data-ui-style="craft"] .gk-card,
+html[data-ui-style="craft"] .bp-module-card,
+html[data-ui-style="craft"] .bp-subcard,
+html[data-ui-style="craft"] .bp-subcard-lg,
+html[data-ui-style="craft"] .bp-floating-swatch {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 2. Typography System (Clean Geometric Sans + Impeccable Quieter weight restraint) */
+html[data-ui-style="craft"] :where(button, .bp-pill, .bp-btn, .bp-use-btn, .bp-segmented-item, .gk-tab-pill, label, p) {
+  font-family: "Plus Jakarta Sans", "Noto Sans JP", "Noto Sans SC", "PingFang SC", sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.005em;
+}
+
+html[data-ui-style="craft"] :where(.font-black, .font-extrabold) {
+  font-weight: 650 !important;
+}
+
+html[data-ui-style="craft"] h1,
+html[data-ui-style="craft"] h2,
+html[data-ui-style="craft"] h3,
+html[data-ui-style="craft"] header.gk-app-header h1,
+html[data-ui-style="craft"] .gk-panel-card h2,
+html[data-ui-style="craft"] .gk-panel-card h3,
+html[data-ui-style="craft"] .bp-modal-header h2,
+html[data-ui-style="craft"] .bp-modal-header h3 {
+  font-family: "Plus Jakarta Sans", "Noto Sans JP", "Noto Sans SC", "PingFang SC", sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  text-wrap: balance;
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  color: var(--neu-text) !important;
+}
+
+html[data-ui-style="craft"] p,
+html[data-ui-style="craft"] li,
+html[data-ui-style="craft"] figcaption {
+  text-wrap: pretty;
+}
+
+html[data-ui-style="craft"] output,
+html[data-ui-style="craft"] input[type="number"],
+html[data-ui-style="craft"] .bp-badge,
+html[data-ui-style="craft"] .tabular-nums,
+html[data-ui-style="craft"] .font-mono {
+  font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* 3. Floating Soft-Extruded Island Header */
+html[data-ui-style="craft"] header.gk-app-header,
+html[data-ui-style="craft"] .gk-header {
+  max-width: calc(100% - 24px);
+  margin: 10px auto 6px !important;
+  border-radius: 9999px !important;
+  border: 1px solid transparent !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-subcard-shadow) !important;
+}
+
+/* 4. Shape 0 (Flat Extruded): Outer Containers & Panels (24px Radius + Dual Opposing 145° Soft Shadows) */
+html[data-ui-style="craft"] .gk-panel-card,
+html[data-ui-style="craft"] .gk-card,
+html[data-ui-style="craft"] .bp-subcard-lg,
+html[data-ui-style="craft"] .bp-project-card {
+  border-radius: 24px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  background-image: none !important;
+  box-shadow: var(--neu-card-shadow) !important;
+}
+
+/* Impeccable Quieter: Intermediate module containers stay flush on `--neu-base` without stacking a 2nd shadow layer */
+html[data-ui-style="craft"] .bp-module-card {
+  border-radius: 18px !important;
+  border: 1px solid var(--neu-divider) !important;
+  background-color: var(--neu-base) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+html[data-ui-style="craft"] .bp-project-card {
+  overflow: hidden !important;
+}
+html[data-ui-style="craft"] .bp-cover-top {
+  border-radius: 24px 24px 0 0 !important;
+}
+html[data-ui-style="craft"] .bp-card-bottom {
+  border-radius: 0 0 24px 24px !important;
+  background-color: var(--neu-base) !important;
+}
+html[data-ui-style="craft"] .bp-canvas-stage {
+  border-radius: 18px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
+}
+
+/* Preserve Chroma Studio backdrop switcher in Craft/Neumorphism mode */
+html[data-ui-style="craft"] .bp-subcard-lg[data-backdrop-theme="dark"] {
+  background-color: #1c1f26 !important;
+  color: #f6f5f7 !important;
+}
+html[data-ui-style="craft"] .bp-subcard-lg[data-backdrop-theme="neutral"] {
+  background-color: #808080 !important;
+  color: #ffffff !important;
+}
+html[data-ui-style="craft"] .bp-subcard-lg[data-backdrop-theme="light"] {
+  background-color: var(--neu-light-base, #e0e5ec) !important;
+  color: var(--neu-light-text, #001f3f) !important;
+}
+
+/* 5. Inner Nested Subcards (14px Concentric Outer Radius = 8px Inner Window + 6px Padding) */
+html[data-ui-style="craft"] .bp-subcard,
+html[data-ui-style="craft"] .bp-extracted-card,
+html[data-ui-style="craft"] .bp-slider-row {
+  border-radius: 14px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  background-image: none !important;
+  box-shadow: var(--neu-subcard-shadow) !important;
+}
+
+html[data-ui-style="craft"] .bp-subcard-active,
+html[data-ui-style="craft"] .bp-extracted-card-active,
+html[data-ui-style="craft"] .bp-slider-row-active {
+  border-radius: 14px !important;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 38%, transparent) !important;
+  background-color: var(--neu-base) !important;
+  background-image: none !important;
+  box-shadow: var(--neu-inset-shadow) !important;
+}
+
+/* Paint Swatch Window inside Subcard: 8px concentric inner radius + 1px pure black/white inset outline (`better-ui`) */
+html[data-ui-style="craft"] .bp-paint-card-window {
+  border-radius: 8px !important;
+  border: none !important;
+  outline: 1px solid var(--neu-image-outline) !important;
+  outline-offset: -1px !important;
+  box-shadow: none !important;
+}
+
+/* Quieter Swatch Overlay Micro-Buttons (`+备`, `×`, `指定`): Zero Neumorphic Glow on top of paint swatches */
+html[data-ui-style="craft"] .bp-swatch-stage-btn {
+  border-radius: 5px !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: none !important;
+}
+
+/* 6. Shape 1 (Pressed Inset Wells): Segmented Switchers, Tab Bars, Search Inputs & Grooves */
+html[data-ui-style="craft"] .gk-tab-bar,
+html[data-ui-style="craft"] .bp-segmented {
+  border-radius: 14px !important;
+  padding: 4px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
+}
+
+html[data-ui-style="craft"] .gk-tab-pill,
+html[data-ui-style="craft"] .bp-segmented-item {
+  border-radius: 10px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--neu-muted) !important;
+}
+
+/* Active Tab / Segmented Item rises as a Convex 145° Extruded Pill inside the inset groove */
+html[data-ui-style="craft"] .gk-tab-pill-active,
+html[data-ui-style="craft"] .bp-segmented-item-active {
+  border-radius: 10px !important;
+  border: 1px solid transparent !important;
+  background: var(--neu-grad-convex) !important;
+  color: var(--accent-color) !important;
+  box-shadow: var(--neu-btn-shadow) !important;
+}
+
+/* Recessed Search Bars & Text Inputs (neumorphism.io `inputs.scss`) */
+html[data-ui-style="craft"] .bp-input,
+html[data-ui-style="craft"] input[type="text"],
+html[data-ui-style="craft"] input[type="search"],
+html[data-ui-style="craft"] select {
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  color: var(--neu-text) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+  transition: box-shadow 150ms ease-out, border-color 150ms ease-out;
+}
+html[data-ui-style="craft"] .bp-input:focus,
+html[data-ui-style="craft"] input[type="text"]:focus,
+html[data-ui-style="craft"] input[type="search"]:focus,
+html[data-ui-style="craft"] select:focus {
+  outline: none !important;
+  background-color: var(--neu-base) !important;
+  border-color: color-mix(in srgb, var(--accent-color) 45%, transparent) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
+}
+
+/* 7. Shape 3 (Convex 145° Extruded Buttons) vs Shape 1 (Pressed Inset Active Toggles) */
+html[data-ui-style="craft"]
+  :where(
+    .bp-pill:not(:disabled),
+    .bp-btn:not(:disabled),
+    .bp-use-btn:not(:disabled),
+    .gk-mech-btn:not(:disabled),
+    .gk-btn-secondary:not(:disabled),
+    .bp-delete-btn:not(:disabled),
+    button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+      [class*="border-t"]
+    ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+      .bp-segmented-item
+    ):not(.gk-tab-pill):not(.bp-gray-step-btn):not(.bp-subcard):not(
+      .bp-subcard-active
+    ):not(.bp-swatch):not(.bp-matrix-cell):not(.bp-dot):not(
+      .bp-swatch-stage-btn
+    ):not(:disabled)
+  ) {
+  border-radius: 10px !important;
+  border: 1px solid transparent !important;
+  background: var(--neu-grad-convex) !important;
+  color: var(--neu-text) !important;
+  box-shadow: var(--neu-btn-shadow) !important;
+}
+
+/* Shape 1 (Pressed Inset `.pressed` from adamgiebl/neumorphism): Active Toggle Pills & Selected Option Buttons */
+html[data-ui-style="craft"] .bp-pill-active:not(:disabled),
+html[data-ui-style="craft"]
+  button[aria-pressed="true"]:not(.bp-subcard):not(.bp-subcard-active):not(
+    .gk-tab-pill
+  ):not(.bp-segmented-item):not(.bp-swatch-stage-btn):not(:disabled) {
+  border-radius: 10px !important;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 32%, transparent) !important;
+  background: var(--neu-base) !important;
+  color: var(--accent-color) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+
+/* Primary CTA Buttons (Exact class-token match `[class~=...]` so `hover:bg-[var(--accent-color)]` is never matched!) */
+html[data-ui-style="craft"] .gk-mech-primary:not(:disabled),
+html[data-ui-style="craft"] .gk-btn-primary:not(:disabled),
+html[data-ui-style="craft"] .bp-fab:not(:disabled),
+html[data-ui-style="craft"]
+  button[class~="bg-accent"]:not([aria-pressed]):not(.bp-swatch-stage-btn):not(:disabled),
+html[data-ui-style="craft"]
+  button[class~="bg-[var(--accent-color)]"]:not([aria-pressed]):not(.bp-swatch-stage-btn):not(:disabled) {
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--accent-color) 88%, #ffffff),
+    color-mix(in srgb, var(--accent-color) 88%, #000000)
+  ) !important;
+  color: #ffffff !important;
+  box-shadow: var(--neu-btn-shadow) !important;
+}
+
+html[data-ui-style="craft"] .bp-use-btn-used {
+  border-radius: 12px !important;
+  border: 1px solid color-mix(in srgb, #10b981 40%, transparent) !important;
+  background: var(--neu-base) !important;
+  color: #059669 !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+html.dark[data-ui-style="craft"] .bp-use-btn-used {
+  color: #34d399 !important;
+}
+
+/* 8. Neumorphic Range Sliders & Toggle Switches (`src/styles/inputs.scss` in adamgiebl/neumorphism) */
+html[data-ui-style="craft"] .bp-slider-track {
+  border-radius: 9999px !important;
+  border: 1px solid transparent !important;
+  height: 10px !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+html[data-ui-style="craft"] .bp-slider-thumb-knob {
+  border-radius: 9999px !important;
+  border: 2px solid var(--neu-base) !important;
+  background: var(--accent-color) !important;
+  box-shadow:
+    3px 3px 6px var(--neu-dark),
+    -3px -3px 6px var(--neu-light) !important;
+}
+html[data-ui-style="craft"] input[type="range"].bp-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px !important;
+  border-radius: 9999px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+html[data-ui-style="craft"] input[type="range"].bp-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px !important;
+  border: 2.5px solid var(--neu-base) !important;
+  background: var(--accent-color) !important;
+  box-shadow:
+    3px 3px 6px var(--neu-dark),
+    -3px -3px 6px var(--neu-light) !important;
+  cursor: pointer;
+}
+
+/* Neumorphic Soft Toggle Switch & Value Badges */
+html[data-ui-style="craft"] .gk-switch-track {
+  border-radius: 9999px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+html[data-ui-style="craft"] .gk-switch-track.gk-switch-track-on {
+  background-color: var(--neu-base) !important;
+  border-color: color-mix(in srgb, var(--accent-color) 40%, transparent) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+html[data-ui-style="craft"] .gk-switch-thumb {
+  border-radius: 9999px !important;
+  border: none !important;
+  background: var(--neu-grad-convex) !important;
+  box-shadow:
+    2px 2px 4px var(--neu-dark),
+    -2px -2px 4px var(--neu-light) !important;
+}
+html[data-ui-style="craft"] .gk-switch-track.gk-switch-track-on .gk-switch-thumb {
+  background: var(--accent-color) !important;
+}
+html[data-ui-style="craft"] .bp-badge:not(.gk-switch-track) {
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+html[data-ui-style="craft"] button:disabled {
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  background: var(--neu-base) !important;
+  color: var(--neu-muted) !important;
+  box-shadow: none !important;
+  opacity: 0.48 !important;
+}
+html[data-ui-style="craft"] input[type="checkbox"] {
+  border-radius: 6px !important;
+  accent-color: var(--accent-color) !important;
+}
+
+/* 9. Floating Capsule Dock, Modals & Canvas Floating Swatch Cards */
+html[data-ui-style="craft"] nav.gk-mobile-dock {
+  border-radius: 9999px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-card-shadow) !important;
+}
+
+html[data-ui-style="craft"] .bp-modal-shell {
+  border-radius: 26px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-card-shadow) !important;
+  overscroll-behavior: contain;
+}
+html[data-ui-style="craft"] .bp-modal-header {
+  background-color: var(--neu-base) !important;
+  border-bottom: 1px solid var(--neu-divider) !important;
+}
+
+html[data-ui-style="craft"] .bp-floating-swatch {
+  border-radius: 14px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-subcard-shadow) !important;
+}
+html[data-ui-style="craft"] .bp-floating-swatch-active {
+  border: 1.5px solid var(--accent-color) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+
+/* 10. Swatches & Matrix Cells (Soft Extruded Bevel Frame around Color Wells) */
+html[data-ui-style="craft"] .bp-swatch,
+html[data-ui-style="craft"] .bp-dot,
+html[data-ui-style="craft"] .bp-mixed-preview {
+  border-radius: 10px !important;
+  border: 2px solid var(--neu-base) !important;
+  box-shadow:
+    3px 3px 6px var(--neu-dark),
+    -3px -3px 6px var(--neu-light) !important;
+}
+html[data-ui-style="craft"] .bp-matrix-cell {
+  border-radius: 9px !important;
+  border: 2px solid var(--neu-base) !important;
+  box-shadow:
+    2.5px 2.5px 5px var(--neu-dark),
+    -2.5px -2.5px 5px var(--neu-light) !important;
+}
+html[data-ui-style="craft"] .bp-matrix-cell-active {
+  border-radius: 9px !important;
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: 1px !important;
+}
+
+/* Engraved Soft Groove Dividers */
+html[data-ui-style="craft"] .gk-dashed-divider-b,
+html[data-ui-style="craft"] .bp-dashed-header,
+html[data-ui-style="craft"] .bp-bottom-divider {
+  border-bottom: 1px solid var(--neu-divider) !important;
+}
+html[data-ui-style="craft"] .gk-dashed-divider-t,
+html[data-ui-style="craft"] .bp-top-divider {
+  border-top: 1px solid var(--neu-divider) !important;
+}
+html[data-ui-style="craft"] .bp-dashed-box {
+  border-radius: 16px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
+}
+
+/* 11. Neumorphism Soft-Clay Physics (Convex Extruded -> Inset Pressed on Active) */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-ui-style="craft"]
+    :where(
+      .bp-btn:not(:disabled),
+      .bp-pill:not(:disabled),
+      .bp-pill-active:not(:disabled),
+      .bp-use-btn:not(:disabled),
+      .bp-use-btn-used:not(:disabled),
+      .bp-fab:not(:disabled),
+      .bp-segmented-item:not(:disabled),
+      .bp-segmented-item-active:not(:disabled),
+      .gk-mech-btn:not(:disabled),
+      .gk-mech-primary:not(:disabled),
+      .gk-btn-primary:not(:disabled),
+      .gk-btn-secondary:not(:disabled),
+      .gk-tab-pill:not(:disabled),
+      .gk-tab-pill-active:not(:disabled),
+      .bp-delete-btn:not(:disabled),
+      .bp-matrix-cell:not(:disabled),
+      .bp-matrix-cell-active:not(:disabled),
+      button.bp-subcard:not(:disabled),
+      button.bp-subcard-active:not(:disabled),
+      label.bp-subcard,
+      .bp-subcard-interactive,
+      .bp-project-card,
+      .bp-extracted-card,
+      button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+        [class*="border-t"]
+      ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+        .bp-gray-step-btn
+      ):not(.bp-swatch-stage-btn):not(:disabled)
+    ) {
+    transform: translateY(0px);
+    scale: 1 !important;
+    transition:
+      box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      scale 150ms ease-out,
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      background 180ms ease,
+      color 180ms ease !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (hover: hover) {
+    html[data-ui-style="craft"]
+      :where(
+        .bp-btn:not(:disabled),
+        .bp-pill:not(:disabled),
+        .bp-use-btn:not(:disabled),
+        .gk-mech-btn:not(:disabled),
+        .gk-btn-secondary:not(:disabled),
+        .bp-delete-btn:not(:disabled),
+        .bp-subcard-interactive,
+        .bp-project-card,
+        .bp-extracted-card,
+        button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+          [class*="border-t"]
+        ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+          .bp-segmented-item
+        ):not(.gk-tab-pill):not(.bp-gray-step-btn):not(.bp-swatch-stage-btn):not(.bp-pill-active):not(
+          [aria-pressed="true"]
+        ):not(.gk-mech-primary):not(.gk-btn-primary):not(:disabled)
+      ):hover:not(:active):not([data-bp-pressed="true"]) {
+      box-shadow: var(--neu-btn-shadow-hover) !important;
+    }
+  }
+
+  /* Active / Pressed State: Transitions from Convex Extruded to Shape 1 Inset Pressed (`.pressed` in neumorphism.io) */
+  html[data-ui-style="craft"]
+    :where(
+      .bp-btn:not(:disabled),
+      .bp-pill:not(:disabled),
+      .bp-use-btn:not(:disabled),
+      .gk-mech-btn:not(:disabled),
+      .gk-btn-secondary:not(:disabled),
+      .bp-delete-btn:not(:disabled),
+      .bp-segmented-item:not(:disabled),
+      .bp-segmented-item-active:not(:disabled),
+      .gk-tab-pill:not(:disabled),
+      .gk-tab-pill-active:not(:disabled),
+      button.bp-subcard:not(:disabled),
+      button.bp-subcard-active:not(:disabled),
+      label.bp-subcard,
+      button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+        [class*="border-t"]
+      ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+        .bp-gray-step-btn
+      ):not(.bp-swatch-stage-btn):not(:disabled)
+    ):is(:active, [data-bp-pressed="true"]),
+  html[data-ui-style="craft"]
+    :where(.bp-subcard-interactive, .bp-project-card, .bp-extracted-card):not(
+      :has(
+        button:active,
+        button[data-bp-pressed="true"],
+        label:active,
+        label[data-bp-pressed="true"],
+        input:active,
+        [role="button"]:active,
+        [role="button"][data-bp-pressed="true"]
+      )
+    ):is(:active, [data-bp-pressed="true"]) {
+    scale: 0.96 !important;
+    background: var(--neu-base) !important;
+    box-shadow: var(--neu-inset-shadow-sm) !important;
+    transition-duration: 150ms !important;
+  }
+
+  html[data-ui-style="craft"]
+    :where(
+      .gk-mech-primary:not(:disabled),
+      .gk-btn-primary:not(:disabled),
+      .bp-fab:not(:disabled)
+    ):is(:active, [data-bp-pressed="true"]) {
+    scale: 0.96 !important;
+    box-shadow:
+      inset 3px 3px 6px rgba(0, 0, 0, 0.28),
+      inset -3px -3px 6px rgba(255, 255, 255, 0.2) !important;
+    transition-duration: 150ms !important;
+  }
+}
+
+/* ==========================================================================
+   15. Style D: ASCII / TUI Terminal (data-ui-style="ascii")
+   Derived from Hallmark (Theme: Terminal · Nav: N8 · 05-Workbench · F3 Spec)
+   + jakubkrehel/skills (better-ui, better-layout, better-typography):
+   - Zero border-radius (0px) across every surface, button, input, and swatch
+   - Double-Line Box-Drawing Frame (╔═══╗) via border + inset outline (-4px)
+   - ASCII Bracketed Headings (┌─[ TITLE ]─┐) & Halftone Stipple Offset Shadow
+   - Instant Terminal Inverse-Video Hover + Steps(2, end) Discrete Snap Press
+   - Discrete ASCII Character-Cell Slider Tracks ([█|█|█|░|░]) + Block Thumb ▮
+   - Open-Source Pixel/Terminal Font Stack: Silkscreen + Zpix (最像素) + JetBrains Mono
+   ========================================================================== */
+@keyframes tui-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.tui-caret {
+  display: inline-block;
+  width: 1ch;
+  color: var(--accent-color);
+  animation: tui-blink 1.05s steps(2) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tui-caret {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+html[data-ui-style="ascii"] {
+  --font-ascii-ui: "Geist Mono", "Zpix", "DotGothic16", "JetBrains Mono", ui-monospace, monospace;
+  --font-ascii-display: "Geist Mono", "Silkscreen", "Zpix", "DotGothic16", "JetBrains Mono", ui-monospace, monospace;
+  --tui-page: var(--tui-light-page, #E3ECF6);
+  --tui-surface: var(--tui-light-surface, rgba(245, 249, 254, 0.90));
+  --tui-subsurface: var(--tui-light-subsurface, #E1EBF7);
+  --tui-well: var(--tui-light-well, #CEDEEF);
+  --tui-ink: var(--tui-light-ink, #101C2B);
+  --tui-muted: var(--tui-light-muted, #4C627D);
+  --tui-border: var(--tui-light-border, #1B2F4A);
+  --tui-rule: var(--tui-light-rule, rgba(27, 47, 74, 0.24));
+  --tui-shadow: var(--tui-light-shadow, rgba(34, 65, 112, 0.34));
+  --tui-header-tint: var(--tui-light-header-tint, #D6E4F4);
+  --tui-shadow-strong: var(--tui-border);
+  scroll-padding-block-start: 56px;
+}
+
+html.dark[data-ui-style="ascii"] {
+  --tui-page: var(--tui-dark-page, #070C14);
+  --tui-surface: var(--tui-dark-surface, rgba(13, 21, 34, 0.88));
+  --tui-subsurface: var(--tui-dark-subsurface, #121E30);
+  --tui-well: var(--tui-dark-well, #080F19);
+  --tui-ink: var(--tui-dark-ink, #E2ECF7);
+  --tui-muted: var(--tui-dark-muted, #7B93B0);
+  --tui-border: var(--tui-dark-border, #3E5C82);
+  --tui-rule: var(--tui-dark-rule, rgba(226, 236, 247, 0.20));
+  --tui-shadow: var(--tui-dark-shadow, rgba(70, 115, 176, 0.44));
+  --tui-header-tint: var(--tui-dark-header-tint, #16253B);
+  --tui-shadow-strong: var(--accent-color);
+}
+
+/* 1. Transparent Workspace Layer over Live WebGL2 <GradientASCII /> Backdrop */
+html[data-ui-style="ascii"],
+html[data-ui-style="ascii"] body {
+  background-color: var(--tui-page) !important;
+  color: var(--tui-ink);
+  font-family: var(--font-ascii-ui) !important;
+}
+
+html[data-ui-style="ascii"] .k-app,
+html[data-ui-style="ascii"] .gk-page-bg {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: var(--tui-ink);
+  font-family: var(--font-ascii-ui) !important;
+}
+
+html[data-ui-style="ascii"] .engineering-viewport-grid,
+html[data-ui-style="ascii"] .gk-canvas-backdrop {
+  background-color: var(--tui-well) !important;
+  background-image: radial-gradient(var(--tui-rule) 1px, transparent 0) !important;
+  background-size: 12px 12px !important;
+  color: var(--tui-ink);
+}
+
+html.dark[data-ui-style="ascii"] .engineering-viewport-grid,
+html.dark[data-ui-style="ascii"] .gk-canvas-backdrop {
+  background-color: var(--tui-well) !important;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.018) 0px,
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(var(--tui-rule) 1px, transparent 0) !important;
+  background-size: 100% 3px, 12px 12px !important;
+}
+
+/* Disable all frosted blur, force crisp 0px corners & enforce Open-Source ASCII/Pixel Font Stack across EVERY element */
+html[data-ui-style="ascii"] *,
+html[data-ui-style="ascii"] *::before,
+html[data-ui-style="ascii"] *::after {
+  border-radius: 0px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-ui-style="ascii"] *,
+html[data-ui-style="ascii"] .font-sans,
+html[data-ui-style="ascii"] .font-mono {
+  font-family: var(--font-ascii-ui) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 2. Open-Source Pixel & Terminal Typography (Silkscreen + Geist Mono + Zpix 最像素 + DotGothic16) */
+html[data-ui-style="ascii"] :where(h1, h2, h3, h4, .gk-app-header h1, .gk-panel-card h2, .gk-panel-card h3, .bp-modal-header h2, .bp-modal-header h3) {
+  font-family: var(--font-ascii-ui) !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase;
+}
+
+/* Bracketed ASCII Window Title Ornament: ┌─[ TITLE ]─┐ */
+html[data-ui-style="ascii"] .gk-panel-card h2::before,
+html[data-ui-style="ascii"] .gk-panel-card h3::before,
+html[data-ui-style="ascii"] .bp-modal-header h2::before {
+  content: "[ ";
+  color: var(--accent-color);
+  font-weight: 700;
+}
+html[data-ui-style="ascii"] .gk-panel-card h2::after,
+html[data-ui-style="ascii"] .gk-panel-card h3::after,
+html[data-ui-style="ascii"] .bp-modal-header h2::after {
+  content: " ]";
+  color: var(--accent-color);
+  font-weight: 700;
+}
+
+html[data-ui-style="ascii"] :where(button, .bp-pill, .bp-btn, .bp-use-btn, .bp-segmented-item, .gk-tab-pill, .bp-badge, label, input, output, code, .font-mono, .tabular-nums) {
+  font-family: var(--font-ascii-ui) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* 3. Hallmark N8 Terminal Command Top Header Bar */
+html[data-ui-style="ascii"] header.gk-app-header,
+html[data-ui-style="ascii"] .gk-header {
+  border-radius: 0px !important;
+  background: var(--tui-header-tint) !important;
+  border-bottom: 2px solid var(--tui-border) !important;
+  box-shadow: 0 3px 0 0 var(--tui-shadow) !important;
+}
+
+/* 4. Double-Rule Box-Drawing Outer Panels (╔═══════╗ via border + inset outline + Bold Accent Top Bar) */
+html[data-ui-style="ascii"] .gk-panel-card,
+html[data-ui-style="ascii"] .gk-card,
+html[data-ui-style="ascii"] .bp-subcard-lg,
+html[data-ui-style="ascii"] .bp-module-card {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  border-top: 3px solid var(--accent-color) !important;
+  outline: 1px solid var(--tui-rule) !important;
+  outline-offset: -4px !important;
+  background-color: var(--tui-surface) !important;
+  box-shadow: 4px 4px 0px 0px var(--tui-shadow) !important;
+}
+
+/* Project Cards & Canvas Stages: Edge-to-Edge 0px Media Alignment (Zero Corner Gaps) */
+html[data-ui-style="ascii"] .bp-project-card {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  outline: none !important;
+  overflow: hidden !important;
+  background-color: var(--tui-surface) !important;
+  box-shadow: 4px 4px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-cover-top,
+html[data-ui-style="ascii"] .bp-card-bottom {
+  border-radius: 0px !important;
+}
+html[data-ui-style="ascii"] .bp-card-bottom {
+  background-color: var(--tui-surface) !important;
+  border-top: 1.5px dashed var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .bp-canvas-stage {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  box-shadow: 3px 3px 0px 0px var(--tui-shadow) !important;
+}
+
+/* Preserve Chroma Studio backdrop switcher in ASCII mode */
+html[data-ui-style="ascii"] .bp-subcard-lg[data-backdrop-theme="dark"] {
+  background-color: #0B0D10 !important;
+  color: #E4ECE8 !important;
+}
+html[data-ui-style="ascii"] .bp-subcard-lg[data-backdrop-theme="neutral"] {
+  background-color: #808080 !important;
+  color: #FFFFFF !important;
+}
+html[data-ui-style="ascii"] .bp-subcard-lg[data-backdrop-theme="light"] {
+  background-color: #FFFFFF !important;
+  color: #111315 !important;
+}
+
+/* 5. Inner Subcards & Extracted Swatch Rows (Single-Line Box Frame ┌───┐) */
+html[data-ui-style="ascii"] .bp-subcard,
+html[data-ui-style="ascii"] .bp-extracted-card,
+html[data-ui-style="ascii"] .bp-slider-row {
+  border-radius: 0px !important;
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--tui-subsurface) !important;
+  box-shadow: 2px 2px 0px 0px var(--tui-shadow) !important;
+}
+
+html[data-ui-style="ascii"] .bp-subcard-active,
+html[data-ui-style="ascii"] .bp-extracted-card-active,
+html[data-ui-style="ascii"] .bp-slider-row-active {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--accent-color) !important;
+  background-color: var(--tui-surface) !important;
+  box-shadow: 3px 3px 0px 0px var(--accent-color) !important;
+}
+
+/* 6. Segmented Switchers, Tab Bar & Search Inputs */
+html[data-ui-style="ascii"] .gk-tab-bar,
+html[data-ui-style="ascii"] .bp-segmented {
+  border-radius: 0px !important;
+  padding: 3px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  background-color: var(--tui-well) !important;
+  box-shadow: inset 2px 2px 0px rgba(0, 0, 0, 0.08) !important;
+}
+
+html[data-ui-style="ascii"] .gk-tab-pill,
+html[data-ui-style="ascii"] .bp-segmented-item {
+  border-radius: 0px !important;
+  border: 1px solid transparent !important;
+  color: var(--tui-muted) !important;
+}
+
+html[data-ui-style="ascii"] .gk-tab-pill-active,
+html[data-ui-style="ascii"] .bp-segmented-item-active {
+  border-radius: 0px !important;
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  box-shadow: 2px 2px 0px 0px var(--tui-border) !important;
+}
+
+html[data-ui-style="ascii"] .bp-input,
+html[data-ui-style="ascii"] input[type="text"],
+html[data-ui-style="ascii"] input[type="search"] {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  background-color: var(--tui-well) !important;
+  color: var(--tui-ink) !important;
+  box-shadow: inset 2px 2px 0px rgba(0, 0, 0, 0.1) !important;
+}
+html[data-ui-style="ascii"] .bp-input:focus,
+html[data-ui-style="ascii"] input[type="text"]:focus,
+html[data-ui-style="ascii"] input[type="search"]:focus {
+  outline: none !important;
+  background-color: var(--tui-surface) !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 2px 2px 0px 0px var(--accent-color) !important;
+}
+
+/* 7. TUI Terminal Buttons & Pills (0px Corners + Stipple Offset Shadow) */
+html[data-ui-style="ascii"]
+  :where(
+    .bp-pill:not(:disabled),
+    .bp-btn:not(:disabled),
+    .bp-use-btn:not(:disabled),
+    .gk-mech-btn:not(:disabled),
+    .gk-btn-secondary:not(:disabled),
+    .bp-delete-btn:not(:disabled),
+    button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+      [class*="border-t"]
+    ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+      .bp-segmented-item
+    ):not(.gk-tab-pill):not(.bp-gray-step-btn):not(.bp-swatch-stage-btn):not(.bp-subcard):not(
+      .bp-subcard-active
+    ):not(.bp-swatch):not(.bp-matrix-cell):not(.bp-dot):not(:disabled)
+  ) {
+  border-radius: 0px !important;
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--tui-surface) !important;
+  color: var(--tui-ink) !important;
+  box-shadow: 2.5px 2.5px 0px 0px var(--tui-shadow) !important;
+}
+
+/* Primary / Active TUI Buttons */
+html[data-ui-style="ascii"] .bp-pill-active,
+html[data-ui-style="ascii"] .gk-mech-primary,
+html[data-ui-style="ascii"] .gk-btn-primary,
+html[data-ui-style="ascii"] .bp-fab,
+html[data-ui-style="ascii"] button[class~="bg-accent"]:not(.bp-swatch-stage-btn):not(:disabled),
+html[data-ui-style="ascii"] button[class~="bg-[var(--accent-color)]"]:not(.bp-swatch-stage-btn):not(:disabled) {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  box-shadow: 3px 3px 0px 0px var(--tui-border) !important;
+}
+
+html[data-ui-style="ascii"] .bp-use-btn-used {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  box-shadow: 2.5px 2.5px 0px 0px var(--tui-border) !important;
+}
+
+/* 8. Discrete ASCII Character-Cell Sliders ([█|█|█|░|░] Track + Block Cursor ▮ Thumb) & TUI Toggle Switches */
+html[data-ui-style="ascii"] .bp-slider-track {
+  border-radius: 0px !important;
+  border: 1px solid var(--tui-border) !important;
+  height: 12px !important;
+  background-color: var(--tui-well) !important;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 6px,
+    var(--tui-rule) 6px,
+    var(--tui-rule) 7px
+  ) !important;
+}
+html[data-ui-style="ascii"] .bp-slider-fill {
+  border-radius: 0px !important;
+  border-right: 1.5px solid var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .bp-slider-thumb-knob {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  background-color: var(--accent-color) !important;
+  box-shadow: 2px 2px 0px 0px var(--tui-border) !important;
+}
+
+html[data-ui-style="ascii"] input[type="range"].bp-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px !important;
+  border-radius: 0px !important;
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--tui-well) !important;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 6px,
+    var(--tui-rule) 6px,
+    var(--tui-rule) 7px
+  ) !important;
+}
+html[data-ui-style="ascii"] input[type="range"].bp-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 18px;
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  background-color: var(--accent-color) !important;
+  box-shadow: 2px 2px 0px 0px var(--tui-border) !important;
+  cursor: pointer;
+}
+
+/* Rectangular TUI Terminal Toggle Switch ([■ ] / [ ■]), Badges & Disabled Buttons */
+html[data-ui-style="ascii"] .gk-switch-track {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  background-color: var(--tui-well) !important;
+  box-shadow: inset 1.5px 1.5px 0px rgba(0, 0, 0, 0.14) !important;
+}
+html[data-ui-style="ascii"] .gk-switch-track.gk-switch-track-on {
+  background-color: var(--accent-color) !important;
+  border-color: var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .gk-switch-thumb {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  background-color: var(--tui-surface) !important;
+  box-shadow: 1px 1px 0px 0px var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .bp-badge:not(.gk-switch-track) {
+  border-radius: 0px !important;
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--tui-header-tint) !important;
+  color: var(--tui-ink) !important;
+  box-shadow: 1.5px 1.5px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] button:disabled {
+  border-radius: 0px !important;
+  border: 1px dashed var(--tui-rule) !important;
+  background-color: var(--tui-well) !important;
+  color: var(--tui-muted) !important;
+  box-shadow: none !important;
+  opacity: 0.65 !important;
+}
+html[data-ui-style="ascii"] input[type="checkbox"] {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  accent-color: var(--accent-color) !important;
+}
+
+/* 9. Mobile Dock, Modals & Floating Canvas Swatch Cards in ASCII Mode */
+html[data-ui-style="ascii"] nav.gk-mobile-dock {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  border-top: 2.5px solid var(--accent-color) !important;
+  outline: 1px solid var(--tui-rule) !important;
+  outline-offset: -3px !important;
+  background-color: var(--tui-surface) !important;
+  box-shadow: 4px 4px 0px 0px var(--tui-shadow) !important;
+}
+
+html[data-ui-style="ascii"] .bp-modal-shell {
+  border-radius: 0px !important;
+  border: 2px solid var(--tui-border) !important;
+  border-top: 3px solid var(--accent-color) !important;
+  outline: none !important;
+  background-color: var(--tui-surface) !important;
+  box-shadow: 6px 6px 0px 0px var(--tui-shadow) !important;
+  overscroll-behavior: contain;
+  overflow: hidden !important;
+}
+html[data-ui-style="ascii"] .bp-modal-header {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  background-color: var(--tui-header-tint) !important;
+  border-bottom: 1.5px dashed var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .bp-modal-shell button[aria-pressed="true"]:not(:disabled) {
+  border-color: var(--accent-color) !important;
+  box-shadow: 2.5px 2.5px 0px 0px var(--accent-color) !important;
+}
+
+html[data-ui-style="ascii"] .bp-floating-swatch {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--tui-border) !important;
+  background-color: var(--tui-surface) !important;
+  box-shadow: 3px 3px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-floating-swatch-active {
+  border: 2px solid var(--accent-color) !important;
+  box-shadow: 3px 3px 0px 0px var(--accent-color) !important;
+}
+html[data-ui-style="ascii"] .bp-floating-swatch-body,
+html[data-ui-style="ascii"] .bp-floating-swatch-thumb,
+html[data-ui-style="ascii"] .bp-floating-swatch-tonal {
+  border-radius: 0px !important;
+}
+
+/* 10. High-Fidelity Color Swatches & Matrix Cells (0px Sharp Frame + True Color Accuracy) */
+html[data-ui-style="ascii"] .bp-swatch,
+html[data-ui-style="ascii"] .bp-dot,
+html[data-ui-style="ascii"] .bp-mixed-preview,
+html[data-ui-style="ascii"] .bp-matrix-cell {
+  border-radius: 0px !important;
+  border: 1px solid var(--tui-border) !important;
+  box-shadow: 2px 2px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-matrix-cell-active {
+  border-radius: 0px !important;
+  border: 2px solid var(--tui-ink) !important;
+  outline: 1.5px solid var(--accent-color) !important;
+  outline-offset: 1px !important;
+}
+
+/* Dashed ASCII Rule Dividers (---- + ----) */
+html[data-ui-style="ascii"] .gk-dashed-divider-b,
+html[data-ui-style="ascii"] .bp-dashed-header,
+html[data-ui-style="ascii"] .bp-bottom-divider {
+  border-bottom: 1px dashed var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .gk-dashed-divider-t,
+html[data-ui-style="ascii"] .bp-top-divider {
+  border-top: 1px dashed var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .bp-dashed-box {
+  border-radius: 0px !important;
+  border: 1px dashed var(--tui-border) !important;
+  background-color: var(--tui-subsurface) !important;
+}
+
+/* 11. Terminal Inverse-Video Hover & Step-Frame Discrete Press Physics */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-ui-style="ascii"]
+    :where(
+      .bp-btn:not(:disabled),
+      .bp-pill:not(:disabled),
+      .bp-pill-active:not(:disabled),
+      .bp-use-btn:not(:disabled),
+      .bp-use-btn-used:not(:disabled),
+      .bp-fab:not(:disabled),
+      .bp-segmented-item:not(:disabled),
+      .bp-segmented-item-active:not(:disabled),
+      .gk-mech-btn:not(:disabled),
+      .gk-mech-primary:not(:disabled),
+      .gk-btn-primary:not(:disabled),
+      .gk-btn-secondary:not(:disabled),
+      .gk-tab-pill:not(:disabled),
+      .gk-tab-pill-active:not(:disabled),
+      .bp-delete-btn:not(:disabled),
+      .bp-matrix-cell:not(:disabled),
+      .bp-matrix-cell-active:not(:disabled),
+      button.bp-subcard:not(:disabled),
+      button.bp-subcard-active:not(:disabled),
+      label.bp-subcard,
+      .bp-subcard-interactive,
+      .bp-project-card,
+      .bp-extracted-card,
+      button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+        [class*="border-t"]
+      ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+        .bp-gray-step-btn
+      ):not(:disabled)
+    ) {
+    transform: translate(0px, 0px);
+    scale: 1 !important;
+    transition-property: transform, box-shadow, background-color, color, border-color !important;
+    transition-duration: 60ms !important;
+    transition-timing-function: steps(2, end) !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Terminal Inverse-Video Hover on Hover-Capable Pointers */
+  @media (hover: hover) {
+    html[data-ui-style="ascii"]
+      :where(
+        .bp-btn:not(:disabled),
+        .bp-pill:not(:disabled),
+        .bp-use-btn:not(:disabled),
+        .gk-mech-btn:not(:disabled),
+        .gk-btn-secondary:not(:disabled),
+        .bp-delete-btn:not(:disabled),
+        button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+          [class*="border-t"]
+        ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+          .bp-segmented-item
+        ):not(.gk-tab-pill):not(.bp-gray-step-btn):not(.bp-pill-active):not(
+          .gk-mech-primary
+        ):not(.gk-btn-primary):not(.bp-subcard):not(.bp-subcard-active):not(
+          .bp-swatch
+        ):not(.bp-matrix-cell):not(.bp-dot):not(:disabled)
+      ):hover:not(:active):not([data-bp-pressed="true"]) {
+      background-color: var(--tui-ink) !important;
+      color: var(--tui-surface) !important;
+      border-color: var(--accent-color) !important;
+      box-shadow: 3px 3px 0px 0px var(--accent-color) !important;
+    }
+  }
+
+  /* Active / Pressed State: Instant 0ms Digital Terminal Snap */
+  html[data-ui-style="ascii"]
+    :where(
+      .bp-btn:not(:disabled),
+      .bp-pill:not(:disabled),
+      .bp-pill-active:not(:disabled),
+      .bp-use-btn:not(:disabled),
+      .bp-use-btn-used:not(:disabled),
+      .bp-fab:not(:disabled),
+      .bp-segmented-item:not(:disabled),
+      .bp-segmented-item-active:not(:disabled),
+      .gk-mech-btn:not(:disabled),
+      .gk-mech-primary:not(:disabled),
+      .gk-btn-primary:not(:disabled),
+      .gk-btn-secondary:not(:disabled),
+      .gk-tab-pill:not(:disabled),
+      .gk-tab-pill-active:not(:disabled),
+      .bp-delete-btn:not(:disabled),
+      .bp-matrix-cell:not(:disabled),
+      .bp-matrix-cell-active:not(:disabled),
+      button.bp-subcard:not(:disabled),
+      button.bp-subcard-active:not(:disabled),
+      label.bp-subcard,
+      button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+        [class*="border-t"]
+      ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+        .bp-gray-step-btn
+      ):not(:disabled)
+    ):is(:active, [data-bp-pressed="true"]),
+  html[data-ui-style="ascii"]
+    :where(.bp-subcard-interactive, .bp-project-card, .bp-extracted-card):not(
+      :has(
+        button:active,
+        button[data-bp-pressed="true"],
+        label:active,
+        label[data-bp-pressed="true"],
+        input:active,
+        [role="button"]:active,
+        [role="button"][data-bp-pressed="true"]
+      )
+    ):is(:active, [data-bp-pressed="true"]) {
+    transform: translate(2px, 2px) !important;
+    scale: 1 !important;
+    box-shadow: 0px 0px 0px 0px transparent !important;
+    transition-duration: 0ms !important;
+  }
+}
+
+/* ==========================================================================
+   16. Style E: Fieldwork Type — FT System Specimen (data-ui-style="catalog")
+   Refactored with Oil UI (`oil-ui`) & Fieldwork Type (`FT System — Fieldwork Type`):
+   - Typeface System: Local `FT` Variable Sans (`/fonts/RobotoFlex.woff2`,
+     weight 100–1000, width 25%–151%, optical size 8–144) + Arial/Helvetica
+     grotesque + Noto Sans SC (`tabular-nums` for all axis & pigment readouts)
+   - Palette & Flat Color-Block Stages:
+     `--ft-paper: #f7f8f2` (Botanical Specimen Paper)
+     `--ft-acid: #e5ed85` (Signature Fieldwork Acid-Chartreuse Stage)
+     `--ft-ink: #24352b` (Deep Forest-Pine Foundry Ink)
+     `--ft-line: #24352b40` (1px Hairline Editorial Rule)
+     `--ft-muted: #5d685f` (Sage Specimen Caption Ink)
+     `--ft-studio-blue: #ced9f0` (Studio Print Plate)
+     `--ft-poster-coral: #ef8057` (Poster Terracotta Accent)
+   - Zero Hard Offset Shadows (`box-shadow: none !important`), Zero Wireframe
+     Brackets, Sharp 0px Editorial Grid, 1px Hairline Axis Sliders (11x20px
+     solid rectangular marker thumb), and Flat Color-Inversion Hover Physics
+   ========================================================================== */
+@font-face {
+  font-family: "FT";
+  src: url("/fonts/RobotoFlex.woff2") format("woff2");
+  font-weight: 100 1000;
+  font-stretch: 25% 151%;
+  font-display: swap;
+}
+
+html[data-ui-style="catalog"] {
+  --font-ft-display: "FT", "Noto Sans SC", Arial, Helvetica, sans-serif;
+  --font-ft-body: "FT", Arial, Helvetica, "Noto Sans SC", -apple-system, sans-serif;
+  --font-ft-mono: "FT", Arial, Helvetica, "Noto Sans SC", sans-serif;
+  --ft-paper: var(--ft-light-paper, #f7f8f2);
+  --ft-surface: var(--ft-light-surface, #f7f8f2);
+  --ft-subsurface: var(--ft-light-subsurface, #f0f2e8);
+  --ft-acid: var(--ft-light-acid, #e5ed85);
+  --ft-ink: var(--ft-light-ink, #24352b);
+  --ft-ink-hover: var(--ft-light-ink-hover, #394d40);
+  --ft-stage-ink: var(--ft-light-stage-ink, #24352b);
+  --ft-line: var(--ft-light-line, rgba(36, 53, 43, 0.25));
+  --ft-muted: var(--ft-light-muted, #5d685f);
+  --ft-studio-blue: var(--ft-light-plate, #ced9f0);
+  --ft-poster-coral: #ef8057;
+  --ft-solid-fg: var(--ft-light-acid, #e5ed85);
+  --ft-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ft-duration: 280ms;
+  scroll-padding-block-start: 25px;
+}
+
+html.dark[data-ui-style="catalog"] {
+  --ft-paper: var(--ft-dark-paper, #1b2820);
+  --ft-surface: var(--ft-dark-surface, #24352b);
+  --ft-subsurface: var(--ft-dark-subsurface, #1f2e25);
+  --ft-acid: var(--ft-dark-acid, #e5ed85);
+  --ft-ink: var(--ft-dark-ink, #f7f8f2);
+  --ft-ink-hover: var(--ft-dark-ink-hover, #e5ed85);
+  --ft-stage-ink: var(--ft-dark-stage-ink, #24352b);
+  --ft-line: var(--ft-dark-line, rgba(247, 248, 242, 0.22));
+  --ft-muted: var(--ft-dark-muted, #c3cec2);
+  --ft-studio-blue: var(--ft-dark-plate, #2b3d33);
+  --ft-poster-coral: #ef8057;
+  --ft-solid-fg: var(--ft-dark-stage-ink, #24352b);
+}
+
+html[data-ui-style="catalog"] ::selection {
+  background: var(--ft-ink);
+  color: var(--ft-acid);
+}
+
+/* 1. Specimen Paper Canvas & Editorial Grid Backdrop */
+html[data-ui-style="catalog"],
+html[data-ui-style="catalog"] body {
+  background-color: var(--ft-paper) !important;
+  color: var(--ft-ink);
+  font-family: var(--font-ft-body) !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+html[data-ui-style="catalog"] .k-app,
+html[data-ui-style="catalog"] .gk-page-bg {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: var(--ft-ink);
+  font-family: var(--font-ft-body) !important;
+}
+
+/* Fieldwork Glyph-Grid 1px Editorial Hairline Backdrop inside Canvas Viewports */
+html[data-ui-style="catalog"] .engineering-viewport-grid,
+html[data-ui-style="catalog"] .gk-canvas-backdrop {
+  background-color: var(--ft-subsurface) !important;
+  background-image:
+    linear-gradient(to right, var(--ft-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--ft-line) 1px, transparent 1px) !important;
+  background-size: 48px 48px !important;
+  color: var(--ft-ink);
+}
+
+/* Strip all glass blur & remove any pseudo-element brackets/stamps from earlier styles */
+html[data-ui-style="catalog"] .gk-panel-card,
+html[data-ui-style="catalog"] .gk-card,
+html[data-ui-style="catalog"] .bp-subcard,
+html[data-ui-style="catalog"] .bp-subcard-lg,
+html[data-ui-style="catalog"] .bp-floating-swatch {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-ui-style="catalog"] .gk-panel-card h2::before,
+html[data-ui-style="catalog"] .gk-panel-card h3::before,
+html[data-ui-style="catalog"] .gk-panel-card h2::after,
+html[data-ui-style="catalog"] .gk-panel-card h3::after,
+html[data-ui-style="catalog"] .bp-modal-header h2::before {
+  content: none !important;
+}
+
+/* 2. Fieldwork Type Variable Typography System (FT Variable Axes: wght, wdth, opsz) */
+html[data-ui-style="catalog"] :where(h1, .gk-app-header h1) {
+  font-family: var(--font-ft-display) !important;
+  font-weight: 400 !important;
+  font-variation-settings: "wght" 760, "wdth" 110, "opsz" 50;
+  letter-spacing: -0.04em !important;
+  line-height: 1;
+}
+
+html[data-ui-style="catalog"] :where(h2, h3, h4, .gk-panel-card h2, .gk-panel-card h3, .bp-modal-header h2, .bp-modal-header h3) {
+  font-family: var(--font-ft-display) !important;
+  font-weight: 400 !important;
+  font-variation-settings: "wght" 540, "wdth" 104, "opsz" 72;
+  letter-spacing: -0.032em !important;
+  line-height: 1.06;
+}
+
+html[data-ui-style="catalog"] :where(button, .bp-pill, .bp-btn, .bp-use-btn, .bp-segmented-item, .gk-tab-pill, label, p, select, input) {
+  font-family: var(--font-ft-body) !important;
+  font-weight: 400;
+  font-variation-settings: "wght" 460, "wdth" 100, "opsz" 20;
+}
+
+html[data-ui-style="catalog"] :where(.font-mono, .tabular-nums, code, output, input[type="number"], .bp-badge) {
+  font-family: var(--font-ft-mono) !important;
+  font-variation-settings: "wght" 540, "wdth" 102, "opsz" 32;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* 3. Top Site Header (.site-header in fieldwork-style.css: 1px solid var(--ink) bottom rule, zero shadow) */
+html[data-ui-style="catalog"] header.gk-app-header,
+html[data-ui-style="catalog"] .gk-header {
+  border-radius: 0px !important;
+  background: var(--ft-paper) !important;
+  border-top: 0 !important;
+  border-bottom: 1px solid var(--ft-ink) !important;
+  box-shadow: none !important;
+}
+
+/* 4. Flat Editorial Specimen Sheets (Zero Offset Shadows, Crisp 1px Solid Ink Borders) */
+html[data-ui-style="catalog"] .gk-panel-card,
+html[data-ui-style="catalog"] .gk-card,
+html[data-ui-style="catalog"] .bp-subcard-lg,
+html[data-ui-style="catalog"] .bp-module-card {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-surface) !important;
+  box-shadow: none !important;
+}
+
+/* Project Cards & Canvas Stages: Flat Print Sample Stage (.print-sample / .specimen-stage) */
+html[data-ui-style="catalog"] .bp-project-card {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  overflow: hidden !important;
+  background-color: var(--ft-studio-blue) !important;
+  color: var(--ft-stage-ink) !important;
+  box-shadow: none !important;
+}
+html.dark[data-ui-style="catalog"] .bp-project-card {
+  color: var(--ft-ink) !important;
+}
+html[data-ui-style="catalog"] .bp-cover-top,
+html[data-ui-style="catalog"] .bp-card-bottom {
+  border-radius: 0px !important;
+}
+html[data-ui-style="catalog"] .bp-card-bottom {
+  background-color: var(--ft-surface) !important;
+  border-top: 1px solid var(--ft-ink) !important;
+}
+html[data-ui-style="catalog"] .bp-canvas-stage {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Preserve Chroma Studio backdrop switcher in Fieldwork mode */
+html[data-ui-style="catalog"] .bp-subcard-lg[data-backdrop-theme="dark"] {
+  background-color: var(--ft-dark-paper, #1b2820) !important;
+  color: var(--ft-dark-ink, #f7f8f2) !important;
+}
+html[data-ui-style="catalog"] .bp-subcard-lg[data-backdrop-theme="neutral"] {
+  background-color: #808080 !important;
+  color: #FFFFFF !important;
+}
+html[data-ui-style="catalog"] .bp-subcard-lg[data-backdrop-theme="light"] {
+  background-color: var(--ft-light-paper, #f7f8f2) !important;
+  color: var(--ft-light-ink, #24352b) !important;
+}
+
+/* 5. Weight-Row & License-Option Style Subcards (1px Hairline Rules + Dynamic Stage Highlight) */
+html[data-ui-style="catalog"] .bp-subcard,
+html[data-ui-style="catalog"] .bp-extracted-card,
+html[data-ui-style="catalog"] .bp-slider-row {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-line) !important;
+  background-color: var(--ft-subsurface) !important;
+  box-shadow: none !important;
+}
+
+/* Active Specimen Stage (.hero / .weight-row:hover / .glyph-grid button.selected) */
+html[data-ui-style="catalog"] .bp-subcard-active,
+html[data-ui-style="catalog"] .bp-extracted-card-active,
+html[data-ui-style="catalog"] .bp-slider-row-active {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-stage-ink) !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+  box-shadow: none !important;
+}
+
+html.dark[data-ui-style="catalog"] .bp-subcard-active,
+html.dark[data-ui-style="catalog"] .bp-extracted-card-active,
+html.dark[data-ui-style="catalog"] .bp-slider-row-active {
+  border-color: var(--ft-acid) !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+}
+
+html.dark[data-ui-style="catalog"] .bp-subcard-active *,
+html.dark[data-ui-style="catalog"] .bp-extracted-card-active *,
+html.dark[data-ui-style="catalog"] .bp-slider-row-active * {
+  color: var(--ft-stage-ink);
+}
+
+/* 6. Section Nav & Glyph Tabs (.section-nav & .glyph-tabs in fieldwork-style.css) */
+html[data-ui-style="catalog"] .gk-tab-bar,
+html[data-ui-style="catalog"] .bp-segmented {
+  border-radius: 0px !important;
+  padding: 0px !important;
+  border-top: 1px solid var(--ft-ink) !important;
+  border-bottom: 1px solid var(--ft-ink) !important;
+  border-left: 1px solid var(--ft-ink) !important;
+  border-right: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-paper) !important;
+  box-shadow: none !important;
+}
+
+html[data-ui-style="catalog"] .gk-tab-pill,
+html[data-ui-style="catalog"] .bp-segmented-item {
+  border-radius: 0px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--ft-line) !important;
+  color: var(--ft-muted) !important;
+  font-family: var(--font-ft-display) !important;
+  font-variation-settings: "wght" 480, "wdth" 102, "opsz" 24;
+  letter-spacing: -0.01em;
+  box-shadow: none !important;
+}
+
+html[data-ui-style="catalog"] .gk-tab-pill:last-child,
+html[data-ui-style="catalog"] .bp-segmented-item:last-child {
+  border-right: 0 !important;
+}
+
+/* Active Tab: Fieldwork Dynamic Stage + 3px Bottom Indicator Bar (.glyph-tabs button[aria-selected=true]) */
+html[data-ui-style="catalog"] .gk-tab-pill-active,
+html[data-ui-style="catalog"] .bp-segmented-item-active {
+  border-radius: 0px !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+  font-variation-settings: "wght" 680, "wdth" 106, "opsz" 28;
+  outline: none !important;
+  box-shadow: inset 0 -3px 0 0 var(--ft-stage-ink) !important;
+}
+
+/* Inputs & Selects (.alignment-control select / .scope-label select in fieldwork-style.css) */
+html[data-ui-style="catalog"] .bp-input,
+html[data-ui-style="catalog"] input[type="text"],
+html[data-ui-style="catalog"] input[type="search"],
+html[data-ui-style="catalog"] select {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: transparent !important;
+  color: var(--ft-ink) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-input:focus,
+html[data-ui-style="catalog"] input[type="text"]:focus,
+html[data-ui-style="catalog"] input[type="search"]:focus,
+html[data-ui-style="catalog"] select:focus {
+  outline: 2px solid var(--ft-ink) !important;
+  outline-offset: 2px !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+  border-color: var(--ft-stage-ink) !important;
+  box-shadow: none !important;
+}
+
+/* 7. Fieldwork Preset & Solid Buttons (.preset-group button & .solid-button in fieldwork-style.css) */
+html[data-ui-style="catalog"]
+  :where(
+    .bp-pill:not(:disabled),
+    .bp-btn:not(:disabled),
+    .bp-use-btn:not(:disabled),
+    .gk-mech-btn:not(:disabled),
+    .gk-btn-secondary:not(:disabled),
+    .bp-delete-btn:not(:disabled),
+    button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+      [class*="border-t"]
+    ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+      .bp-segmented-item
+    ):not(.gk-tab-pill):not(.bp-gray-step-btn):not(.bp-swatch-stage-btn):not(.bp-subcard):not(
+      .bp-subcard-active
+    ):not(.bp-swatch):not(.bp-matrix-cell):not(.bp-dot):not(:disabled)
+  ) {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: transparent !important;
+  color: var(--ft-ink) !important;
+  box-shadow: none !important;
+}
+
+/* Primary / Solid Buttons (.solid-button / .buy-button in fieldwork-style.css: Deep Foundry Ink + Stage Text) */
+html[data-ui-style="catalog"] .bp-pill-active,
+html[data-ui-style="catalog"] .gk-mech-primary,
+html[data-ui-style="catalog"] .gk-btn-primary,
+html[data-ui-style="catalog"] .bp-fab,
+html[data-ui-style="catalog"] button[class~="bg-accent"]:not(.bp-swatch-stage-btn):not(:disabled),
+html[data-ui-style="catalog"] button[class~="bg-[var(--accent-color)]"]:not(.bp-swatch-stage-btn):not(:disabled) {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-ink) !important;
+  color: var(--ft-solid-fg) !important;
+  font-variation-settings: "wght" 620, "wdth" 105, "opsz" 28;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+html[data-ui-style="catalog"] .bp-use-btn-used,
+html[data-ui-style="catalog"] .bp-modal-shell button[aria-pressed="true"]:not(:disabled) {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-stage-ink) !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+html[data-ui-style="catalog"] .bp-modal-shell button[aria-pressed="true"]:not(:disabled) * {
+  color: var(--ft-stage-ink) !important;
+}
+
+/* 8. Fieldwork Type 1px Hairline Axis Sliders (.range-control & .axis-track in fieldwork-style.css) */
+html[data-ui-style="catalog"] .bp-slider-track {
+  border-radius: 0px !important;
+  border: 0 !important;
+  height: 2px !important;
+  background-color: var(--ft-line) !important;
+  background-image: none !important;
+}
+html[data-ui-style="catalog"] .bp-slider-fill {
+  border-radius: 0px !important;
+  background-color: var(--ft-ink) !important;
+}
+html[data-ui-style="catalog"] .bp-slider-thumb-knob {
+  border-radius: 0px !important;
+  width: 11px !important;
+  height: 20px !important;
+  border: 0 !important;
+  background-color: var(--ft-ink) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+html[data-ui-style="catalog"] input[type="range"].bp-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px !important;
+  border-radius: 0px !important;
+  border: 0 !important;
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    to bottom,
+    transparent calc(50% - 0.5px),
+    var(--ft-ink) calc(50% - 0.5px),
+    var(--ft-ink) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  ) !important;
+}
+html[data-ui-style="catalog"] input[type="range"].bp-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 20px;
+  border-radius: 0px !important;
+  border: 0 !important;
+  background-color: var(--ft-ink) !important;
+  box-shadow: none !important;
+  cursor: ew-resize;
+}
+html[data-ui-style="catalog"] input[type="range"].bp-range-slider::-moz-range-thumb {
+  width: 11px;
+  height: 20px;
+  border-radius: 0px !important;
+  border: 0 !important;
+  background-color: var(--ft-ink) !important;
+  box-shadow: none !important;
+  cursor: ew-resize;
+}
+
+/* Toggle Switches, Specimen Badges & Checkboxes (.license-check > input in fieldwork-style.css) */
+html[data-ui-style="catalog"] .gk-switch-track {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: transparent !important;
+}
+html[data-ui-style="catalog"] .gk-switch-track.gk-switch-track-on {
+  background-color: var(--ft-acid) !important;
+  border-color: var(--ft-stage-ink) !important;
+}
+html[data-ui-style="catalog"] .gk-switch-thumb {
+  border-radius: 0px !important;
+  border: 0 !important;
+  background-color: var(--ft-ink) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .gk-switch-track.gk-switch-track-on .gk-switch-thumb {
+  background-color: var(--ft-stage-ink) !important;
+}
+html[data-ui-style="catalog"] .bp-badge:not(.gk-switch-track) {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-line) !important;
+  background-color: var(--ft-subsurface) !important;
+  color: var(--ft-ink) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] button:disabled {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-line) !important;
+  background-color: transparent !important;
+  color: var(--ft-muted) !important;
+  box-shadow: none !important;
+  opacity: 0.45 !important;
+  cursor: not-allowed;
+}
+html[data-ui-style="catalog"] input[type="checkbox"] {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  accent-color: var(--ft-ink) !important;
+}
+
+/* 9. Mobile Dock, Dialog Modals & Floating Canvas Swatch Cards (dialog in fieldwork-style.css) */
+html[data-ui-style="catalog"] nav.gk-mobile-dock {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-paper) !important;
+  box-shadow: none !important;
+}
+
+html[data-ui-style="catalog"] .bp-modal-shell {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-paper) !important;
+  box-shadow: none !important;
+  overscroll-behavior: contain;
+  overflow: hidden !important;
+}
+html[data-ui-style="catalog"] .bp-modal-header {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+  border-bottom: 1px solid var(--ft-stage-ink) !important;
+}
+html[data-ui-style="catalog"] .bp-modal-header * {
+  color: var(--ft-stage-ink) !important;
+}
+html[data-ui-style="catalog"] .bp-modal-header .bp-modal-grabber {
+  background-color: var(--ft-stage-ink) !important;
+  opacity: 0.28;
+}
+html[data-ui-style="catalog"] .bp-modal-header .bp-btn {
+  border-color: var(--ft-stage-ink) !important;
+  color: var(--ft-stage-ink) !important;
+}
+@media (hover: hover) {
+  html[data-ui-style="catalog"] .bp-modal-header .bp-btn:hover:not(:active) {
+    background-color: var(--ft-stage-ink) !important;
+    color: var(--ft-acid) !important;
+    border-color: var(--ft-stage-ink) !important;
+  }
+  html[data-ui-style="catalog"] .bp-modal-header .bp-btn:hover:not(:active) * {
+    color: var(--ft-acid) !important;
+  }
+}
+
+html[data-ui-style="catalog"] .bp-floating-swatch {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-paper) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-floating-swatch-active {
+  border: 1px solid var(--ft-stage-ink) !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-floating-swatch-body,
+html[data-ui-style="catalog"] .bp-floating-swatch-thumb,
+html[data-ui-style="catalog"] .bp-floating-swatch-tonal {
+  border-radius: 0px !important;
+}
+
+/* 10. Glyph-Grid Style Swatch Cells (.glyph-grid button in fieldwork-style.css) */
+html[data-ui-style="catalog"] .bp-swatch,
+html[data-ui-style="catalog"] .bp-dot,
+html[data-ui-style="catalog"] .bp-mixed-preview,
+html[data-ui-style="catalog"] .bp-matrix-cell {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-line) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-matrix-cell-active {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-stage-ink) !important;
+  outline: 2px solid var(--ft-acid) !important;
+  outline-offset: 0px !important;
+  box-shadow: none !important;
+}
+
+/* Editorial 1px Hairline Dividers (border-top / border-bottom: 1px solid var(--line)) */
+html[data-ui-style="catalog"] .gk-dashed-divider-b,
+html[data-ui-style="catalog"] .bp-dashed-header,
+html[data-ui-style="catalog"] .bp-bottom-divider {
+  border-bottom: 1px solid var(--ft-line) !important;
+}
+html[data-ui-style="catalog"] .gk-dashed-divider-t,
+html[data-ui-style="catalog"] .bp-top-divider {
+  border-top: 1px solid var(--ft-line) !important;
+}
+html[data-ui-style="catalog"] .bp-dashed-box {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-line) !important;
+  background-color: var(--ft-subsurface) !important;
+  box-shadow: none !important;
+}
+
+/* 11. Fieldwork Type Motion & Flat Color-Block Inversion Physics (--ease: cubic-bezier(.22,1,.36,1)) */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-ui-style="catalog"]
+    :where(
+      .bp-btn:not(:disabled),
+      .bp-pill:not(:disabled),
+      .bp-pill-active:not(:disabled),
+      .bp-use-btn:not(:disabled),
+      .bp-use-btn-used:not(:disabled),
+      .bp-fab:not(:disabled),
+      .bp-segmented-item:not(:disabled),
+      .bp-segmented-item-active:not(:disabled),
+      .gk-mech-btn:not(:disabled),
+      .gk-mech-primary:not(:disabled),
+      .gk-btn-primary:not(:disabled),
+      .gk-btn-secondary:not(:disabled),
+      .gk-tab-pill:not(:disabled),
+      .gk-tab-pill-active:not(:disabled),
+      .bp-delete-btn:not(:disabled),
+      .bp-matrix-cell:not(:disabled),
+      .bp-matrix-cell-active:not(:disabled),
+      button.bp-subcard:not(:disabled),
+      button.bp-subcard-active:not(:disabled),
+      label.bp-subcard,
+      .bp-subcard-interactive,
+      .bp-project-card,
+      .bp-extracted-card,
+      button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+        [class*="border-t"]
+      ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+        .bp-gray-step-btn
+      ):not(:disabled)
+    ) {
+    transform: translateY(0px);
+    scale: 1 !important;
+    transition-property: background-color, color, border-color, padding, transform !important;
+    transition-duration: 180ms !important;
+    transition-timing-function: var(--ft-ease) !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Hover: Flat Stage Color-Block Inversion (.preset-group button:hover & .weight-row:hover) */
+  @media (hover: hover) {
+    html[data-ui-style="catalog"]
+      :where(
+        .bp-btn:not(:disabled),
+        .bp-pill:not(:disabled),
+        .bp-use-btn:not(:disabled),
+        .gk-mech-btn:not(:disabled),
+        .gk-btn-secondary:not(:disabled),
+        .bp-delete-btn:not(:disabled),
+        button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+          [class*="border-t"]
+        ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+          .bp-segmented-item
+        ):not(.gk-tab-pill):not(.bp-gray-step-btn):not(.bp-pill-active):not(
+          .gk-mech-primary
+        ):not(.gk-btn-primary):not(.bp-subcard):not(.bp-subcard-active):not(
+          .bp-swatch
+        ):not(.bp-matrix-cell):not(.bp-dot):not(:disabled)
+      ):hover:not(:active) {
+      transform: none !important;
+      background-color: var(--ft-acid) !important;
+      color: var(--ft-stage-ink) !important;
+      border-color: var(--ft-stage-ink) !important;
+      box-shadow: none !important;
+    }
+
+    html[data-ui-style="catalog"]
+      :where(
+        .bp-pill-active:not(:disabled),
+        .gk-mech-primary:not(:disabled),
+        .gk-btn-primary:not(:disabled),
+        .bp-fab:not(:disabled)
+      ):hover:not(:active) {
+      background-color: var(--ft-ink-hover) !important;
+      color: var(--ft-solid-fg) !important;
+      box-shadow: none !important;
+    }
+
+    /* Weight-Row Style Hover on Interactive Subcards (.weight-row:hover in fieldwork-style.css) */
+    html[data-ui-style="catalog"]
+      :where(
+        button.bp-subcard:not(:disabled),
+        label.bp-subcard,
+        .bp-subcard-interactive,
+        .bp-extracted-card
+      ):hover:not(:active) {
+      background-color: var(--ft-acid) !important;
+      color: var(--ft-stage-ink) !important;
+      border-color: var(--ft-stage-ink) !important;
+      box-shadow: none !important;
+    }
+  }
+
+  /* Active Press State: Exact Fieldwork Type `button:active:not(:disabled){transform:translateY(1px)}` */
+  html[data-ui-style="catalog"]
+    :where(
+      .bp-btn:not(:disabled),
+      .bp-pill:not(:disabled),
+      .bp-pill-active:not(:disabled),
+      .bp-use-btn:not(:disabled),
+      .bp-use-btn-used:not(:disabled),
+      .bp-fab:not(:disabled),
+      .bp-segmented-item:not(:disabled),
+      .bp-segmented-item-active:not(:disabled),
+      .gk-mech-btn:not(:disabled),
+      .gk-mech-primary:not(:disabled),
+      .gk-btn-primary:not(:disabled),
+      .gk-btn-secondary:not(:disabled),
+      .gk-tab-pill:not(:disabled),
+      .gk-tab-pill-active:not(:disabled),
+      .bp-delete-btn:not(:disabled),
+      button[class*="rounded-"][class*="border"]:not([class*="border-b"]):not(
+        [class*="border-t"]
+      ):not([class*="border-0"]):not([class*="border-transparent"]):not(
+        .bp-gray-step-btn
+      ):not(:disabled)
+    ):active {
+    transform: translateY(1px) !important;
+    scale: 1 !important;
+    box-shadow: none !important;
+  }
+}
+
+
+
+
+
+
 
 
 

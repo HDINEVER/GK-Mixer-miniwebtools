@@ -41,7 +41,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 sm:px-5 py-3.5 bg-slate-50/80 dark:bg-slate-900/90">
+        <div className="bp-modal-header relative z-20 shrink-0 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 sm:px-5 py-3.5 bg-slate-50/80 dark:bg-slate-900/90">
           <div className="flex items-center gap-2">
             <span className="text-base">🧭</span>
             <div>

@@ -19,6 +19,8 @@ import {
   ArrowCounterClockwiseIcon,
   ScissorsIcon,
   ArrowsOutLineHorizontalIcon,
+  FloppyDiskIcon,
+  CheckIcon,
 } from "@phosphor-icons/react";
 
 interface SwatchEditorModalProps {
@@ -34,9 +36,9 @@ interface SwatchEditorModalProps {
   settings: SwatchSettings;
   onUpdateSettings: (updater: (prev: SwatchSettings) => SwatchSettings) => void;
   lang: Language;
-  onExportImage?: () => void;
+  onExportImage?: (overrideImageSrc?: string, overrideColors?: ColorData[]) => void;
   isExporting?: boolean;
-  onSaveToProject?: () => void;
+  onSaveToProject?: (overrideImageSrc?: string, overrideColors?: ColorData[]) => void;
 }
 
 type HandleId = "n" | "s" | "w" | "e" | "nw" | "ne" | "sw" | "se";
@@ -126,11 +128,43 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
   const [statusToast, setStatusToast] = useState<string | null>(null);
   const [naturalImgSize, setNaturalImgSize] = useState<{ w: number; h: number } | null>(null);
 
-  // Sync margin record when imageSrc changes
+  const [displayImageSrc, setDisplayImageSrc] = useState<string>(imageSrc);
+  const [displayColors, setDisplayColors] = useState<ColorData[]>(colors);
+  const latestImageSrcRef = useRef<string>(imageSrc);
+  const latestColorsRef = useRef<ColorData[]>(colors);
   useEffect(() => {
-    if (!imageSrc) return;
+    if (imageSrc) {
+      latestImageSrcRef.current = imageSrc;
+      setDisplayImageSrc(imageSrc);
+    }
+  }, [imageSrc]);
+  useEffect(() => {
+    latestColorsRef.current = colors;
+    setDisplayColors(colors);
+  }, [colors]);
+
+  const handleLocalUpdateColors = (updater: (prev: ColorData[]) => ColorData[]) => {
+    setDisplayColors((prev) => {
+      const next = updater(prev);
+      latestColorsRef.current = next;
+      return next;
+    });
+    onUpdateColors(updater);
+  };
+
+  const handleLocalUpdateImageAndColors = (newImageSrc: string, nextColors: ColorData[]) => {
+    latestImageSrcRef.current = newImageSrc;
+    latestColorsRef.current = nextColors;
+    setDisplayImageSrc(newImageSrc);
+    setDisplayColors(nextColors);
+    onUpdateImageAndColors?.(newImageSrc, nextColors);
+  };
+
+  // Sync margin record when displayImageSrc changes
+  useEffect(() => {
+    if (!displayImageSrc) return;
     let cancelled = false;
-    const existing = getCanvasMarginRecord(imageSrc);
+    const existing = getCanvasMarginRecord(displayImageSrc);
     if (existing) {
       setMarginRecord(existing);
       if (existing.expandState) {
@@ -145,7 +179,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
       setBlankCustomColor(existing.customColor ?? null);
       return;
     }
-    inspectOrSampleImageMargins(imageSrc).then((rec) => {
+    inspectOrSampleImageMargins(displayImageSrc).then((rec) => {
       if (cancelled || !rec) return;
       setMarginRecord(rec);
       if (rec.expandState) {
@@ -162,7 +196,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [imageSrc]);
+  }, [displayImageSrc]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -179,7 +213,7 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
     const ro = new ResizeObserver(update);
     if (vp) ro.observe(vp);
     return () => ro.disconnect();
-  }, [isOpen, imageSrc]);
+  }, [isOpen, displayImageSrc]);
 
   const showQuickToast = (msg: string) => {
     setStatusToast(msg);
@@ -189,15 +223,21 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
   };
 
   const assignedColors = useMemo(
-    () => (colors || []).filter((c): c is ColorData & { assignedPaint: CatalogPaint } => !!c.assignedPaint),
-    [colors]
+    () =>
+      (displayColors || []).filter(
+        (c): c is ColorData & { assignedPaint: CatalogPaint } => !!c.assignedPaint
+      ),
+    [displayColors]
   );
   const activeAssigned =
     selectedColor && selectedColor.assignedPaint
-      ? selectedColor
+      ? displayColors.find((c) => c.id === selectedColor.id) || selectedColor
       : assignedColors[0] || null;
 
-  const hasTonal = !!(activeAssigned?.tonalGradient && activeAssigned.tonalGradient.length > 0);
+  const targetTonalCards = assignedColors.length > 0 ? assignedColors : displayColors;
+  const hasTonal =
+    targetTonalCards.length > 0 &&
+    targetTonalCards.some((c) => Boolean(c.tonalGradient && c.tonalGradient.length > 0));
 
   const origW = marginRecord?.origWidth || naturalImgSize?.w || 1000;
   const origH = marginRecord?.origHeight || naturalImgSize?.h || 800;
@@ -222,14 +262,14 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
     const availH = liveDragState
       ? liveDragState.availH
       : Math.max(220, Math.min(cssMaxH, stageViewportSize.h - 36));
-    const fitScale = Math.min(availW / nextW, availH / nextH);
+    const fitScale = Math.max(0.02, Math.min(availW / nextW, availH / nextH));
     return {
-      stageScreenW: Math.max(80, Math.round(nextW * fitScale)),
-      stageScreenH: Math.max(80, Math.round(nextH * fitScale)),
+      stageScreenW: Math.max(24, Math.round(nextW * fitScale)),
+      stageScreenH: Math.max(24, Math.round(nextH * fitScale)),
       origLeftScreen: Math.round(cur.leftPx * fitScale),
       origTopScreen: Math.round(cur.topPx * fitScale),
-      origScreenW: Math.max(40, Math.round(origW * fitScale)),
-      origScreenH: Math.max(40, Math.round(origH * fitScale)),
+      origScreenW: Math.max(20, Math.round(origW * fitScale)),
+      origScreenH: Math.max(20, Math.round(origH * fitScale)),
       availW,
       availH,
     };
@@ -363,71 +403,22 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
 
     window.addEventListener("pointermove", onWindowPointerMove, { passive: false });
     window.addEventListener("pointerup", onWindowPointerUp);
+    window.addEventListener("pointercancel", onWindowPointerUp);
     return () => {
       window.removeEventListener("pointermove", onWindowPointerMove);
       window.removeEventListener("pointerup", onWindowPointerUp);
+      window.removeEventListener("pointercancel", onWindowPointerUp);
     };
   }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const toggleActiveTonalGradient = () => {
-    if (!activeAssigned) return;
-    const baseHex = activeAssigned.assignedPaint?.hex || activeAssigned.hex;
-    onUpdateColors((prev) =>
-      prev.map((c) => {
-        if (c.id !== activeAssigned.id) return c;
-        if (c.tonalGradient && c.tonalGradient.length > 0) {
-          return { ...c, tonalGradient: undefined };
-        }
-        return { ...c, tonalGradient: generateDefaultTonalSteps(baseHex) };
-      })
-    );
-  };
-
-  const handleToggleTool = (tool: "expand") => {
-    setActiveTool((prev) => (prev === tool ? "none" : tool));
-  };
-
-  const handleQuickMarginPreset = async (mode: MarginExtendMode) => {
-    if (!imageSrc || !onUpdateImageAndColors || isProcessingCanvas) return;
-    setIsProcessingCanvas(true);
-    try {
-      const res = await buildExtendedMarginCanvasAndColors(
-        imageSrc,
-        colors,
-        mode,
-        marginRecord?.ratio || 0.36,
-        blankCustomColor,
-        settings.cardScale,
-        settings.cardBaseWidth,
-        "solid"
-      );
-      setMarginRecord(res.record);
-      if (res.record.expandState) {
-        setExpandState(res.record.expandState);
-      }
-      onUpdateImageAndColors(res.imageSrc, res.colors);
-      showQuickToast(
-        mode === "none"
-          ? "已恢复原图尺寸"
-          : mode === "leftRight"
-          ? "已左右扩边并将色卡排入留白区"
-          : "已上下扩边并将色卡排入留白区"
-      );
-    } catch (err) {
-      console.error("[SwatchEditorModal] Quick margin preset failed:", err);
-    } finally {
-      setIsProcessingCanvas(false);
-    }
-  };
 
   const handleCommitFreeExpand = async (
     nextState: ExpandCropState,
     customColorOverride?: string | null,
     autoArrange = true
   ) => {
-    if (!imageSrc || !onUpdateImageAndColors || isProcessingCanvas) return;
+    const activeSrc = latestImageSrcRef.current || displayImageSrc || imageSrc;
+    const activeCols = latestColorsRef.current || displayColors || colors;
+    if (!activeSrc) return;
     setIsProcessingCanvas(true);
     try {
       const safeState: ExpandCropState = {
@@ -445,8 +436,8 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
       const effectiveColor =
         customColorOverride !== undefined ? customColorOverride : blankCustomColor;
       const res = await buildFreeExpandCanvasAndColors(
-        imageSrc,
-        colors,
+        activeSrc,
+        activeCols,
         safeState,
         settings.cardScale,
         settings.cardBaseWidth,
@@ -458,7 +449,10 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
       if (res.record.expandState) {
         setExpandState(res.record.expandState);
       }
-      onUpdateImageAndColors(res.imageSrc, res.colors);
+      handleLocalUpdateImageAndColors(res.imageSrc, res.colors as ColorData[]);
+      showQuickToast(
+        `✅ 已更新画布尺寸 (${origW + safeState.leftPx + safeState.rightPx}×${origH + safeState.topPx + safeState.bottomPx})，可直接拖动色卡至扩边区`
+      );
     } catch (err) {
       console.error("[SwatchEditorModal] Free expand commit failed:", err);
     } finally {
@@ -466,6 +460,120 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
     }
   };
   commitFreeExpandRef.current = handleCommitFreeExpand;
+
+  const handleConfirmExpandArea = async () => {
+    const pendingState = liveDragState ? liveDragState.state : expandState;
+    const recExpand = marginRecord?.expandState;
+    const hasUncommittedExpand =
+      !recExpand ||
+      Math.round(pendingState.leftPx) !== Math.round(recExpand.leftPx) ||
+      Math.round(pendingState.rightPx) !== Math.round(recExpand.rightPx) ||
+      Math.round(pendingState.topPx) !== Math.round(recExpand.topPx) ||
+      Math.round(pendingState.bottomPx) !== Math.round(recExpand.bottomPx);
+
+    if (hasUncommittedExpand) {
+      await handleCommitFreeExpand(pendingState, blankCustomColor, false);
+    }
+    setActiveTool("none");
+    showQuickToast("✅ 已确认画布扩边尺寸，现在可自由拖拽色卡至扩边区域");
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && activeTool === "expand" && !isProcessingCanvas) {
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        e.preventDefault();
+        void handleConfirmExpandArea();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, activeTool, isProcessingCanvas, expandState, liveDragState, marginRecord, blankCustomColor]);
+
+  const handleSaveAndClose = async (andSaveToProject = false) => {
+    const pendingState = liveDragState ? liveDragState.state : expandState;
+    const recExpand = marginRecord?.expandState;
+    const hasUncommittedExpand =
+      !recExpand ||
+      Math.round(pendingState.leftPx) !== Math.round(recExpand.leftPx) ||
+      Math.round(pendingState.rightPx) !== Math.round(recExpand.rightPx) ||
+      Math.round(pendingState.topPx) !== Math.round(recExpand.topPx) ||
+      Math.round(pendingState.bottomPx) !== Math.round(recExpand.bottomPx);
+
+    if (hasUncommittedExpand) {
+      await handleCommitFreeExpand(pendingState, blankCustomColor, false);
+    } else if (onUpdateImageAndColors && latestImageSrcRef.current) {
+      onUpdateImageAndColors(latestImageSrcRef.current, latestColorsRef.current);
+    }
+
+    onClose();
+    if (andSaveToProject && onSaveToProject) {
+      onSaveToProject(latestImageSrcRef.current, latestColorsRef.current);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const toggleActiveTonalGradient = () => {
+    if (displayColors.length === 0) return;
+    const shouldDisable = hasTonal;
+    handleLocalUpdateColors((prev) =>
+      prev.map((c) => {
+        if (shouldDisable) {
+          return { ...c, tonalGradient: undefined };
+        }
+        const baseHex = c.assignedPaint?.hex || c.hex;
+        return {
+          ...c,
+          tonalGradient:
+            c.tonalGradient && c.tonalGradient.length > 0
+              ? c.tonalGradient
+              : generateDefaultTonalSteps(baseHex),
+        };
+      })
+    );
+  };
+
+  const handleToggleTool = (tool: "expand") => {
+    setActiveTool((prev) => (prev === tool ? "none" : tool));
+  };
+
+  const handleQuickMarginPreset = async (mode: MarginExtendMode) => {
+    const activeSrc = latestImageSrcRef.current || displayImageSrc || imageSrc;
+    const activeCols = latestColorsRef.current || displayColors || colors;
+    if (!activeSrc || isProcessingCanvas) return;
+    setIsProcessingCanvas(true);
+    try {
+      const res = await buildExtendedMarginCanvasAndColors(
+        activeSrc,
+        activeCols,
+        mode,
+        marginRecord?.ratio || 0.36,
+        blankCustomColor,
+        settings.cardScale,
+        settings.cardBaseWidth,
+        "solid"
+      );
+      setMarginRecord(res.record);
+      if (res.record.expandState) {
+        setExpandState(res.record.expandState);
+      }
+      handleLocalUpdateImageAndColors(res.imageSrc, res.colors as ColorData[]);
+      showQuickToast(
+        mode === "none"
+          ? "已恢复原图尺寸"
+          : mode === "leftRight"
+          ? "已左右扩边并将色卡排入留白区"
+          : "已上下扩边并将色卡排入留白区"
+      );
+    } catch (err) {
+      console.error("[SwatchEditorModal] Quick margin preset failed:", err);
+    } finally {
+      setIsProcessingCanvas(false);
+    }
+  };
 
   const handleChangeBlankColor = async (nextColor: string | null) => {
     setBlankCustomColor(nextColor);
@@ -574,16 +682,24 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={isProcessingCanvas}
+              onClick={() => handleSaveAndClose(false)}
+              className="bp-pill-active inline-flex items-center gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+              title="保存当前扩边尺寸与色卡位置，并同步到所有预览图与涂装库文件夹"
+            >
+              <FloppyDiskIcon className="h-3.5 w-3.5" weight="bold" />
+              <span>保存并退出</span>
+            </button>
             {onSaveToProject && (
               <button
                 type="button"
-                onClick={() => {
-                  onClose();
-                  onSaveToProject();
-                }}
-                className="bp-pill-active inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-color)] px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 transition-colors cursor-pointer"
-                title="存入涂装项目库，可继续添加涂装工序、制作扫码导入二维码名片及打包工程文件"
+                disabled={isProcessingCanvas}
+                onClick={() => handleSaveAndClose(true)}
+                className="bp-pill-active inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-color)] px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 transition-colors cursor-pointer disabled:opacity-50"
+                title="保存当前编辑并存入涂装项目库"
               >
                 <FolderPlusIcon className="h-3.5 w-3.5" weight="bold" />
                 <span>存入涂装库</span>
@@ -591,9 +707,9 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => handleSaveAndClose(false)}
               className="bp-btn flex h-8 w-8 items-center justify-center rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-300 transition-colors cursor-pointer"
-              title="完成并关闭"
+              title="保存并关闭"
             >
               <XIcon className="h-4 w-4" />
             </button>
@@ -623,19 +739,32 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                   </button>
 
                   {activeTool === "expand" && (
-                    <button
-                      type="button"
-                      onClick={() => setIsSymmetricExpand((v) => !v)}
-                      className={`bp-btn inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-bold transition cursor-pointer ${
-                        isSymmetricExpand
-                          ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white"
-                          : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                      }`}
-                      title="开启后拖动单侧手柄时，左右或上下两侧同步等距向外放大"
-                    >
-                      <ArrowsOutLineHorizontalIcon className="h-3 w-3" weight="bold" />
-                      <span>对称联动</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setIsSymmetricExpand((v) => !v)}
+                        className={`bp-btn inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-bold transition cursor-pointer ${
+                          isSymmetricExpand
+                            ? "bp-pill-active border-[var(--accent-color)] bg-[var(--accent-color)] text-white"
+                            : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                        }`}
+                        title="开启后拖动单侧手柄时，左右或上下两侧同步等距向外放大"
+                      >
+                        <ArrowsOutLineHorizontalIcon className="h-3 w-3" weight="bold" />
+                        <span>对称联动</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isProcessingCanvas}
+                        onClick={() => void handleConfirmExpandArea()}
+                        className="bp-pill-active inline-flex items-center gap-1 rounded-lg border border-emerald-600 bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 text-[11px] font-extrabold text-white shadow-xs transition cursor-pointer disabled:opacity-50"
+                        title="确认当前画布扩边尺寸并锁定边框（快捷键：Enter 回车）"
+                      >
+                        <CheckIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                        <span>确认扩边 (Enter)</span>
+                      </button>
+                    </>
                   )}
 
                   {isExpandedMargin && (
@@ -730,15 +859,26 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
             >
               {/* Live Dimension Ruler HUD or Status Toast */}
               {(liveDragState || statusToast || activeTool === "expand") && (
-                <div className="pointer-events-none absolute top-2.5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full border border-white/20 bg-slate-950/85 px-3 py-1 font-mono text-[11px] font-extrabold text-white shadow-lg backdrop-blur-md whitespace-nowrap">
+                <div className="bp-badge absolute top-2.5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full border border-white/20 bg-slate-950/90 px-3 py-1 font-mono text-[11px] font-extrabold text-white shadow-lg backdrop-blur-md whitespace-nowrap">
                   {liveDragState ? (
-                    <span className="text-sky-300">{liveDragState.hudText}</span>
+                    <span className="pointer-events-none text-sky-300">{liveDragState.hudText}</span>
                   ) : statusToast ? (
-                    <span className="text-emerald-300">{statusToast}</span>
+                    <span className="pointer-events-none text-emerald-300">{statusToast}</span>
                   ) : (
-                    <span>
-                      ✂️ 拖动四周手柄自由调节留白尺寸 · 总画布 {totalStageW} × {totalStageH}
-                    </span>
+                    <>
+                      <span className="pointer-events-none">
+                        ✂️ 拖动四周手柄调节留白 · 总画布 {totalStageW} × {totalStageH}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void handleConfirmExpandArea()}
+                        className="bp-pill-active pointer-events-auto ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-500 hover:bg-emerald-600 px-2 py-0.5 text-[10px] font-extrabold text-slate-950 transition cursor-pointer"
+                        title="确认当前留白尺寸并锁定扩边边框（快捷键：Enter）"
+                      >
+                        <CheckIcon className="h-3 w-3" weight="bold" />
+                        <span>确定 (Enter)</span>
+                      </button>
+                    </>
                   )}
                 </div>
               )}
@@ -751,13 +891,13 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                   height: stageDisplayBox.stageScreenH,
                   backgroundColor: resolvedBlankHex,
                 }}
-                className="relative rounded-xl"
+                className="relative shrink-0 rounded-xl"
               >
                 {liveDragState || isProcessingCanvas ? (
                   /* Live Drag / Processing Preview: Outer Blank Stage + Original Image Positioned Inside */
                   <div className="relative w-full h-full rounded-xl overflow-hidden border-2 border-sky-400">
                     <img
-                      src={marginRecord?.originalImageSrc || imageSrc}
+                      src={marginRecord?.originalImageSrc || displayImageSrc}
                       alt="Original Preview"
                       style={{
                         position: "absolute",
@@ -774,7 +914,8 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                   <div className="relative w-full h-full">
                     <img
                       ref={imgElRef}
-                      src={imageSrc}
+                      src={displayImageSrc}
+                      data-full-stage="true"
                       alt="Swatch Canvas"
                       onLoad={(e) => {
                         const nw = e.currentTarget.naturalWidth;
@@ -783,17 +924,17 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                           setNaturalImgSize({ w: nw, h: nh });
                         }
                       }}
-                      className="bp-swatch block w-full h-full object-contain rounded-xl select-none"
+                      className="bp-swatch block w-full h-full object-fill rounded-xl select-none"
                       draggable={false}
                     />
 
                     {/* Swatch Cards & Leader Lines Overlay */}
                     <ExtractMarkerOverlay
-                      colors={colors}
+                      colors={displayColors}
                       selectedId={activeAssigned?.id || selectedColor?.id || null}
                       onSelect={onSelectColor}
                       onUpdatePosition={(id, nx, ny) => {
-                        onUpdateColors((prev) =>
+                        handleLocalUpdateColors((prev) =>
                           prev.map((c) => (c.id === id ? { ...c, labelNx: nx, labelNy: ny } : c))
                         );
                       }}
@@ -845,13 +986,13 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
               </div>
             </div>
 
-            {/* Tonal Gradient Bar Toggle for Selected Card */}
-            {activeAssigned && (
+            {/* Tonal Gradient Bar Toggle for All Swatch Cards */}
+            {displayColors.length > 0 && (
               <div className="bp-subcard flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 shadow-2xs">
                 <div className="flex items-center gap-2 text-xs">
                   <SparkleIcon className="h-4 w-4 text-[var(--accent-color)] shrink-0" />
                   <span className="font-bold text-slate-700 dark:text-slate-200">
-                    悬浮色卡明暗三阶色条 (高光 / 主色 / 阴影)
+                    悬浮色卡明暗三阶色条 (全部色卡 · 高光 / 主色 / 阴影)
                   </span>
                 </div>
                 <button
@@ -863,35 +1004,44 @@ export const SwatchEditorModal: React.FC<SwatchEditorModalProps> = ({
                       : "bp-pill bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
                   }`}
                 >
-                  {hasTonal ? "已开启明暗条" : "开启明暗条"}
+                  {hasTonal ? "已开启全部明暗条" : "开启全部明暗条"}
                 </button>
               </div>
             )}
 
-            {onSaveToProject && (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  onClose();
-                  onSaveToProject();
-                }}
-                className="bp-pill-active w-full flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent-color)] hover:opacity-95 px-3.5 py-2.5 text-xs font-extrabold text-white shadow-sm transition cursor-pointer"
+                disabled={isProcessingCanvas}
+                onClick={() => handleSaveAndClose(false)}
+                className="bp-pill-active flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2.5 text-xs font-extrabold text-white shadow-sm transition cursor-pointer disabled:opacity-50"
               >
-                <FolderPlusIcon className="h-4 w-4 shrink-0" weight="bold" />
-                <span>存入涂装库（添加工序 / 生成二维码名片 / 导出工程）➔</span>
+                <CheckIcon className="h-4 w-4 shrink-0" weight="bold" />
+                <span>保存编辑并退出（同步所有预览图与文件夹）</span>
               </button>
-            )}
+              {onSaveToProject && (
+                <button
+                  type="button"
+                  disabled={isProcessingCanvas}
+                  onClick={() => handleSaveAndClose(true)}
+                  className="bp-pill-active flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent-color)] hover:opacity-95 px-3.5 py-2.5 text-xs font-extrabold text-white shadow-sm transition cursor-pointer disabled:opacity-50"
+                >
+                  <FolderPlusIcon className="h-4 w-4 shrink-0" weight="bold" />
+                  <span>保存并存入涂装库 ➔</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Right 5 cols: SwatchStudioControls */}
           <div className="lg:col-span-5 pr-1 pb-1">
             <SwatchStudioControls
-              imageSrc={imageSrc}
-              onUpdateImageAndColors={onUpdateImageAndColors}
-              colors={colors}
+              imageSrc={displayImageSrc}
+              onUpdateImageAndColors={handleLocalUpdateImageAndColors}
+              colors={displayColors}
               selectedColor={activeAssigned || selectedColor}
               onSelectColor={onSelectColor}
-              onUpdateColors={onUpdateColors}
+              onUpdateColors={handleLocalUpdateColors}
               settings={settings}
               onUpdateSettings={onUpdateSettings}
               canvasSize={canvasSize}

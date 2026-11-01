@@ -4,10 +4,11 @@ import { IconContext } from '@phosphor-icons/react';
 import 'konsta/theme.css';
 import App from './App';
 import './index.css';
-import { applyAccentTheme, applyUIStyle, loadAccentTheme, loadUIStyle } from './utils/accentTheme';
+import { applyAccentTheme, applyUIStyle, applyUIFontScale, loadAccentTheme, loadUIStyle, loadUIFontScale } from './utils/accentTheme';
 
 applyAccentTheme(loadAccentTheme());
 applyUIStyle(loadUIStyle());
+applyUIFontScale(loadUIFontScale());
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

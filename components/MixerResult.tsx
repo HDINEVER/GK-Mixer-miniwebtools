@@ -455,7 +455,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 xl:gap-6 w-full max-w-full min-w-0 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 xl:gap-6 w-full max-w-full min-w-0 items-stretch">
         
         {/* Left: Bottle & Calculator */}
         <div className="min-w-0 w-full flex flex-col items-center pr-1.5 pb-1.5">
@@ -527,13 +527,13 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
                       role="switch"
                       aria-checked={useSecondaryColors}
                       onClick={handleToggleSecondaryColors}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        useSecondaryColors ? 'bg-accent' : 'bg-slate-300 dark:bg-slate-600'
+                      className={`gk-switch-track relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        useSecondaryColors ? 'gk-switch-track-on bg-accent' : 'gk-switch-track-off bg-slate-300 dark:bg-slate-600'
                       }`}
                    >
                       <span
-                         className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                           useSecondaryColors ? 'translate-x-5' : 'translate-x-0'
+                         className={`gk-switch-thumb pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                           useSecondaryColors ? 'gk-switch-thumb-on translate-x-5' : 'gk-switch-thumb-off translate-x-0'
                          }`}
                       />
                    </button>
@@ -840,7 +840,7 @@ const MixerResult: React.FC<MixerResultProps> = ({ color, lang, colorSpace: colo
          </div>
 
          {/* Right: Selection & Brand Matches */}
-         <div className="min-w-0 w-full flex flex-col gap-5 pr-1.5 pb-1.5">
+         <div className="min-w-0 w-full h-full flex flex-col gap-5 pr-1.5 pb-1.5">
              <BrandMatchPanel
                hex={color.hex}
                lang={lang}

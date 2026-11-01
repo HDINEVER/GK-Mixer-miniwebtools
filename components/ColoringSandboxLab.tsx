@@ -18,8 +18,23 @@ import {
   CaretUp as CaretUpIcon,
   CaretDown as CaretDownIcon,
 } from "@phosphor-icons/react";
-import { CatalogPaint, FloatingSwatchNode, Language, PaintProject, PartCanvas, Theme } from "../types";
+import {
+  CatalogPaint,
+  FloatingSwatchNode,
+  Language,
+  PaintProject,
+  PartCanvas,
+  StudioSessionSnapshot,
+  Theme,
+} from "../types";
+import {
+  decodeInt8Rle,
+  decodePixelIndexRuns,
+  encodeInt8Rle,
+  encodePixelIndexRuns,
+} from "../utils/studioSession";
 import { FEATURED_BRANDS, loadPaintCatalog, localizedBrand, nearestCatalogPaintWithDeltaE } from "../utils/paintCatalog";
+import { IS_NIGHTWORKS_EDITION, IS_SINGLE_BRAND_EDITION } from "../utils/brandEdition";
 import { paintBottleUrls } from "../utils/paintBottle";
 import PaintBottleHover from "./PaintBottleHover";
 import { deltaE2000, labFromHex } from "../utils/ciede2000";
@@ -134,23 +149,94 @@ export interface SandboxSyncPayload {
   hasLoadedImage: boolean;
 }
 
-const STAGED_TRAY_STORAGE_KEY = "gk_coloring_staged_tray_v1";
+const STAGED_TRAY_STORAGE_KEY = IS_NIGHTWORKS_EDITION
+  ? "gk_coloring_staged_tray_nw_v1"
+  : "gk_coloring_staged_tray_v1";
 const MAX_STAGED_SWATCHES = 30;
 
-const DEFAULT_STAGED_SWATCHES: StagedSwatchItem[] = [
-  { hex: "#2563EB", brand: "盖亚", code: "004", name: "纯正蓝", pinned: true },
-  { hex: "#E11D48", brand: "盖亚", code: "003", name: "亮光红", pinned: true },
-  { hex: "#F59E0B", brand: "匠域", code: "JW005", name: "橙黄", pinned: true },
-  { hex: "#4B5563", brand: "喵匠", code: "HM102", name: "机械骨架灰", pinned: true },
-  { hex: "#F8FAFC", brand: "郡士", code: "GX1", name: "冷白", pinned: true },
-  { hex: "#7968D8", brand: "夜之工坊", code: "NDL033", name: "海牛紫蓝", pinned: true },
-];
+const DEFAULT_STAGED_SWATCHES: StagedSwatchItem[] = IS_NIGHTWORKS_EDITION
+  ? [
+      { hex: "#043C91", brand: "夜之工坊", code: "NAL057", name: "钴蓝", pinned: true },
+      { hex: "#E4142C", brand: "夜之工坊", code: "NAL029", name: "大红", pinned: true },
+      { hex: "#FEAC00", brand: "夜之工坊", code: "NAL038", name: "黄色", pinned: true },
+      { hex: "#94887A", brand: "夜之工坊", code: "NAL012", name: "黄灰", pinned: true },
+      { hex: "#FFFFFF", brand: "夜之工坊", code: "NAL002", name: "白色", pinned: true },
+      { hex: "#7968D8", brand: "夜之工坊", code: "NDL033", name: "海牛紫蓝", pinned: true },
+    ]
+  : [
+      { hex: "#2563EB", brand: "盖亚", code: "004", name: "纯正蓝", pinned: true },
+      { hex: "#E11D48", brand: "盖亚", code: "003", name: "亮光红", pinned: true },
+      { hex: "#F59E0B", brand: "匠域", code: "JW005", name: "橙黄", pinned: true },
+      { hex: "#4B5563", brand: "喵匠", code: "HM102", name: "机械骨架灰", pinned: true },
+      { hex: "#F8FAFC", brand: "郡士", code: "GX1", name: "冷白", pinned: true },
+      { hex: "#7968D8", brand: "夜之工坊", code: "NDL033", name: "海牛紫蓝", pinned: true },
+    ];
 
 const NON_COMMERCIAL_BRANDS = new Set(["Custom", "GK灰阶", "GK矩阵", "GK色系", "和谐推荐", ""]);
+
+function sanitizePaintCode(code?: string | null): string {
+  if (!code) return "";
+  const trimmed = String(code).trim();
+  if (!trimmed || trimmed.toLowerCase() === "null" || trimmed.toLowerCase() === "undefined") {
+    return "";
+  }
+  return trimmed;
+}
+
 function isConfirmedBrandPaint(brand?: string, code?: string): boolean {
   if (!brand || NON_COMMERCIAL_BRANDS.has(brand.trim())) return false;
-  if (!code || code === "HEX" || code.startsWith("H") && code.endsWith("°") || code.startsWith("L")) return false;
+  const c = sanitizePaintCode(code);
+  if (!c || c === "HEX" || (c.startsWith("H") && c.endsWith("°")) || c.startsWith("L")) return false;
   return true;
+}
+
+type RightPanelModuleId =
+  | "paintPicker"
+  | "lightnessSteps"
+  | "sourceSettings"
+  | "usedPalette"
+  | "stagingCache";
+
+const RIGHT_PANEL_MODULE_ORDER_STORAGE_KEY = "gk_sandbox_right_panel_order_v1";
+
+const DEFAULT_RIGHT_PANEL_MODULE_ORDER: RightPanelModuleId[] = [
+  "paintPicker",    // 默认第 1 位 (截图 2)：色号/品牌检索与选色色板
+  "lightnessSteps", // 默认第 2 位 (截图 1)：① 点选期望明暗变化阶梯
+  "sourceSettings", // 默认第 3 位 (截图 3)：原图类型与 ⚙️ 高级设置
+  "usedPalette",    // 默认第 4 位 (截图 4)：📋 本图已用色卡与导出
+  "stagingCache",   // 默认第 5 位 (截图 5)：📌 备选与最近用色缓存盘
+];
+
+const RIGHT_PANEL_MODULE_META: Record<
+  RightPanelModuleId,
+  { title: string; shortLabel: string }
+> = {
+  paintPicker: { title: "🎨 色号检索与选色面板", shortLabel: "选色面板" },
+  lightnessSteps: { title: "🌓 期望明暗变化阶梯", shortLabel: "明暗变化" },
+  sourceSettings: { title: "⚙️ 原图类型与高级设置", shortLabel: "原图设置" },
+  usedPalette: { title: "📋 本图已用色卡与导出", shortLabel: "已用色卡" },
+  stagingCache: { title: "📌 备选与最近用色缓存盘", shortLabel: "备选缓存" },
+};
+
+function normalizeRightPanelOrder(raw: unknown): RightPanelModuleId[] {
+  const validSet = new Set<RightPanelModuleId>(DEFAULT_RIGHT_PANEL_MODULE_ORDER);
+  const result: RightPanelModuleId[] = [];
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (typeof item === "string" && validSet.has(item as RightPanelModuleId)) {
+        const typed = item as RightPanelModuleId;
+        if (!result.includes(typed)) {
+          result.push(typed);
+        }
+      }
+    }
+  }
+  for (const defItem of DEFAULT_RIGHT_PANEL_MODULE_ORDER) {
+    if (!result.includes(defItem)) {
+      result.push(defItem);
+    }
+  }
+  return result;
 }
 
 function finishShortLabel(finish?: string): string {
@@ -244,10 +330,10 @@ const BrandPaintCardHeader: React.FC<{
 
   return (
     <div
-      className={`h-10 min-h-[40px] w-full flex items-stretch overflow-hidden mb-1.5 ${
+      className={`bp-paint-card-window h-10 min-h-[40px] w-full flex items-stretch overflow-hidden mb-1.5 ${
         isBlueprint
           ? "rounded-[3px] border-[1.5px] border-slate-900 dark:border-slate-400"
-          : "rounded-lg border border-slate-200/80 dark:border-slate-700/80"
+          : "rounded-lg border border-black/10 dark:border-white/10"
       }`}
     >
       {/* Left Slot: Product Bottle / Swatch Thumbnail (Auto-hides on missing or error so right HEX bar fills 100%) */}
@@ -288,7 +374,7 @@ const BrandPaintCardHeader: React.FC<{
         {/* Fallback Finish Micro-Badge in Top-Left when no bottle image */}
         {!hasBottleImage && (
           <span
-            className={`pointer-events-none absolute top-1 left-1 px-1 py-0.5 text-[8px] font-black leading-none ${
+            className={`pointer-events-none absolute top-1 left-1 px-1 py-0.5 text-[8px] font-bold leading-none ${
               isBlueprint
                 ? "rounded-[2px] border border-slate-900/80 bg-white/90 text-slate-900 font-mono"
                 : "rounded bg-black/45 text-white backdrop-blur-xs"
@@ -298,15 +384,15 @@ const BrandPaintCardHeader: React.FC<{
           </span>
         )}
 
-        {/* Top-Right Compact [+备] Stage Button */}
+        {/* Top-Right Compact [+备] Stage Button (Quieter translucent overlay badge without neumorphic glow) */}
         <button
           type="button"
           onClick={onStageClick}
           title="📌 暂存至上方备选调色盘"
-          className={`absolute top-1 right-1 z-10 px-1 py-0.5 text-[8px] font-black cursor-pointer leading-none transition ${
+          className={`bp-swatch-stage-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 text-[8px] font-bold cursor-pointer leading-none transition-colors ${
             isBlueprint
               ? "rounded-[3px] border-[1.5px] border-slate-900 bg-white/95 dark:bg-slate-800/95 hover:bg-[var(--accent-color)] hover:text-white text-slate-900 dark:text-slate-100 shadow-[1px_1px_0px_#0F172A] font-mono"
-              : "rounded bg-white/90 dark:bg-slate-800/90 hover:bg-[var(--accent-color)] hover:text-white text-slate-700 dark:text-slate-100 shadow-2xs backdrop-blur-xs"
+              : "rounded bg-black/45 hover:bg-[var(--accent-color)] text-white shadow-none backdrop-blur-xs"
           }`}
         >
           +备
@@ -404,6 +490,59 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
     s: Math.round(s * 100),
     l: Math.round(l * 100),
   };
+}
+
+function shiftHexLightness(hex: string, deltaLPct: number): string {
+  if (deltaLPct === 0) return hex.toUpperCase();
+  const clean = hex.replace("#", "").trim();
+  const num = parseInt(clean, 16);
+  if (Number.isNaN(num)) return hex.toUpperCase();
+  const r = ((num >> 16) & 255) / 255;
+  const g = ((num >> 8) & 255) / 255;
+  const b = (num & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  let l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+  l = Math.max(0.08, Math.min(0.95, l + deltaLPct / 100));
+  const hue2rgb = (p: number, q: number, t: number) => {
+    let tt = t;
+    if (tt < 0) tt += 1;
+    if (tt > 1) tt -= 1;
+    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+    if (tt < 1 / 2) return q;
+    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+    return p;
+  };
+  let nr = l;
+  let ng = l;
+  let nb = l;
+  if (s !== 0) {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    nr = hue2rgb(p, q, h + 1 / 3);
+    ng = hue2rgb(p, q, h);
+    nb = hue2rgb(p, q, h - 1 / 3);
+  }
+  const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, "0");
+  return `#${toHex(nr)}${toHex(ng)}${toHex(nb)}`.toUpperCase();
 }
 
 function matchesColorFamily(paint: CatalogPaint, family: ColorFamilyFilter): boolean {
@@ -509,6 +648,20 @@ const DEFAULT_RIGHT_PANEL_WIDTH = 420;
 export type ScenePresetKey = "lineart_card" | "cg_recolor" | "photo_miniature";
 type GestureMode = "none" | "fillStroke" | "pan" | "draw" | "pinch";
 
+function formatCleanPaintName(rawName: string | undefined | null): string {
+  if (!rawName) return "";
+  const trimmed = rawName.trim();
+  if (trimmed.includes(" / ")) {
+    const [leftPart, rightPart] = trimmed.split(" / ", 2);
+    if (/[\u4e00-\u9fa5]/.test(leftPart)) {
+      const dotIdx = rightPart ? rightPart.indexOf(" · ") : -1;
+      const suffix = dotIdx >= 0 ? rightPart.slice(dotIdx) : "";
+      return `${leftPart.trim()}${suffix}`;
+    }
+  }
+  return trimmed;
+}
+
 function findNearestMatrixCell(l: number, s: number): { l: number; s: number } {
   let bestL = MATRIX_LIGHTNESS_ROWS[0].l;
   let minLDiff = Infinity;
@@ -531,12 +684,39 @@ function findNearestMatrixCell(l: number, s: number): { l: number; s: number } {
   return { l: bestL, s: bestS };
 }
 
+export interface SandboxResumeTarget {
+  projectId: string;
+  partId: string;
+}
+
+export interface SandboxSessionApi {
+  /** 导出当前试色台完整可回溯快照（底图 + 已涂区域 + 线稿修补 + 参数 + 备选缓存盘） */
+  exportSnapshot: () => StudioSessionSnapshot | null;
+  /** 导出当前合成上色画面 PNG DataURL */
+  exportCompositeDataUrl?: () => string | null;
+  /** 若当前画面由「继续编辑模拟上色」恢复而来，返回来源工程 / 零件 */
+  getResumeTarget: () => SandboxResumeTarget | null;
+  /** 绑定当前画面到某个涂装库零件（之后再次存入将原位更新） */
+  setResumeTarget: (target: SandboxResumeTarget | null) => void;
+}
+
+export interface SandboxIncomingSession {
+  snapshot: StudioSessionSnapshot;
+  token: number;
+  label?: string;
+  projectId?: string;
+  partId?: string;
+}
+
 interface ColoringSandboxLabProps {
   onCloseLab?: () => void;
   lang?: Language;
   theme?: Theme;
   setTheme?: (t: Theme) => void;
+  hideTopBar?: boolean;
   incomingImage?: { url: string; label?: string; token: number } | null;
+  incomingSession?: SandboxIncomingSession | null;
+  sessionApiRef?: React.MutableRefObject<SandboxSessionApi | null>;
   onSendColorToMixer?: (hex: string) => void;
   onNavigateToBrandTint?: (hex: string) => void;
   onCreatePaintProject?: (project: PaintProject) => void;
@@ -552,7 +732,10 @@ interface ColoringSandboxLabProps {
 
 export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   lang = "zh",
+  hideTopBar = true,
   incomingImage,
+  incomingSession,
+  sessionApiRef,
   onSendColorToMixer,
   onNavigateToBrandTint,
   onCreatePaintProject,
@@ -565,7 +748,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
 
   const [uiStyle, setUiStyle] = useState<UIStyle>(() => loadUIStyle());
   const [workflowMode, setWorkflowMode] = useState<WorkflowMode>(() => loadWorkflowMode());
-  const isBlueprint = uiStyle === "blueprint";
+  const isBlueprint = uiStyle === "blueprint" || uiStyle === "ascii";
 
   useEffect(() => {
     const sync = () => {
@@ -622,9 +805,94 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   });
   const [isResizingSplit, setIsResizingSplit] = useState(false);
   const [hideCanvasHint, setHideCanvasHint] = useState(false);
-  const [coloringMode, setColoringMode] = useState<ColoringWorkMode>("custom");
+  const [coloringMode, setColoringMode] = useState<ColoringWorkMode>("brand");
   const [catalogColorFamily, setCatalogColorFamily] = useState<ColorFamilyFilter>("all");
   const [assigningTargetHex, setAssigningTargetHex] = useState<string | null>(null);
+  const [rightPanelOrder, setRightPanelOrder] = useState<RightPanelModuleId[]>(() => {
+    try {
+      const raw = window.localStorage.getItem(RIGHT_PANEL_MODULE_ORDER_STORAGE_KEY);
+      if (raw) {
+        return normalizeRightPanelOrder(JSON.parse(raw));
+      }
+    } catch {
+      /* ignore */
+    }
+    return DEFAULT_RIGHT_PANEL_MODULE_ORDER;
+  });
+  const [draggedModuleId, setDraggedModuleId] = useState<RightPanelModuleId | null>(null);
+  const [dragOverModule, setDragOverModule] = useState<{
+    id: RightPanelModuleId;
+    position: "before" | "after";
+  } | null>(null);
+  const [dragArmedModuleId, setDragArmedModuleId] = useState<RightPanelModuleId | null>(null);
+
+  const isCustomModuleOrder = useMemo(
+    () =>
+      rightPanelOrder.some((id, idx) => id !== DEFAULT_RIGHT_PANEL_MODULE_ORDER[idx]),
+    [rightPanelOrder]
+  );
+
+  const updateRightPanelOrder = useCallback(
+    (nextOrder: RightPanelModuleId[], message?: string) => {
+      const normalized = normalizeRightPanelOrder(nextOrder);
+      setRightPanelOrder(normalized);
+      try {
+        window.localStorage.setItem(
+          RIGHT_PANEL_MODULE_ORDER_STORAGE_KEY,
+          JSON.stringify(normalized)
+        );
+      } catch {
+        /* ignore */
+      }
+      if (message) {
+        setStatusMessage(message);
+      }
+    },
+    []
+  );
+
+  const moveRightPanelModule = useCallback(
+    (id: RightPanelModuleId, direction: "up" | "down" | "top" | "bottom") => {
+      setRightPanelOrder((prev) => {
+        const idx = prev.indexOf(id);
+        if (idx === -1) return prev;
+        const next = [...prev];
+        if (direction === "up" && idx > 0) {
+          [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+        } else if (direction === "down" && idx < next.length - 1) {
+          [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+        } else if (direction === "top" && idx > 0) {
+          next.splice(idx, 1);
+          next.unshift(id);
+        } else if (direction === "bottom" && idx < next.length - 1) {
+          next.splice(idx, 1);
+          next.push(id);
+        } else {
+          return prev;
+        }
+        try {
+          window.localStorage.setItem(
+            RIGHT_PANEL_MODULE_ORDER_STORAGE_KEY,
+            JSON.stringify(next)
+          );
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+      setStatusMessage(
+        `已调整「${RIGHT_PANEL_MODULE_META[id].title}」模块位置（支持自由拖拽标题栏排序）`
+      );
+    },
+    []
+  );
+
+  const resetRightPanelModuleOrder = useCallback(() => {
+    updateRightPanelOrder(
+      DEFAULT_RIGHT_PANEL_MODULE_ORDER,
+      "↺ 已恢复右侧功能区默认模块排序（①选色面板 ➔ ②明暗变化 ➔ ③原图设置 ➔ ④已用色卡 ➔ ⑤备选缓存）"
+    );
+  }, [updateRightPanelOrder]);
   const [stagedSwatches, setStagedSwatches] = useState<StagedSwatchItem[]>(() => {
     try {
       const raw = window.localStorage.getItem(STAGED_TRAY_STORAGE_KEY);
@@ -811,6 +1079,49 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   const [isFocusAnimating, setIsFocusAnimating] = useState(false);
   const [customShadeHex, setCustomShadeHex] = useState<string | null>(null);
   const [customHighlightHex, setCustomHighlightHex] = useState<string | null>(null);
+
+  // 5-Step Lightness & Shadow/Highlight Expectation Bar state (synced with currently selected base color)
+  const [toneBaseAnchor, setToneBaseAnchor] = useState<{
+    hex: string;
+    brand?: string;
+    code?: string;
+    name?: string;
+  }>({
+    hex: "#7968D8",
+    brand: "夜之工坊",
+    code: "NDL033",
+    name: "海牛紫蓝",
+  });
+  const [toneStepDeltaL, setToneStepDeltaL] = useState<number>(0);
+
+  // Collapsible right-sidebar [STAGING] + In-Canvas Draggable/Resizable [STAGING] window + Mobile below-canvas [STAGING]
+  const [isSidebarStagingCollapsed, setIsSidebarStagingCollapsed] = useState(false);
+  const [isCanvasStagingOpen, setIsCanvasStagingOpen] = useState(true);
+  const [isMobileBelowStagingOpen, setIsMobileBelowStagingOpen] = useState(true);
+  const [canvasStagingBox, setCanvasStagingBox] = useState<{
+    x: number | null;
+    y: number;
+    w: number;
+    h: number;
+  }>({ x: null, y: 12, w: 356, h: 96 });
+  const [isDraggingCanvasStaging, setIsDraggingCanvasStaging] = useState(false);
+  const canvasStagingDragRef = useRef<{
+    mode: "move" | "resize-br" | "resize-bl" | "resize-b";
+    startClientX: number;
+    startClientY: number;
+    startX: number;
+    startY: number;
+    startW: number;
+    startH: number;
+  } | null>(null);
+
+  // Specify Color (指定常驻颜色/漆号) inline state inside the quick staging dropdown
+  const [isSpecifyingColor, setIsSpecifyingColor] = useState(false);
+  const [specifyTargetSlotHex, setSpecifyTargetSlotHex] = useState<string | null>(null);
+  const [specifyHexInput, setSpecifyHexInput] = useState("#7968D8");
+  const [specifyBrandInput, setSpecifyBrandInput] = useState("");
+  const [specifyCodeInput, setSpecifyCodeInput] = useState("");
+  const [specifyNameInput, setSpecifyNameInput] = useState("");
 
   const clampRightPanelWidth = useCallback((rawWidth: number): number => {
     const containerW =
@@ -1209,6 +1520,9 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
 
   const undoStackRef = useRef<HistorySnapshot[]>([]);
   const redoStackRef = useRef<HistorySnapshot[]>([]);
+  /** Increments each time a new source image finishes loading (used to scope resume targets) */
+  const sourceGenerationRef = useRef(0);
+  const resumeTargetRef = useRef<SandboxResumeTarget | null>(null);
 
   // ---------------------------------------------------------------------------
   // Viewport (transform applied directly to DOM — zero React re-render on pan/zoom)
@@ -1652,6 +1966,8 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         label?: string;
         inkFill?: boolean;
         autoDetectPreset?: boolean;
+        forceDims?: { w: number; h: number };
+        onLoaded?: () => void;
       }
     ) => {
       const img = new Image();
@@ -1662,8 +1978,8 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         const maxDim = Math.max(nw, nh);
         const factor =
           maxDim < UPSCALE_BELOW_DIM ? Math.min(2, WORK_MAX_DIM / maxDim) : Math.min(1, WORK_MAX_DIM / maxDim);
-        const w = Math.round(nw * factor);
-        const h = Math.round(nh * factor);
+        const w = opts?.forceDims?.w && opts.forceDims.w > 0 ? opts.forceDims.w : Math.round(nw * factor);
+        const h = opts?.forceDims?.h && opts.forceDims.h > 0 ? opts.forceDims.h : Math.round(nh * factor);
         const n = w * h;
 
         const off = document.createElement("canvas");
@@ -1773,7 +2089,10 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         setUsedRegionsVersion((v) => v + 1);
         setHistoryVersion((v) => v + 1);
         setImageToken((t) => t + 1);
+        sourceGenerationRef.current += 1;
+        resumeTargetRef.current = null;
         if (opts?.label) setStatusMessage(opts.label);
+        if (opts?.onLoaded) opts.onLoaded();
 
         requestAnimationFrame(() => focusRegion(crop, false));
       };
@@ -1879,6 +2198,181 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   undoRef.current = handleUndo;
   redoRef.current = handleRedo;
 
+  // ---------------------------------------------------------------------------
+  // Studio Session Snapshot (可回溯工程快照：随涂装库持久化，支持继续编辑模拟上色)
+  // ---------------------------------------------------------------------------
+  const exportSessionSnapshot = (): StudioSessionSnapshot | null => {
+    const { w, h } = dimsRef.current;
+    const rgba = srcRgbaRef.current;
+    if (!rgba || w <= 0 || h <= 0) return null;
+    try {
+      const off = document.createElement("canvas");
+      off.width = w;
+      off.height = h;
+      const ctx = off.getContext("2d");
+      if (!ctx) return null;
+      const im = ctx.createImageData(w, h);
+      im.data.set(rgba);
+      ctx.putImageData(im, 0, 0);
+      const rawSourceImageDataUrl = off.toDataURL("image/jpeg", 0.95);
+
+      const regionList: ColoredRegion[] = [];
+      regionsRef.current.forEach((r) => regionList.push(r));
+      const regions = regionList.map((reg) => ({
+        id: reg.id,
+        baseHex: reg.baseHex,
+        shadeHex: reg.shadeHex,
+        highlightHex: reg.highlightHex,
+        baseLum: reg.baseLum,
+        paintName: reg.paintName,
+        paintBrand: reg.paintBrand,
+        paintCode: reg.paintCode,
+        pixelsRle: encodePixelIndexRuns(reg.pixels),
+      }));
+
+      const compositedPreviewDataUrl = buildCompositePngDataUrl(false) || undefined;
+
+      return {
+        version: 1,
+        rawSourceImageDataUrl,
+        compositedPreviewDataUrl,
+        workWidth: w,
+        workHeight: h,
+        shadingMode: renderMode,
+        scenePreset,
+        extractionMode,
+        algorithmParams: {
+          lineThreshold,
+          lineSoftness,
+          filterRedStamp,
+          xdogSigma: xdogSigmaApplied,
+          xdogP,
+          xdogEpsilon,
+          xdogPhi,
+          xdogInkFill,
+          useCannyBarrier,
+          cannyLow,
+          cannyHigh,
+          gapCloseRadius,
+          fillTolerance,
+          localStepThreshold,
+          edgeAbsorb,
+          lineOpacity,
+          paperBgStyle,
+        },
+        regions,
+        nextRegionId: nextRegionIdRef.current,
+        userLineEditsRle: userLineEditsRef.current ? encodeInt8Rle(userLineEditsRef.current) : "",
+        stagedSwatches: stagedSwatches.map((s) => ({ ...s })),
+        activeHex,
+        savedAt: Date.now(),
+      };
+    } catch (err) {
+      console.warn("[ColoringSandboxLab] Failed to export session snapshot:", err);
+      return null;
+    }
+  };
+
+  if (sessionApiRef) {
+    sessionApiRef.current = {
+      exportSnapshot: exportSessionSnapshot,
+      exportCompositeDataUrl: () => buildCompositePngDataUrl(false),
+      getResumeTarget: () => resumeTargetRef.current,
+      setResumeTarget: (target) => {
+        resumeTargetRef.current = target;
+      },
+    };
+  }
+
+  const applySessionSnapshotBuffers = (snap: StudioSessionSnapshot) => {
+    const { w, h } = dimsRef.current;
+    const n = w * h;
+    if (n <= 0) return;
+    const nextRegions = new Map<number, ColoredRegion>();
+    for (const r of snap.regions || []) {
+      const pixels = decodePixelIndexRuns(r.pixelsRle, n);
+      if (pixels.length === 0) continue;
+      nextRegions.set(r.id, {
+        id: r.id,
+        baseHex: r.baseHex,
+        shadeHex: r.shadeHex,
+        highlightHex: r.highlightHex,
+        baseLum: r.baseLum,
+        paintName: r.paintName,
+        paintBrand: r.paintBrand,
+        paintCode: r.paintCode,
+        pixels,
+      });
+    }
+    regionsRef.current = nextRegions;
+    const maxId = Math.max(0, ...Array.from(nextRegions.keys()));
+    nextRegionIdRef.current = Math.max(snap.nextRegionId || 1, maxId + 1);
+    userLineEditsRef.current = decodeInt8Rle(snap.userLineEditsRle || "", n);
+    rebuildRegionMap();
+
+    const p = snap.algorithmParams;
+    if (p) {
+      setLineThreshold(p.lineThreshold);
+      setLineSoftness(p.lineSoftness);
+      setFilterRedStamp(p.filterRedStamp);
+      setXdogSigma(p.xdogSigma);
+      setXdogSigmaApplied(p.xdogSigma);
+      setXdogP(p.xdogP);
+      setXdogEpsilon(p.xdogEpsilon);
+      setXdogPhi(p.xdogPhi);
+      setXdogInkFill(p.xdogInkFill);
+      setUseCannyBarrier(p.useCannyBarrier);
+      setCannyLow(p.cannyLow);
+      setCannyHigh(p.cannyHigh);
+      setGapCloseRadius(p.gapCloseRadius);
+      setFillTolerance(p.fillTolerance);
+      setLocalStepThreshold(p.localStepThreshold);
+      setEdgeAbsorb(p.edgeAbsorb);
+      setLineOpacity(p.lineOpacity);
+      setPaperBgStyle(p.paperBgStyle);
+    }
+    if (snap.extractionMode) setExtractionMode(snap.extractionMode);
+    if (snap.shadingMode) setRenderMode(snap.shadingMode);
+    if (snap.scenePreset) setScenePreset(snap.scenePreset as ScenePresetKey);
+    if (Array.isArray(snap.stagedSwatches) && snap.stagedSwatches.length > 0) {
+      persistStagedSwatches(snap.stagedSwatches.slice(0, MAX_STAGED_SWATCHES));
+    }
+    if (snap.activeHex) setActiveHex(snap.activeHex);
+    setUsedRegionsVersion((v) => v + 1);
+  };
+
+  const lastIncomingSessionTokenRef = useRef<number>(0);
+  useEffect(() => {
+    if (!incomingSession?.snapshot) return;
+    if (incomingSession.token === lastIncomingSessionTokenRef.current) return;
+    lastIncomingSessionTokenRef.current = incomingSession.token;
+    const snap = incomingSession.snapshot;
+    if (incomingSession.label) {
+      setNewProjectTitle(`${incomingSession.label} · 试色方案`);
+      setNewPartName(incomingSession.label);
+    }
+    loadImageSource(snap.rawSourceImageDataUrl, {
+      preset: (snap.scenePreset as ScenePresetKey) || undefined,
+      extraction: snap.extractionMode,
+      render: snap.shadingMode,
+      crop: "full",
+      forceDims: { w: snap.workWidth, h: snap.workHeight },
+      label: `🎨 已恢复上次的模拟上色进度${
+        incomingSession.label ? `「${incomingSession.label}」` : ""
+      }（${snap.regions?.length || 0} 个已涂区域），可继续填色、擦除或换色`,
+      onLoaded: () => {
+        applySessionSnapshotBuffers(snap);
+        if (incomingSession.projectId && incomingSession.partId) {
+          resumeTargetRef.current = {
+            projectId: incomingSession.projectId,
+            partId: incomingSession.partId,
+          };
+        }
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingSession, loadImageSource]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -1945,7 +2439,8 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     hex: string,
     meta?: { brand?: string; code?: string; name?: string },
     overrideShade?: string | null,
-    overrideHighlight?: string | null
+    overrideHighlight?: string | null,
+    isFromToneStep = false
   ) => {
     const triad = deriveImpcatTriad(hex);
     const shadeHex = overrideShade || triad.shadeHex;
@@ -1954,6 +2449,15 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     if (meta) setActivePaintMeta(meta);
     if (overrideShade === undefined) setCustomShadeHex(null);
     if (overrideHighlight === undefined) setCustomHighlightHex(null);
+    if (!isFromToneStep) {
+      setToneBaseAnchor({
+        hex: triad.baseHex,
+        brand: meta?.brand,
+        code: meta?.code,
+        name: meta?.name,
+      });
+      setToneStepDeltaL(0);
+    }
 
     if (selectedRegionIds.length === 0) return;
     pushUndoSnapshot("批量替换选中分区油漆");
@@ -2841,6 +3345,8 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     if (!vp) return;
 
     const onWheel = (e: WheelEvent) => {
+      // Allow native scrolling inside floating UI overlays (e.g. in-canvas staging swatch tray)
+      if ((e.target as HTMLElement | null)?.closest?.("[data-canvas-ui-overlay='true']")) return;
       // If no image is loaded, never block native page scrolling
       if (dimsRef.current.w <= 0) return;
 
@@ -3030,6 +3536,13 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
     if (activeHex.toUpperCase() === normTarget) {
       setActiveHex(triad.baseHex);
       setActivePaintMeta({ brand: brandZh, code: paint.code, name: paint.name });
+      setToneBaseAnchor({
+        hex: triad.baseHex,
+        brand: brandZh,
+        code: paint.code,
+        name: paint.name,
+      });
+      setToneStepDeltaL(0);
     }
     pushSwatchToTray(
       {
@@ -3382,6 +3895,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
       nodes,
       steps,
       createdAt: now,
+      studioSession: exportSessionSnapshot() || undefined,
     };
     const project: PaintProject = {
       id: `proj-studio-${now}`,
@@ -3633,23 +4147,23 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   // ---------------------------------------------------------------------------
   const cardSurfaceClass = isBlueprint
     ? "gk-panel-card gk-card rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-700 bg-white dark:bg-[#111827] shadow-[3px_3px_0px_#0F172A] dark:shadow-[3px_3px_0px_#020617]"
-    : "gk-card rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md shadow-lg shadow-slate-900/5";
+    : "gk-panel-card gk-card rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md shadow-lg shadow-slate-900/5";
 
   const dividerBottomClass = isBlueprint
     ? "gk-dashed-divider-b border-b border-dashed border-slate-400 dark:border-slate-600"
-    : "border-b border-slate-200/80 dark:border-slate-800/80";
+    : "gk-dashed-divider-b border-b border-slate-200/80 dark:border-slate-800/80";
 
   const dividerTopClass = isBlueprint
     ? "gk-dashed-divider-t border-t border-dashed border-slate-400 dark:border-slate-600"
-    : "border-t border-slate-200/80 dark:border-slate-800/80";
+    : "gk-dashed-divider-t border-t border-slate-200/80 dark:border-slate-800/80";
 
   const primaryActionBtnClass = isBlueprint
     ? "gk-mech-primary gk-btn-primary rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A] dark:shadow-[2px_2px_0px_#020617]"
-    : "gk-btn-primary rounded-xl bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-white shadow-sm";
+    : "gk-mech-primary gk-btn-primary rounded-xl bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-white shadow-sm";
 
   const secondaryActionBtnClass = isBlueprint
     ? "gk-mech-btn gk-btn-secondary rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-    : "gk-btn-secondary rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-xs";
+    : "gk-mech-btn gk-btn-secondary rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-xs";
 
   const handleCopyHex = () => {
     try {
@@ -3665,11 +4179,314 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   // Reusable Palette Section (Dual Coloring Modes + Active Staging Tray + 4D Color Engine)
   const isCurrentBrandConfirmed = isConfirmedBrandPaint(activePaintMeta.brand, activePaintMeta.code);
 
-  const renderPaletteSection = () => (
+  // Combined Staging + Used Paints list for the In-Canvas & Mobile Below-Canvas Quick Swatch Dropdown
+  const canvasQuickSwatches = useMemo<StagedSwatchItem[]>(() => {
+    const map = new Map<string, StagedSwatchItem>();
+    for (const sw of stagedSwatches) {
+      map.set(sw.hex.toUpperCase(), sw);
+    }
+    for (const u of usedPaintsSummary) {
+      const key = u.hex.toUpperCase();
+      if (!map.has(key)) {
+        map.set(key, {
+          hex: key,
+          brand: u.isConfirmed
+            ? u.brand || "Custom"
+            : u.closestPaint
+            ? `≈ ${u.closestPaint.brandZh}`
+            : u.brand || "Custom",
+          code: u.isConfirmed
+            ? u.code || "HEX"
+            : u.closestPaint?.paint.code || u.code || "HEX",
+          name: u.isConfirmed
+            ? u.name || key
+            : u.closestPaint?.paint.name || u.name || key,
+          pinned: true,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [stagedSwatches, usedPaintsSummary]);
+
+  const normalizedSpecifyHex = useMemo(() => {
+    const raw = specifyHexInput.trim().toUpperCase();
+    const withHash = raw.startsWith("#") ? raw : `#${raw}`;
+    return /^#[0-9A-F]{6}$/.test(withHash) ? withHash : activeHex.toUpperCase();
+  }, [specifyHexInput, activeHex]);
+
+  const specifyTopMatches = useMemo(
+    () => findTopClosestCatalogPaints(normalizedSpecifyHex, 3),
+    [findTopClosestCatalogPaints, normalizedSpecifyHex]
+  );
+
+  const handleOpenSpecifyColor = (slotSw?: StagedSwatchItem) => {
+    if (slotSw) {
+      setSpecifyTargetSlotHex(slotSw.hex.toUpperCase());
+      setSpecifyHexInput(slotSw.hex.toUpperCase());
+      setSpecifyBrandInput(slotSw.brand && slotSw.brand !== "Custom" ? slotSw.brand : "");
+      setSpecifyCodeInput(slotSw.code && slotSw.code !== "HEX" ? slotSw.code : "");
+      setSpecifyNameInput(slotSw.name && slotSw.name !== slotSw.hex ? slotSw.name : "");
+      setIsSpecifyingColor(true);
+    } else {
+      if (isSpecifyingColor && specifyTargetSlotHex === null) {
+        setIsSpecifyingColor(false);
+        return;
+      }
+      setSpecifyTargetSlotHex(null);
+      setSpecifyHexInput(activeHex.toUpperCase());
+      setSpecifyBrandInput(
+        activePaintMeta.brand && activePaintMeta.brand !== "Custom" ? activePaintMeta.brand : ""
+      );
+      setSpecifyCodeInput(
+        activePaintMeta.code && activePaintMeta.code !== "HEX" ? activePaintMeta.code : ""
+      );
+      setSpecifyNameInput(
+        activePaintMeta.name && activePaintMeta.name !== activeHex ? activePaintMeta.name : ""
+      );
+      setIsSpecifyingColor(true);
+    }
+  };
+
+  const handleCommitSpecifyColor = (replaceCanvasRegions = true) => {
+    const targetHex = normalizedSpecifyHex;
+    const closest = specifyTopMatches[0] || findClosestCatalogPaint(targetHex);
+    const finalBrand =
+      specifyBrandInput.trim() ||
+      (closest ? closest.brandZh : "指定色");
+    const finalCode =
+      specifyCodeInput.trim() ||
+      (closest ? closest.paint.code : targetHex);
+    const finalName =
+      specifyNameInput.trim() ||
+      (closest ? closest.paint.name : `指定色 ${targetHex}`);
+
+    const newItem: StagedSwatchItem = {
+      hex: targetHex,
+      brand: finalBrand,
+      code: finalCode,
+      name: finalName,
+      pinned: true,
+    };
+
+    if (specifyTargetSlotHex) {
+      const oldHex = specifyTargetSlotHex.toUpperCase();
+      // Replace the specified slot in stagedSwatches
+      setStagedSwatches((prev) => {
+        const idx = prev.findIndex((s) => s.hex.toUpperCase() === oldHex);
+        const filtered = prev.filter(
+          (s) => s.hex.toUpperCase() !== oldHex && s.hex.toUpperCase() !== targetHex
+        );
+        const next =
+          idx >= 0
+            ? [...filtered.slice(0, idx), newItem, ...filtered.slice(idx)]
+            : [newItem, ...filtered];
+        try {
+          window.localStorage.setItem(STAGED_TRAY_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+
+      // Optionally update all canvas regions that were painted with oldHex
+      if (replaceCanvasRegions) {
+        let updatedCount = 0;
+        for (const r of regionsRef.current.values()) {
+          if (r.baseHex.toUpperCase() === oldHex) updatedCount++;
+        }
+        if (updatedCount > 0) {
+          const triad = deriveImpcatTriad(targetHex);
+          pushUndoSnapshot(`指定替换色卡 ${oldHex} ➔ ${targetHex}`);
+          for (const [id, r] of regionsRef.current.entries()) {
+            if (r.baseHex.toUpperCase() === oldHex) {
+              regionsRef.current.set(id, {
+                ...r,
+                baseHex: triad.baseHex,
+                shadeHex: triad.shadeHex,
+                highlightHex: triad.highlightHex,
+                paintBrand: finalBrand,
+                paintCode: finalCode,
+                paintName: finalName,
+              });
+            }
+          }
+          renderFillFull();
+          setUsedRegionsVersion((v) => v + 1);
+        }
+      }
+    } else {
+      pushSwatchToTray(newItem, false);
+    }
+
+    const hsl = hexToHsl(targetHex);
+    if (hsl.s >= 4) setSelectedHue(hsl.h);
+    setSelectedMatrixCell(findNearestMatrixCell(hsl.l, hsl.s));
+    setStagingAnchor(newItem);
+    applyPaintToSelectedRegions(targetHex, {
+      brand: finalBrand,
+      code: finalCode,
+      name: finalName,
+    });
+    setIsSpecifyingColor(false);
+    setSpecifyTargetSlotHex(null);
+    setStatusMessage(`🎯 已指定并锁定常驻色：${finalBrand} ${finalCode} ${finalName} (${targetHex})`);
+  };
+
+  /**
+   * 5-Step Lightness & Shadow/Highlight Expectation Bar (Module: `lightnessSteps`,
+   * Default #2 position right below `paintPicker`).
+   */
+  const renderToneExpectationBar = () => {
+    const baseHex = (toneBaseAnchor.hex || activeHex).toUpperCase();
+    const cleanBaseCode = sanitizePaintCode(toneBaseAnchor.code);
+    const baseLabel =
+      cleanBaseCode && cleanBaseCode !== "HEX"
+        ? `${toneBaseAnchor.brand || ""} ${cleanBaseCode}`.trim()
+        : baseHex;
+    const steps = [
+      { dL: -16, label: "-16%L 阴影", roleTag: "阴影" },
+      { dL: -8, label: "-8%L 微暗", roleTag: "微暗" },
+      { dL: 0, label: "0%L 原色", roleTag: "原色" },
+      { dL: 8, label: "+8%L 提亮", roleTag: "提亮" },
+      { dL: 16, label: "+16%L 高光", roleTag: "高光" },
+    ];
+
+    const formatCompactBrand = (rawBrand: string) => {
+      const b = rawBrand.replace(/^≈\s*/, "").trim();
+      if (/army\s*painter/i.test(b)) return "AP军画家";
+      if (/vallejo/i.test(b)) return "Vallejo";
+      if (/citadel/i.test(b)) return "Citadel";
+      if (/mr\.?\s*hobby/i.test(b)) return "郡士";
+      return b;
+    };
+
+    return (
+      <div className="space-y-1.5 shrink-0 min-w-0" translate="no">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10.5px] font-extrabold text-slate-600 dark:text-slate-300 min-w-0">
+          <span className="whitespace-nowrap shrink-0">① 点选期望明暗变化 (保持 0%L 原色)</span>
+          <span className="font-mono text-[10px] font-black text-slate-700 dark:text-slate-200 whitespace-nowrap shrink-0">
+            主色 {baseHex}
+            {baseLabel !== baseHex ? ` (${baseLabel})` : ""}
+          </span>
+        </div>
+        <div className="grid grid-cols-5 gap-1.5 shrink-0 min-w-0">
+          {steps.map((step) => {
+            const stepHex = shiftHexLightness(baseHex, step.dL);
+            const isStepActive =
+              toneStepDeltaL === step.dL && activeHex.toUpperCase() === stepHex.toUpperCase();
+            const closest =
+              step.dL === 0 && isConfirmedBrandPaint(toneBaseAnchor.brand, toneBaseAnchor.code)
+                ? {
+                    brandZh: toneBaseAnchor.brand!,
+                    code: sanitizePaintCode(toneBaseAnchor.code),
+                    name: toneBaseAnchor.name || stepHex,
+                  }
+                : (() => {
+                    const m = findClosestCatalogPaint(stepHex);
+                    return m
+                      ? {
+                          brandZh: m.brandZh,
+                          code: sanitizePaintCode(m.paint.code),
+                          name: m.paint.name,
+                        }
+                      : null;
+                  })();
+            const shortBrand = closest ? formatCompactBrand(closest.brandZh) : "";
+            const shortCode = closest
+              ? closest.code || formatCleanPaintName(closest.name)?.slice(0, 7) || stepHex
+              : stepHex;
+
+            return (
+              <button
+                key={step.dL}
+                type="button"
+                onClick={() => {
+                  setToneStepDeltaL(step.dL);
+                  const baseCleanName =
+                    formatCleanPaintName(toneBaseAnchor.name) ||
+                    cleanBaseCode ||
+                    baseHex;
+                  const meta =
+                    step.dL === 0 && toneBaseAnchor.brand
+                      ? {
+                          brand: toneBaseAnchor.brand,
+                          code: cleanBaseCode || stepHex,
+                          name: toneBaseAnchor.name,
+                        }
+                      : closest
+                      ? {
+                          brand: `≈ ${closest.brandZh}`,
+                          code: closest.code || stepHex,
+                          name: `${formatCleanPaintName(closest.name) || baseCleanName} (${step.roleTag})`,
+                        }
+                      : {
+                          brand: "明暗推导",
+                          code: `${step.dL > 0 ? `+${step.dL}` : step.dL}%L`,
+                          name: `${baseCleanName}·${step.roleTag}`,
+                        };
+                  applyPaintToSelectedRegions(stepHex, meta, undefined, undefined, true);
+                  setStatusMessage(
+                    `🌓 已切换至「${step.label}」期望色 ${stepHex}${
+                      closest
+                        ? ` · 推荐色号：${closest.brandZh} ${closest.code ? `${closest.code} ` : ""}${closest.name}`
+                        : ""
+                    }`
+                  );
+                }}
+                title={`${step.label} (${stepHex})${
+                  closest
+                    ? ` · 推荐近似漆号：${closest.brandZh} ${closest.code ? `${closest.code} ` : ""}${closest.name}`
+                    : ""
+                } — 点击直接取用该明暗阶梯色`}
+                style={{ backgroundColor: stepHex }}
+                className={`bp-swatch min-h-[78px] min-w-0 overflow-hidden flex flex-col items-center justify-between p-1 text-center transition cursor-pointer ${
+                  isBlueprint
+                    ? `rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-400 ${
+                        isStepActive
+                          ? "ring-2 ring-[var(--accent-color)] shadow-[2px_2px_0px_#0F172A] scale-[1.02] z-10"
+                          : "shadow-[1.5px_1.5px_0px_#0F172A] opacity-95 hover:opacity-100"
+                      }`
+                    : `rounded-xl border ${
+                        isStepActive
+                          ? "border-[var(--accent-color)] ring-2 ring-[var(--accent-color)]/45 scale-[1.02] z-10"
+                          : "border-slate-300 dark:border-slate-700 opacity-95 hover:opacity-100"
+                      }`
+                }`}
+              >
+                <span className="w-full truncate px-0.5 py-0.5 rounded bg-black/65 text-white font-mono text-[8px] font-black leading-none tracking-tight">
+                  {step.label}
+                </span>
+                <span className="my-0.5 w-full truncate font-mono text-[8px] font-black tracking-tighter px-0.5 py-0.5 rounded bg-white/92 text-slate-900 leading-none shadow-2xs">
+                  {stepHex}
+                </span>
+                <span className="w-full px-0.5 py-0.5 rounded-[3px] bg-slate-950/70 flex flex-col items-center justify-center leading-none">
+                  {shortBrand && (
+                    <span className="text-[7px] font-medium text-slate-200/90 truncate max-w-full leading-tight">
+                      {shortBrand}
+                    </span>
+                  )}
+                  <span className="font-mono text-[7.5px] font-bold text-amber-200 truncate max-w-full leading-tight">
+                    {shortCode}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Top Pinned Controls in Right Panel:
+   * 1. Dual Coloring Mode Switcher (🏷️ 品牌油漆直涂 vs 🎛️ 明度色板调色)
+   * 2. Compact Current Active Paint Bar (48x48 swatch + active paint meta + Top 3 closest matches)
+   */
+  const renderTopPaletteControlHeader = () => (
     <div className="space-y-2.5 shrink-0" translate="no">
       {/* 1. TOP DUAL COLORING MODE SWITCHER (品牌油漆直涂 vs 明度色板调色) */}
       <div
-        className={`grid grid-cols-2 gap-1 p-1 shrink-0 ${
+        className={`bp-segmented grid grid-cols-2 gap-1 p-1 shrink-0 ${
           isBlueprint
             ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/90 shadow-[2px_2px_0px_#0F172A]"
             : "rounded-xl border border-slate-200/90 dark:border-slate-700/90 bg-slate-100/90 dark:bg-slate-800/80"
@@ -3678,11 +4495,11 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         <button
           type="button"
           onClick={() => setColoringMode("brand")}
-          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 text-xs font-black transition cursor-pointer ${
+          className={`bp-segmented-item flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-extrabold transition cursor-pointer ${
             coloringMode === "brand"
               ? isBlueprint
-                ? "rounded-[4px] border-[1.5px] border-slate-900 bg-[var(--accent-color)] text-white shadow-[1.5px_1.5px_0px_#0F172A] font-mono"
-                : "rounded-lg bg-[var(--accent-color)] text-white shadow-xs"
+                ? "bp-segmented-item-active rounded-[4px] border-[1.5px] border-slate-900 bg-[var(--accent-color)] text-white shadow-[1.5px_1.5px_0px_#0F172A] font-mono"
+                : "bp-segmented-item-active rounded-lg bg-[var(--accent-color)] text-white shadow-xs"
               : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
@@ -3694,11 +4511,11 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             setColoringMode("custom");
             setAssigningTargetHex(null);
           }}
-          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 text-xs font-black transition cursor-pointer ${
+          className={`bp-segmented-item flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-extrabold transition cursor-pointer ${
             coloringMode === "custom"
               ? isBlueprint
-                ? "rounded-[4px] border-[1.5px] border-slate-900 bg-[var(--accent-color)] text-white shadow-[1.5px_1.5px_0px_#0F172A] font-mono"
-                : "rounded-lg bg-[var(--accent-color)] text-white shadow-xs"
+                ? "bp-segmented-item-active rounded-[4px] border-[1.5px] border-slate-900 bg-[var(--accent-color)] text-white shadow-[1.5px_1.5px_0px_#0F172A] font-mono"
+                : "bp-segmented-item-active rounded-lg bg-[var(--accent-color)] text-white shadow-xs"
               : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
@@ -3706,19 +4523,19 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         </button>
       </div>
 
-      {/* 2. COMPACT CURRENT ACTIVE PAINT BAR (Fixed 48x48 Square Swatch + Micro 3-Tone Strip + Stage Button + Top 3 Brand Assignment) */}
+      {/* 2. COMPACT CURRENT ACTIVE PAINT BAR (大标题油漆名字 + 小标题品牌名字与色号，防止一行挤压截断) */}
       <div
-        className={`p-2 space-y-1.5 shrink-0 ${
+        className={`bp-subcard p-2.5 space-y-2 shrink-0 ${
           isBlueprint
             ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-white dark:bg-slate-900 shadow-[2px_2px_0px_#0F172A]"
             : "rounded-xl border border-slate-200/85 dark:border-slate-700/85 bg-slate-50/80 dark:bg-slate-800/50"
         }`}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           {/* Strictly Fixed 48x48px Square Swatch with Embedded 6px 3-Tone Micro Strip (暗部 | 主色 | 高光) */}
           <div
             style={{ width: 48, height: 48, minWidth: 48, minHeight: 48 }}
-            className={`relative w-12 h-12 min-w-[48px] min-h-[48px] shrink-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 ${
+            className={`bp-swatch relative w-12 h-12 min-w-[48px] min-h-[48px] shrink-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 ${
               isBlueprint
                 ? "rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-400 shadow-[2px_2px_0px_#0F172A]"
                 : "rounded-lg border border-slate-300 dark:border-slate-600 shadow-xs"
@@ -3749,14 +4566,14 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               />
             </label>
             {/* Micro 3-step triad strip (Shade | Base | Highlight, 6px height) — click to sample */}
-            <div className="grid grid-cols-3 h-1.5 min-h-[6px] w-full shrink-0 border-t border-black/25 dark:border-white/15">
+            <div className="grid grid-cols-3 h-[6px] min-h-[6px] w-full shrink-0 border-t border-black/25 dark:border-white/15">
               <button
                 type="button"
                 onClick={() =>
                   applyPaintToSelectedRegions(activeTriad.shadeHex, {
                     brand: activePaintMeta.brand || "Custom",
                     code: activePaintMeta.code ? `${activePaintMeta.code}-暗` : "SHADE",
-                    name: `${activePaintMeta.name || "当前色"}·暗部`,
+                    name: `${formatCleanPaintName(activePaintMeta.name) || "当前色"}·暗部`,
                   })
                 }
                 title={`点击取用推导暗部色 (${activeTriad.shadeHex})`}
@@ -3774,7 +4591,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                   applyPaintToSelectedRegions(activeTriad.highlightHex, {
                     brand: activePaintMeta.brand || "Custom",
                     code: activePaintMeta.code ? `${activePaintMeta.code}-亮` : "HIGH",
-                    name: `${activePaintMeta.name || "当前色"}·高光`,
+                    name: `${formatCleanPaintName(activePaintMeta.name) || "当前色"}·高光`,
                   })
                 }
                 title={`点击取用推导高光色 (${activeTriad.highlightHex})`}
@@ -3795,11 +4612,50 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             />
           )}
 
-          {/* Center: Current Paint Brand/Code/Name Identity */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 min-w-0">
+          {/* Right Stack: Row 1 = 油漆名称 + [📌 暂存备选 / 复制] 按钮; Row 2 = 整行展示完整品牌名称 + 色号 + HEX (彻底防止缩到最小时色号被按钮遮挡截断) */}
+          <div className="min-w-0 flex-1 flex flex-col justify-between gap-1.5">
+            <div className="flex items-center justify-between gap-1.5 min-w-0">
+              <div
+                className="min-w-0 flex-1 text-xs font-black text-slate-900 dark:text-white truncate leading-tight"
+                title={activePaintMeta.name || activeHex}
+              >
+                {formatCleanPaintName(activePaintMeta.name) || activeHex}
+              </div>
+
+              {/* Right: [📌 暂存备选] & Copy */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const item: StagedSwatchItem = {
+                      hex: activeHex.toUpperCase(),
+                      brand: activePaintMeta.brand || "Custom",
+                      code: activePaintMeta.code || "HEX",
+                      name: activePaintMeta.name || activeHex.toUpperCase(),
+                      pinned: true,
+                    };
+                    setStagingAnchor(item);
+                    pushSwatchToTray(item, true);
+                  }}
+                  title="将当前颜色加入「备选与最近用色缓存盘」，方便随时秒切喷涂"
+                  className={`px-2 py-0.5 text-[10px] font-black cursor-pointer transition whitespace-nowrap ${primaryActionBtnClass}`}
+                >
+                  📌 暂存备选
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyHex}
+                  title="复制当前色值"
+                  className={`px-1.5 py-0.5 text-[10px] font-bold cursor-pointer transition whitespace-nowrap ${secondaryActionBtnClass}`}
+                >
+                  {copiedHex ? "✓" : "复制"}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               <span
-                className={`shrink-0 px-1.5 py-0.5 text-[9px] font-black truncate max-w-[145px] ${
+                className={`max-w-full px-1.5 py-0.5 text-[10px] font-extrabold leading-tight whitespace-nowrap ${
                   isBlueprint
                     ? `rounded-[3px] border-[1.5px] border-slate-900 dark:border-slate-400 font-mono shadow-[1.5px_1.5px_0px_#0F172A] ${
                         isCurrentBrandConfirmed
@@ -3821,145 +4677,148 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                 {activeHex}
               </span>
             </div>
-            <div className="mt-1 text-xs font-black text-slate-900 dark:text-white truncate">
-              {activePaintMeta.name || activeHex}
-            </div>
-          </div>
-
-          {/* Right: [📌 暂存备选] & Copy */}
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                const item: StagedSwatchItem = {
-                  hex: activeHex.toUpperCase(),
-                  brand: activePaintMeta.brand || "Custom",
-                  code: activePaintMeta.code || "HEX",
-                  name: activePaintMeta.name || activeHex.toUpperCase(),
-                  pinned: true,
-                };
-                setStagingAnchor(item);
-                pushSwatchToTray(item, true);
-              }}
-              title="将当前颜色加入下方「备选与最近用色缓存栏」，方便随时秒切喷涂"
-              className={`px-2 py-1 text-[10px] font-black cursor-pointer transition whitespace-nowrap ${primaryActionBtnClass}`}
-            >
-              📌 暂存备选
-            </button>
-            <button
-              type="button"
-              onClick={handleCopyHex}
-              title="复制当前色值"
-              className={`px-1.5 py-1 text-[10px] font-extrabold cursor-pointer transition whitespace-nowrap ${secondaryActionBtnClass}`}
-            >
-              {copiedHex ? "✓" : "复制"}
-            </button>
           </div>
         </div>
 
-        {/* Real-Time Top 3 Closest Commercial Paint Assignment Strip */}
-        {activeTopMatches.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5 pb-0.5">
-            {activeTopMatches.map((m, idx) => {
-              const isAlreadyBound =
-                isCurrentBrandConfirmed &&
-                activePaintMeta.brand === m.brandZh &&
-                activePaintMeta.code === m.paint.code;
-              return (
-                <button
-                  key={m.paint.id}
-                  type="button"
-                  onClick={() => {
-                    assignBrandPaintToHexRegions(activeHex, m.paint, m.brandZh, false);
-                    setStagingAnchor({
-                      hex: activeHex.toUpperCase(),
-                      brand: m.brandZh,
-                      code: m.paint.code,
-                      name: m.paint.name,
-                      pinned: true,
-                    });
-                  }}
-                  title={`点击将当前色直接指派并绑定为实体模型漆：${m.brandZh} ${m.paint.code} ${m.paint.name} (${m.paint.hex} · ΔE ${m.deltaE.toFixed(1)})`}
-                  className={`shrink-0 flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-extrabold transition cursor-pointer ${
-                    isBlueprint
-                      ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 font-mono shadow-[1.5px_1.5px_0px_#0F172A] ${
-                          isAlreadyBound
-                            ? "bg-emerald-100 dark:bg-emerald-950/80 text-slate-900 dark:text-emerald-200"
-                            : idx === 0
-                            ? "bg-[var(--accent-soft)] text-slate-900 dark:text-white hover:bg-[var(--accent-color)] hover:text-white"
-                            : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-[var(--accent-soft)]"
-                        }`
-                      : `rounded-md border ${
-                          isAlreadyBound
-                            ? "border-emerald-600 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
-                            : idx === 0
-                            ? "border-[var(--accent-color)]/60 bg-[var(--accent-soft)] text-slate-900 dark:text-white hover:border-[var(--accent-color)]"
-                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
-                        }`
-                  }`}
-                >
-                  <span
-                    className={`h-2.5 w-2.5 shrink-0 ${
-                      isBlueprint ? "rounded-[2px] border border-slate-900" : "rounded-xs border border-black/20"
+        {/* Quick 2-Paint Vertical Assignment Stack (ONLY needed in Custom Palette Mode; hidden in Direct Brand Paint Mode) */}
+        {coloringMode === "custom" && activeTopMatches.length > 0 && (
+          <div className={`pt-2 space-y-1.5 ${dividerTopClass}`}>
+            <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+              <span>🎯 快速指派近似品牌漆（上下 2 款最近色，点击直接绑定色号）</span>
+              {isCurrentBrandConfirmed && (
+                <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                  已绑定: {activePaintMeta.brand} {activePaintMeta.code}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {activeTopMatches.slice(0, 2).map((m, idx) => {
+                const cleanCode = sanitizePaintCode(m.paint.code);
+                const isAlreadyBound =
+                  isCurrentBrandConfirmed &&
+                  activePaintMeta.brand === m.brandZh &&
+                  activePaintMeta.code === cleanCode;
+                const shortName = formatCleanPaintName(m.paint.name) || m.paint.name;
+                return (
+                  <button
+                    key={m.paint.id}
+                    type="button"
+                    onClick={() => {
+                      assignBrandPaintToHexRegions(activeHex, m.paint, m.brandZh, false);
+                      setStagingAnchor({
+                        hex: activeHex.toUpperCase(),
+                        brand: m.brandZh,
+                        code: cleanCode || m.paint.hex,
+                        name: m.paint.name,
+                        pinned: true,
+                      });
+                    }}
+                    title={`点击将当前自定义调色直接指派并绑定为实体模型漆：${m.brandZh} ${cleanCode} ${m.paint.name} (${m.paint.hex} · ΔE ${m.deltaE.toFixed(1)})`}
+                    className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-[11px] font-extrabold transition cursor-pointer ${
+                      isBlueprint
+                        ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 font-mono shadow-[1.5px_1.5px_0px_#0F172A] ${
+                            isAlreadyBound
+                              ? "bg-emerald-100 dark:bg-emerald-950/80 text-slate-900 dark:text-emerald-200"
+                              : idx === 0
+                              ? "bg-[var(--accent-soft)] text-slate-900 dark:text-white hover:bg-[var(--accent-color)] hover:text-white"
+                              : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-[var(--accent-soft)]"
+                          }`
+                        : `rounded-lg border ${
+                            isAlreadyBound
+                              ? "border-emerald-600 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
+                              : idx === 0
+                              ? "border-[var(--accent-color)]/60 bg-[var(--accent-soft)] text-slate-900 dark:text-white hover:border-[var(--accent-color)]"
+                              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[var(--accent-color)]"
+                          }`
                     }`}
-                    style={{ backgroundColor: m.paint.hex }}
-                  />
-                  <span className="truncate max-w-[140px]">
-                    {idx === 0 ? `🎯 指派: ${m.brandZh} ${m.paint.code} ${m.paint.name}` : `${m.brandZh} ${m.paint.code}`}
-                  </span>
-                  <span className="font-mono text-[9px] opacity-80">ΔE{m.deltaE.toFixed(1)}</span>
-                </button>
-              );
-            })}
-            {coloringMode === "custom" && (
-              <button
-                type="button"
-                onClick={() => {
-                  setAssigningTargetHex(activeHex.toUpperCase());
-                  setColoringMode("brand");
-                }}
-                title="从 10999+ 款油漆库中手动搜索并指派其他品牌油漆"
-                className={`shrink-0 px-1.5 py-0.5 text-[10px] font-extrabold cursor-pointer ${secondaryActionBtnClass}`}
-              >
-                🔍 换漆
-              </button>
-            )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`h-3.5 w-3.5 shrink-0 ${
+                          isBlueprint ? "rounded-[2px] border border-slate-900" : "rounded-xs border border-black/20"
+                        }`}
+                        style={{ backgroundColor: m.paint.hex }}
+                      />
+                      <span className="font-black text-slate-900 dark:text-white truncate">
+                        🎯 指派 #{idx + 1}: {shortName}
+                      </span>
+                      <span className="font-mono text-[10px] text-slate-500 dark:text-slate-300 shrink-0">
+                        {m.brandZh}{cleanCode ? ` ${cleanCode}` : ""}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="font-mono text-[9.5px] opacity-80">ΔE{m.deltaE.toFixed(1)}</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-black leading-none ${
+                          isAlreadyBound
+                            ? "bg-emerald-600 text-white"
+                            : "bg-slate-900/10 dark:bg-white/10 text-slate-800 dark:text-slate-100"
+                        }`}
+                      >
+                        {isAlreadyBound ? "✓ 已指派" : "点击绑定"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
+    </div>
+  );
 
-      {/* 3. PERSISTENT ACTIVE PALETTE TRAY (📌 备选与最近用色缓存栏，容量扩充至 30+ 槽位，已上色槽位自动保护不淘汰) */}
-      <div className={`space-y-1.5 pt-2 shrink-0 ${dividerTopClass}`}>
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100">
-            <span className="tech-prefix">[STAGING]</span>
+  /**
+   * Module `stagingCache` (Default #5 — Screenshot 5):
+   * 📌 备选与最近用色缓存盘 (2/30) + 清空未用 + 收起 ▴ + Staged Swatches Grid
+   */
+  const renderStagingCacheSection = () => (
+    <div className="space-y-1.5 shrink-0" translate="no">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setIsSidebarStagingCollapsed((v) => !v)}
+          className="flex items-center gap-1 text-[11px] font-black text-slate-700 dark:text-slate-200 hover:text-[var(--accent-color)] cursor-pointer text-left truncate"
+          title={isSidebarStagingCollapsed ? "点击展开备选与最近用色缓存盘" : "点击收起隐藏备选色卡栏，释放右侧调色台纵向空间"}
+        >
+          <span className="tech-prefix">[STAGING]</span>
+          <span className="truncate">
             📌 备选与最近用色缓存盘 ({stagedSwatches.length}/{Math.max(MAX_STAGED_SWATCHES, stagedSwatches.length)})
           </span>
-          <div className="flex items-center gap-2">
-            {stagedSwatches.length > 1 && (
-              <button
-                type="button"
-                onClick={handleClearUnusedStaged}
-                className="text-[10px] font-bold text-slate-400 hover:text-rose-500 underline cursor-pointer"
-                title="清理缓存托盘中尚未涂在画布上的颜色"
-              >
-                清空未用
-              </button>
-            )}
-          </div>
+        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {stagedSwatches.length > 1 && !isSidebarStagingCollapsed && (
+            <button
+              type="button"
+              onClick={handleClearUnusedStaged}
+              className="text-[10px] font-bold text-slate-400 hover:text-rose-500 underline cursor-pointer"
+              title="清理缓存托盘中尚未涂在画布上的颜色"
+            >
+              清空未用
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsSidebarStagingCollapsed((v) => !v)}
+            className={`px-1.5 py-0.5 text-[9.5px] font-extrabold cursor-pointer transition ${secondaryActionBtnClass}`}
+            title={isSidebarStagingCollapsed ? "展开备选色卡栏" : "收起隐藏备选色卡栏"}
+          >
+            {isSidebarStagingCollapsed ? "展开 ▾" : "收起 ▴"}
+          </button>
         </div>
+      </div>
 
-        <div className="grid grid-cols-5 gap-1.5 shrink-0 max-h-[176px] overflow-y-auto p-0.5 pr-1.5 pb-1.5">
+      {!isSidebarStagingCollapsed && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 shrink-0 max-h-[208px] overflow-y-auto overscroll-contain p-1.5 -mx-1">
           {stagedSwatches.map((sw) => {
             const isSelected = activeHex.toUpperCase() === sw.hex.toUpperCase();
             const isHarmonyBase = stagingAnchor.hex.toUpperCase() === sw.hex.toUpperCase();
             const isUsedOnCanvas = usedHexSet.has(sw.hex.toUpperCase());
-            const confirmed = isConfirmedBrandPaint(sw.brand, sw.code);
-            const badgeText = confirmed
-              ? `${sw.brand} ${sw.code}`
-              : sw.code && sw.code !== "HEX"
-              ? sw.code
-              : sw.hex;
+            const cleanCode = sanitizePaintCode(sw.code);
+            const confirmed = isConfirmedBrandPaint(sw.brand, cleanCode);
+            const primaryName = formatCleanPaintName(sw.name) || cleanCode || sw.hex;
+            const subBrandText = confirmed ? sw.brand : sw.brand && sw.brand !== "Custom" ? sw.brand : "";
+            const subCodeText = confirmed || (cleanCode && cleanCode !== "HEX") ? cleanCode : sw.hex;
             return (
               <div
                 key={sw.hex}
@@ -3974,15 +4833,15 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                   setStagingAnchor(sw);
                   applyPaintToSelectedRegions(sw.hex, {
                     brand: sw.brand,
-                    code: sw.code,
+                    code: cleanCode || sw.hex,
                     name: sw.name,
                   });
                   setStatusMessage(
-                    `📌 已选备选色「${sw.brand} ${sw.code} ${sw.name}」· 色相环已同步至 H=${hsl.h}° 供衍生明暗，和谐推荐已更新`
+                    `📌 已选备选色「${sw.brand} ${cleanCode} ${sw.name}」· 色相环已同步至 H=${hsl.h}° 供衍生明暗，和谐推荐已更新`
                   );
                 }}
-                title={`${sw.brand} ${sw.code} · ${sw.name} (${sw.hex}) — 点击自动同步 360° 色相环与和谐分色推荐`}
-                className={`bp-subcard bp-subcard-interactive group relative flex flex-col items-center p-1 transition cursor-pointer ${
+                title={`${sw.brand} ${cleanCode} · ${sw.name} (${sw.hex}) — 点击自动同步 360° 色相环与和谐分色推荐`}
+                className={`bp-subcard bp-subcard-interactive group relative flex flex-col p-1.5 text-left transition cursor-pointer ${
                   isBlueprint
                     ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 ${
                         isSelected
@@ -4007,20 +4866,30 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                   {isUsedOnCanvas && (
                     <span
                       title="已涂在模型画布上"
-                      className="absolute bottom-0.5 left-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400 ring-1 ring-black/40"
+                      className="absolute bottom-0.5 left-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-1 ring-black/40"
                     />
                   )}
                   {isHarmonyBase && (
                     <span
                       title="当前色相环与和谐推荐基准锚点"
-                      className="absolute top-0.5 right-0.5 px-0.5 rounded-[2px] bg-black/55 text-[7px] font-mono font-black text-white leading-none"
+                      className="absolute top-0.5 right-0.5 px-0.5 rounded-[2px] bg-black/55 text-[8px] font-mono font-black text-white leading-none"
                     >
                       ★
                     </span>
                   )}
                 </span>
-                <span className="mt-0.5 text-[8px] font-mono font-extrabold text-slate-800 dark:text-slate-100 truncate w-full text-center leading-tight">
-                  {badgeText}
+                {/* 大标题：油漆名称 */}
+                <span className="mt-1 shrink-0 text-[11px] font-black text-slate-900 dark:text-white truncate w-full leading-snug">
+                  {primaryName}
+                </span>
+                {/* 小标题：品牌名称 + 色号 (色号 shrink-0 绝不截断) */}
+                <span className="mt-0.5 shrink-0 flex items-center justify-between gap-1 w-full text-[9.5px] leading-snug">
+                  <span className="font-bold text-slate-500 dark:text-slate-400 truncate">
+                    {subBrandText}
+                  </span>
+                  <span className="font-mono font-extrabold text-slate-700 dark:text-slate-200 shrink-0">
+                    {subCodeText}
+                  </span>
                 </span>
                 <button
                   type="button"
@@ -4029,7 +4898,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                     removeStagedSwatch(sw.hex);
                   }}
                   title="从备选缓存栏移除"
-                  className={`opacity-0 group-hover:opacity-100 absolute -top-1.5 -right-1.5 h-3.5 w-3.5 bg-slate-900 text-white text-[8px] font-black flex items-center justify-center hover:bg-rose-600 cursor-pointer transition-opacity ${
+                  className={`bp-swatch-stage-btn opacity-0 group-hover:opacity-100 absolute -top-1.5 -right-1.5 h-4 w-4 bg-slate-900 text-white text-[9px] font-bold flex items-center justify-center hover:bg-rose-600 cursor-pointer transition-opacity ${
                     isBlueprint ? "rounded-[3px] border border-white" : "rounded-full"
                   }`}
                 >
@@ -4039,14 +4908,22 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             );
           })}
         </div>
-      </div>
+      )}
+    </div>
+  );
 
-      {/* 4. MODE-SPECIFIC MAIN WORKSPACE */}
+  /**
+   * Module `paintPicker` (Default #1 — Screenshot 2):
+   * Search input + Brand filter + Color family filter + 3-column Brand Paint Swatch Grid
+   * (or 10-step Grayscale + 360° Hue & 5×5 Matrix + Harmony when `coloringMode === "custom"`).
+   */
+  const renderPaintPickerSection = () => (
+    <div className="space-y-2.5 shrink-0" translate="no">
       {coloringMode === "brand" ? (
         /* ====================================================================
-         * MODE A: 🏷️ 品牌油漆直涂 (Embedded Commercial Paint Selector)
+         * MODE A: 🏷️ 品牌油漆直涂 (Embedded Commercial Paint Selector — Screenshot 2)
          * ==================================================================== */
-        <div className={`space-y-2 pt-2 shrink-0 ${dividerTopClass}`}>
+        <div className="space-y-2 shrink-0">
           {assigningTargetHex && (
             <div
               className={`flex items-center justify-between gap-2 px-2.5 py-1.5 text-[11px] font-extrabold text-amber-900 dark:text-amber-200 ${
@@ -4097,59 +4974,61 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
           </div>
 
           {/* Horizontal Brand Filter Capsules (Blueprint: hard-bordered square pills; Glass: rounded-full) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => setCatalogBrandFilter("ALL")}
-              className={`px-2 py-0.5 text-[10px] font-extrabold shrink-0 cursor-pointer transition ${
-                catalogBrandFilter === "ALL" ? "bp-pill-active" : "bp-pill"
-              } ${
-                isBlueprint
-                  ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 font-mono ${
-                      catalogBrandFilter === "ALL"
-                        ? "bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
-                        : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[2px_2px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
-                    }`
-                  : `rounded-full ${
-                      catalogBrandFilter === "ALL"
-                        ? "bg-[var(--accent-color)] text-white"
-                        : "bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200"
-                    }`
-              }`}
-            >
-              全部品牌
-            </button>
-            {FEATURED_BRANDS.map((b) => {
-              const active = catalogBrandFilter === b;
-              return (
-                <button
-                  key={b}
-                  type="button"
-                  onClick={() => setCatalogBrandFilter(b)}
-                  className={`px-2 py-0.5 text-[10px] font-extrabold shrink-0 cursor-pointer transition ${
-                    active ? "bp-pill-active" : "bp-pill"
-                  } ${
-                    isBlueprint
-                      ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 font-mono ${
-                          active
-                            ? "bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
-                            : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[2px_2px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
-                        }`
-                      : `rounded-full ${
-                          active
-                            ? "bg-[var(--accent-color)] text-white"
-                            : "bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200"
-                        }`
-                  }`}
-                >
-                  {localizedBrand(b, brandLang)}
-                </button>
-              );
-            })}
-          </div>
+          {!IS_SINGLE_BRAND_EDITION && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1.5 px-1 -mx-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setCatalogBrandFilter("ALL")}
+                className={`px-2 py-0.5 text-[10px] font-extrabold shrink-0 cursor-pointer transition ${
+                  catalogBrandFilter === "ALL" ? "bp-pill-active" : "bp-pill"
+                } ${
+                  isBlueprint
+                    ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 font-mono ${
+                        catalogBrandFilter === "ALL"
+                          ? "bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
+                          : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[2px_2px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
+                      }`
+                    : `rounded-full ${
+                        catalogBrandFilter === "ALL"
+                          ? "bg-[var(--accent-color)] text-white"
+                          : "bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                      }`
+                }`}
+              >
+                全部品牌
+              </button>
+              {FEATURED_BRANDS.map((b) => {
+                const active = catalogBrandFilter === b;
+                return (
+                  <button
+                    key={b}
+                    type="button"
+                    onClick={() => setCatalogBrandFilter(b)}
+                    className={`px-2 py-0.5 text-[10px] font-extrabold shrink-0 cursor-pointer transition ${
+                      active ? "bp-pill-active" : "bp-pill"
+                    } ${
+                      isBlueprint
+                        ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 font-mono ${
+                            active
+                              ? "bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
+                              : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-[2px_2px_0px_#0F172A] hover:bg-[var(--accent-soft)]"
+                          }`
+                        : `rounded-full ${
+                            active
+                              ? "bg-[var(--accent-color)] text-white"
+                              : "bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                          }`
+                    }`}
+                  >
+                    {localizedBrand(b, brandLang)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Color Family Filter Dots (红/橙/黄/绿/青/蓝/紫/黑白灰/金银) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 shrink-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1.5 px-1 -mx-1 shrink-0">
             {COLOR_FAMILY_FILTERS.map((cf) => {
               const active = catalogColorFamily === cf.id;
               return (
@@ -4187,12 +5066,14 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             })}
           </div>
 
-          {/* High-Density 3-Column Brand Paint Swatch Grid */}
-          <div className="grid grid-cols-3 gap-1.5 max-h-72 overflow-y-auto pr-0.5 pb-1 shrink-0">
+          {/* High-Density 3-Column Brand Paint Swatch Grid (大标题：油漆名字，小标题：品牌名字 + 色号) */}
+          <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto overscroll-contain p-1.5 -mx-1 shrink-0">
             {filteredCatalogPaints.map((p) => {
               const brandZh = localizedBrand(p.brand, brandLang);
+              const cleanCode = sanitizePaintCode(p.code);
               const isSelected =
-                activeHex.toUpperCase() === p.hex.toUpperCase() && activePaintMeta.code === p.code;
+                activeHex.toUpperCase() === p.hex.toUpperCase() && activePaintMeta.code === cleanCode;
+              const displayPaintName = formatCleanPaintName(p.name) || p.name;
               return (
                 <div
                   key={p.id}
@@ -4209,17 +5090,17 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                     setStagingAnchor({
                       hex: p.hex.toUpperCase(),
                       brand: brandZh,
-                      code: p.code,
+                      code: cleanCode || p.hex.toUpperCase(),
                       name: p.name,
                     });
                     applyPaintToSelectedRegions(p.hex, {
                       brand: brandZh,
-                      code: p.code,
+                      code: cleanCode || p.hex.toUpperCase(),
                       name: p.name,
                     });
-                    setStatusMessage(`🏷️ 已选品牌油漆：${brandZh} ${p.code} ${p.name} (${p.hex})`);
+                    setStatusMessage(`🏷️ 已选品牌油漆：${brandZh} ${cleanCode} ${p.name} (${p.hex})`);
                   }}
-                  title={`${brandZh} ${p.code} · ${p.name} (${p.hex}) — 点击直接上色`}
+                  title={`${brandZh} ${cleanCode} · ${p.name} (${p.hex}) — 点击直接上色`}
                   className={`bp-subcard bp-subcard-interactive group relative flex flex-col p-1.5 text-left transition cursor-pointer ${
                     isBlueprint
                       ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 shadow-[2px_2px_0px_#0F172A] ${
@@ -4243,7 +5124,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                       const item: StagedSwatchItem = {
                         hex: p.hex.toUpperCase(),
                         brand: brandZh,
-                        code: p.code,
+                        code: cleanCode || p.hex.toUpperCase(),
                         name: p.name,
                         pinned: true,
                       };
@@ -4251,17 +5132,27 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                       pushSwatchToTray(item, true);
                     }}
                   />
-                  <div className="font-mono font-bold text-xs text-slate-900 dark:text-slate-100 truncate leading-tight">
-                    {brandZh} {p.code}
+                  {/* 大标题：油漆名称 */}
+                  <div
+                    className="text-[11px] font-black text-slate-900 dark:text-white truncate leading-snug"
+                    title={p.name}
+                  >
+                    {displayPaintName}
                   </div>
-                  <div className="text-[11px] font-medium text-slate-600 dark:text-slate-300 truncate leading-tight mt-0.5">
-                    {p.name}
+                  {/* 小标题：品牌名称 + 色号 (色号 shrink-0 绝不截断) */}
+                  <div className="mt-0.5 flex items-center justify-between gap-1 text-[9.5px] leading-tight">
+                    <span className="font-bold text-slate-500 dark:text-slate-400 truncate">
+                      {brandZh}
+                    </span>
+                    <span className="font-mono font-extrabold text-slate-700 dark:text-slate-200 shrink-0">
+                      {cleanCode || p.hex.toUpperCase()}
+                    </span>
                   </div>
                 </div>
               );
             })}
             {filteredCatalogPaints.length === 0 && (
-              <div className="col-span-3 py-6 text-center text-[11px] font-bold text-slate-400">
+              <div className="col-span-3 py-6 text-center text-xs font-bold text-slate-400">
                 未找到匹配的模型漆，请尝试切换品牌或色系过滤条件
               </div>
             )}
@@ -4271,11 +5162,11 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         /* ====================================================================
          * MODE B: 🎛️ 明度色板调色 (10-Step Grayscale + 360° Hue & 5×5 Matrix + Harmony)
          * ==================================================================== */
-        <>
-          {/* MODULE 2A: 10-Step Neutral Grayscale Bar (10 阶素组与机械骨架标准灰阶) */}
-          <div className={`space-y-1.5 pt-2 shrink-0 ${dividerTopClass}`}>
+        <div className="space-y-2.5 shrink-0">
+          {/* MODULE 2A: 10-Step Neutral Grayscale Bar */}
+          <div className="space-y-1.5 shrink-0">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100">
+              <span className="text-[11px] font-black text-slate-700 dark:text-slate-200">
                 <span className="tech-prefix">[GRAY_10]</span>
                 10 阶素组与机械骨架标准灰阶
               </span>
@@ -4288,20 +5179,26 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                   <button
                     key={g.hex}
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      setStagingAnchor({
+                        hex: g.hex.toUpperCase(),
+                        brand: "GK灰阶",
+                        code: g.lLabel,
+                        name: `${g.label} (${g.lLabel})`,
+                      });
                       applyPaintToSelectedRegions(g.hex, {
                         brand: "GK灰阶",
                         code: g.lLabel,
                         name: `${g.label} (${g.lLabel})`,
-                      })
-                    }
+                      });
+                    }}
                     title={`${g.label} · ${g.lLabel} (${g.hex})`}
                     className={`bp-gray-step-btn group flex flex-col items-center cursor-pointer transition shrink-0 ${
                       !isBlueprint && (isSelected ? "scale-105" : "hover:scale-105")
                     }`}
                   >
                     <span
-                      className={`bp-gray-step-swatch h-6 min-h-[24px] w-full shrink-0 transition ${
+                      className={`bp-gray-step-swatch h-7 min-h-[28px] w-full shrink-0 transition ${
                         isBlueprint
                           ? `rounded-[3px] border-[1.5px] border-slate-900 dark:border-slate-400 ${
                               isSelected
@@ -4316,7 +5213,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                       }`}
                       style={{ backgroundColor: g.hex }}
                     />
-                    <span className="mt-1 text-[8px] font-mono font-bold text-slate-600 dark:text-slate-400 leading-none">
+                    <span className="mt-0.5 text-[9px] font-mono font-extrabold text-slate-500 dark:text-slate-400 leading-none">
                       {g.lLabel.replace("%", "")}
                     </span>
                   </button>
@@ -4325,10 +5222,10 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             </div>
           </div>
 
-          {/* MODULE 2B: 360° Hue Spectrum Slider (Real-Time Hue-Synced Thumb) + 5×5 Value × Chroma Matrix */}
+          {/* MODULE 2B: 360° Hue Spectrum Slider + 5×5 Value × Chroma Matrix */}
           <div className={`space-y-2 pt-2 shrink-0 ${dividerTopClass}`}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100 truncate">
+              <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 truncate">
                 <span className="tech-prefix">[HVC_5x5]</span>
                 360° 色相环 + 明度×纯度 5×5 阶梯矩阵
               </span>
@@ -4348,7 +5245,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             </div>
 
             {/* Custom 0°~360° Full Spectrum Hue Slider with Hue-Synchronized Thumb */}
-            <div className="relative flex items-center h-6 w-full shrink-0 select-none">
+            <div className="relative flex items-center h-5 w-full shrink-0 select-none">
               <div
                 className={`w-full h-3.5 ${
                   isBlueprint
@@ -4362,7 +5259,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               />
               {/* Custom Hue-Colored Thumb (never hardcoded purple!) */}
               <div
-                className={`pointer-events-none absolute top-1/2 w-5 h-5 -translate-x-1/2 -translate-y-1/2 transition-transform ${
+                className={`pointer-events-none absolute top-1/2 w-[18px] h-[18px] -translate-x-1/2 -translate-y-1/2 transition-transform ${
                   isBlueprint
                     ? "rounded-[4px] border-2 border-[#0F172A] ring-2 ring-inset ring-white shadow-[1.5px_1.5px_0px_#0F172A]"
                     : "rounded-full border-2 border-white ring-1 ring-black/35 shadow-md"
@@ -4399,17 +5296,17 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               />
             </div>
 
-            {/* 5×5 Value (Lightness) × Chroma (Saturation) Stepped Matrix (Explicit h-8 min-h-[32px] per cell!) */}
+            {/* 5×5 Value (Lightness) × Chroma (Saturation) Stepped Matrix */}
             <div
-              className={`p-2 space-y-1.5 shrink-0 ${
+              className={`p-2 space-y-1 shrink-0 ${
                 isBlueprint
                   ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-white dark:bg-slate-900 shadow-[2px_2px_0px_#0F172A]"
                   : "rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50"
               }`}
             >
-              <div className="grid grid-cols-[44px_1fr] gap-1.5 items-center text-[9px] font-mono font-bold text-slate-500 dark:text-slate-400">
-                <span className="text-left pl-0.5 truncate">明度\纯度</span>
-                <div className="grid grid-cols-5 gap-1.5 text-center">
+              <div className="grid grid-cols-[56px_1fr] gap-1 items-center text-[9px] font-mono font-extrabold text-slate-400">
+                <span className="text-left pl-0.5">明度\纯度</span>
+                <div className="grid grid-cols-5 gap-1 text-center">
                   {MATRIX_SATURATION_COLS.map((col) => (
                     <span key={col.s} title={col.label} className="truncate">
                       {col.shortLabel.split(" ")[0]}
@@ -4419,14 +5316,14 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               </div>
 
               {matrixGridSwatches.map((row) => (
-                <div key={row.l} className="grid grid-cols-[44px_1fr] gap-1.5 items-center shrink-0">
+                <div key={row.l} className="grid grid-cols-[56px_1fr] gap-1 items-center shrink-0">
                   <span
                     title={row.label}
-                    className="text-[9px] font-mono font-extrabold text-slate-600 dark:text-slate-300 truncate pr-0.5"
+                    className="text-[10px] font-mono font-extrabold text-slate-600 dark:text-slate-300 truncate pr-0.5"
                   >
                     {row.shortLabel}
                   </span>
-                  <div className="grid grid-cols-5 gap-1.5 shrink-0">
+                  <div className="grid grid-cols-5 gap-1 shrink-0">
                     {row.cells.map((cell) => {
                       const isCurrent = activeHex.toUpperCase() === cell.hex.toUpperCase();
                       const isAnchorCell =
@@ -4445,7 +5342,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                               brand: isAnchorConfirmed ? stagingAnchor.brand : "GK矩阵",
                               code: isAnchorConfirmed ? stagingAnchor.code : `H${selectedHue}°`,
                               name: isAnchorConfirmed
-                                ? `${stagingAnchor.name} · ${row.label.split(" ")[1]}`
+                                ? `${formatCleanPaintName(stagingAnchor.name)} · ${row.label.split(" ")[1]}`
                                 : `${anchorPrefix} · ${row.label.split(" ")[1]} · ${cell.colLabel.split(" ")[1]}`,
                             });
                           }}
@@ -4472,7 +5369,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                           {isAnchorCell && (
                             <span
                               title={`备选基准色 (${harmonyAnchorLabel}) 所在近似明度/纯度位置`}
-                              className="pointer-events-none px-1 py-0.2 rounded-[2px] bg-black/55 border border-dashed border-white/85 text-[8px] font-mono font-black text-white leading-none"
+                              className="pointer-events-none px-1 py-0.5 rounded-[2px] bg-black/55 border border-dashed border-white/85 text-[8px] font-mono font-black text-white leading-none"
                             >
                               ★基准
                             </span>
@@ -4486,10 +5383,10 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             </div>
           </div>
 
-          {/* MODULE 2C: Smart Color Harmony Generator (色相环和谐分色推荐栏 · 深度绑定选中备选色) */}
+          {/* MODULE 2C: Smart Color Harmony Generator */}
           <div className={`space-y-1.5 pt-2 shrink-0 ${dividerTopClass}`}>
             <div className="flex items-center justify-between gap-1.5">
-              <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100 truncate">
+              <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 truncate">
                 <span className="tech-prefix">[HARMONY]</span>
                 色相环和谐分色推荐
               </span>
@@ -4502,14 +5399,14 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                 }`}
               >
                 <span
-                  className="h-2 w-2 rounded-[2px] border border-black/30 shrink-0"
+                  className="h-2.5 w-2.5 rounded-[2px] border border-black/30 shrink-0"
                   style={{ backgroundColor: stagingAnchor.hex }}
                 />
                 <span className="truncate">基准: {harmonyAnchorLabel}</span>
               </span>
             </div>
 
-            <div className="grid grid-cols-4 gap-1.5 shrink-0">
+            <div className="grid grid-cols-4 gap-1 shrink-0">
               {(
                 [
                   { id: "analogous", label: "⚖️ 邻近层次" },
@@ -4536,7 +5433,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                         : `rounded-lg border ${
                             active
                               ? "border-[var(--accent-color)] bg-[var(--accent-color)] text-white shadow-2xs"
-                              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-slate-300"
+                              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300"
                           }`
                     }`}
                   >
@@ -4577,14 +5474,14 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                     }`}
                   >
                     <span
-                      className={`h-6 min-h-[24px] w-full shrink-0 transition ${
+                      className={`h-7 min-h-[28px] w-full shrink-0 transition ${
                         isBlueprint
                           ? "rounded-[3px] border-[1.5px] border-slate-900 dark:border-slate-400"
                           : "rounded border border-black/15 dark:border-white/15 group-hover:scale-105"
                       }`}
                       style={{ backgroundColor: sw.hex }}
                     />
-                    <span className="mt-1 text-[9px] font-extrabold text-slate-800 dark:text-slate-200 truncate w-full text-center">
+                    <span className="mt-1 text-[9px] font-black text-slate-700 dark:text-slate-200 truncate w-full text-center leading-none">
                       {sw.role}
                     </span>
                     <button
@@ -4602,8 +5499,8 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                           true
                         );
                       }}
-                      title="📌 将此推荐和谐色存入上方备选缓存盘"
-                      className={`opacity-0 group-hover:opacity-100 absolute -top-1 -right-1 px-1 py-0.2 bg-slate-900 text-white text-[7px] font-mono font-black hover:bg-[var(--accent-color)] cursor-pointer transition-opacity ${
+                      title="📌 将此推荐和谐色存入备选缓存盘"
+                      className={`bp-swatch-stage-btn opacity-0 group-hover:opacity-100 absolute -top-1 -right-1 px-1 py-0.2 bg-slate-900 text-white text-[8px] font-mono font-bold hover:bg-[var(--accent-color)] cursor-pointer transition-opacity ${
                         isBlueprint ? "rounded-[2px] border border-white" : "rounded"
                       }`}
                     >
@@ -4614,7 +5511,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               })}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -4628,7 +5525,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
       <div className="space-y-2 shrink-0" translate="no">
         {!alwaysOpen && (
           <div
-            className={`flex items-center justify-between gap-1.5 h-9 px-2 shrink-0 ${
+            className={`bp-subcard flex items-center justify-between gap-1.5 h-9 px-2 shrink-0 ${
               isBlueprint
                 ? "rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-slate-100 dark:bg-slate-800/95 shadow-[2px_2px_0px_#0F172A]"
                 : "rounded-xl border border-slate-200/90 dark:border-slate-700/90 bg-slate-100/80 dark:bg-slate-800/70"
@@ -4653,7 +5550,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             <button
               type="button"
               onClick={() => setShowAlgorithmPanel((v) => !v)}
-              className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-extrabold text-slate-800 dark:text-slate-100 bg-white/80 dark:bg-slate-900/70 border border-slate-300/80 dark:border-slate-600/80 hover:bg-[var(--accent-soft)] cursor-pointer transition"
+              className="bp-btn shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-extrabold text-slate-800 dark:text-slate-100 bg-white/80 dark:bg-slate-900/70 border border-slate-300/80 dark:border-slate-600/80 hover:bg-[var(--accent-soft)] cursor-pointer transition"
             >
               <span>⚙️ 高级设置</span>
               <span>{showAlgorithmPanel ? "▾" : "▸"}</span>
@@ -4663,7 +5560,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
 
         {(alwaysOpen || showAlgorithmPanel) && (
           <div
-            className={`p-3 space-y-3 text-xs shrink-0 ${
+            className={`bp-subcard p-3 space-y-3 text-xs shrink-0 ${
               isBlueprint
                 ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-white dark:bg-slate-900 shadow-[2px_2px_0px_#0F172A]"
                 : "rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60"
@@ -5274,18 +6171,13 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                     )}
                   </span>
                   <div className="min-w-0 flex-1 space-y-0.5">
+                    {/* 大标题：油漆名称（去除冗余英文后缀，优先完整显示油漆名） */}
                     {item.isConfirmed ? (
-                      <div className="flex items-center gap-1 text-[11px] font-extrabold text-slate-800 dark:text-slate-100 truncate">
-                        <span
-                          className={`px-1 py-0.2 text-[9px] font-black shrink-0 ${
-                            isBlueprint
-                              ? "rounded-[3px] border border-slate-900 bg-emerald-100 dark:bg-emerald-950/90 text-slate-900 dark:text-emerald-200 font-mono"
-                              : "rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                          }`}
-                        >
-                          {item.brand} {item.code}
-                        </span>
-                        <span className="truncate">{item.name}</span>
+                      <div
+                        className="flex items-center gap-1 text-[11px] font-black text-slate-900 dark:text-white truncate leading-tight"
+                        title={`${item.brand || ""} ${item.code || ""} ${item.name || ""}`}
+                      >
+                        <span className="truncate">{formatCleanPaintName(item.name || item.code || item.hex)}</span>
                         {item.tintRecipe?.isDirectSpray && (
                           <span className="text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
                             (直喷)
@@ -5293,35 +6185,59 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                         )}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1 text-[11px] font-extrabold text-amber-700 dark:text-amber-300 truncate">
-                        <span className="truncate font-mono">
-                          [待确认 ≈ {closest ? `${closest.brandZh} ${closest.paint.code} ${closest.paint.name}` : item.hex}]
-                        </span>
-                      </div>
-                    )}
-                    {item.tintRecipe && !item.tintRecipe.isDirectSpray ? (
                       <div
-                        title={item.tintRecipe.spokenInstruction}
-                        className={`inline-flex items-center gap-1 h-[18px] px-1.5 max-w-full truncate ${
-                          isBlueprint
-                            ? "rounded-[3px] border border-slate-900 bg-amber-100/90 dark:bg-amber-950/80 text-slate-900 dark:text-amber-200"
-                            : "rounded bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-200"
-                        }`}
+                        className="flex items-center gap-1 text-[11px] font-extrabold text-amber-700 dark:text-amber-300 truncate leading-tight"
+                        title={closest ? `${closest.brandZh} ${closest.paint.code} ${closest.paint.name}` : item.hex}
                       >
-                        <span className="inline-flex h-2.5 w-4 shrink-0 overflow-hidden rounded-[2px] border border-black/30">
-                          <span className="flex-1 h-full" style={{ backgroundColor: item.tintRecipe.basePaint.hex }} />
-                          <span className="flex-1 h-full" style={{ backgroundColor: item.hex }} />
+                        <span className="truncate">
+                          {closest ? `待确认 ≈ ${formatCleanPaintName(closest.paint.name)}` : `待确认 ${item.hex}`}
                         </span>
-                        <span className="text-[9px] font-mono font-black truncate">
-                          {item.tintRecipe.compactBadgeText}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate">
-                        <span className="font-mono">{item.hex}</span> · {item.regionCount} 处分区
-                        {!item.isConfirmed && closest ? ` · ΔE ${closest.deltaE.toFixed(1)}` : ""}
                       </div>
                     )}
+                    {/* 小标题：品牌名称 + 色号（shrink-0 绝不截断）+ 微调胶囊或分区计数 */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {item.isConfirmed ? (
+                        <span
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.2 text-[9.5px] font-extrabold shrink-0 ${
+                            isBlueprint
+                              ? "rounded-[3px] border border-slate-900 bg-emerald-100 dark:bg-emerald-950/90 text-slate-900 dark:text-emerald-200"
+                              : "rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                          }`}
+                        >
+                          <span className="truncate max-w-[68px]">{item.brand}</span>
+                          <span className="font-mono font-black shrink-0">{item.code}</span>
+                        </span>
+                      ) : closest ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 text-[9.5px] font-bold text-amber-700 dark:text-amber-300 shrink-0">
+                          <span className="truncate max-w-[68px]">{closest.brandZh}</span>
+                          <span className="font-mono font-black shrink-0">{closest.paint.code}</span>
+                        </span>
+                      ) : null}
+
+                      {item.tintRecipe && !item.tintRecipe.isDirectSpray ? (
+                        <div
+                          title={item.tintRecipe.spokenInstruction}
+                          className={`inline-flex items-center gap-1 h-[17px] px-1.5 min-w-0 truncate ${
+                            isBlueprint
+                              ? "rounded-[3px] border border-slate-900 bg-amber-100/90 dark:bg-amber-950/80 text-slate-900 dark:text-amber-200"
+                              : "rounded bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-200"
+                          }`}
+                        >
+                          <span className="inline-flex h-2.5 w-3.5 shrink-0 overflow-hidden rounded-[2px] border border-black/30">
+                            <span className="flex-1 h-full" style={{ backgroundColor: item.tintRecipe.basePaint.hex }} />
+                            <span className="flex-1 h-full" style={{ backgroundColor: item.hex }} />
+                          </span>
+                          <span className="text-[9px] font-mono font-black truncate">
+                            {item.tintRecipe.compactBadgeText}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[9.5px] font-bold text-slate-500 dark:text-slate-400 truncate">
+                          <span className="font-mono">{item.hex}</span> · {item.regionCount}处
+                          {!item.isConfirmed && closest ? ` · ΔE${closest.deltaE.toFixed(1)}` : ""}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </button>
 
@@ -5385,7 +6301,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             type="button"
             disabled={imageToken === 0}
             onClick={handleExportCompositePng}
-            className={`flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-extrabold transition ${
+            className={`bp-btn flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-extrabold transition ${
               imageToken > 0
                 ? `${secondaryActionBtnClass} cursor-pointer`
                 : "rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
@@ -5399,7 +6315,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               type="button"
               disabled={imageToken === 0}
               onClick={() => setShowConvertModal(true)}
-              className={`flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-black transition ${
+              className={`bp-btn flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-black transition ${
                 imageToken > 0
                   ? `${primaryActionBtnClass} cursor-pointer`
                   : "rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
@@ -5411,13 +6327,243 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             <button
               type="button"
               onClick={handleResetAllFills}
-              className={`py-2 text-xs font-extrabold transition cursor-pointer ${secondaryActionBtnClass}`}
+              className={`bp-btn py-2 text-xs font-extrabold transition cursor-pointer ${secondaryActionBtnClass}`}
             >
               一键清空重绘
             </button>
           )}
         </div>
       )}
+    </div>
+  );
+
+  // ---------------------------------------------------------------------------
+  // 5 Reorderable Functional Modules in the Right Control Panel
+  // Default Order:
+  //   1. paintPicker    (截图 2：色号检索与选色面板)
+  //   2. lightnessSteps (截图 1：① 点选期望明暗变化阶梯)
+  //   3. sourceSettings (截图 3：原图类型与 ⚙️ 高级设置)
+  //   4. usedPalette    (截图 4：📋 本图已用色卡与导出)
+  //   5. stagingCache   (截图 5：📌 备选与最近用色缓存盘)
+  // ---------------------------------------------------------------------------
+  const renderRightPanelModuleById = (moduleId: RightPanelModuleId) => {
+    switch (moduleId) {
+      case "paintPicker":
+        return renderPaintPickerSection();
+      case "lightnessSteps":
+        return renderToneExpectationBar();
+      case "sourceSettings":
+        return renderAlgorithmSection(false);
+      case "usedPalette":
+        return renderUsedPaintsSection(true);
+      case "stagingCache":
+        return renderStagingCacheSection();
+    }
+  };
+
+  const renderReorderableRightPanelModules = () => (
+    <div className="space-y-2.5 shrink-0" translate="no">
+      {/* Subtle Drag-Reorder Hint & Reset Default Order Bar */}
+      <div className="flex items-center justify-between gap-2 px-0.5 text-[10px] font-bold text-slate-400 dark:text-slate-500">
+        <span className="flex items-center gap-1 truncate">
+          <DotsSixVerticalIcon size={13} weight="bold" className="shrink-0" />
+          <span className="truncate">按住各功能区顶部拖拽条或点 ↑↓ 自由调整上下摆放顺序</span>
+        </span>
+        {isCustomModuleOrder && (
+          <button
+            type="button"
+            onClick={resetRightPanelModuleOrder}
+            title="恢复默认模块顺序：①选色面板 ➔ ②明暗变化 ➔ ③原图设置 ➔ ④已用色卡 ➔ ⑤备选缓存"
+            className="shrink-0 font-extrabold text-[var(--accent-color)] hover:underline cursor-pointer"
+          >
+            ↺ 恢复默认排序
+          </button>
+        )}
+      </div>
+
+      {rightPanelOrder.map((moduleId, idx) => {
+        const meta = RIGHT_PANEL_MODULE_META[moduleId];
+        const isDraggingThis = draggedModuleId === moduleId;
+        const isDropBefore =
+          dragOverModule?.id === moduleId &&
+          dragOverModule.position === "before" &&
+          draggedModuleId !== moduleId;
+        const isDropAfter =
+          dragOverModule?.id === moduleId &&
+          dragOverModule.position === "after" &&
+          draggedModuleId !== moduleId;
+
+        return (
+          <div
+            key={moduleId}
+            draggable={dragArmedModuleId === moduleId}
+            onDragStart={(e) => {
+              if (dragArmedModuleId !== moduleId) {
+                e.preventDefault();
+                return;
+              }
+              setDraggedModuleId(moduleId);
+              e.dataTransfer.effectAllowed = "move";
+              try {
+                e.dataTransfer.setData("text/plain", moduleId);
+              } catch {
+                /* ignore */
+              }
+            }}
+            onDragOver={(e) => {
+              if (!draggedModuleId || draggedModuleId === moduleId) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              const rect = e.currentTarget.getBoundingClientRect();
+              const midY = rect.top + rect.height / 2;
+              const position: "before" | "after" = e.clientY < midY ? "before" : "after";
+              if (dragOverModule?.id !== moduleId || dragOverModule.position !== position) {
+                setDragOverModule({ id: moduleId, position });
+              }
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setDragOverModule((prev) => (prev?.id === moduleId ? null : prev));
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const sourceId =
+                draggedModuleId || (e.dataTransfer.getData("text/plain") as RightPanelModuleId);
+              setDraggedModuleId(null);
+              setDragArmedModuleId(null);
+              const targetState = dragOverModule;
+              setDragOverModule(null);
+              if (!sourceId || sourceId === moduleId) return;
+              const next = rightPanelOrder.filter((item) => item !== sourceId);
+              const targetIdx = next.indexOf(moduleId);
+              if (targetIdx === -1) return;
+              const insertIdx =
+                targetState?.id === moduleId && targetState.position === "after"
+                  ? targetIdx + 1
+                  : targetIdx;
+              next.splice(insertIdx, 0, sourceId);
+              updateRightPanelOrder(
+                next,
+                `↕️ 已将「${RIGHT_PANEL_MODULE_META[sourceId].title}」拖放至第 ${insertIdx + 1} 位`
+              );
+            }}
+            onDragEnd={() => {
+              setDraggedModuleId(null);
+              setDragOverModule(null);
+              setDragArmedModuleId(null);
+            }}
+            className={`bp-module-card relative transition-opacity ${
+              isDraggingThis ? "opacity-55 scale-[0.99]" : "opacity-100"
+            } ${
+              isBlueprint
+                ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-white/95 dark:bg-slate-900/95 shadow-[2px_2px_0px_#0F172A] p-2"
+                : "rounded-xl border border-slate-200/90 dark:border-slate-700/90 bg-white/85 dark:bg-slate-900/75 p-2 shadow-2xs"
+            }`}
+          >
+            {/* Drop-before visual insertion indicator */}
+            {isDropBefore && (
+              <div
+                className="pointer-events-none absolute -top-1.5 inset-x-1 h-1 rounded-full z-20"
+                style={{ backgroundColor: "var(--accent-color)" }}
+              />
+            )}
+
+            {/* Compact Draggable Module Header Strip */}
+            <div
+              onPointerDown={() => setDragArmedModuleId(moduleId)}
+              onPointerUp={() => setDragArmedModuleId(null)}
+              onMouseDown={() => setDragArmedModuleId(moduleId)}
+              onMouseUp={() => setDragArmedModuleId(null)}
+              title="按住此栏上下拖拽可自由调整模块位置，或点击右侧 ↑ / ↓ 按钮移动"
+              className={`flex items-center justify-between gap-1.5 pb-1.5 mb-2 cursor-grab active:cursor-grabbing select-none ${dividerBottomClass}`}
+            >
+              <div className="flex items-center gap-1 min-w-0">
+                <span className="inline-flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-[var(--accent-color)] shrink-0">
+                  <DotsSixVerticalIcon size={14} weight="bold" />
+                </span>
+                <span className="font-mono text-[9.5px] font-black px-1 py-0.2 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
+                  #{idx + 1}
+                </span>
+                <span className="text-[10.5px] font-extrabold text-slate-600 dark:text-slate-300 truncate">
+                  {meta.title}
+                </span>
+              </div>
+
+              <div
+                className="flex items-center gap-0.5 shrink-0"
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                {idx > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => moveRightPanelModule(moduleId, "top")}
+                    title={`将「${meta.shortLabel}」直接置顶到第 1 位`}
+                    className="px-1 py-0.5 rounded text-[9px] font-mono font-extrabold text-slate-400 hover:text-[var(--accent-color)] hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
+                  >
+                    置顶
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={idx === 0}
+                  onClick={() => moveRightPanelModule(moduleId, "up")}
+                  title="上移一位"
+                  className={`p-0.5 rounded transition ${
+                    idx === 0
+                      ? "text-slate-300 dark:text-slate-700 cursor-not-allowed"
+                      : "text-slate-500 dark:text-slate-400 hover:text-[var(--accent-color)] hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  }`}
+                >
+                  <CaretUpIcon size={12} weight="bold" />
+                </button>
+                <button
+                  type="button"
+                  disabled={idx === rightPanelOrder.length - 1}
+                  onClick={() => moveRightPanelModule(moduleId, "down")}
+                  title="下移一位"
+                  className={`p-0.5 rounded transition ${
+                    idx === rightPanelOrder.length - 1
+                      ? "text-slate-300 dark:text-slate-700 cursor-not-allowed"
+                      : "text-slate-500 dark:text-slate-400 hover:text-[var(--accent-color)] hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  }`}
+                >
+                  <CaretDownIcon size={12} weight="bold" />
+                </button>
+                {idx < rightPanelOrder.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => moveRightPanelModule(moduleId, "bottom")}
+                    title={`将「${meta.shortLabel}」直接置底到最后一位`}
+                    className="px-1 py-0.5 rounded text-[9px] font-mono font-extrabold text-slate-400 hover:text-[var(--accent-color)] hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
+                  >
+                    置底
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Module Body */}
+            {renderRightPanelModuleById(moduleId)}
+
+            {/* Drop-after visual insertion indicator */}
+            {isDropAfter && (
+              <div
+                className="pointer-events-none absolute -bottom-1.5 inset-x-1 h-1 rounded-full z-20"
+                style={{ backgroundColor: "var(--accent-color)" }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderPaletteSection = () => (
+    <div className="space-y-3 shrink-0" translate="no">
+      {renderTopPaletteControlHeader()}
+      {renderReorderableRightPanelModules()}
     </div>
   );
 
@@ -5907,7 +7053,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             <div
               className={`flex ${
                 isHorizontalDock
-                  ? "flex-col items-center justify-between h-[32px] sm:h-[42px] pr-0.5"
+                  ? "flex-col items-center justify-between h-[31px] sm:h-[42px] pr-0.5"
                   : "flex-row items-center justify-between w-[35px] sm:w-[42px] pb-0.5"
               } text-slate-400 dark:text-slate-500`}
             >
@@ -6012,7 +7158,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                 title={`当前光影合成：${shadingFullLabel}（点击切换 四层光影推导 / 3D相对光影保留 / 2D纯色平涂）`}
                 className={`bp-btn ${
                   showShadingPopover ? "bp-pill-active" : ""
-                } relative w-[35px] h-[31px] sm:w-[42px] sm:h-[42px] flex flex-col items-center justify-center transition cursor-pointer ${
+                } relative w-[35px] h-[31px] sm:w-[42px] sm:h-[42px] flex flex-col items-center justify-center gap-0.5 transition cursor-pointer ${
                   isBlueprint
                     ? showShadingPopover
                       ? "rounded-[5px] border-[1.5px] border-slate-900 dark:border-slate-400 bg-[var(--accent-color)] text-white shadow-[2px_2px_0px_#0F172A]"
@@ -6023,7 +7169,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                 }`}
               >
                 {renderShadingModeIcon(15)}
-                <span className="mt-0.5 text-[8px] sm:text-[9px] font-mono font-black leading-none">{shadingShortBadge}</span>
+                <span className="text-[8px] sm:text-[9px] font-mono font-black leading-none">{shadingShortBadge}</span>
               </button>
 
               {showShadingPopover && (
@@ -6153,7 +7299,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             <SquareDockButton
               active={false}
               onClick={handleResetAllFills}
-              icon={<TrashIcon size={17} weight="bold" />}
+              icon={<TrashIcon size={18} weight="bold" />}
               label="重绘"
               title="🗑️ 一键清空重绘（支持通过顶栏「↶ 撤销」随时找回）"
               isBlueprint={isBlueprint}
@@ -6163,6 +7309,587 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
         )}
       </div>
     </>
+  );
+
+  // ---------------------------------------------------------------------------
+  // In-Canvas Draggable & Resizable Quick Staging Dropdown + Mobile Below-Canvas Staging
+  // ---------------------------------------------------------------------------
+  // Single swatch card size constants (used as min/max thresholds for container resizing)
+  const SINGLE_SWATCH_CARD_MIN_W = 108;
+  const SINGLE_SWATCH_CARD_H = 74;
+  const CONTAINER_MIN_W = SINGLE_SWATCH_CARD_MIN_W + 20; // 128px (1 card column + padding)
+  const CONTAINER_MIN_H = SINGLE_SWATCH_CARD_H + 18; // 92px (1 card row + padding)
+
+  const startCanvasStagingDrag = (
+    e: React.PointerEvent<HTMLElement>,
+    mode: "move" | "resize-br" | "resize-bl" | "resize-b"
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    const vpW = viewportRef.current?.clientWidth || 800;
+    const resolvedX =
+      canvasStagingBox.x !== null
+        ? canvasStagingBox.x
+        : Math.max(12, vpW - canvasStagingBox.w - 12);
+    setIsDraggingCanvasStaging(true);
+    canvasStagingDragRef.current = {
+      mode,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startX: resolvedX,
+      startY: canvasStagingBox.y,
+      startW: canvasStagingBox.w,
+      startH: canvasStagingBox.h,
+    };
+  };
+
+  const moveCanvasStagingDrag = (e: React.PointerEvent<HTMLElement>) => {
+    const drag = canvasStagingDragRef.current;
+    if (!drag) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const vpW = viewportRef.current?.clientWidth || 800;
+    const vpH = viewportRef.current?.clientHeight || 600;
+    const dx = e.clientX - drag.startClientX;
+    const dy = e.clientY - drag.startClientY;
+
+    if (drag.mode === "move") {
+      const nextX = Math.max(6, Math.min(vpW - CONTAINER_MIN_W, Math.round(drag.startX + dx)));
+      const nextY = Math.max(6, Math.min(vpH - 44, Math.round(drag.startY + dy)));
+      setCanvasStagingBox((prev) => ({ ...prev, x: nextX, y: nextY }));
+      return;
+    }
+
+    const maxW = Math.min(660, Math.max(CONTAINER_MIN_W + 100, vpW - 12));
+    const maxH = Math.min(480, Math.max(CONTAINER_MIN_H + 60, vpH - 64));
+
+    if (drag.mode === "resize-br") {
+      const nextW = Math.max(
+        CONTAINER_MIN_W,
+        Math.min(maxW, vpW - drag.startX - 6, Math.round(drag.startW + dx))
+      );
+      const nextH = Math.max(
+        CONTAINER_MIN_H,
+        Math.min(maxH, Math.round(drag.startH + dy))
+      );
+      setCanvasStagingBox((prev) => ({
+        ...prev,
+        x: drag.startX,
+        w: nextW,
+        h: nextH,
+      }));
+      return;
+    }
+
+    if (drag.mode === "resize-bl") {
+      const maxLeftExpand = drag.startX - 6;
+      const clampedNegDx = Math.min(maxLeftExpand, -dx);
+      const rawW = Math.round(drag.startW + clampedNegDx);
+      const nextW = Math.max(CONTAINER_MIN_W, Math.min(maxW, rawW));
+      const actualDeltaW = nextW - drag.startW;
+      const nextX = Math.max(6, drag.startX - actualDeltaW);
+      const nextH = Math.max(
+        CONTAINER_MIN_H,
+        Math.min(maxH, Math.round(drag.startH + dy))
+      );
+      setCanvasStagingBox((prev) => ({
+        ...prev,
+        x: nextX,
+        w: nextW,
+        h: nextH,
+      }));
+      return;
+    }
+
+    if (drag.mode === "resize-b") {
+      const nextH = Math.max(
+        CONTAINER_MIN_H,
+        Math.min(maxH, Math.round(drag.startH + dy))
+      );
+      setCanvasStagingBox((prev) => ({ ...prev, h: nextH }));
+    }
+  };
+
+  const endCanvasStagingDrag = (e: React.PointerEvent<HTMLElement>) => {
+    if (!canvasStagingDragRef.current) return;
+    e.stopPropagation();
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    canvasStagingDragRef.current = null;
+    setIsDraggingCanvasStaging(false);
+  };
+
+  const renderSpecifyColorInlineBar = () => (
+    <div
+      className={`p-2 space-y-1.5 border-b border-dashed border-slate-300 dark:border-slate-700 ${
+        isBlueprint
+          ? "bg-amber-50/90 dark:bg-slate-800/95"
+          : "bg-slate-100/90 dark:bg-slate-800/80"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-1 text-[10px] font-black text-slate-800 dark:text-slate-100">
+        <span className="truncate">
+          {specifyTargetSlotHex
+            ? `🎨 指定替换色卡 ${specifyTargetSlotHex}`
+            : "🎨 指定常驻颜色 / 绑定漆号"}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setIsSpecifyingColor(false);
+            setSpecifyTargetSlotHex(null);
+          }}
+          className="text-[10px] font-bold text-slate-400 hover:text-slate-800 dark:hover:text-white cursor-pointer shrink-0"
+        >
+          ✕ 取消
+        </button>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        <label
+          title="点击打开系统调色盘自由选色"
+          className={`relative h-7 w-8 shrink-0 cursor-pointer overflow-hidden ${
+            isBlueprint
+              ? "rounded-[3px] border-[1.5px] border-slate-900 dark:border-slate-400 shadow-[1.5px_1.5px_0px_#0F172A]"
+              : "rounded-md border border-slate-300 dark:border-slate-600"
+          }`}
+          style={{ backgroundColor: normalizedSpecifyHex }}
+        >
+          <input
+            type="color"
+            value={normalizedSpecifyHex}
+            onChange={(e) => {
+              const hx = e.target.value.toUpperCase();
+              setSpecifyHexInput(hx);
+              const m = findClosestCatalogPaint(hx);
+              if (m) {
+                setSpecifyBrandInput(m.brandZh);
+                setSpecifyCodeInput(m.paint.code);
+                setSpecifyNameInput(m.paint.name);
+              }
+            }}
+            className="sr-only"
+          />
+        </label>
+
+        <input
+          type="text"
+          value={specifyHexInput}
+          onChange={(e) => setSpecifyHexInput(e.target.value.toUpperCase())}
+          placeholder="#HEX"
+          maxLength={7}
+          className={`w-[74px] shrink-0 px-1.5 py-1 font-mono text-[10px] font-extrabold bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none ${
+            isBlueprint
+              ? "rounded-[3px] border-[1.5px] border-slate-900 dark:border-slate-500"
+              : "rounded-md border border-slate-300 dark:border-slate-700"
+          }`}
+        />
+
+        <input
+          type="text"
+          value={specifyNameInput}
+          onChange={(e) => setSpecifyNameInput(e.target.value)}
+          placeholder="自定义名称/备注(可选)"
+          className={`min-w-0 flex-1 px-1.5 py-1 text-[10px] font-bold bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none ${
+            isBlueprint
+              ? "rounded-[3px] border-[1.5px] border-slate-900 dark:border-slate-500"
+              : "rounded-md border border-slate-300 dark:border-slate-700"
+          }`}
+        />
+
+        <button
+          type="button"
+          onClick={() => handleCommitSpecifyColor(true)}
+          className={`shrink-0 px-2 py-1 text-[10px] font-black cursor-pointer whitespace-nowrap ${primaryActionBtnClass}`}
+        >
+          📌 锁定使用
+        </button>
+      </div>
+
+      {specifyTopMatches.length > 0 && (
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pt-0.5">
+          <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
+            近似漆号:
+          </span>
+          {specifyTopMatches.map((m) => (
+            <button
+              key={m.paint.id}
+              type="button"
+              onClick={() => {
+                setSpecifyHexInput(m.paint.hex.toUpperCase());
+                setSpecifyBrandInput(m.brandZh);
+                setSpecifyCodeInput(m.paint.code);
+                setSpecifyNameInput(m.paint.name);
+              }}
+              className={`shrink-0 flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold cursor-pointer transition ${
+                specifyCodeInput === m.paint.code
+                  ? "bg-[var(--accent-color)] text-white rounded"
+                  : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded hover:border-[var(--accent-color)]"
+              }`}
+              title={`点击选用 ${m.brandZh} ${m.paint.code} ${m.paint.name} (${m.paint.hex})`}
+            >
+              <span
+                className="h-2 w-2 rounded-[2px] border border-black/25 shrink-0"
+                style={{ backgroundColor: m.paint.hex }}
+              />
+              <span className="font-mono font-extrabold">
+                {m.brandZh} {m.paint.code}
+              </span>
+              <span className="truncate max-w-[68px]">
+                {formatCleanPaintName(m.paint.name)}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderQuickStagingSwatchGrid = (isDesktopCanvas: boolean) => {
+    return (
+      <div
+        style={
+          isDesktopCanvas
+            ? {
+                gridTemplateColumns: `repeat(auto-fill, minmax(${SINGLE_SWATCH_CARD_MIN_W}px, 1fr))`,
+                gridAutoRows: `minmax(${SINGLE_SWATCH_CARD_H}px, auto)`,
+                height: `${canvasStagingBox.h}px`,
+                alignContent: "start",
+              }
+            : undefined
+        }
+        className={
+          isDesktopCanvas
+            ? `grid gap-2 overflow-y-auto overflow-x-hidden p-2.5 ${
+                isDraggingCanvasStaging ? "pointer-events-none" : ""
+              }`
+            : "grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[220px] overflow-y-auto p-2.5"
+        }
+      >
+        {canvasQuickSwatches.map((sw) => {
+          const isSelected = activeHex.toUpperCase() === sw.hex.toUpperCase();
+          const isHarmonyBase = stagingAnchor.hex.toUpperCase() === sw.hex.toUpperCase();
+          const isUsedOnCanvas = usedHexSet.has(sw.hex.toUpperCase());
+          const confirmed = isConfirmedBrandPaint(sw.brand, sw.code);
+          const primaryName = formatCleanPaintName(sw.name) || sw.code || sw.hex;
+          const subBrandText = confirmed
+            ? sw.brand
+            : sw.brand && sw.brand !== "Custom"
+            ? sw.brand
+            : "";
+          const subCodeText =
+            confirmed || (sw.code && sw.code !== "HEX") ? sw.code : sw.hex;
+
+          return (
+            <div
+              key={sw.hex}
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                const hsl = hexToHsl(sw.hex);
+                if (hsl.s >= 4) {
+                  setSelectedHue(hsl.h);
+                }
+                setSelectedMatrixCell(findNearestMatrixCell(hsl.l, hsl.s));
+                setStagingAnchor(sw);
+                applyPaintToSelectedRegions(sw.hex, {
+                  brand: sw.brand,
+                  code: sw.code,
+                  name: sw.name,
+                });
+                setStatusMessage(
+                  `📌 已切换颜色「${sw.brand} ${sw.code} ${sw.name}」(${sw.hex})`
+                );
+              }}
+              title={`${sw.brand} ${sw.code} · ${sw.name} (${sw.hex}) — 点击直接切换此颜色上色，点右上「指定」可替换颜色`}
+              className={`bp-subcard group relative min-h-[74px] min-w-0 flex flex-col justify-between gap-1 p-2 text-left cursor-pointer ${
+                isBlueprint
+                  ? `rounded-[4px] border-[1.5px] border-slate-900 dark:border-slate-500 ${
+                      isSelected
+                        ? "bp-subcard-active bg-[var(--accent-soft)] ring-1 ring-[var(--accent-color)] shadow-[2px_2px_0px_#0F172A]"
+                        : "bg-white dark:bg-slate-800/95 hover:bg-[var(--accent-soft)] shadow-[1.5px_1.5px_0px_#0F172A]"
+                    }`
+                  : `rounded-lg border ${
+                      isSelected
+                        ? "border-[var(--accent-color)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent-color)]"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/90 hover:border-[var(--accent-color)]"
+                    }`
+              }`}
+            >
+              <span
+                style={{ backgroundColor: sw.hex }}
+                className={`relative h-6 min-h-[22px] w-full shrink-0 ${
+                  isBlueprint
+                    ? "rounded-[2px] border-[1.5px] border-slate-900 dark:border-slate-400"
+                    : "rounded-xs border border-black/15 dark:border-white/15"
+                }`}
+              >
+                {isUsedOnCanvas && (
+                  <span
+                    title="已涂在模型画布上"
+                    className="absolute bottom-0.5 left-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-1 ring-black/40"
+                  />
+                )}
+                {isHarmonyBase && (
+                  <span
+                    title="当前基准锚点色"
+                    className="absolute top-0.5 right-0.5 px-0.5 rounded-[2px] bg-black/55 text-[8px] font-mono font-black text-white leading-none"
+                  >
+                    ★
+                  </span>
+                )}
+              </span>
+
+              <span className="shrink-0 text-[11px] font-black text-slate-900 dark:text-white truncate w-full leading-snug">
+                {primaryName}
+              </span>
+
+              <span className="shrink-0 flex items-center justify-between gap-1 w-full text-[9.5px] leading-snug">
+                <span className="font-bold text-slate-500 dark:text-slate-400 truncate">
+                  {subBrandText}
+                </span>
+                <span className="font-mono font-extrabold text-slate-700 dark:text-slate-200 shrink-0">
+                  {subCodeText}
+                </span>
+              </span>
+
+              {/* Specify / Replace Color button for this slot */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenSpecifyColor(sw);
+                }}
+                title="🎨 指定/修改该色卡的颜色或绑定漆号"
+                className={`bp-swatch-stage-btn opacity-0 group-hover:opacity-100 absolute top-0.5 right-4 h-4 px-1 bg-slate-800/90 text-amber-300 text-[8px] font-bold flex items-center justify-center hover:bg-[var(--accent-color)] hover:text-white cursor-pointer transition-opacity ${
+                  isBlueprint ? "rounded-[2px] border border-white/80" : "rounded"
+                }`}
+              >
+                指定
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeStagedSwatch(sw.hex);
+                }}
+                title="从备选缓存栏移除"
+                className={`bp-swatch-stage-btn opacity-0 group-hover:opacity-100 absolute top-0.5 right-0.5 h-4 w-3.5 bg-slate-900/90 text-white text-[9px] font-bold flex items-center justify-center hover:bg-rose-600 cursor-pointer transition-opacity ${
+                  isBlueprint ? "rounded-[2px] border border-white/80" : "rounded"
+                }`}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderCanvasFloatingStagingWindow = () => {
+    const isCompactHeader = isCanvasStagingOpen && canvasStagingBox.w < 230;
+    return (
+      <div
+        data-canvas-ui-overlay="true"
+        onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        style={{
+          top: `${canvasStagingBox.y}px`,
+          ...(canvasStagingBox.x !== null
+            ? { left: `${canvasStagingBox.x}px` }
+            : { right: "12px" }),
+          width: isCanvasStagingOpen ? `${canvasStagingBox.w}px` : "auto",
+        }}
+        className={`hidden lg:flex flex-col absolute z-30 select-none overflow-hidden ${
+          isBlueprint
+            ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-500 bg-white/95 dark:bg-[#111827]/95 shadow-[3px_3px_0px_#0F172A] dark:shadow-[3px_3px_0px_#020617]"
+            : "rounded-2xl border border-slate-200/90 dark:border-slate-700/90 bg-white/92 dark:bg-slate-900/92 backdrop-blur-md shadow-xl"
+        }`}
+      >
+        {/* Draggable Header + Dropdown Toggle */}
+        <div
+          onPointerDown={(e) => startCanvasStagingDrag(e, "move")}
+          onPointerMove={moveCanvasStagingDrag}
+          onPointerUp={endCanvasStagingDrag}
+          onPointerCancel={endCanvasStagingDrag}
+          title="按住标题栏可自由拖拽摆放位置 · 拖拽底部左右两角可自由调节容器宽高（内部色卡自动重排）"
+          className={`flex items-center justify-between gap-1 px-2 py-1.5 cursor-grab active:cursor-grabbing touch-none ${
+            isCanvasStagingOpen ? dividerBottomClass : ""
+          }`}
+        >
+          <div className="flex items-center gap-1 min-w-0 flex-1">
+            <span className="text-slate-400 dark:text-slate-500 text-xs font-black shrink-0">
+              ⠿
+            </span>
+            <span
+              className="h-3.5 w-3.5 rounded-xs border border-black/25 shrink-0"
+              style={{ backgroundColor: activeHex }}
+            />
+            <span className="text-[11px] font-black text-slate-800 dark:text-slate-100 truncate">
+              {isCompactHeader
+                ? `(${canvasQuickSwatches.length})`
+                : `📌 备选与已涂漆号 (${canvasQuickSwatches.length})`}
+            </span>
+          </div>
+
+          <div
+            className="flex items-center gap-1 shrink-0"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {isDesktopPaletteCollapsed && !isCompactHeader && (
+              <button
+                type="button"
+                onClick={() => setIsDesktopPaletteCollapsed(false)}
+                title="展开右侧四维调色引擎面板"
+                className={`px-1.5 py-0.5 text-[9.5px] font-extrabold cursor-pointer transition ${primaryActionBtnClass}`}
+              >
+                ⇤ 展开色板
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (!isCanvasStagingOpen) setIsCanvasStagingOpen(true);
+                handleOpenSpecifyColor();
+              }}
+              title="指定并锁定一个常驻颜色或模型漆色号，方便反复点选涂装"
+              className={`px-1.5 py-0.5 text-[9.5px] font-extrabold cursor-pointer transition whitespace-nowrap ${
+                isSpecifyingColor ? primaryActionBtnClass : secondaryActionBtnClass
+              }`}
+            >
+              {isCompactHeader ? "🎨" : "🎨 指定颜色"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsCanvasStagingOpen((v) => !v)}
+              title={isCanvasStagingOpen ? "收起下拉色卡窗口" : "展开备选与已涂漆号色卡窗口"}
+              className={`px-1.5 py-0.5 text-[9.5px] font-extrabold cursor-pointer transition whitespace-nowrap ${secondaryActionBtnClass}`}
+            >
+              {isCanvasStagingOpen ? (isCompactHeader ? "▴" : "▴ 收起") : "▾ 展开"}
+            </button>
+          </div>
+        </div>
+
+        {isCanvasStagingOpen && (
+          <div className="flex flex-col min-h-0">
+            {isSpecifyingColor && renderSpecifyColorInlineBar()}
+            {renderQuickStagingSwatchGrid(true)}
+
+            {/* Dedicated Bottom Resize Bar (completely separated from swatch cards to prevent cursor flickering) */}
+            <div
+              className={`h-[18px] shrink-0 flex items-center justify-between select-none touch-none ${
+                isBlueprint
+                  ? "border-t border-dashed border-slate-300 dark:border-slate-700 bg-slate-100/90 dark:bg-slate-800/90"
+                  : "border-t border-slate-200/70 dark:border-slate-800/70 bg-slate-50/80 dark:bg-slate-900/60"
+              }`}
+            >
+              {/* Bottom-Left 2D Free Resize Corner Handle (Horizontal + Vertical) */}
+              <div
+                onPointerDown={(e) => startCanvasStagingDrag(e, "resize-bl")}
+                onPointerMove={moveCanvasStagingDrag}
+                onPointerUp={endCanvasStagingDrag}
+                onPointerCancel={endCanvasStagingDrag}
+                title="拖拽左下角：自由调整容器左右宽度与上下高度（内部色卡自动重排）"
+                className="h-full w-8 pl-1.5 flex items-center justify-start cursor-nesw-resize text-[10px] font-mono font-black text-slate-400 hover:text-[var(--accent-color)] hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors"
+              >
+                ◣
+              </div>
+
+              {/* Bottom Center Vertical Resize Strip */}
+              <div
+                onPointerDown={(e) => startCanvasStagingDrag(e, "resize-b")}
+                onPointerMove={moveCanvasStagingDrag}
+                onPointerUp={endCanvasStagingDrag}
+                onPointerCancel={endCanvasStagingDrag}
+                title="上下拖拽调整容器高度"
+                className="h-full flex-1 flex items-center justify-center cursor-ns-resize text-[9px] font-mono text-slate-300 dark:text-slate-600 hover:text-slate-500"
+              >
+                ══
+              </div>
+
+              {/* Bottom-Right 2D Free Resize Corner Handle (Horizontal + Vertical) */}
+              <div
+                onPointerDown={(e) => startCanvasStagingDrag(e, "resize-br")}
+                onPointerMove={moveCanvasStagingDrag}
+                onPointerUp={endCanvasStagingDrag}
+                onPointerCancel={endCanvasStagingDrag}
+                title="拖拽右下角：自由调整容器左右宽度与上下高度（内部色卡自动重排）"
+                className="h-full w-8 pr-1.5 flex items-center justify-end cursor-nwse-resize text-[10px] font-mono font-black text-slate-400 hover:text-[var(--accent-color)] hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors"
+              >
+                ◢
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderMobileBelowCanvasStaging = () => (
+    <div
+      translate="no"
+      className={`lg:hidden w-full overflow-hidden ${cardSurfaceClass}`}
+    >
+      <div
+        className={`flex items-center justify-between gap-2 px-3 py-2 ${
+          isMobileBelowStagingOpen ? dividerBottomClass : ""
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setIsMobileBelowStagingOpen((v) => !v)}
+          className="flex items-center gap-1.5 min-w-0 text-left cursor-pointer"
+        >
+          <span
+            className="h-3.5 w-3.5 rounded-xs border border-black/25 shrink-0"
+            style={{ backgroundColor: activeHex }}
+          />
+          <span className="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
+            📌 备选与已上色漆号 ({canvasQuickSwatches.length})
+          </span>
+        </button>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              if (!isMobileBelowStagingOpen) setIsMobileBelowStagingOpen(true);
+              handleOpenSpecifyColor();
+            }}
+            className={`px-2 py-1 text-[10px] font-extrabold cursor-pointer transition ${
+              isSpecifyingColor ? primaryActionBtnClass : secondaryActionBtnClass
+            }`}
+          >
+            🎨 指定颜色
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsMobileBelowStagingOpen((v) => !v)}
+            className={`px-2 py-1 text-[10px] font-extrabold cursor-pointer transition ${secondaryActionBtnClass}`}
+          >
+            {isMobileBelowStagingOpen ? "收起 ▴" : "展开 ▾"}
+          </button>
+        </div>
+      </div>
+
+      {isMobileBelowStagingOpen && (
+        <div className="flex flex-col">
+          {isSpecifyingColor && renderSpecifyColorInlineBar()}
+          {renderQuickStagingSwatchGrid(false)}
+        </div>
+      )}
+    </div>
   );
 
   return (
@@ -6212,13 +7939,15 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
           className={`flex-1 min-w-0 lg:min-w-[520px] ${
             isFullscreen
               ? "h-full min-h-0"
-              : "lg:h-[calc(100vh-204px)] lg:min-h-[540px]"
+              : hideTopBar
+              ? "lg:h-[calc(100vh-68px)] lg:min-h-[560px]"
+              : "lg:h-[calc(100vh-118px)] lg:min-h-[560px]"
           } flex flex-col overflow-hidden ${cardSurfaceClass}`}
         >
           {/* Row 1: Upload / Line Mode / Compare / Undo-Redo / Collapse Palette / Fullscreen */}
           <div className={`shrink-0 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 ${isFullscreen ? "" : "pr-11 lg:pr-3"} ${dividerBottomClass}`}>
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <span className="tech-prefix hidden sm:inline text-slate-500 dark:text-slate-400">[STUDIO_CANVAS]</span>
+              <span className="tech-prefix hidden sm:inline text-[11px] font-bold">[STUDIO_CANVAS]</span>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -6229,7 +7958,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUploadFile} className="hidden" />
             </div>
 
-            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {/* Hold / Toggle Compare Original */}
               <button
                 type="button"
@@ -6278,7 +8007,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               <button
                 type="button"
                 onClick={() => setIsDesktopPaletteCollapsed((v) => !v)}
-                className={`hidden lg:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
+                className={`hidden lg:inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] sm:text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
                   isDesktopPaletteCollapsed ? primaryActionBtnClass : secondaryActionBtnClass
                 }`}
                 title={isDesktopPaletteCollapsed ? "展开右侧四维调色引擎面板" : "收起右侧调色面板，画布 100% 满宽显示"}
@@ -6437,61 +8166,8 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               </div>
             )}
 
-            {/* Compact Active Spray Color Pill when Desktop Right Palette is Collapsed */}
-            {isDesktopPaletteCollapsed && (
-              <div
-                onPointerDown={(e) => e.stopPropagation()}
-                className={`hidden lg:flex items-center gap-1.5 absolute top-3 right-3 z-20 p-1.5 ${
-                  isBlueprint
-                    ? "rounded-[6px] border-[1.5px] border-slate-900 dark:border-slate-600 bg-white/95 dark:bg-slate-900/95 shadow-[3px_3px_0px_#0F172A]"
-                    : "rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => setIsDesktopPaletteCollapsed(false)}
-                  title={`当前喷涂色 ${activeHex}（点击展开右侧四维调色引擎面板）`}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-black text-slate-800 dark:text-slate-100 cursor-pointer"
-                >
-                  <span
-                    className="h-3.5 w-3.5 rounded-xs border border-black/20 shrink-0"
-                    style={{ backgroundColor: activeHex }}
-                  />
-                  <span>{activeHex}</span>
-                  <span className="text-[10px] font-sans font-extrabold text-[var(--accent-color)] ml-1">
-                    ⇤ 展开色板
-                  </span>
-                </button>
-              </div>
-            )}
-
-            {/* Dismissible / Restorable Compact Gesture Hint Pill */}
-            {!hideCanvasHint ? (
-              <div
-                onPointerDown={(e) => e.stopPropagation()}
-                className="hidden sm:flex items-center gap-2 absolute bottom-2 right-2.5 z-10 rounded-md bg-slate-900/75 backdrop-blur-xs px-2.5 py-1 text-[10px] font-bold text-white/95 shadow-sm"
-              >
-                <span>按住左键/单指划过可连续合并填色 · 双指或按住空格平移 · ⌘/Ctrl+滚轮缩放</span>
-                <button
-                  type="button"
-                  onClick={() => setHideCanvasHint(true)}
-                  title="隐藏操作提示"
-                  className="ml-0.5 rounded px-1 text-[10px] text-white/70 hover:text-white hover:bg-white/15 cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => setHideCanvasHint(false)}
-                title="显示操作提示"
-                className="hidden sm:flex items-center justify-center absolute bottom-2 right-2.5 z-10 h-6 w-6 rounded-full bg-slate-900/65 hover:bg-slate-900/85 text-[10px] font-black text-white shadow-sm cursor-pointer"
-              >
-                ?
-              </button>
-            )}
+            {/* In-Canvas Draggable & Resizable Quick Staging & Used Paint Dropdown Window (Desktop) */}
+            {renderCanvasFloatingStagingWindow()}
           </div>
 
           {/* Row 3: Zoom bar + Status */}
@@ -6502,27 +8178,27 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               <button
                 type="button"
                 onClick={() => zoomAtCenter(1 / 1.25)}
-                className={`h-7 w-7 font-black cursor-pointer shrink-0 ${secondaryActionBtnClass}`}
+                className={`h-7 w-7 text-xs font-black cursor-pointer shrink-0 ${secondaryActionBtnClass}`}
               >
                 −
               </button>
               <span
                 ref={zoomLabelRef}
-                className="min-w-[46px] text-center font-mono text-xs font-bold text-slate-700 dark:text-slate-200 shrink-0"
+                className="min-w-[44px] text-center font-mono text-[11px] font-bold text-slate-700 dark:text-slate-200 shrink-0"
               >
                 100%
               </span>
               <button
                 type="button"
                 onClick={() => zoomAtCenter(1.25)}
-                className={`h-7 w-7 font-black cursor-pointer shrink-0 ${secondaryActionBtnClass}`}
+                className={`h-7 w-7 text-xs font-black cursor-pointer shrink-0 ${secondaryActionBtnClass}`}
               >
                 +
               </button>
               <button
                 type="button"
                 onClick={() => focusRegion(activeCropRef.current, true)}
-                className={`h-7 px-2.5 text-xs font-extrabold cursor-pointer whitespace-nowrap shrink-0 ${secondaryActionBtnClass}`}
+                className={`px-2.5 py-1 text-[11px] font-extrabold cursor-pointer whitespace-nowrap shrink-0 ${secondaryActionBtnClass}`}
               >
                 🎯 复位
               </button>
@@ -6540,17 +8216,17 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                   });
                 }}
                 title="手机竖屏触控防遮挡：开启后准星位于拇指前方并联动放大镜，避免手指挡住细小零件"
-                className={`lg:hidden h-7 px-2 text-[11px] font-extrabold cursor-pointer whitespace-nowrap shrink-0 transition ${
+                className={`lg:hidden px-2 py-1 text-[10px] font-extrabold cursor-pointer whitespace-nowrap shrink-0 transition ${
                   thumbOffsetMode ? primaryActionBtnClass : secondaryActionBtnClass
                 }`}
               >
                 {thumbOffsetMode ? "⊕ 拇指准星:开" : "⊕ 拇指准星:关"}
               </button>
-              <span className="ml-1 text-xs font-medium text-slate-600 dark:text-slate-300 truncate">
+              <span className="ml-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">
                 {statusMessage}
               </span>
             </div>
-            <div className="hidden xl:block text-xs font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+            <div className="hidden xl:block text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
               {shadingFullLabel} · 闭合 {gapCloseRadius}px · 色差 {fillTolerance} · 梯度 {localStepThreshold} · {imgSize.w}×{imgSize.h}
             </div>
           </div>
@@ -6603,6 +8279,9 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             </div>
           </div>
         </div>
+
+        {/* MOBILE PORTRAIT BELOW-CANVAS STAGING & USED PAINT PANEL (< 1024px, placed directly below [STUDIO_CANVAS]) */}
+        {renderMobileBelowCanvasStaging()}
 
         {/* DESKTOP SPLIT RESIZE HANDLE (10px wide, col-resize, double-click resets to 420px) */}
         {!isDesktopPaletteCollapsed && (
@@ -6681,147 +8360,37 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             minWidth: `${MIN_RIGHT_PANEL_WIDTH}px`,
             maxWidth: "min(560px, 48vw)",
           }}
-          className={`${
+          className={`relative ${
             isDesktopPaletteCollapsed ? "hidden" : "hidden lg:flex"
           } ${
             isFullscreen
               ? "h-full min-h-0"
-              : "lg:h-[calc(100vh-204px)] lg:min-h-[540px]"
+              : hideTopBar
+              ? "lg:h-[calc(100vh-68px)] lg:min-h-[560px]"
+              : "lg:h-[calc(100vh-118px)] lg:min-h-[560px]"
           } shrink-0 min-h-0 flex-col overflow-hidden ${cardSurfaceClass}`}
           translate="no"
         >
-          <div
-            className={`shrink-0 flex items-center justify-between px-3.5 py-2 ${dividerBottomClass}`}
-            style={{ backgroundColor: "var(--accent-soft)" }}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <PaletteIcon className="w-4 h-4 shrink-0 text-[var(--accent-color)]" weight="bold" />
-              <span className="text-xs xl:text-sm font-black text-slate-900 dark:text-white truncate">
-                <span className="tech-prefix">[PALETTE]</span>
-                GKMixer 四维专业调色引擎
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span
-                className="text-[10px] font-black tracking-widest uppercase italic hidden xl:inline"
-                style={{ color: "var(--accent-color)" }}
-              >
-                COLOR STUDIO
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsDesktopPaletteCollapsed(true)}
-                title="收起调色盘，让左侧画布 100% 满宽显示"
-                className="rounded px-1.5 py-0.5 text-[10px] font-extrabold text-slate-600 dark:text-slate-300 hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
-              >
-                ⇥ 收起
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-3">
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 pb-14 flex flex-col gap-3">
             {renderPaletteSection()}
-            <div className={`pt-2 shrink-0 ${dividerTopClass}`}>{renderAlgorithmSection(false)}</div>
-            <div className={`pt-2 shrink-0 ${dividerTopClass}`}>{renderUsedPaintsSection(false)}</div>
           </div>
 
-          {/* Streamlined Right Panel Footer: Beginner 3-Step Guided Bar or Pro Export Bar */}
-          <div className={`shrink-0 bg-white/95 dark:bg-slate-900/95 p-2.5 space-y-1.5 ${dividerTopClass}`} translate="no">
-            {workflowMode === "beginner" ? (
-              <>
-                <div className="flex items-center justify-between text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300">
-                  <span>🌱 新手三步闭环：试色 ➔ 选现成漆/微调 ➔ 出图归档</span>
-                  <span className="font-mono">已用 {usedPaintsSummary.length} 色</span>
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    type="button"
-                    disabled={imageToken === 0}
-                    onClick={handleExportCompositePng}
-                    title="第1步：导出含品牌色号与微调胶囊的讨论海报 PNG，方便发群交流"
-                    className={`flex flex-col items-center justify-center py-1.5 px-1.5 text-[10px] font-extrabold transition ${
-                      imageToken > 0
-                        ? `${secondaryActionBtnClass} cursor-pointer`
-                        : "rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
-                    }`}
-                  >
-                    <span className="font-mono text-[9px] text-slate-400">STEP 1</span>
-                    <span className="truncate">📋 生成讨论卡</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const target = usedPaintsSummary[0]?.hex || activeHex;
-                      if (onNavigateToBrandTint) {
-                        onNavigateToBrandTint(target);
-                      } else {
-                        setColoringMode("brand");
-                      }
-                    }}
-                    title="第2步：匹配现成品牌油漆或查看几滴白/黑微调补正方案"
-                    className={`flex flex-col items-center justify-center py-1.5 px-1.5 text-[10px] font-extrabold transition cursor-pointer ${secondaryActionBtnClass}`}
-                  >
-                    <span className="font-mono text-[9px] text-slate-400">STEP 2</span>
-                    <span className="truncate">🏷️ 选漆与微调</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={imageToken === 0 || !onCreatePaintProject}
-                    onClick={() => setShowConvertModal(true)}
-                    title="第3步：一键生成带悬浮色卡与微调配方的涂装库工程"
-                    className={`flex flex-col items-center justify-center py-1.5 px-1.5 text-[10px] font-black transition ${
-                      imageToken > 0 && onCreatePaintProject
-                        ? `${primaryActionBtnClass} cursor-pointer`
-                        : "rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
-                    }`}
-                  >
-                    <span className="font-mono text-[9px] opacity-85">STEP 3</span>
-                    <span className="truncate">📁 存入涂装库</span>
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled={imageToken === 0}
-                  onClick={handleExportCompositePng}
-                  className={`flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-extrabold transition ${
-                    imageToken > 0
-                      ? `${secondaryActionBtnClass} cursor-pointer`
-                      : "rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
-                  }`}
-                >
-                  <span>📥 导出带品牌色卡 PNG</span>
-                </button>
-
-                {onCreatePaintProject ? (
-                  <button
-                    type="button"
-                    disabled={imageToken === 0}
-                    onClick={() => setShowConvertModal(true)}
-                    className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-black transition ${
-                      imageToken > 0
-                        ? `${primaryActionBtnClass} cursor-pointer`
-                        : "rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
-                    }`}
-                  >
-                    <span>✨ 转为涂装库工程</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleResetAllFills}
-                    className={`py-2 text-xs font-extrabold transition cursor-pointer ${secondaryActionBtnClass}`}
-                  >
-                    一键清空重绘
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const target = usedPaintsSummary[0]?.hex || activeHex;
+              if (onNavigateToBrandTint) {
+                onNavigateToBrandTint(target);
+              } else {
+                setColoringMode("brand");
+              }
+            }}
+            title="进入下一步：选漆与微调（匹配现成品牌油漆或查看几滴白/黑微调补正方案）"
+            className={`absolute bottom-2.5 right-3 z-20 inline-flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-extrabold transition cursor-pointer shadow-lg ${primaryActionBtnClass}`}
+            translate="no"
+          >
+            <span>下一步：选漆与微调 ➔</span>
+          </button>
         </div>
       </div>
 
@@ -7082,7 +8651,7 @@ const SquareDockButton: React.FC<{
     }`}
   >
     <span className="flex items-center justify-center leading-none scale-90 sm:scale-100">{icon}</span>
-    <span className="text-[8px] sm:text-[9px] font-black leading-none tracking-tight">{label}</span>
+    <span className="text-[8px] sm:text-[9px] font-black leading-none tracking-tighter">{label}</span>
   </button>
 );
 

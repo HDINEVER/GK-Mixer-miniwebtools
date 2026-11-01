@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   PlusIcon,
   ArrowClockwiseIcon,
@@ -11,11 +11,12 @@ import {
   FlaskIcon,
   CaretRightIcon,
 } from '@phosphor-icons/react';
-import { ColorData, Language } from '../types';
+import { CatalogPaint, ColorData, Language } from '../types';
 import { getContrastColor, hexToRgb, rgbToCmyk, rgbToHsb, rgbToLab, generateId } from '../utils/colorUtils';
 import { isInGamut, getColorSpaceName } from '../utils/colorSpaceConverter';
-import { localizedBrand } from '../utils/paintCatalog';
-import { PaintBottleImg } from './PaintBottleHover';
+import { FEATURED_BRANDS, localizedBrand } from '../utils/paintCatalog';
+import { deltaE2000, labFromHex } from '../utils/ciede2000';
+import PaintBottleHover from './PaintBottleHover';
 
 // Use global anime instance from CDN
 declare var anime: any;
@@ -29,6 +30,8 @@ interface ColorPaletteProps {
   onDeleteColor: (colorId: string) => void;
   onAddColorByHex?: (hex: string) => void; // New: Add color by hex input
   onOpenQuickAssign?: (color: ColorData, index: number) => void;
+  onAssignPaint?: (paint: CatalogPaint, colorId: string) => void;
+  catalogPaints?: CatalogPaint[];
   onUnassignPaint?: (colorId: string) => void;
   onNavigateToMixer?: (color: ColorData) => void;
   hasImage?: boolean;
@@ -46,6 +49,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   onDeleteColor,
   onAddColorByHex,
   onOpenQuickAssign,
+  onAssignPaint,
+  catalogPaints,
   onUnassignPaint,
   onNavigateToMixer,
   hasImage = false,
@@ -353,7 +358,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           )}
         </div>
       ) : (
-        <div ref={containerRef} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4 pr-1.5 pb-1.5">
+        <div ref={containerRef} className="grid grid-cols-2 gap-2.5 sm:gap-3 pr-1.5 pb-1.5">
         {colors.map((c, idx) => {
           if (!c) return null;
           const safeHex = typeof c.hex === 'string' && c.hex.startsWith('#') ? c.hex : '#808080';
@@ -428,14 +433,18 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                       onOpenQuickAssign?.(c, idx);
                     }}
                   >
-                    <div className="bp-swatch relative h-6 w-6 rounded border border-slate-200 dark:border-slate-600 overflow-hidden shrink-0 flex items-center justify-center bg-white">
-                      <span className="absolute inset-0" style={{ backgroundColor: paint.hex }} />
-                      <PaintBottleImg
-                        brand={paint.brand}
-                        code={paint.code}
-                        className="relative z-10 h-full w-full object-contain bg-white/90"
+                    <PaintBottleHover
+                      brand={paint.brand}
+                      code={paint.code}
+                      name={paint.name}
+                      hex={paint.hex}
+                      className="shrink-0"
+                    >
+                      <div
+                        className="bp-swatch relative h-6 w-6 rounded border border-slate-200 dark:border-slate-600 overflow-hidden shrink-0 flex items-center justify-center"
+                        style={{ backgroundColor: paint.hex }}
                       />
-                    </div>
+                    </PaintBottleHover>
                     <div className="min-w-0 flex-1 leading-tight">
                       <div className="text-[10px] font-extrabold text-slate-800 dark:text-slate-100 truncate">
                         {localizedBrand(paint.brand, (lang as 'zh' | 'ja' | 'en') || 'zh')} {paint.code}
@@ -484,9 +493,9 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                     }}
                     className="bp-dashed-box flex-1 min-w-0 flex items-center justify-between gap-1 rounded-lg border border-dashed border-accent/45 bg-accent/8 hover:bg-accent hover:text-white hover:border-accent px-2 py-1 text-[10px] font-extrabold text-accent dark:text-accent-light transition-colors cursor-pointer"
                   >
-                    <span className="flex items-center gap-1 min-w-0 truncate">
+                    <span className="flex items-center gap-1 min-w-0 whitespace-nowrap">
                       <TargetIcon className="w-3 h-3 shrink-0" weight="bold" />
-                      <span className="truncate">
+                      <span>
                         {lang === 'zh' ? '指派油漆' : 'Assign Paint'}
                       </span>
                     </span>
@@ -523,6 +532,107 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           </div>
           );
         })}
+
+        {/* Fill odd-numbered grid slot with Inline Quick Brand Assignment Window so there is never blank space next to a single extracted color card */}
+        {colors.length % 2 === 1 && (() => {
+          const activeIdx = Math.max(
+            0,
+            colors.findIndex((item) => item?.id === selectedColorId)
+          );
+          const target = colors[activeIdx] || colors[colors.length - 1];
+          if (!target) return null;
+          const tLab = labFromHex(target.hex);
+          const featuredSet = new Set(FEATURED_BRANDS);
+          const top2: { paint: CatalogPaint; deltaE: number }[] = [];
+          if (tLab && Array.isArray(catalogPaints) && catalogPaints.length > 0) {
+            const scored: { paint: CatalogPaint; deltaE: number }[] = [];
+            for (const p of catalogPaints) {
+              if (!p || !featuredSet.has(p.brand) || p.finish !== 'standard') continue;
+              const pLab =
+                p.lab && p.lab.length >= 3
+                  ? { l: p.lab[0], a: p.lab[1], b: p.lab[2] }
+                  : labFromHex(p.hex);
+              if (!pLab) continue;
+              scored.push({ paint: p, deltaE: deltaE2000(tLab, pLab) });
+            }
+            scored.sort((a, b) => a.deltaE - b.deltaE);
+            top2.push(...scored.slice(0, 2));
+          }
+          return (
+            <div className="bp-subcard flex flex-col justify-between rounded-xl border border-slate-200/85 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 p-2 sm:p-2.5">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-extrabold text-slate-700 dark:text-slate-200 flex items-center gap-1 truncate">
+                    <TargetIcon className="w-3 h-3 text-accent shrink-0" weight="bold" />
+                    <span className="truncate">
+                      {lang === 'zh' ? `#${activeIdx + 1} 快速指派` : `#${activeIdx + 1} Quick Assign`}
+                    </span>
+                  </span>
+                  <span className="font-mono text-[9px] font-bold text-slate-400 shrink-0">
+                    {target.hex}
+                  </span>
+                </div>
+
+                {top2.length > 0 ? (
+                  <div className="space-y-1">
+                    {top2.map(({ paint: p, deltaE }) => {
+                      const isAssigned = target.assignedPaint?.id === p.id;
+                      const bZh = localizedBrand(p.brand, (lang as 'zh' | 'ja' | 'en') || 'zh');
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            if (onAssignPaint) {
+                              onAssignPaint(p, target.id);
+                            } else {
+                              onOpenQuickAssign?.(target, activeIdx);
+                            }
+                          }}
+                          className={`bp-subcard w-full flex items-center justify-between gap-1.5 rounded-lg border px-1.5 py-1 text-left transition cursor-pointer ${
+                            isAssigned
+                              ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40'
+                              : 'border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-accent/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span
+                              className="w-4 h-4 rounded border border-black/15 shrink-0"
+                              style={{ backgroundColor: p.hex }}
+                            />
+                            <div className="min-w-0 leading-tight">
+                              <div className="text-[10px] font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                                {bZh} {p.code}
+                              </div>
+                              <div className="text-[9px] text-slate-500 dark:text-slate-400 truncate">
+                                {p.name}
+                              </div>
+                            </div>
+                          </div>
+                          <span className="font-mono text-[9px] font-bold text-accent shrink-0">
+                            {isAssigned ? '已用' : `Δ${deltaE.toFixed(1)}`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-3 text-center text-[10px] text-slate-400">
+                    {lang === 'zh' ? '点击下方打开完整指派窗口' : 'Open full paint assigner'}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onOpenQuickAssign?.(target, activeIdx)}
+                className="bp-dashed-box mt-2 w-full flex items-center justify-center gap-1 rounded-lg border border-dashed border-accent/50 bg-accent/10 hover:bg-accent hover:text-white px-2 py-1 text-[10px] font-extrabold text-accent dark:text-accent-light transition cursor-pointer"
+              >
+                <span>{lang === 'zh' ? '打开全部品牌指派窗口 →' : 'All Brands →'}</span>
+              </button>
+            </div>
+          );
+        })()}
         </div>
       )}
     </div>

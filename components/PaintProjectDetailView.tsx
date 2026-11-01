@@ -10,12 +10,13 @@ import {
   PartCanvas,
 } from "../types";
 import { ExtractMarkerOverlay } from "./ExtractMarkerOverlay";
+import { ProjectAnnotatedCanvas } from "./ProjectAnnotatedCanvas";
 import { SwatchEditorModal } from "./SwatchEditorModal";
 import { PaintingStepBuilderView } from "./PaintingStepBuilderView";
 import { ProjectSharePosterModal } from "./ProjectSharePosterModal";
 import { LightnessAndChromaModule } from "./ChromaStudioPanel";
 import { NearestMatchesModule } from "./BrandMatchPanel";
-import { PaintBottleImg } from "./PaintBottleHover";
+import PaintBottleHover from "./PaintBottleHover";
 import { colorsToFloatingNodes, floatingNodesToColors } from "../utils/projectStore";
 import {
   createCoverThumbnail,
@@ -24,8 +25,14 @@ import {
 } from "../utils/projectSharing";
 import { localizedBrand } from "../utils/paintCatalog";
 import { computeBrandTintRecipe } from "../utils/brandTintRecipe";
+import { getContrastColor } from "../utils/colorUtils";
 import { exportAnnotatedImage } from "../utils/exportAnnotatedImage";
 import { SwatchSettings } from "../utils/swatchLayout";
+import {
+  isValidImageSrc,
+  reconstructCompositeFromSession,
+  resolvePartImageSrc,
+} from "../utils/studioSession";
 import {
   ArrowLeftIcon,
   CaretLeftIcon,
@@ -43,6 +50,8 @@ import {
   ListChecksIcon,
   ImageSquareIcon,
   CheckIcon,
+  CheckCircle as CheckCircleIcon,
+  PaintBrush as PaintBrushIcon,
   ArrowsOutSimpleIcon,
   ArrowsInSimpleIcon,
   ExportIcon,
@@ -54,10 +63,17 @@ interface PaintProjectDetailViewProps {
   catalogPaints: CatalogPaint[];
   swatchSettings: SwatchSettings;
   onUpdateSwatchSettings: (updater: (prev: SwatchSettings) => SwatchSettings) => void;
-  onUpdateProject: (updated: PaintProject) => void;
+  onUpdateProject: (
+    updated: PaintProject | ((prev: PaintProject) => PaintProject)
+  ) => void;
   onDeleteProject: (projectId: string) => void;
   onBack: () => void;
-  onSendImageToColoring?: (imageUrl: string, label?: string) => void;
+  onSendImageToColoring?: (
+    imageUrl: string,
+    label?: string,
+    resumeExisting?: boolean,
+    resumeRef?: { projectId: string; partId: string }
+  ) => void;
   isWideMode?: boolean;
   onToggleWideMode?: () => void;
   lang: Language;
@@ -99,6 +115,31 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
     Math.max(0, project.parts.length - 1)
   );
   const activePart: PartCanvas | undefined = project.parts[safePartIdx];
+  const activePartImageSrc = useMemo(() => resolvePartImageSrc(activePart), [activePart]);
+
+  // Self-heal corrupted sourceImageDataUrl (e.g. if an older save accidentally passed a SyntheticEvent)
+  useEffect(() => {
+    if (!activePart || isValidImageSrc(activePart.sourceImageDataUrl) || !activePart.studioSession) {
+      return;
+    }
+    let cancelled = false;
+    reconstructCompositeFromSession(activePart.studioSession).then((repairedUrl) => {
+      if (cancelled || !repairedUrl) return;
+      onUpdateProject((prev) => ({
+        ...prev,
+        coverImageDataUrl: isValidImageSrc(prev.coverImageDataUrl)
+          ? prev.coverImageDataUrl
+          : repairedUrl,
+        parts: prev.parts.map((pt) =>
+          pt.id === activePart.id ? { ...pt, sourceImageDataUrl: repairedUrl } : pt
+        ),
+        updatedAt: Date.now(),
+      }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activePart, onUpdateProject]);
 
   useEffect(() => {
     setTitleInput(project.title);
@@ -131,37 +172,52 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
 
   const currentCategory = categories.find((c) => c.id === project.categoryId);
 
-  const updateActivePart = (updater: (part: PartCanvas) => PartCanvas) => {
+  const updateActivePart = (
+    updater: (part: PartCanvas) => PartCanvas,
+    coverOverride?: string
+  ) => {
     if (!activePart) return;
-    const nextParts = project.parts.map((p, idx) =>
-      idx === safePartIdx ? updater(p) : p
-    );
-    onUpdateProject({
-      ...project,
-      updatedAt: Date.now(),
-      parts: nextParts,
+    onUpdateProject((prevProj) => {
+      const idxToUpdate = Math.min(
+        Math.max(0, activePartIndex),
+        Math.max(0, prevProj.parts.length - 1)
+      );
+      const nextParts = prevProj.parts.map((p, idx) =>
+        idx === idxToUpdate ? updater(p) : p
+      );
+      const shouldSyncCover =
+        Boolean(coverOverride) && !prevProj.customCoverImageDataUrl && idxToUpdate === 0;
+      return {
+        ...prevProj,
+        coverImageDataUrl: shouldSyncCover ? coverOverride : prevProj.coverImageDataUrl,
+        updatedAt: Date.now(),
+        parts: nextParts,
+      };
     });
   };
 
   const handleUpdateColorsFromEditor = (
     updater: (prev: ColorData[]) => ColorData[]
   ) => {
-    const nextColors = updater(partColors);
-    const nextNodes = colorsToFloatingNodes(nextColors);
-    updateActivePart((part) => ({
-      ...part,
-      nodes: nextNodes.map((n) => {
-        const prevNode = part.nodes.find((pn) => pn.id === n.id);
-        return prevNode
-          ? {
-              ...n,
-              basePaintHex: prevNode.basePaintHex,
-              tintBadgeText: prevNode.tintBadgeText,
-              recipeSummary: prevNode.recipeSummary,
-            }
-          : n;
-      }),
-    }));
+    updateActivePart((part) => {
+      const currentColors = floatingNodesToColors(part.nodes, catalogPaints);
+      const nextColors = updater(currentColors);
+      const nextNodes = colorsToFloatingNodes(nextColors);
+      return {
+        ...part,
+        nodes: nextNodes.map((n) => {
+          const prevNode = part.nodes.find((pn) => pn.id === n.id);
+          return prevNode
+            ? {
+                ...n,
+                basePaintHex: prevNode.basePaintHex,
+                tintBadgeText: prevNode.tintBadgeText,
+                recipeSummary: prevNode.recipeSummary,
+              }
+            : n;
+        }),
+      };
+    });
   };
 
   const handleReplaceNodePaint = (newPaint: CatalogPaint) => {
@@ -256,7 +312,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
   };
 
   const handleExportCurrentPartPng = async () => {
-    if (!activePart) return;
+    if (!activePart || !activePartImageSrc) return;
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = async () => {
@@ -273,7 +329,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
       }));
       await exportAnnotatedImage(img, markers, swatchSettings);
     };
-    img.src = activePart.sourceImageDataUrl;
+    img.src = activePartImageSrc;
   };
 
   return (
@@ -288,14 +344,14 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
 
       {/* 1. Top Navigation & Project Action Bar (full width card, z-30 so it never overlaps Desktop Nav Dropdown or Mobile Top-Right Settings Button) */}
       <div className="bp-subcard-lg relative z-30 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/85 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 sm:px-3.5 py-2.5 shadow-xs">
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0 pr-10 lg:pr-0">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
           <button
             type="button"
             onClick={onBack}
-            className="bp-pill flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 sm:px-3 py-1.5 text-xs font-extrabold text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition cursor-pointer whitespace-nowrap shrink-0"
+            className="bp-pill inline-flex h-[34px] box-border items-center justify-center gap-1 rounded-[6px] bg-slate-100 dark:bg-slate-800 px-2.5 sm:px-3 text-xs font-extrabold text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition cursor-pointer whitespace-nowrap shrink-0"
           >
             <ArrowLeftIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-            <span>返回</span>
+            <span className="leading-none">返回</span>
           </button>
 
           {isEditingTitle ? (
@@ -306,13 +362,13 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               onBlur={handleSaveTitle}
               onKeyDown={(e) => e.key === "Enter" && handleSaveTitle()}
               autoFocus
-              className="bp-input rounded-xl border border-coral bg-white dark:bg-slate-900 px-2.5 py-1 text-sm font-black text-slate-900 dark:text-white focus:outline-none"
+              className="bp-input h-[34px] box-border rounded-[6px] border border-coral bg-white dark:bg-slate-900 px-2.5 text-sm font-black text-slate-900 dark:text-white focus:outline-none"
             />
           ) : (
             <button
               type="button"
               onClick={() => setIsEditingTitle(true)}
-              className="group flex items-center gap-1.5 text-left min-w-0 cursor-pointer"
+              className="group flex items-center gap-1.5 text-left min-w-0 cursor-pointer h-[34px]"
               title="点击修改工程名称"
             >
               <h2 className="truncate text-sm sm:text-base font-black text-slate-900 dark:text-white max-w-[160px] sm:max-w-[320px]">
@@ -321,7 +377,10 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               <PencilSimpleIcon className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition shrink-0" />
             </button>
           )}
+        </div>
 
+        {/* Right: [📁 分类：xxx ⌄] + [宽屏模式 (pro only)] + [•••] */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Category Reassignment Dropdown Pill ([📁 分类：xxx ⌄]) */}
           <div className="relative shrink-0">
             <button
@@ -330,10 +389,10 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                 setShowCategoryMenu((v) => !v);
                 setShowMoreMenu(false);
               }}
-              className="bp-pill inline-flex items-center gap-1 sm:gap-1.5 rounded-full border border-slate-200/90 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:border-coral transition cursor-pointer whitespace-nowrap"
+              className="bp-pill inline-flex h-[34px] box-border items-center justify-center gap-1 sm:gap-1.5 rounded-[6px] border border-slate-200/90 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800 px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-coral transition cursor-pointer whitespace-nowrap"
             >
               <FolderIcon className="h-3.5 w-3.5 text-coral shrink-0" weight="fill" />
-              <span className="truncate max-w-[110px] sm:max-w-none">分类：{currentCategory ? currentCategory.name : "未分类"}</span>
+              <span className="truncate max-w-[110px] sm:max-w-none leading-none">分类：{currentCategory ? currentCategory.name : "未分类"}</span>
               <CaretDownIcon className="h-3 w-3 opacity-60 shrink-0" />
             </button>
 
@@ -343,7 +402,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                   className="fixed inset-0 z-[90]"
                   onClick={() => setShowCategoryMenu(false)}
                 />
-                <div className="bp-subcard-lg absolute left-0 top-full mt-2 z-[100] min-w-[180px] rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-2xl space-y-0.5">
+                <div className="bp-subcard-lg absolute right-0 top-full mt-2 z-[100] min-w-[180px] rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-2xl space-y-0.5">
                   <button
                     type="button"
                     onClick={() => handleChangeCategory(null)}
@@ -373,35 +432,6 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               </>
             )}
           </div>
-        </div>
-
-        {/* Right: [🎨 试色改色] + [编辑色卡] + [宽屏模式] + [•••] */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {onSendImageToColoring && activePart?.sourceImageDataUrl && (
-            <button
-              type="button"
-              onClick={() =>
-                onSendImageToColoring(
-                  activePart.sourceImageDataUrl,
-                  `${project.title} · ${activePart.partName}`
-                )
-              }
-              className="bp-pill gk-btn-secondary flex items-center gap-1 sm:gap-1.5 rounded-full bg-coral/10 hover:bg-coral/20 border border-coral/30 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-extrabold text-coral transition cursor-pointer whitespace-nowrap shrink-0"
-              title="将当前零件图一键发送至 AI 试色台进行分件改色与光影预览"
-            >
-              <span>🎨</span>
-              <span>试色改色</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setIsSwatchEditorOpen(true)}
-            className="bp-pill gk-btn-secondary flex items-center gap-1 sm:gap-1.5 rounded-full bg-coral/10 hover:bg-coral/20 border border-coral/30 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-extrabold text-coral transition cursor-pointer whitespace-nowrap shrink-0"
-          >
-            <SlidersHorizontalIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-            <span>编辑色卡</span>
-          </button>
 
           {onToggleWideMode && (
             <button
@@ -412,7 +442,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                   ? "恢复左侧源图像画布，切换回双栏对照布局"
                   : "隐藏左侧源图像画布，全宽浏览涂装库"
               }
-              className={`hidden lg:inline-flex items-center gap-1 rounded-full border px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`hidden lg:inline-flex h-[34px] box-border items-center justify-center gap-1 rounded-[6px] border px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
                 isWideMode
                   ? "bp-pill-active border-accent bg-accent text-white shadow-xs"
                   : "bp-pill border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[#334155] dark:text-slate-300 hover:text-accent hover:border-accent/40"
@@ -421,12 +451,12 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               {isWideMode ? (
                 <>
                   <ArrowsInSimpleIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-                  <span>{lang === "zh" ? "恢复双栏" : "Dual View"}</span>
+                  <span className="leading-none">{lang === "zh" ? "恢复双栏" : "Dual View"}</span>
                 </>
               ) : (
                 <>
                   <ArrowsOutSimpleIcon className="h-3.5 w-3.5 text-accent shrink-0" weight="bold" />
-                  <span>{lang === "zh" ? "宽屏模式" : "Wide Mode"}</span>
+                  <span className="leading-none">{lang === "zh" ? "宽屏模式" : "Wide Mode"}</span>
                 </>
               )}
             </button>
@@ -440,10 +470,10 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                 setShowCategoryMenu(false);
                 setShowExportFabMenu(false);
               }}
-              className="bp-pill flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-coral hover:bg-coral/10 transition cursor-pointer"
+              className="bp-pill inline-flex h-[34px] w-[34px] box-border items-center justify-center rounded-[6px] text-coral hover:bg-coral/10 transition cursor-pointer shrink-0"
               title="更多项目操作"
             >
-              <DotsThreeIcon className="h-5 w-5 sm:h-6 sm:w-6" weight="bold" />
+              <DotsThreeIcon className="h-5 w-5" weight="bold" />
             </button>
 
             {showMoreMenu && (
@@ -482,7 +512,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                       className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap cursor-pointer"
                     >
                       <ImageSquareIcon className="h-4 w-4 text-accent shrink-0" weight="bold" />
-                      <span>📌 将当前零件设为封面</span>
+                      <span>将当前零件设为封面</span>
                     </button>
                   )}
                   {project.parts.length > 1 && (
@@ -558,7 +588,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                   onBlur={handleSavePartName}
                   onKeyDown={(e) => e.key === "Enter" && handleSavePartName()}
                   autoFocus
-                  className="bp-input rounded-lg border border-coral bg-slate-900 px-2 py-0.5 text-xs font-bold text-white focus:outline-none"
+                  className="bp-input rounded-lg border border-coral bg-white dark:bg-slate-900 px-2 py-0.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
                 />
               ) : (
                 <button
@@ -579,7 +609,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                   key={partItem.id}
                   type="button"
                   onClick={() => setActivePartIndex(pIdx)}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                  className={`inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[11px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
                     pIdx === safePartIdx
                       ? "bp-pill-active bg-white text-slate-950 shadow-xs"
                       : "bp-pill bg-white/10 text-slate-300 hover:bg-white/20"
@@ -591,7 +621,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               <button
                 type="button"
                 onClick={() => addPartFileRef.current?.click()}
-                className="bp-pill flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white hover:bg-coral transition cursor-pointer shrink-0"
+                className="bp-pill inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white hover:bg-coral transition cursor-pointer shrink-0"
                 title="添加新零件图"
               >
                 <PlusIcon className="h-3.5 w-3.5" weight="bold" />
@@ -612,33 +642,27 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               </button>
             )}
 
-            <div className="relative inline-block max-w-full">
-              <img
-                src={activePart.sourceImageDataUrl}
-                alt={activePart.partName}
-                className="bp-swatch block max-h-[46dvh] sm:max-h-[54dvh] lg:max-h-[calc(100dvh-260px)] w-auto max-w-full rounded-xl object-contain select-none"
-                draggable={false}
-              />
-              <ExtractMarkerOverlay
-                colors={partColors}
-                selectedId={selectedNode?.id || null}
-                onSelect={(cOrId) => {
-                  const id = typeof cOrId === "string" ? cOrId : cOrId?.id;
-                  if (id) setSelectedNodeId(id);
-                }}
-                onUpdatePosition={(id, nx, ny) => {
-                  updateActivePart((part) => ({
-                    ...part,
-                    nodes: part.nodes.map((n) =>
-                      n.id === id ? { ...n, offsetX: nx, offsetY: ny } : n
-                    ),
-                  }));
-                }}
-                settings={swatchSettings}
-                interactive={true}
-                allowDrag={true}
-              />
-            </div>
+            <ProjectAnnotatedCanvas
+              imageSrc={activePartImageSrc}
+              alt={activePart.partName}
+              colors={partColors}
+              selectedId={selectedNode?.id || null}
+              swatchSettings={swatchSettings}
+              readOnly={false}
+              maxHeightPx={typeof window !== "undefined" ? Math.max(320, window.innerHeight - 260) : 560}
+              onSelect={(cOrId) => {
+                const id = typeof cOrId === "string" ? cOrId : cOrId?.id;
+                if (id) setSelectedNodeId(id);
+              }}
+              onUpdatePosition={(id, nx, ny) => {
+                updateActivePart((part) => ({
+                  ...part,
+                  nodes: part.nodes.map((n) =>
+                    n.id === id ? { ...n, offsetX: nx, offsetY: ny } : n
+                  ),
+                }));
+              }}
+            />
 
             {project.parts.length > 1 && safePartIdx < project.parts.length - 1 && (
               <button
@@ -654,14 +678,34 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
 
           <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-0.5 text-[11px] text-slate-400">
             <span className="truncate">拖拽画面色卡可自由移动 · 点按色卡查看详情</span>
-            <button
-              type="button"
-              onClick={() => setIsSwatchEditorOpen(true)}
-              className="bp-pill-active gk-btn-primary inline-flex items-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover px-3.5 py-2 text-xs font-extrabold text-white shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <SlidersHorizontalIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-              <span>进入排版工作台 →</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {onSendImageToColoring && activePartImageSrc && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSendImageToColoring(
+                      activePartImageSrc,
+                      `${project.title} · ${activePart.partName}`,
+                      true,
+                      { projectId: project.id, partId: activePart.id }
+                    )
+                  }
+                  className="bp-pill gk-btn-secondary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-coral/15 hover:bg-coral/25 border border-coral/40 px-3 text-xs font-extrabold text-coral transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                  title="返回模拟试色台继续对当前试色项目进行上色与调整"
+                >
+                  <PaintBrushIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                  <span>试色改色</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsSwatchEditorOpen(true)}
+                className="bp-pill-active gk-btn-primary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover px-3.5 text-xs font-extrabold text-white shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <SlidersHorizontalIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                <span>进入排版工作台 →</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -742,27 +786,30 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                           : "border-slate-200/85 dark:border-slate-800 bg-white/85 dark:bg-slate-900/80 hover:border-slate-300"
                       }`}
                     >
-                      {/* Real Bottle Thumbnail / Color Swatch + 16x16px Original Base Paint Corner Dot */}
-                      <div
-                        className="bp-swatch relative h-14 w-14 rounded-xl border border-black/10 dark:border-white/10 shrink-0 overflow-hidden flex items-center justify-center bg-slate-50 dark:bg-slate-800"
-                        style={{ backgroundColor: node.hex }}
+                      {/* Pure Color Swatch (Hover for Bottle Thumbnail) + 16x16px Original Base Paint Corner Dot */}
+                      <PaintBottleHover
+                        brand={node.paintBrand}
+                        code={node.paintCode}
+                        name={node.paintName}
+                        hex={node.hex}
+                        className="shrink-0"
                       >
-                        <PaintBottleImg
-                          brand={node.paintBrand}
-                          code={node.paintCode}
-                          className="h-full w-full object-contain p-1 bg-white/90"
-                        />
-                        <span className="bp-badge absolute left-1 top-1 rounded bg-slate-900/80 px-1 py-px font-mono text-[9px] font-black text-white">
-                          #{idx + 1}
-                        </span>
-                        {isFineTuned && baseHexForBadge && (
-                          <span
-                            title={`基底主漆原瓶色 (${baseHexForBadge})`}
-                            className="absolute right-0.5 top-0.5 h-4 w-4 rounded-[3px] border-[1.5px] border-white shadow-sm"
-                            style={{ backgroundColor: baseHexForBadge }}
-                          />
-                        )}
-                      </div>
+                        <div
+                          className="bp-swatch relative h-14 w-14 rounded-xl border border-black/10 dark:border-white/10 shrink-0 overflow-hidden flex items-center justify-center"
+                          style={{ backgroundColor: node.hex }}
+                        >
+                          <span className="bp-badge absolute left-1 top-1 rounded bg-slate-900/80 px-1 py-px font-mono text-[9px] font-black text-white">
+                            #{idx + 1}
+                          </span>
+                          {isFineTuned && baseHexForBadge && (
+                            <span
+                              title={`基底主漆原瓶色 (${baseHexForBadge})`}
+                              className="absolute right-0.5 top-0.5 h-4 w-4 rounded-[3px] border-[1.5px] border-white shadow-sm"
+                              style={{ backgroundColor: baseHexForBadge }}
+                            />
+                          )}
+                        </div>
+                      </PaintBottleHover>
 
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center justify-between gap-1">
@@ -771,8 +818,11 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                             {!isFineTuned ? " (直喷)" : ""}
                           </span>
                           <span
-                            className="bp-badge rounded px-1.5 py-0.5 font-mono text-[10px] font-bold text-white shadow-2xs"
-                            style={{ backgroundColor: node.hex }}
+                            className="bp-badge rounded px-1.5 py-0.5 font-mono text-[10px] font-bold shadow-2xs border border-black/15 dark:border-white/15"
+                            style={{
+                              backgroundColor: node.hex,
+                              color: getContrastColor(node.hex),
+                            }}
                           >
                             {node.hex}
                           </span>
@@ -792,8 +842,9 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
                             <span className="text-[9px] font-mono font-black truncate">{compactBadge}</span>
                           </div>
                         ) : (
-                          <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate">
-                            ✅ 现成品牌漆直喷 · 点击展开明度与微调
+                          <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate flex items-center">
+                            <CheckCircleIcon className="h-3 w-3 inline-block mr-1 shrink-0 text-emerald-500" weight="fill" />
+                            <span className="truncate">现成品牌漆直喷 · 点击展开明度与微调</span>
                           </div>
                         )}
                       </div>
@@ -898,7 +949,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           isOpen={isSwatchEditorOpen}
           onClose={() => setIsSwatchEditorOpen(false)}
           title={`${project.title} · ${activePart.partName} 色卡排版`}
-          imageSrc={activePart.sourceImageDataUrl}
+          imageSrc={activePartImageSrc}
           colors={partColors}
           selectedColor={
             partColors.find((c) => c.id === selectedNode?.id) || partColors[0] || null
@@ -907,21 +958,34 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           onUpdateColors={handleUpdateColorsFromEditor}
           onUpdateImageAndColors={(newImageSrc, nextColors) => {
             const nextNodes = colorsToFloatingNodes(nextColors);
-            updateActivePart((part) => ({
-              ...part,
-              sourceImageDataUrl: newImageSrc,
-              nodes: nextNodes.map((n) => {
-                const prevNode = part.nodes.find((pn) => pn.id === n.id);
-                return prevNode
-                  ? {
-                      ...n,
-                      basePaintHex: prevNode.basePaintHex,
-                      tintBadgeText: prevNode.tintBadgeText,
-                      recipeSummary: prevNode.recipeSummary,
-                    }
-                  : n;
+            updateActivePart(
+              (part) => ({
+                ...part,
+                sourceImageDataUrl: newImageSrc,
+                nodes: nextNodes.map((n) => {
+                  const prevNode = part.nodes.find((pn) => pn.id === n.id);
+                  return prevNode
+                    ? {
+                        ...n,
+                        basePaintHex: prevNode.basePaintHex,
+                        tintBadgeText: prevNode.tintBadgeText,
+                        recipeSummary: prevNode.recipeSummary,
+                      }
+                    : n;
+                }),
               }),
-            }));
+              newImageSrc
+            );
+            if (!project.customCoverImageDataUrl && safePartIdx === 0) {
+              createCoverThumbnail(newImageSrc).then((thumb) => {
+                if (!thumb) return;
+                onUpdateProject((prevProj) =>
+                  !prevProj.customCoverImageDataUrl
+                    ? { ...prevProj, coverImageDataUrl: thumb }
+                    : prevProj
+                );
+              });
+            }
           }}
           settings={swatchSettings}
           onUpdateSettings={onUpdateSwatchSettings}
@@ -938,6 +1002,8 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           part={activePart}
           catalogPaints={catalogPaints}
           swatchSettings={swatchSettings}
+          onUpdateSwatchSettings={onUpdateSwatchSettings}
+          onOpenSwatchEditor={() => setIsSwatchEditorOpen(true)}
           lang={lang}
         />
       )}

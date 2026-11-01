@@ -48,11 +48,16 @@ interface ProjectLibraryViewProps {
   catalogPaints: CatalogPaint[];
   swatchSettings: SwatchSettings;
   onUpdateSwatchSettings: (updater: (prev: SwatchSettings) => SwatchSettings) => void;
-  onChangeProjects: (next: PaintProject[]) => void;
-  onChangeCategories: (next: PaletteCategory[]) => void;
-  onChangeSavedColors: (next: SavedColor[]) => void;
+  onChangeProjects: React.Dispatch<React.SetStateAction<PaintProject[]>>;
+  onChangeCategories: React.Dispatch<React.SetStateAction<PaletteCategory[]>>;
+  onChangeSavedColors: React.Dispatch<React.SetStateAction<SavedColor[]>>;
   onSendColorToWorkbench?: (hex: string) => void;
-  onSendImageToColoring?: (imageUrl: string, label?: string) => void;
+  onSendImageToColoring?: (
+    imageUrl: string,
+    label?: string,
+    resumeExisting?: boolean,
+    resumeRef?: { projectId: string; partId: string }
+  ) => void;
   focusProjectId?: string | null;
   onClearFocusProject?: () => void;
   isWideMode?: boolean;
@@ -139,9 +144,12 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
         catalogPaints={catalogPaints}
         swatchSettings={swatchSettings}
         onUpdateSwatchSettings={onUpdateSwatchSettings}
-        onUpdateProject={(updated) => {
-          onChangeProjects(
-            projects.map((p) => (p.id === updated.id ? updated : p))
+        onUpdateProject={(updatedOrFn) => {
+          onChangeProjects((prevProjects) =>
+            prevProjects.map((p) => {
+              if (p.id !== activeProject.id) return p;
+              return typeof updatedOrFn === "function" ? updatedOrFn(p) : updatedOrFn;
+            })
           );
         }}
         onDeleteProject={(id) => {
@@ -569,7 +577,7 @@ export const ProjectLibraryView: React.FC<ProjectLibraryViewProps> = ({
                       <img
                         src={coverUrl}
                         alt={proj.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-slate-600">

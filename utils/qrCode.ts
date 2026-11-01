@@ -360,14 +360,24 @@ export function generateQRMatrix(text: string, preferredLevel: ECLevel = 'M'): b
   return modules;
 }
 
+export interface QRRenderOptions {
+  logoImg?: HTMLImageElement | null;
+  fgColor?: string;
+  bgColor?: string;
+  accentBorderColor?: string;
+  logoScale?: number;
+}
+
 /**
- * Renders a crisp QR code onto an HTMLCanvasElement or returns a DataURL with an 8px quiet zone.
+ * Renders a crisp QR code onto an HTMLCanvasElement or returns a DataURL with a quiet zone
+ * and optional centered App Icon badge.
  */
 export function renderQRCodeToDataUrl(
   text: string,
   sizePx = 220,
   quietZonePx = 10,
-  level: ECLevel = 'M'
+  level: ECLevel = 'M',
+  options?: QRRenderOptions
 ): string {
   const matrix = generateQRMatrix(text, level);
   const count = matrix.length;
@@ -377,13 +387,21 @@ export function renderQRCodeToDataUrl(
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
-  ctx.fillStyle = '#FFFFFF';
+  const bgColor = options?.bgColor || '#FFFFFF';
+  const fgColor = options?.fgColor || '#0F172A';
+  ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, sizePx, sizePx);
 
   const innerSize = sizePx - quietZonePx * 2;
   const cell = innerSize / count;
 
-  ctx.fillStyle = '#0B0D13';
+  const hasLogo = Boolean(options?.logoImg);
+  const logoRatio = Math.min(0.22, Math.max(0.16, options?.logoScale ?? 0.2));
+  const logoOuterSize = hasLogo ? Math.round(innerSize * logoRatio) : 0;
+  const logoMin = (sizePx - logoOuterSize) / 2;
+  const logoMax = (sizePx + logoOuterSize) / 2;
+
+  ctx.fillStyle = fgColor;
   for (let r = 0; r < count; r++) {
     for (let c = 0; c < count; c++) {
       if (matrix[r][c]) {
@@ -391,9 +409,44 @@ export function renderQRCodeToDataUrl(
         const y = Math.floor(quietZonePx + r * cell);
         const w = Math.ceil(quietZonePx + (c + 1) * cell) - x;
         const h = Math.ceil(quietZonePx + (r + 1) * cell) - y;
+        if (
+          hasLogo &&
+          x + w > logoMin &&
+          x < logoMax &&
+          y + h > logoMin &&
+          y < logoMax
+        ) {
+          continue;
+        }
         ctx.fillRect(x, y, w, h);
       }
     }
+  }
+
+  if (hasLogo && options?.logoImg) {
+    const pad = Math.max(3, Math.round(sizePx * 0.018));
+    const badgeSize = logoOuterSize + pad * 2;
+    const bx = Math.round((sizePx - badgeSize) / 2);
+    const by = Math.round((sizePx - badgeSize) / 2);
+    const radius = Math.round(badgeSize * 0.22);
+
+    ctx.save();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, badgeSize, badgeSize, radius);
+    ctx.fill();
+    ctx.strokeStyle = options.accentBorderColor || '#0F172A';
+    ctx.lineWidth = Math.max(1.5, Math.round(sizePx * 0.01));
+    ctx.stroke();
+
+    const ix = bx + pad;
+    const iy = by + pad;
+    const iRadius = Math.max(2, radius - 2);
+    ctx.beginPath();
+    ctx.roundRect(ix, iy, logoOuterSize, logoOuterSize, iRadius);
+    ctx.clip();
+    ctx.drawImage(options.logoImg, ix, iy, logoOuterSize, logoOuterSize);
+    ctx.restore();
   }
 
   return canvas.toDataURL('image/png');
@@ -548,28 +601,35 @@ export async function detectQRFromImageFile(fileOrDataUrl: File | string): Promi
         }
       }
 
-      // Also try bottom-half crop where the QR code resides on the poster
-      const cropCanvas = document.createElement('canvas');
-      cropCanvas.width = img.naturalWidth;
-      cropCanvas.height = Math.round(img.naturalHeight * 0.5);
-      const ctx = cropCanvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(
-          img,
-          0,
-          Math.round(img.naturalHeight * 0.5),
-          img.naturalWidth,
-          cropCanvas.height,
-          0,
-          0,
-          cropCanvas.width,
-          cropCanvas.height
-        );
-        const croppedHits = await detector.detect(cropCanvas);
-        for (const item of croppedHits) {
-          if (item.rawValue && String(item.rawValue).startsWith('gkm1:')) {
-            if (typeof fileOrDataUrl !== 'string') URL.revokeObjectURL(imgUrl);
-            return String(item.rawValue);
+      // Also try bottom-half, left-half, and right-half crops where the QR code resides on Bottom / Left / Right posters
+      const candidateCrops = [
+        { sx: 0, sy: Math.round(img.naturalHeight * 0.45), sw: img.naturalWidth, sh: Math.round(img.naturalHeight * 0.55) },
+        { sx: 0, sy: 0, sw: Math.round(img.naturalWidth * 0.55), sh: img.naturalHeight },
+        { sx: Math.round(img.naturalWidth * 0.45), sy: 0, sw: Math.round(img.naturalWidth * 0.55), sh: img.naturalHeight },
+      ];
+      for (const region of candidateCrops) {
+        const cropCanvas = document.createElement('canvas');
+        cropCanvas.width = Math.max(10, region.sw);
+        cropCanvas.height = Math.max(10, region.sh);
+        const ctx = cropCanvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(
+            img,
+            region.sx,
+            region.sy,
+            cropCanvas.width,
+            cropCanvas.height,
+            0,
+            0,
+            cropCanvas.width,
+            cropCanvas.height
+          );
+          const croppedHits = await detector.detect(cropCanvas);
+          for (const item of croppedHits) {
+            if (item.rawValue && String(item.rawValue).startsWith('gkm1:')) {
+              if (typeof fileOrDataUrl !== 'string') URL.revokeObjectURL(imgUrl);
+              return String(item.rawValue);
+            }
           }
         }
       }

@@ -9,8 +9,9 @@ import {
 } from '../types';
 import { hexToRgb, rgbToCmyk, rgbToHsb, rgbToLab } from './colorUtils';
 import { inferStepsFromNodes } from './projectSharing';
+import { IS_NIGHTWORKS_EDITION } from './brandEdition';
 
-const DB_NAME = 'gk_mixer_studio_db_v2';
+const DB_NAME = IS_NIGHTWORKS_EDITION ? 'gk_mixer_studio_db_nw_v2' : 'gk_mixer_studio_db_v2';
 const DB_VERSION = 1;
 const STORE_PROJECTS = 'projects';
 const STORE_CATEGORIES = 'categories';
@@ -22,12 +23,19 @@ const DEFAULT_CATEGORIES: PaletteCategory[] = [
   { id: 'cat-armor', name: '军模/科幻旧化', createdAt: 1710000003000 },
 ];
 
-const DEFAULT_SAVED_COLORS: SavedColor[] = [
-  { id: 'sc-1', hex: '#E13D3A', name: '盖亚 003 亮红', brand: 'Gaia', code: '003', categoryId: 'cat-mecha', createdAt: 1710000001000 },
-  { id: 'sc-2', hex: '#284B8C', name: '盖亚 004 亮蓝', brand: 'Gaia', code: '004', categoryId: 'cat-mecha', createdAt: 1710000002000 },
-  { id: 'sc-3', hex: '#F3C73E', name: '盖亚 025 橙黄', brand: 'Gaia', code: '025', categoryId: 'cat-mecha', createdAt: 1710000003000 },
-  { id: 'sc-4', hex: '#F7DFD4', name: '盖亚 051 基础肤色', brand: 'Gaia', code: '051', categoryId: 'cat-figure', createdAt: 1710000004000 },
-];
+const DEFAULT_SAVED_COLORS: SavedColor[] = IS_NIGHTWORKS_EDITION
+  ? [
+      { id: 'sc-1', hex: '#E4142C', name: '夜之工坊 NAL029 大红', brand: 'Night Works', code: 'NAL029', categoryId: 'cat-mecha', createdAt: 1710000001000 },
+      { id: 'sc-2', hex: '#043C91', name: '夜之工坊 NAL057 钴蓝', brand: 'Night Works', code: 'NAL057', categoryId: 'cat-mecha', createdAt: 1710000002000 },
+      { id: 'sc-3', hex: '#FEAC00', name: '夜之工坊 NAL038 黄色', brand: 'Night Works', code: 'NAL038', categoryId: 'cat-mecha', createdAt: 1710000003000 },
+      { id: 'sc-4', hex: '#F6AC93', name: '夜之工坊 NAL021 浅肉色', brand: 'Night Works', code: 'NAL021', categoryId: 'cat-figure', createdAt: 1710000004000 },
+    ]
+  : [
+      { id: 'sc-1', hex: '#E13D3A', name: '盖亚 003 亮红', brand: 'Gaia', code: '003', categoryId: 'cat-mecha', createdAt: 1710000001000 },
+      { id: 'sc-2', hex: '#284B8C', name: '盖亚 004 亮蓝', brand: 'Gaia', code: '004', categoryId: 'cat-mecha', createdAt: 1710000002000 },
+      { id: 'sc-3', hex: '#F3C73E', name: '盖亚 025 橙黄', brand: 'Gaia', code: '025', categoryId: 'cat-mecha', createdAt: 1710000003000 },
+      { id: 'sc-4', hex: '#F7DFD4', name: '盖亚 051 基础肤色', brand: 'Gaia', code: '051', categoryId: 'cat-figure', createdAt: 1710000004000 },
+    ];
 
 function createDemoCoverDataUrl(): string {
   if (typeof document === 'undefined') return '';
@@ -70,41 +78,77 @@ function createDemoCoverDataUrl(): string {
 
 export function getSeedProjects(): PaintProject[] {
   const demoImg = createDemoCoverDataUrl();
-  const nodes: FloatingSwatchNode[] = [
-    {
-      id: 'demo-node-1',
-      anchorX: 0.3,
-      anchorY: 0.45,
-      offsetX: 0.04,
-      offsetY: 0.14,
-      paintBrand: 'Gaia',
-      paintCode: '071',
-      paintName: '中性灰 I',
-      hex: '#ECEFF4',
-    },
-    {
-      id: 'demo-node-2',
-      anchorX: 0.68,
-      anchorY: 0.31,
-      offsetX: 0.62,
-      offsetY: 0.08,
-      paintBrand: 'Gaia',
-      paintCode: '004',
-      paintName: '亮光蓝',
-      hex: '#284B8C',
-    },
-    {
-      id: 'demo-node-3',
-      anchorX: 0.6,
-      anchorY: 0.68,
-      offsetX: 0.62,
-      offsetY: 0.68,
-      paintBrand: 'Gaia',
-      paintCode: '003',
-      paintName: '亮光红',
-      hex: '#E13D3A',
-    },
-  ];
+  const nodes: FloatingSwatchNode[] = IS_NIGHTWORKS_EDITION
+    ? [
+        {
+          id: 'demo-node-1',
+          anchorX: 0.3,
+          anchorY: 0.45,
+          offsetX: 0.04,
+          offsetY: 0.14,
+          paintBrand: 'Night Works',
+          paintCode: 'NAL002',
+          paintName: '白色 / White',
+          hex: '#FFFFFF',
+        },
+        {
+          id: 'demo-node-2',
+          anchorX: 0.68,
+          anchorY: 0.31,
+          offsetX: 0.62,
+          offsetY: 0.08,
+          paintBrand: 'Night Works',
+          paintCode: 'NAL057',
+          paintName: '钴蓝 / COBALT BLUE',
+          hex: '#043C91',
+        },
+        {
+          id: 'demo-node-3',
+          anchorX: 0.6,
+          anchorY: 0.68,
+          offsetX: 0.62,
+          offsetY: 0.68,
+          paintBrand: 'Night Works',
+          paintCode: 'NAL029',
+          paintName: '大红 / Bright Red',
+          hex: '#E4142C',
+        },
+      ]
+    : [
+        {
+          id: 'demo-node-1',
+          anchorX: 0.3,
+          anchorY: 0.45,
+          offsetX: 0.04,
+          offsetY: 0.14,
+          paintBrand: 'Gaia',
+          paintCode: '071',
+          paintName: '中性灰 I',
+          hex: '#ECEFF4',
+        },
+        {
+          id: 'demo-node-2',
+          anchorX: 0.68,
+          anchorY: 0.31,
+          offsetX: 0.62,
+          offsetY: 0.08,
+          paintBrand: 'Gaia',
+          paintCode: '004',
+          paintName: '亮光蓝',
+          hex: '#284B8C',
+        },
+        {
+          id: 'demo-node-3',
+          anchorX: 0.6,
+          anchorY: 0.68,
+          offsetX: 0.62,
+          offsetY: 0.68,
+          paintBrand: 'Gaia',
+          paintCode: '003',
+          paintName: '亮光红',
+          hex: '#E13D3A',
+        },
+      ];
   const part1: PartCanvas = {
     id: 'demo-part-1',
     partName: '外甲主配色 (胸甲/肩甲)',

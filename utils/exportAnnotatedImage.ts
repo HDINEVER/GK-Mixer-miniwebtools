@@ -2,11 +2,15 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 import { CatalogPaint, ColorData, TonalStep } from "../types";
 import { getContrastColor } from "./colorUtils";
 import { paintBottleUrls } from "./paintBottle";
+import { localizedBrand } from "./paintCatalog";
 import {
   calculateLeaderLine,
+  cleanPaintCardName,
   drawLeaderLineOnCanvas,
   getCanvasScale,
   getCardBaseDimensions,
+  getMarkerCardDimensions,
+  REFERENCE_CANVAS_DIM,
   SwatchSettings,
   DEFAULT_SWATCH_SETTINGS,
 } from "./swatchLayout";
@@ -185,15 +189,16 @@ export const renderAnnotatedCanvas = async (
   if (!srcW || !srcH) return null;
 
   const aspectRatio = srcH / srcW;
-  const cw = targetWidth && targetWidth > 0 ? Math.round(targetWidth) : srcW;
-  const ch = targetWidth && targetWidth > 0 ? Math.round(cw * aspectRatio) : srcH;
+  const cw =
+    targetWidth && targetWidth > 0
+      ? Math.round(targetWidth)
+      : Math.max(srcW, 2160);
+  const ch = Math.max(1, Math.round(cw * aspectRatio));
 
   const mergedSettings: SwatchSettings = {
     ...DEFAULT_SWATCH_SETTINGS,
     ...settings,
   };
-
-  const bottles = await Promise.all(markers.map((marker) => loadBottle(marker.paint)));
 
   const canvas = document.createElement("canvas");
   canvas.width = cw;
@@ -201,170 +206,236 @@ export const renderAnnotatedCanvas = async (
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.drawImage(source, 0, 0, cw, ch);
 
-  const { baseW, baseH } = getCardBaseDimensions(mergedSettings.cardBaseWidth);
-  const s = getCanvasScale(cw, ch, baseW);
+  // Core Reference Stage Law: Compute all positions, card sizes, and leader lines in the exact
+  // 800 × refH reference space used by <ProjectAnnotatedCanvas /> and <ExtractMarkerOverlay />,
+  // then scale uniformly by stageScale = cw / 800.
+  const refW = REFERENCE_CANVAS_DIM; // 800
+  const refH = refW * aspectRatio;
+  const stageScale = cw / refW;
+
+  ctx.save();
+  ctx.scale(stageScale, stageScale);
+
+  const { baseW } = getCardBaseDimensions(mergedSettings.cardBaseWidth);
+  const s = getCanvasScale(refW, refH, baseW);
   const globalScale = mergedSettings.cardScale;
+  const pinRadius = 6 * s * globalScale;
   const placed: LabelBox[] = [];
-  const points = markers.map((marker) => ({ x: marker.nx * cw, y: marker.ny * ch }));
+  const points = markers.map((marker) => ({ x: marker.nx * refW, y: marker.ny * refH }));
 
   // First pass: calculate box positions and draw leader lines behind cards
   const renderedItems: Array<{
     marker: ExtractMarker;
     box: LabelBox;
     paint: CatalogPaint;
-    bottle: HTMLImageElement | null;
     hex: string;
     mx: number;
     my: number;
     effectiveScale: number;
+    mBaseW: number;
+    mBaseH: number;
   }> = [];
+
+  const drawPinAt = (mx: number, my: number, fillHex: string) => {
+    ctx.save();
+    ctx.translate(mx, my);
+    ctx.scale(s, s);
+    if (!mergedSettings.cardGlassEffect) {
+      // Blueprint mode 14x14 rounded-square pin with hard offset shadow matching .bp-pin-dot
+      roundRect(ctx, -7 + 1.5, -7 + 1.5, 14, 14, 3);
+      ctx.fillStyle = "#0F172A";
+      ctx.fill();
+
+      roundRect(ctx, -7, -7, 14, 14, 3);
+      ctx.fillStyle = fillHex;
+      ctx.fill();
+      ctx.strokeStyle = "#0F172A";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, 6, 0, Math.PI * 2);
+      ctx.fillStyle = fillHex;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.45)";
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, 6, 0, Math.PI * 2);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    ctx.restore();
+  };
 
   markers.forEach((marker, index) => {
     const mx = points[index].x;
     const my = points[index].y;
     const paint = marker.paint;
-    const bottle = bottles[index];
     const hex = (paint?.hex || marker.hex).toUpperCase();
+    const pinFill = mergedSettings.lineMatchPaintColor && paint ? hex : marker.hex.toUpperCase();
 
     if (!paint) {
-      ctx.beginPath();
-      ctx.arc(mx, my, 6 * s, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(0,0,0,0.45)";
-      ctx.lineWidth = 3.5 * s;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(mx, my, 6 * s, 0, Math.PI * 2);
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2 * s;
-      ctx.stroke();
+      drawPinAt(mx, my, pinFill);
       return;
     }
 
     const effectiveScale = marker.labelScale ?? globalScale;
     const unitScale = s * effectiveScale;
-    const cardW = Math.round(baseW * unitScale);
+    const { baseW: mBaseW, baseH: mBaseH } = getMarkerCardDimensions(
+      paint,
+      mergedSettings.cardBaseWidth
+    );
+    const cardW = mBaseW * unitScale;
     const hasTonal = marker.tonalGradient && marker.tonalGradient.length > 0;
-    const cardH = Math.round((baseH + (hasTonal ? 14 : 0)) * unitScale);
+    const cardH = (mBaseH + (hasTonal ? 12 : 0)) * unitScale;
+
+    const maxLeft = Math.max(0, 1 - cardW / refW);
+    const maxTop = Math.max(0, 1 - cardH / refH);
 
     const box =
       typeof marker.labelNx === "number" && typeof marker.labelNy === "number"
         ? {
-            x: Math.min(Math.max(0, Math.round(marker.labelNx * cw)), Math.max(0, cw - cardW)),
-            y: Math.min(Math.max(0, Math.round(marker.labelNy * ch)), Math.max(0, ch - cardH)),
+            x: Math.min(Math.max(0, marker.labelNx), maxLeft) * refW,
+            y: Math.min(Math.max(0, marker.labelNy), maxTop) * refH,
             w: cardW,
             h: cardH,
           }
-        : placeCard({ x: mx, y: my }, cardW, cardH, cw, ch, s, placed, points);
+        : placeCard({ x: mx, y: my }, cardW, cardH, refW, refH, s, placed, points);
     placed.push(box);
 
     renderedItems.push({
       marker,
       box,
       paint,
-      bottle,
       hex,
       mx,
       my,
       effectiveScale,
+      mBaseW,
+      mBaseH,
     });
 
     const linePath = calculateLeaderLine(
       box,
       { x: mx, y: my },
       mergedSettings.lineStyle,
-      6 * s,
+      pinRadius,
       unitScale
     );
 
     const strokeColor = mergedSettings.lineMatchPaintColor ? hex : "rgba(255,255,255,0.95)";
     const shadowColor = mergedSettings.lineMatchPaintColor ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.45)";
-    const lineWidth = mergedSettings.lineWidth * 1.1;
 
-    drawLeaderLineOnCanvas(ctx, linePath, lineWidth, strokeColor, shadowColor, s);
-
-    // Draw sample pin point
-    ctx.beginPath();
-    ctx.arc(mx, my, 6 * s, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(0,0,0,0.5)";
-    ctx.lineWidth = 3.5 * s;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(mx, my, 6 * s, 0, Math.PI * 2);
-    ctx.strokeStyle = mergedSettings.lineMatchPaintColor ? hex : "#ffffff";
-    ctx.lineWidth = 2 * s;
-    ctx.stroke();
-
-    if (mergedSettings.lineMatchPaintColor) {
-      ctx.beginPath();
-      ctx.arc(mx, my, 3 * s, 0, Math.PI * 2);
-      ctx.fillStyle = hex;
-      ctx.fill();
-    }
+    drawLeaderLineOnCanvas(ctx, linePath, mergedSettings.lineWidth, strokeColor, shadowColor, s);
+    drawPinAt(mx, my, pinFill);
   });
 
-  // Second pass: draw cards on top of lines with strict clipping so long names never overflow
-  renderedItems.forEach(({ marker, box, paint, bottle, hex, effectiveScale }) => {
+  // Second pass: draw each card in its exact unscaled (mBaseW × totalH) local space scaled by unitScale
+  // so font sizes, paddings, and swatch widths have zero rounding divergence from SwatchCard in ExtractMarkerOverlay.tsx.
+  renderedItems.forEach(({ marker, box, paint, hex, effectiveScale, mBaseW, mBaseH }) => {
     const unitScale = s * effectiveScale;
-    const font1 = Math.max(8, Math.round(13.5 * unitScale));
-    const font2 = Math.max(7, Math.round(11.5 * unitScale));
-    const fontHex = Math.max(7, Math.round(10 * unitScale));
-    const pad = Math.round(6.5 * unitScale);
-    const gap = Math.round(4 * unitScale);
-    const codeLine = `${paint.brand} ${paint.code}`;
-    const nameLine = paint.name || "";
-    const cornerRadius = Math.round(10 * unitScale);
+    const hasTonal = Boolean(marker.tonalGradient && marker.tonalGradient.length > 0);
+    const tonalBarH = hasTonal ? 12 : 0;
+    const totalH = mBaseH + tonalBarH;
+    const mainBodyH = mBaseH;
+    const swatchW = 46;
+    const cornerRadius = mergedSettings.cardGlassEffect ? 10 : 4;
+
+    const titleLine = cleanPaintCardName(paint.name || paint.code);
+    const brandCodeLine = `${localizedBrand(paint.brand, "zh")} ${paint.code}`.trim();
+    const sampleHex = (marker.hex || hex).toUpperCase();
+    const showSample = sampleHex !== hex;
 
     ctx.save();
-    roundRect(ctx, box.x, box.y, box.w, box.h, cornerRadius);
-    if (mergedSettings.cardGlassEffect) {
-      ctx.fillStyle = "rgba(255,255,255,0.86)";
+    ctx.translate(box.x, box.y);
+    ctx.scale(unitScale, unitScale);
+
+    // 1. Offset hard shadow (Blueprint mode) or soft glass shadow
+    if (!mergedSettings.cardGlassEffect) {
+      ctx.save();
+      roundRect(ctx, 2, 2, mBaseW, totalH, cornerRadius);
+      ctx.fillStyle = "#0F172A";
       ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.75)";
-      ctx.lineWidth = 1.5 * s;
-      ctx.stroke();
+      ctx.restore();
     } else {
-      ctx.fillStyle = "rgba(255,255,255,0.97)";
+      ctx.save();
+      ctx.shadowColor = "rgba(15, 23, 42, 0.22)";
+      ctx.shadowBlur = 14;
+      ctx.shadowOffsetY = 5;
+      roundRect(ctx, 0, 0, mBaseW, totalH, cornerRadius);
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.fill();
-      ctx.strokeStyle = "rgba(15,23,42,0.12)";
-      ctx.lineWidth = 1.25 * s;
-      ctx.stroke();
+      ctx.restore();
     }
-    // Clip everything inside the card boundary
-    ctx.clip();
 
-    const tonalBarH = marker.tonalGradient?.length ? Math.round(11 * unitScale) : 0;
-    const mainBodyH = box.h - tonalBarH;
-    // Strict 1:1 square inner swatch/bottle thumbnail (never stretched non-uniformly)
-    const thumbSize = Math.max(
-      12,
-      Math.round(Math.min(mainBodyH - pad * 2, (box.w - pad * 2) * 0.34))
-    );
-    const thumbPad = Math.round(7 * unitScale);
-    const tX = box.x + pad;
-    const tY = box.y + Math.round((mainBodyH - thumbSize) / 2);
-    const textX = tX + thumbSize + thumbPad;
-
+    // 2. Main card surface & clip
     ctx.save();
-    roundRect(ctx, tX, tY, thumbSize, thumbSize, Math.round(6 * unitScale));
+    roundRect(ctx, 0, 0, mBaseW, totalH, cornerRadius);
+    ctx.fillStyle = mergedSettings.cardGlassEffect ? "rgba(255,255,255,0.9)" : "#FFFFFF";
+    ctx.fill();
     ctx.clip();
-    if (bottle) {
-      ctx.fillStyle = mergedSettings.cardGlassEffect ? "rgba(241,245,249,0.75)" : "#f8fafc";
-      ctx.fillRect(tX, tY, thumbSize, thumbSize);
-      const aspect = bottle.width / bottle.height;
-      let dW = thumbSize;
-      let dH = thumbSize;
-      if (aspect > 1) dH = thumbSize / aspect;
-      else dW = thumbSize * aspect;
-      ctx.drawImage(bottle, tX + (thumbSize - dW) / 2, tY + (thumbSize - dH) / 2, dW, dH);
-    } else {
-      ctx.fillStyle = hex;
-      ctx.fillRect(tX, tY, thumbSize, thumbSize);
-    }
-    ctx.restore();
 
-    const maxTextW = Math.max(10, box.x + box.w - pad - textX);
+    // Left pure color swatch block (46px wide)
+    ctx.fillStyle = hex;
+    ctx.fillRect(0, 0, swatchW, mainBodyH);
+
+    // Top subtle highlight sheen on left color block
+    const sheenGrad = ctx.createLinearGradient(0, 0, 0, mainBodyH * 0.35);
+    sheenGrad.addColorStop(0, "rgba(255,255,255,0.22)");
+    sheenGrad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = sheenGrad;
+    ctx.fillRect(0, 0, swatchW, mainBodyH * 0.35);
+
+    // Vertical divider between left swatch block and right text
+    ctx.strokeStyle = mergedSettings.cardGlassEffect ? "rgba(15,23,42,0.15)" : "#0F172A";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(swatchW, 0);
+    ctx.lineTo(swatchW, mainBodyH);
+    ctx.stroke();
+
+    // Optional sample hex dot in top-right corner of the color swatch block
+    if (showSample) {
+      const dotSize = 9;
+      const dotX = swatchW - dotSize - 3;
+      const dotY = 3;
+      ctx.fillStyle = sampleHex;
+      ctx.fillRect(dotX, dotY, dotSize, dotSize);
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(dotX, dotY, dotSize, dotSize);
+    }
+
+    // Bottom-left code pill inside swatch block
+    const isLightSwatch = getContrastColor(hex) === "#000000";
+    const fontCodeBadge = 7.5;
+    ctx.font = `900 ${fontCodeBadge}px "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace`;
+    const codeBadgePadX = 3;
+    const codeBadgeH = 10.5;
+    const maxCodeBadgeW = swatchW - 6;
+    let codeShort = paint.code || "";
+    while (codeShort.length > 1 && ctx.measureText(codeShort).width + codeBadgePadX * 2 > maxCodeBadgeW) {
+      codeShort = codeShort.slice(0, -1);
+    }
+    const codeBadgeW = Math.min(maxCodeBadgeW, Math.ceil(ctx.measureText(codeShort).width + codeBadgePadX * 2));
+    const codeBadgeX = 3;
+    const codeBadgeY = mainBodyH - codeBadgeH - 3;
+    roundRect(ctx, codeBadgeX, codeBadgeY, codeBadgeW, codeBadgeH, 2.5);
+    ctx.fillStyle = isLightSwatch ? "rgba(15,23,42,0.16)" : "rgba(0,0,0,0.32)";
+    ctx.fill();
+    ctx.fillStyle = isLightSwatch ? "#0F172A" : "#FFFFFF";
+    ctx.textBaseline = "middle";
+    ctx.fillText(codeShort, codeBadgeX + codeBadgePadX, codeBadgeY + codeBadgeH / 2 + 0.5);
+    ctx.textBaseline = "alphabetic";
+
+    const textX = swatchW + 7;
+    const maxTextW = Math.max(12, mBaseW - 7 - textX);
     const fitText = (text: string, maxWidth: number) => {
       if (ctx.measureText(text).width <= maxWidth) return text;
       let str = text;
@@ -374,46 +445,65 @@ export const renderAnnotatedCanvas = async (
       return str + "…";
     };
 
-    // Paint brand & code
-    ctx.font = `bold ${font1}px ui-sans-serif, system-ui, sans-serif`;
-    ctx.fillStyle = "#0f172a";
-    ctx.fillText(fitText(codeLine, maxTextW), textX, box.y + pad + font1 * 0.92);
+    // Line 1 (Large Title): Paint Name (12px font-black)
+    ctx.font = `900 12px ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+    ctx.fillStyle = "#0F172A";
+    const line1Y = 21;
+    ctx.fillText(fitText(titleLine, maxTextW), textX, line1Y);
 
-    // Paint name with auto font scaling for long Japanese/Chinese names
-    if (nameLine) {
-      ctx.font = `600 ${font2}px ui-sans-serif, system-ui, sans-serif`;
-      let actualNameFont = font2;
-      if (ctx.measureText(nameLine).width > maxTextW && font2 > 8) {
-        actualNameFont = Math.max(8, Math.round(font2 * 0.85));
-        ctx.font = `600 ${actualNameFont}px ui-sans-serif, system-ui, sans-serif`;
-      }
-      ctx.fillStyle = "#475569";
-      ctx.fillText(fitText(nameLine, maxTextW), textX, box.y + pad + font1 + gap + actualNameFont * 0.9);
-    }
+    // Line 2 (Subtitle): Localized Brand + Code (10px font-extrabold)
+    ctx.font = `800 10px ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+    ctx.fillStyle = "#64748B";
+    const line2Y = 36;
+    ctx.fillText(fitText(brandCodeLine, maxTextW), textX, line2Y);
 
-    // Hex badge
-    ctx.font = `bold ${fontHex}px ui-monospace, Menlo, monospace`;
-    const hexW = Math.min(maxTextW - 10 * unitScale, ctx.measureText(hex).width);
-    const hexY = box.y + mainBodyH - pad - (fontHex + 5 * unitScale);
-    roundRect(ctx, textX, hexY, hexW + 10 * unitScale, fontHex + 5 * unitScale, 4 * unitScale);
+    // Line 3: HEX badge (9px font-mono)
+    ctx.font = `700 9px "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace`;
+    const hexTextW = ctx.measureText(hex).width;
+    const hexPadX = 5;
+    const hexBadgeH = 13;
+    const hexBadgeW = Math.min(maxTextW, Math.ceil(hexTextW + hexPadX * 2));
+    const hexY = 42;
+    roundRect(ctx, textX, hexY, hexBadgeW, hexBadgeH, 3);
     ctx.fillStyle = hex;
     ctx.fill();
-    ctx.fillStyle = getContrastColor(hex);
-    ctx.fillText(hex, textX + 5 * unitScale, hexY + fontHex + 0.5 * unitScale);
+    ctx.strokeStyle = "rgba(15,23,42,0.16)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = isLightSwatch ? "#0F172A" : "#FFFFFF";
+    ctx.textBaseline = "middle";
+    ctx.fillText(hex, textX + hexPadX, hexY + hexBadgeH / 2 + 0.5);
+    ctx.textBaseline = "alphabetic";
 
-    // Optional Tonal Gradient Bar at bottom of card (matching iOS TonalStep integration)
+    // Optional Tonal Gradient Bar at bottom of card
     if (marker.tonalGradient && marker.tonalGradient.length > 0) {
       const steps = marker.tonalGradient;
-      const barY = box.y + mainBodyH;
-      const segW = box.w / steps.length;
+      const barY = mainBodyH;
+      const segW = mBaseW / steps.length;
       steps.forEach((step, idx) => {
         ctx.fillStyle = step.hex;
-        ctx.fillRect(box.x + idx * segW, barY, segW + 0.5, tonalBarH);
+        ctx.fillRect(idx * segW, barY, segW + 0.5, tonalBarH);
       });
+      ctx.strokeStyle = mergedSettings.cardGlassEffect ? "rgba(15,23,42,0.22)" : "#0F172A";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, barY);
+      ctx.lineTo(mBaseW, barY);
+      ctx.stroke();
     }
 
     ctx.restore();
+
+    // Draw crisp outer border on top of clipped content
+    roundRect(ctx, 0, 0, mBaseW, totalH, cornerRadius);
+    ctx.strokeStyle = mergedSettings.cardGlassEffect ? "rgba(255,255,255,0.8)" : "#0F172A";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.restore();
   });
+
+  ctx.restore();
 
   if (includeWatermark) {
     const sample = Math.max(8, Math.round(40 * s));

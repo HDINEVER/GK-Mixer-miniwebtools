@@ -8,7 +8,11 @@ import {
   localizedBrand,
   matchQualityLabel,
 } from "../utils/paintCatalog";
-import { PaintBottleImg } from "./PaintBottleHover";
+import {
+  IS_NIGHTWORKS_EDITION,
+  IS_SINGLE_BRAND_EDITION,
+} from "../utils/brandEdition";
+import PaintBottleHover from "./PaintBottleHover";
 import {
   SparkleIcon,
   MagnifyingGlassIcon,
@@ -183,12 +187,14 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
     >
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs transition-opacity" />
-        <Drawer.Content className="bp-modal-shell fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-h-[86dvh] w-full max-w-lg flex-col rounded-t-[28px] border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl outline-none">
-          {/* Grabber handle */}
-          <div className="my-2.5 mx-auto h-1.5 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700" />
+        <Drawer.Content className="bp-modal-shell fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-h-[86dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl outline-none">
+          {/* Sheet Header (includes grabber handle so header background & z-index cover the full top cap) */}
+          <div className="bp-modal-header relative z-20 shrink-0 border-b border-slate-100 dark:border-slate-800 px-4 pt-2.5 pb-3">
+            {/* Grabber handle */}
+            <div className="bp-modal-grabber mb-2.5 mx-auto h-1.5 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700" />
 
-          {/* Sheet Header: Target Sample Point Info */}
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 px-4 pb-3">
+            {/* Target Sample Point Info */}
+            <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <div
                 className="bp-swatch h-9 w-9 rounded-xl border-2 border-white dark:border-slate-700 shadow-md shrink-0"
@@ -230,6 +236,7 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
               >
                 <XIcon className="h-4 w-4" weight="bold" />
               </button>
+            </div>
             </div>
           </div>
 
@@ -288,7 +295,11 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="按品牌+色号空格搜索，如：盖亚 红 / Gaia 003 / 星影 金"
+                    placeholder={
+                      IS_NIGHTWORKS_EDITION
+                        ? "按系列+色号空格搜索，如：薄涂 红 / NAL029 / 金属"
+                        : "按品牌+色号空格搜索，如：盖亚 红 / Gaia 003 / 星影 金"
+                    }
                     className="bp-input w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 pl-9 pr-8 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-accent"
                   />
                   {searchQuery && (
@@ -302,33 +313,35 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 pr-1">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedBrand("ALL")}
-                    className={`h-6 px-2.5 rounded-full text-[11px] font-bold shrink-0 whitespace-nowrap transition cursor-pointer ${
-                      selectedBrand === "ALL"
-                        ? "bp-pill-active bg-accent text-white"
-                        : "bp-pill bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                    }`}
-                  >
-                    全部品牌
-                  </button>
-                  {FEATURED_BRANDS.map((b) => (
+                {!IS_SINGLE_BRAND_EDITION && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 pr-1">
                     <button
-                      key={b}
                       type="button"
-                      onClick={() => setSelectedBrand(b)}
+                      onClick={() => setSelectedBrand("ALL")}
                       className={`h-6 px-2.5 rounded-full text-[11px] font-bold shrink-0 whitespace-nowrap transition cursor-pointer ${
-                        selectedBrand === b
+                        selectedBrand === "ALL"
                           ? "bp-pill-active bg-accent text-white"
                           : "bp-pill bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                       }`}
                     >
-                      {localizedBrand(b, lang)}
+                      全部品牌
                     </button>
-                  ))}
-                </div>
+                    {FEATURED_BRANDS.map((b) => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setSelectedBrand(b)}
+                        className={`h-6 px-2.5 rounded-full text-[11px] font-bold shrink-0 whitespace-nowrap transition cursor-pointer ${
+                          selectedBrand === b
+                            ? "bp-pill-active bg-accent text-white"
+                            : "bp-pill bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
+                        {localizedBrand(b, lang)}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -369,17 +382,18 @@ export const QuickPaintAssignSheet: React.FC<QuickPaintAssignSheetProps> = ({
                         </span>
                       )}
 
-                      <div className="bp-swatch relative h-10 w-10 rounded-xl border border-slate-200/80 dark:border-slate-700 overflow-hidden shrink-0 flex items-center justify-center bg-slate-50 dark:bg-slate-800">
-                        <span
-                          className="absolute inset-0"
-                          style={{ backgroundColor: paint.hex }}
+                      <PaintBottleHover
+                        brand={paint.brand}
+                        code={paint.code}
+                        name={paint.name}
+                        hex={paint.hex ?? "#808080"}
+                        className="shrink-0"
+                      >
+                        <div
+                          className="bp-swatch relative h-10 w-10 rounded-xl border border-slate-200/80 dark:border-slate-700 overflow-hidden shrink-0 flex items-center justify-center"
+                          style={{ backgroundColor: paint.hex ?? "#808080" }}
                         />
-                        <PaintBottleImg
-                          brand={paint.brand}
-                          code={paint.code}
-                          className="relative z-10 h-full w-full object-contain p-0.5 bg-white/90 dark:bg-slate-900/80"
-                        />
-                      </div>
+                      </PaintBottleHover>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">

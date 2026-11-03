@@ -36,25 +36,38 @@ const NOZZLE_OPTIONS = [
   { value: "0.3mm", title: "0.3mm", subtitle: "标准通用口径 · 主色平喷" },
   { value: "0.3~0.5mm", title: "0.3 ~ 0.5mm", subtitle: "金属色 · 珍珠色柔喷" },
   { value: "0.5mm", title: "0.5mm", subtitle: "水补土打底 · 大面光油" },
-  { value: "无", title: "无", subtitle: "非喷笔工序" },
+  { value: "1号貂毛笔", title: "1号貂毛笔", subtitle: "战锤 Base 底涂 · Layer 层涂 · Glaze" },
+  { value: "0号面相笔", title: "0号面相笔", subtitle: "Recess 凹槽暗线 · Volumetric 点拍" },
+  { value: "00号极细笔", title: "00号极细笔", subtitle: "Fine Edge 刀锋高光 · Dot 尖角高光" },
+  { value: "2号储水笔", title: "2号储水/阴影笔", subtitle: "Shade 全局渍洗 · Contrast 对比漆" },
+  { value: "圆头干扫笔", title: "圆头干扫笔", subtitle: "Slapchop 黑白灰干扫 · 棱边质感" },
+  { value: "海绵块+00号笔", title: "海绵块 + 00号笔", subtitle: "Sponge Chipping 海绵掉漆战损" },
+  { value: "无", title: "无", subtitle: "非喷笔/通用工序" },
 ];
 
 const RATIO_OPTIONS = [
   { value: "无", title: "无", subtitle: "非喷涂工序" },
   { value: "原液直喷", title: "原液直喷", subtitle: "金属底漆 · 喷罐抽漆" },
-  { value: "1:0.5", title: "1:0.5", subtitle: "细节笔涂 · 点涂" },
+  { value: "原液直涂", title: "原液直涂", subtitle: "Citadel Shade 渍洗 · 特效漆" },
+  { value: "Contrast原液", title: "Contrast 原液", subtitle: "战锤对比漆一步流着色" },
+  { value: "原液滤干", title: "原液滤干", subtitle: "Dry 干扫膏 · 海绵掉漆" },
+  { value: "1:0.3(湿盘)", title: "1:0.3 (湿盘微润)", subtitle: "Citadel Base 两遍薄涂 · 尖角高光" },
+  { value: "1:0.5", title: "1:0.5", subtitle: "Chunky 粗高光 · Fine Edge 刀锋棱边" },
+  { value: "1:0.8", title: "1:0.8", subtitle: "Citadel Layer 层涂 · NMM 排带" },
   { value: "1:1.0", title: "1:1.0", subtitle: "水性漆标准 · 高遮盖" },
   { value: "1:1.5(缓干)", title: "1:1.5 (缓干)", subtitle: "高光湿喷 · 水贴喷砂层" },
   { value: "1:2.0", title: "1:2.0", subtitle: "硝基主色 · 水补土标准" },
   { value: "1:2.5", title: "1:2.5", subtitle: "阴影高光 · 糖果透明罩染" },
-  { value: "1:3.0", title: "1:3.0", subtitle: "MAX细喷 · 薄雾过渡" },
+  { value: "1:3.0", title: "1:3.0", subtitle: "MAX细喷 · Soft Shade 柔化暗部" },
+  { value: "1:4.0(Glaze)", title: "1:4.0 (Glaze 罩染)", subtitle: "透明罩染融合 · 冷暖色偏滤镜" },
   { value: "1:5.0", title: "1:5.0", subtitle: "刻线渗线" },
+  { value: "1:6.0", title: "1:6.0", subtitle: "Grimdark 暗黑珐琅渍洗" },
   { value: "1:8.0", title: "1:8.0", subtitle: "大面积水洗渍洗 · 滤镜" },
 ];
 
 const PRESSURE_OPTIONS = [
-  { value: "无", title: "无", subtitle: "隐藏气压" },
-  { value: "0.5bar/7psi", title: "0.5bar (7psi)", subtitle: "极细迷彩 · 0.2近距勾线" },
+  { value: "无", title: "无", subtitle: "手涂 / 隐藏气压" },
+  { value: "0.5bar/7psi", title: "0.5bar (7psi)", subtitle: "极细迷彩 · 0.2近距勾线 · OSL" },
   { value: "0.8bar/12psi", title: "0.8bar (12psi)", subtitle: "MAX阴影 · 金属珍珠柔喷" },
   { value: "1.0bar/15psi", title: "1.0bar (15psi)", subtitle: "小零件薄喷 · 透明罩染" },
   { value: "1.2bar/18psi", title: "1.2bar (18psi)", subtitle: "标准主色十字平喷 · 基准" },
@@ -70,15 +83,32 @@ const TECHNIQUE_OPTIONS = [
   "湿喷流平",
   "远距低压柔喷",
   "细喷柔边填涂",
+  "黑底➔45°灰➔90°白顶光",
   "先浅后深压实",
   "面相笔点涂",
+  "两遍薄涂 (Two Thin Coats)",
+  "导流凹槽+吸除积漆",
+  "沿装甲接缝精准填线",
+  "向背光侧单向拉暗",
+  "留暗槽分阶叠涂受光面",
+  "沿棱边画宽过渡亮带",
+  "笔腹45°侧刮刀锋亮线",
+  "笔尖轻点转角与铆钉顶点",
+  "笔尖密集点拍+排线过渡",
+  "吸干笔肚多层薄罩融合",
+  "浅底单层快涂定向导流",
+  "黑底➔灰重扫➔白轻扫棱角",
+  "深棕➔金黄➔纯白高反差排带",
+  "海绵轻拍黑斑+亮线托底",
   "棱线低压细喷",
   "受光面中心提亮",
   "留边薄喷透色",
   "光油隔离+叠喷",
   "低压柔喷+罩光",
+  "白心打底+柔边荧光",
   "点流单向擦拭",
   "火机油单向擦拭",
+  "棉签白电油擦高光",
   "滤干轻扫棱边",
   "面相笔点绘棱角",
   "海绵擦拭+点涂",
@@ -91,11 +121,16 @@ const TECHNIQUE_OPTIONS = [
   "洗剂浸泡晾干",
 ];
 
-const CATEGORY_GROUPS = [
-  { key: "basic", label: "1. 基础处理：打磨 / 补土 / 清洗" },
-  { key: "main", label: "2. 主色喷涂：底色 / 平喷 / 分色" },
-  { key: "advanced", label: "3. 进阶技法：光影 / 罩染 / 旧化 / 水贴" },
-  { key: "topcoat", label: "4. 封层保护：消光 / 光油 / 水研 / 抛光" },
+const CATEGORY_GROUPS: Array<{
+  key: PresetItem["category"];
+  shortLabel: string;
+  label: string;
+}> = [
+  { key: "handpaint", shortLabel: "🖌️ 微缩手涂", label: "5. 微缩与重甲手涂工序：分层提亮 / 刀锋棱边 / 点拍" },
+  { key: "basic", shortLabel: "🛠️ 基础打底", label: "1. 基础处理：打磨 / 补土 / 清洗 / 天顶预置" },
+  { key: "main", shortLabel: "💨 主色喷涂", label: "2. 主色喷涂：底色 / 平喷 / 分色" },
+  { key: "advanced", shortLabel: "✨ 进阶光影", label: "3. 进阶技法：光影 / 罩染 / 旧化 / 水贴" },
+  { key: "topcoat", shortLabel: "🛡️ 封层保护", label: "4. 封层保护：消光 / 光油 / 水研 / 抛光" },
 ];
 
 export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = ({
@@ -105,6 +140,8 @@ export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = (
   lang,
 }) => {
   const [showPresetMenu, setShowPresetMenu] = useState(false);
+  const [presetCategoryFilter, setPresetCategoryFilter] = useState<"all" | PresetItem["category"]>("all");
+  const [presetSearchQuery, setPresetSearchQuery] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [showTechniqueHints, setShowTechniqueHints] = useState(() => {
     if (typeof window !== "undefined") {
@@ -131,6 +168,35 @@ export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = (
   const handleSmartInfer = () => {
     const inferred = inferStepsFromNodes(nodes);
     onChangeSteps(inferred);
+  };
+
+  const handleApplyWarhammerPipeline = (codes: string[]) => {
+    const now = Date.now();
+    const nextSteps: PaintingStep[] = codes
+      .map((code, idx) => {
+        const preset = STEP_PRESET_REGISTRY.find((p) => p.code === code);
+        if (!preset) return null;
+        const matchedNode = nodes[Math.min(idx, Math.max(0, nodes.length - 1))] || nodes[0];
+        return {
+          id: `step-${now}-${idx}-${code}`,
+          iconName: preset.lucideIcon || "PaintBrushBroad",
+          actionText: preset.defaultName,
+          actionCode: preset.code,
+          paintID: matchedNode ? `${matchedNode.paintBrand} ${matchedNode.paintCode}` : undefined,
+          ratioAndPressure: buildStepParams(
+            preset.defaultRatio || "无",
+            preset.defaultPressure || "无",
+            preset.defaultMethod,
+            preset.defaultNozzle || "无"
+          ),
+          nozzle: preset.defaultNozzle,
+        };
+      })
+      .filter((s): s is PaintingStep => Boolean(s));
+    if (nextSteps.length > 0) {
+      onChangeSteps(nextSteps);
+      setShowPresetMenu(false);
+    }
   };
 
   const handleAddPreset = (preset: PresetItem) => {
@@ -225,23 +291,23 @@ export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = (
 
   return (
     <div className="space-y-4">
-      {/* Top Toolbar: Title + [💡 提示] + [✨ 智能推导] + [+ 添加工序] */}
+      {/* Top Toolbar: Title + [💡 提示] + [✨ 智能推导] + [🖌️ 手涂工序] + [+ 添加工序] */}
       <div className="relative z-30 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h4 className="text-xs font-black text-slate-900 dark:text-white">
             涂装工序流水线 ({steps.length} 步)
           </h4>
           <p className="text-[11px] text-slate-400">
-            点按工序内胶囊免打字切换口径、稀释比、气压(Bar/PSI)与手法
+            支持机甲/GK 喷涂与微缩战棋手涂体系，点按胶囊免打字切换参数
           </p>
         </div>
 
-        <div className="flex items-center gap-2 relative">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 relative">
           {/* Technique Hints Toggle */}
           <button
             type="button"
             onClick={toggleTechniqueHints}
-            className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-extrabold transition cursor-pointer ${
+            className={`inline-flex h-8 items-center justify-center gap-1 rounded-full border px-2.5 text-xs font-extrabold transition cursor-pointer ${
               showTechniqueHints
                 ? "bp-pill-active bg-amber-100 dark:bg-amber-900/60 border-amber-300 dark:border-amber-600 text-amber-800 dark:text-amber-200"
                 : "bp-pill bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
@@ -255,26 +321,169 @@ export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = (
           <button
             type="button"
             onClick={handleSmartInfer}
-            className="bp-pill inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-700 px-3 text-xs font-extrabold text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition cursor-pointer"
-            title="根据当前零件已指派的油漆自动推导完整工序"
+            className="bp-pill inline-flex h-8 items-center justify-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-700 px-2.5 text-xs font-extrabold text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition cursor-pointer"
+            title="根据当前零件已指派的油漆自动推导完整喷涂工序"
           >
             <SparkleIcon className="h-3.5 w-3.5" weight="fill" />
             <span>智能推导</span>
           </button>
 
+          {/* Direct Miniature Hand-Painting Category Shortcut */}
           <button
             type="button"
-            onClick={() => setShowPresetMenu((v) => !v)}
-            className="bp-pill-active inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-coral px-3.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 transition cursor-pointer"
+            onClick={() => {
+              if (showPresetMenu && presetCategoryFilter === "handpaint") {
+                setShowPresetMenu(false);
+              } else {
+                setPresetCategoryFilter("handpaint");
+                setShowPresetMenu(true);
+              }
+            }}
+            className={`inline-flex h-8 items-center justify-center gap-1 rounded-full border px-3 text-xs font-extrabold transition cursor-pointer ${
+              showPresetMenu && presetCategoryFilter === "handpaint"
+                ? "bp-pill-active bg-sky-600 border-sky-700 text-white shadow-sm"
+                : "bp-pill bg-sky-50 dark:bg-sky-950/60 border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300 hover:bg-sky-100"
+            }`}
+            title="筛选微缩战棋手涂工序与一键重甲流派模板"
+          >
+            <span>🖌️</span>
+            <span>手涂工序</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowPresetMenu((v) => !v);
+            }}
+            className="bp-pill-active inline-flex h-8 items-center justify-center gap-1 rounded-full bg-coral px-3 text-xs font-extrabold text-white shadow-sm hover:opacity-95 transition cursor-pointer"
           >
             <PlusIcon className="h-3.5 w-3.5" weight="bold" />
             <span>添加工序</span>
           </button>
 
           {showPresetMenu && (
-            <div className="bp-subcard-lg absolute right-0 top-full mt-2 z-[100] w-80 sm:w-96 max-w-[calc(100vw-2rem)] max-h-[460px] overflow-y-auto rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-3 shadow-2xl space-y-3">
-              {CATEGORY_GROUPS.map((group) => {
-                const groupPresets = STEP_PRESET_REGISTRY.filter((p) => p.category === group.key);
+            <div className="bp-subcard-lg absolute right-0 top-full mt-2 z-[100] w-[340px] sm:w-[420px] max-w-[calc(100vw-1.5rem)] max-h-[520px] overflow-y-auto rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-2xl space-y-3">
+              {/* Category Filter Pills + Search */}
+              <div className="space-y-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex flex-wrap items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPresetCategoryFilter("all")}
+                    className={`rounded-lg px-2 py-1 text-[11px] font-black transition cursor-pointer ${
+                      presetCategoryFilter === "all"
+                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                    }`}
+                  >
+                    全部 ({STEP_PRESET_REGISTRY.length})
+                  </button>
+                  {CATEGORY_GROUPS.map((g) => {
+                    const count = STEP_PRESET_REGISTRY.filter((p) => p.category === g.key).length;
+                    const active = presetCategoryFilter === g.key;
+                    return (
+                      <button
+                        key={g.key}
+                        type="button"
+                        onClick={() => setPresetCategoryFilter(g.key)}
+                        className={`rounded-lg px-2 py-1 text-[11px] font-black transition cursor-pointer ${
+                          active
+                            ? g.key === "handpaint"
+                              ? "bg-sky-600 text-white"
+                              : "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                            : g.key === "handpaint"
+                            ? "bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-100"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                        }`}
+                      >
+                        {g.shortLabel} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <input
+                  type="text"
+                  value={presetSearchQuery}
+                  onChange={(e) => setPresetSearchQuery(e.target.value)}
+                  placeholder="搜索工序 (如 Base / Edge / 点拍 / MAX / 渗线)…"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-bold"
+                />
+
+                {/* Quick Miniature Handpaint One-Click Workflow Templates */}
+                {(presetCategoryFilter === "handpaint" || presetCategoryFilter === "all") &&
+                  !presetSearchQuery.trim() && (
+                    <div className="rounded-xl border border-sky-200/80 dark:border-sky-800/80 bg-sky-50/70 dark:bg-sky-950/35 p-2 space-y-1.5">
+                      <div className="text-[10px] font-black text-sky-800 dark:text-sky-300 flex items-center justify-between">
+                        <span>⚡ 经典微缩手涂流派一键生成成套工序</span>
+                        <span className="font-mono text-[9px] opacity-75">MINIATURE SYSTEM</span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleApplyWarhammerPipeline([
+                              "wh_base",
+                              "wh_recess",
+                              "wh_soft",
+                              "wh_chunky",
+                              "wh_edge",
+                              "wh_dot",
+                            ])
+                          }
+                          className="w-full flex items-center justify-between rounded-lg bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800 px-2 py-1 text-left text-[11px] font-extrabold text-slate-800 dark:text-slate-100 hover:border-sky-500 transition cursor-pointer"
+                        >
+                          <span>🏆 重甲官方盒照流 6 步工序 (双阶棱边高光)</span>
+                          <span className="font-mono text-[9px] text-sky-600 dark:text-sky-400">一键套用 →</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleApplyWarhammerPipeline([
+                              "wh_base",
+                              "wh_recess",
+                              "wh_stipple",
+                              "wh_glaze",
+                              "wh_dot",
+                            ])
+                          }
+                          className="w-full flex items-center justify-between rounded-lg bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800 px-2 py-1 text-left text-[11px] font-extrabold text-slate-800 dark:text-slate-100 hover:border-sky-500 transition cursor-pointer"
+                        >
+                          <span>✨ 大师赛手涂体积光点拍 (Stippling) 5 步流</span>
+                          <span className="font-mono text-[9px] text-sky-600 dark:text-sky-400">一键套用 →</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleApplyWarhammerPipeline([
+                              "wh_slapchop",
+                              "wh_contrast",
+                              "wh_edge",
+                              "mt",
+                            ])
+                          }
+                          className="w-full flex items-center justify-between rounded-lg bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800 px-2 py-1 text-left text-[11px] font-extrabold text-slate-800 dark:text-slate-100 hover:border-sky-500 transition cursor-pointer"
+                        >
+                          <span>⚡ 黑白灰干扫 + 对比快涂漆 4 步流</span>
+                          <span className="font-mono text-[9px] text-sky-600 dark:text-sky-400">一键套用 →</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+              </div>
+
+              {CATEGORY_GROUPS.filter(
+                (group) => presetCategoryFilter === "all" || group.key === presetCategoryFilter
+              ).map((group) => {
+                const q = presetSearchQuery.trim().toLowerCase();
+                const groupPresets = STEP_PRESET_REGISTRY.filter(
+                  (p) =>
+                    p.category === group.key &&
+                    (!q ||
+                      p.defaultName.toLowerCase().includes(q) ||
+                      p.defaultMethod.toLowerCase().includes(q) ||
+                      (p.nomokenTip && p.nomokenTip.toLowerCase().includes(q)))
+                );
+                if (groupPresets.length === 0) return null;
                 return (
                   <div key={group.key} className="space-y-1">
                     <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">
@@ -286,24 +495,24 @@ export const PaintingStepBuilderView: React.FC<PaintingStepBuilderViewProps> = (
                           key={preset.code}
                           type="button"
                           onClick={() => handleAddPreset(preset)}
-                          className="flex flex-col gap-0.5 rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                          className="flex flex-col gap-0.5 rounded-xl px-2.5 py-1.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                         >
-                          <div className="flex items-center justify-between w-full">
-                            <span className="flex items-center gap-1.5">
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span className="flex items-center gap-1.5 min-w-0">
                               <span
                                 className="h-2 w-2 rounded-full shrink-0"
                                 style={{ backgroundColor: preset.themeColorHex }}
                               />
-                              <span>{preset.defaultName}</span>
+                              <span className="truncate">{preset.defaultName}</span>
                             </span>
-                            <span className="font-mono text-[10px] text-slate-400">
+                            <span className="font-mono text-[10px] text-slate-400 shrink-0">
                               {[preset.defaultNozzle, preset.defaultRatio, preset.defaultPressure]
                                 .filter(Boolean)
-                                .join(" · ") || "无额外参数"}
+                                .join(" · ") || preset.defaultMethod}
                             </span>
                           </div>
                           {showTechniqueHints && preset.nomokenTip && (
-                            <div className="text-[10px] text-amber-600/90 dark:text-amber-400/90 pl-3.5 truncate">
+                            <div className="text-[10px] text-amber-600/90 dark:text-amber-400/90 pl-3.5 line-clamp-2">
                               {preset.nomokenTip}
                             </div>
                           )}

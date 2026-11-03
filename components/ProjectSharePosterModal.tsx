@@ -203,13 +203,16 @@ interface ProjectSharePosterModalProps {
 }
 
 const inferStepCategoryMeta = (actionText: string) => {
-  if (/水补土|补土|底漆|打底|灰补|黑补|白补|洗件|打磨/.test(actionText)) {
+  if (/Citadel|Recess|Chunky|Fine Edge|Dot Highlight|Stippl|Glaze|Contrast|Slapchop|NMM|手涂|层涂|点拍|刀锋/.test(actionText)) {
+    return { label: "战锤手涂", color: "#0284C7" };
+  }
+  if (/水补土|补土|底漆|打底|灰补|黑补|白补|洗件|打磨|天顶|Zenithal/.test(actionText)) {
     return { label: "底漆打底", color: "#64748B" };
   }
-  if (/阴影|高光|MAX|预置|渍洗|旧化|滤镜|掉漆/.test(actionText)) {
+  if (/阴影|高光|MAX|预置|渍洗|旧化|滤镜|掉漆|Grimdark|OSL|荧光/.test(actionText)) {
     return { label: "光影层次", color: "#F59E0B" };
   }
-  if (/保护漆|消光|光油|半光|封层/.test(actionText)) {
+  if (/保护漆|消光|光油|半光|封层|水研|抛光/.test(actionText)) {
     return { label: "封层保护", color: "#10B981" };
   }
   if (/水贴|渗线|刻线|蚀刻片|细节|点缀|遮盖/.test(actionText)) {

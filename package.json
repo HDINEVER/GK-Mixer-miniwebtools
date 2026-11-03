@@ -1,7 +1,8 @@
 {
   "name": "gk-mixer-hdinever",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.5.0",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +12,8 @@
     "build:ios-algorithms": "esbuild native/ios-bridge.ts --bundle --format=iife --platform=browser --target=safari16 --minify --outfile=../GK-Mixer/GK-Mixer/Resources/gk-color-algorithms.js",
     "verify:dual-unmix": "node scripts/verify-dual-unmix.mjs",
     "verify:drop-ratio": "node --experimental-strip-types scripts/verify-drop-ratio.mjs",
+    "encrypt:core": "node ../scripts/encrypt-core-algorithms.mjs",
+    "decrypt:core": "node ../scripts/encrypt-core-algorithms.mjs --restore",
     "preview": "vite preview",
     "cf:dev": "wrangler pages dev dist",
     "cap:copy": "cap copy android",
@@ -24,12 +27,14 @@
     "@google/genai": "^1.30.0",
     "@phosphor-icons/react": "^2.1.10",
     "@tanstack/react-virtual": "^3.14.13",
+    "@types/three": "^0.187.0",
     "html2canvas": "^1.4.1",
     "konsta": "^5.5.0",
     "motion": "^12.23.26",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "simple-color-converter": "^2.1.13",
+    "three": "^0.187.0",
     "use-long-press": "^3.3.0",
     "vaul": "^1.1.2"
   },

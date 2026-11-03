@@ -37,6 +37,7 @@ import { FEATURED_BRANDS, loadPaintCatalog, localizedBrand, nearestCatalogPaintW
 import { IS_NIGHTWORKS_EDITION, IS_SINGLE_BRAND_EDITION } from "../utils/brandEdition";
 import { paintBottleUrls } from "../utils/paintBottle";
 import PaintBottleHover from "./PaintBottleHover";
+import ShoulderPad3DStudio from "./ShoulderPad3DStudio";
 import { deltaE2000, labFromHex } from "../utils/ciede2000";
 import { inferStepsFromNodes } from "../utils/projectSharing";
 import { computeBrandTintRecipe, BrandTintRecipe } from "../utils/brandTintRecipe";
@@ -1077,6 +1078,7 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
   const [harmonyMode, setHarmonyMode] = useState<HarmonyMode>("analogous");
   const [copiedHex, setCopiedHex] = useState(false);
   const [isFocusAnimating, setIsFocusAnimating] = useState(false);
+  const [is3DShoulderMode, setIs3DShoulderMode] = useState(false);
   const [customShadeHex, setCustomShadeHex] = useState<string | null>(null);
   const [customHighlightHex, setCustomHighlightHex] = useState<string | null>(null);
 
@@ -7950,58 +7952,76 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               <span className="tech-prefix hidden sm:inline text-[11px] font-bold">[STUDIO_CANVAS]</span>
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (is3DShoulderMode) setIs3DShoulderMode(false);
+                  fileInputRef.current?.click();
+                }}
                 className={`${primaryActionBtnClass} px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-extrabold whitespace-nowrap transition cursor-pointer`}
               >
                 📤 {imageToken > 0 ? "更换图片" : "上传图片"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIs3DShoulderMode((v) => !v)}
+                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
+                  is3DShoulderMode ? primaryActionBtnClass : secondaryActionBtnClass
+                }`}
+                title="切换至 3D 战锤星际战士肩甲几何与 Blender 光影节点试色台"
+              >
+                <CubeIcon className="w-3.5 h-3.5 shrink-0" weight="bold" />
+                <span>{is3DShoulderMode ? "返回 2D 画布" : "3D 肩甲光影台"}</span>
               </button>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUploadFile} className="hidden" />
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
-              {/* Hold / Toggle Compare Original */}
-              <button
-                type="button"
-                disabled={imageToken === 0}
-                onPointerDown={() => setIsComparingOriginal(true)}
-                onPointerUp={() => setIsComparingOriginal(false)}
-                onPointerLeave={() => setIsComparingOriginal(false)}
-                onClick={() => setIsComparingOriginal((v) => !v)}
-                className={`px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-extrabold whitespace-nowrap transition ${
-                  imageToken === 0
-                    ? "rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
-                    : isComparingOriginal
-                    ? `${primaryActionBtnClass} cursor-pointer`
-                    : `${secondaryActionBtnClass} cursor-pointer`
-                }`}
-                title="按住或点击对比未上色原图"
-              >
-                👁️ 对比<span className="hidden sm:inline">原图</span>
-              </button>
-              <button
-                type="button"
-                disabled={undoCount === 0}
-                onClick={handleUndo}
-                className={`px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-extrabold whitespace-nowrap transition ${
-                  undoCount > 0
-                    ? `${secondaryActionBtnClass} cursor-pointer`
-                    : "rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
-                }`}
-              >
-                ↶ 撤销 ({undoCount})
-              </button>
-              <button
-                type="button"
-                disabled={redoCount === 0}
-                onClick={handleRedo}
-                className={`px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-extrabold whitespace-nowrap transition ${
-                  redoCount > 0
-                    ? `${secondaryActionBtnClass} cursor-pointer`
-                    : "rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
-                }`}
-              >
-                ↷ 重做 ({redoCount})
-              </button>
+              {!is3DShoulderMode && (
+                <>
+                  {/* Hold / Toggle Compare Original */}
+                  <button
+                    type="button"
+                    disabled={imageToken === 0}
+                    onPointerDown={() => setIsComparingOriginal(true)}
+                    onPointerUp={() => setIsComparingOriginal(false)}
+                    onPointerLeave={() => setIsComparingOriginal(false)}
+                    onClick={() => setIsComparingOriginal((v) => !v)}
+                    className={`px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-extrabold whitespace-nowrap transition ${
+                      imageToken === 0
+                        ? "rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
+                        : isComparingOriginal
+                        ? `${primaryActionBtnClass} cursor-pointer`
+                        : `${secondaryActionBtnClass} cursor-pointer`
+                    }`}
+                    title="按住或点击对比未上色原图"
+                  >
+                    👁️ 对比<span className="hidden sm:inline">原图</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={undoCount === 0}
+                    onClick={handleUndo}
+                    className={`px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-extrabold whitespace-nowrap transition ${
+                      undoCount > 0
+                        ? `${secondaryActionBtnClass} cursor-pointer`
+                        : "rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
+                    }`}
+                  >
+                    ↶ 撤销 ({undoCount})
+                  </button>
+                  <button
+                    type="button"
+                    disabled={redoCount === 0}
+                    onClick={handleRedo}
+                    className={`px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-extrabold whitespace-nowrap transition ${
+                      redoCount > 0
+                        ? `${secondaryActionBtnClass} cursor-pointer`
+                        : "rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
+                    }`}
+                  >
+                    ↷ 重做 ({redoCount})
+                  </button>
+                </>
+              )}
 
               {/* Desktop Collapse / Expand Right Palette Toggle */}
               <button
@@ -8037,34 +8057,63 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
           <div
             ref={viewportRef}
             onPointerDown={(e) => {
+              if (is3DShoulderMode) return;
               if (showShadingPopover) setShowShadingPopover(false);
               handlePointerDown(e);
             }}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerEnd}
-            onPointerCancel={handlePointerEnd}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchEnd}
-            onDoubleClick={handleDoubleClick}
+            onPointerMove={(e) => {
+              if (is3DShoulderMode) return;
+              handlePointerMove(e);
+            }}
+            onPointerUp={(e) => {
+              if (is3DShoulderMode) return;
+              handlePointerEnd(e);
+            }}
+            onPointerCancel={(e) => {
+              if (is3DShoulderMode) return;
+              handlePointerEnd(e);
+            }}
+            onTouchStart={(e) => {
+              if (is3DShoulderMode) return;
+              handleTouchStart(e);
+            }}
+            onTouchMove={(e) => {
+              if (is3DShoulderMode) return;
+              handleTouchMove(e);
+            }}
+            onTouchEnd={(e) => {
+              if (is3DShoulderMode) return;
+              handleTouchEnd(e);
+            }}
+            onTouchCancel={(e) => {
+              if (is3DShoulderMode) return;
+              handleTouchEnd(e);
+            }}
+            onDoubleClick={(e) => {
+              if (is3DShoulderMode) return;
+              handleDoubleClick(e);
+            }}
             onContextMenu={(e) => e.preventDefault()}
             className={`gk-canvas-backdrop engineering-viewport-grid relative w-full ${
               isFullscreen
                 ? "flex-1 min-h-0"
+                : is3DShoulderMode
+                ? "h-[55dvh] min-h-[380px] max-h-[600px] sm:h-[56vh] lg:h-auto lg:max-h-none lg:min-h-0 lg:flex-1"
                 : "h-[48dvh] min-h-[336px] max-h-[540px] sm:h-[52vh] lg:h-auto lg:max-h-none lg:min-h-0 lg:flex-1"
             } overflow-hidden select-none ${
               isFocusAnimating ? "gk-studio-focus-anim" : ""
             } ${
-              isSpacePressed || activeTool === "pan"
+              is3DShoulderMode
+                ? "cursor-default"
+                : isSpacePressed || activeTool === "pan"
                 ? "cursor-grab active:cursor-grabbing"
                 : activeTool === "pen" || activeTool === "lineEraser"
                 ? "cursor-crosshair"
                 : "cursor-pointer"
             }`}
             style={{
-              touchAction: imageToken === 0 ? "pan-y" : "none",
-              overscrollBehavior: imageToken === 0 ? "auto" : "contain",
+              touchAction: is3DShoulderMode ? "none" : imageToken === 0 ? "pan-y" : "none",
+              overscrollBehavior: imageToken === 0 && !is3DShoulderMode ? "auto" : "contain",
             }}
           >
             {/* 4-Corner Blueprint Industrial Crosshairs (+) */}
@@ -8073,9 +8122,36 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             <span className="gk-blueprint-crosshair bottom-2 left-2">+</span>
             <span className="gk-blueprint-crosshair bottom-2 right-2">+</span>
 
+            {is3DShoulderMode && (
+              <div className="absolute inset-0 z-30">
+                <ShoulderPad3DStudio
+                  activeHex={activeHex}
+                  activePaintMeta={activePaintMeta}
+                  customShadeHex={customShadeHex}
+                  customHighlightHex={customHighlightHex}
+                  findClosestPaintLabel={(hex) => {
+                    const m = findClosestCatalogPaint(hex);
+                    return m ? `${m.brandZh} ${m.paint.code}` : null;
+                  }}
+                  onCaptureTo2DCanvas={(dataUrl, label) => {
+                    setIs3DShoulderMode(false);
+                    loadImageSource(dataUrl, {
+                      crop: "full",
+                      autoDetectPreset: true,
+                      label: `已从 3D 肩甲节点台抓取：${label}`,
+                    });
+                  }}
+                  onSelectRampStepHex={(hex) => {
+                    setActiveHex(hex.toUpperCase());
+                  }}
+                  isBlueprint={isBlueprint}
+                />
+              </div>
+            )}
+
             <div
               ref={stackRef}
-              className="absolute left-0 top-0 shadow-2xl"
+              className={`absolute left-0 top-0 shadow-2xl ${is3DShoulderMode ? "invisible pointer-events-none" : ""}`}
               style={{
                 width: imgSize.w || 1,
                 height: imgSize.h || 1,
@@ -8104,9 +8180,9 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             </div>
 
             {/* 4-Way Draggable & Collapsible Square Floating Tool Dock */}
-            {renderFloatingToolDock()}
+            {!is3DShoulderMode && renderFloatingToolDock()}
 
-            {imageToken === 0 && (
+            {!is3DShoulderMode && imageToken === 0 && (
               <div
                 className={`absolute inset-0 z-10 flex items-center justify-center pointer-events-none ${
                   !isDockCollapsed && effectiveDockEdge === "left"
@@ -8120,37 +8196,49 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
                     : "p-4 sm:p-6"
                 }`}
               >
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`pointer-events-auto flex flex-col items-center gap-2 border-2 border-dashed px-4 py-5 sm:px-8 sm:py-7 w-full max-w-[260px] sm:max-w-xs text-center transition cursor-pointer ${
-                    isBlueprint
-                      ? "rounded-[6px] border-slate-900 dark:border-slate-500 bg-white dark:bg-slate-900 shadow-[3px_3px_0px_#0F172A]"
-                      : "rounded-2xl border-slate-300 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 shadow-xl hover:border-[var(--accent-color)]"
-                  }`}
-                >
-                  <span
-                    className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-xl text-xl sm:text-2xl text-white shadow-sm"
-                    style={{ backgroundColor: "var(--accent-color)" }}
+                <div className="pointer-events-auto flex flex-col items-center gap-2.5 w-full max-w-[280px] sm:max-w-xs">
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`flex flex-col items-center gap-2 border-2 border-dashed px-4 py-5 sm:px-8 sm:py-6 w-full text-center transition cursor-pointer ${
+                      isBlueprint
+                        ? "rounded-[6px] border-slate-900 dark:border-slate-500 bg-white dark:bg-slate-900 shadow-[3px_3px_0px_#0F172A]"
+                        : "rounded-2xl border-slate-300 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 shadow-xl hover:border-[var(--accent-color)]"
+                    }`}
                   >
-                    📤
-                  </span>
-                  <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">上传一张图片开始试色</span>
-                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
-                    支持黑白线稿 · 彩色官图 · 实拍照片，或从「调色取色画布 / 涂装库详情」一键发送图片至此
-                  </span>
-                </button>
+                    <span
+                      className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-xl text-xl sm:text-2xl text-white shadow-sm"
+                      style={{ backgroundColor: "var(--accent-color)" }}
+                    >
+                      📤
+                    </span>
+                    <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">上传一张图片开始试色</span>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
+                      支持黑白线稿 · 彩色官图 · 实拍照片，或从「调色取色画布 / 涂装库详情」一键发送图片至此
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => setIs3DShoulderMode(true)}
+                    className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-black transition cursor-pointer ${secondaryActionBtnClass}`}
+                  >
+                    <CubeIcon className="w-4 h-4 text-[var(--accent-color)] shrink-0" weight="bold" />
+                    <span>打开 3D 战锤肩甲光影节点试色台 →</span>
+                  </button>
+                </div>
               </div>
             )}
 
-            {isComparingOriginal && (
+            {!is3DShoulderMode && isComparingOriginal && (
               <div className="pointer-events-none absolute top-3 right-3 z-20 rounded-lg bg-slate-900/85 px-3 py-1 text-xs font-black text-white shadow-lg">
                 👁️ 原图对比中
               </div>
             )}
 
-            {selectedRegionIds.length > 0 && (
+            {!is3DShoulderMode && selectedRegionIds.length > 0 && (
               <div
                 className={`absolute top-3 left-16 z-20 flex items-center gap-2 px-3 py-1.5 text-xs font-extrabold text-white ${primaryActionBtnClass}`}
                 onPointerDown={(e) => e.stopPropagation()}
@@ -8167,68 +8255,74 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
             )}
 
             {/* In-Canvas Draggable & Resizable Quick Staging & Used Paint Dropdown Window (Desktop) */}
-            {renderCanvasFloatingStagingWindow()}
+            {!is3DShoulderMode && renderCanvasFloatingStagingWindow()}
           </div>
 
           {/* Row 3: Zoom bar + Status */}
           <div
-            className={`shrink-0 flex flex-wrap items-center justify-between gap-2 bg-slate-50/90 dark:bg-slate-900/80 px-3 py-1.5 ${dividerTopClass}`}
+            className={`shrink-0 flex flex-wrap items-center justify-between gap-2 bg-slate-50/90 dark:bg-slate-900/80 px-2.5 sm:px-3 py-1.5 ${dividerTopClass}`}
           >
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <button
-                type="button"
-                onClick={() => zoomAtCenter(1 / 1.25)}
-                className={`h-7 w-7 text-xs font-black cursor-pointer shrink-0 ${secondaryActionBtnClass}`}
-              >
-                −
-              </button>
-              <span
-                ref={zoomLabelRef}
-                className="min-w-[44px] text-center font-mono text-[11px] font-bold text-slate-700 dark:text-slate-200 shrink-0"
-              >
-                100%
-              </span>
-              <button
-                type="button"
-                onClick={() => zoomAtCenter(1.25)}
-                className={`h-7 w-7 text-xs font-black cursor-pointer shrink-0 ${secondaryActionBtnClass}`}
-              >
-                +
-              </button>
-              <button
-                type="button"
-                onClick={() => focusRegion(activeCropRef.current, true)}
-                className={`px-2.5 py-1 text-[11px] font-extrabold cursor-pointer whitespace-nowrap shrink-0 ${secondaryActionBtnClass}`}
-              >
-                🎯 复位
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setThumbOffsetMode((v) => {
-                    const next = !v;
-                    setStatusMessage(
-                      next
-                        ? "已开启「拇指前准星+放大镜」：触屏点按位置在拇指前方，彻底避开手指遮挡盲区"
-                        : "已切换为手指中心直接点按模式"
-                    );
-                    return next;
-                  });
-                }}
-                title="手机竖屏触控防遮挡：开启后准星位于拇指前方并联动放大镜，避免手指挡住细小零件"
-                className={`lg:hidden px-2 py-1 text-[10px] font-extrabold cursor-pointer whitespace-nowrap shrink-0 transition ${
-                  thumbOffsetMode ? primaryActionBtnClass : secondaryActionBtnClass
-                }`}
-              >
-                {thumbOffsetMode ? "⊕ 拇指准星:开" : "⊕ 拇指准星:关"}
-              </button>
-              <span className="ml-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">
-                {statusMessage}
-              </span>
-            </div>
-            <div className="hidden xl:block text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-              {shadingFullLabel} · 闭合 {gapCloseRadius}px · 色差 {fillTolerance} · 梯度 {localStepThreshold} · {imgSize.w}×{imgSize.h}
-            </div>
+            {is3DShoulderMode ? (
+              <div id="gk-3d-row3-controls-slot" className="w-full min-w-0" />
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => zoomAtCenter(1 / 1.25)}
+                    className={`h-7 w-7 text-xs font-black cursor-pointer shrink-0 ${secondaryActionBtnClass}`}
+                  >
+                    −
+                  </button>
+                  <span
+                    ref={zoomLabelRef}
+                    className="min-w-[44px] text-center font-mono text-[11px] font-bold text-slate-700 dark:text-slate-200 shrink-0"
+                  >
+                    100%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => zoomAtCenter(1.25)}
+                    className={`h-7 w-7 text-xs font-black cursor-pointer shrink-0 ${secondaryActionBtnClass}`}
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => focusRegion(activeCropRef.current, true)}
+                    className={`px-2.5 py-1 text-[11px] font-extrabold cursor-pointer whitespace-nowrap shrink-0 ${secondaryActionBtnClass}`}
+                  >
+                    🎯 复位
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setThumbOffsetMode((v) => {
+                        const next = !v;
+                        setStatusMessage(
+                          next
+                            ? "已开启「拇指前准星+放大镜」：触屏点按位置在拇指前方，彻底避开手指遮挡盲区"
+                            : "已切换为手指中心直接点按模式"
+                        );
+                        return next;
+                      });
+                    }}
+                    title="手机竖屏触控防遮挡：开启后准星位于拇指前方并联动放大镜，避免手指挡住细小零件"
+                    className={`lg:hidden px-2 py-1 text-[10px] font-extrabold cursor-pointer whitespace-nowrap shrink-0 transition ${
+                      thumbOffsetMode ? primaryActionBtnClass : secondaryActionBtnClass
+                    }`}
+                  >
+                    {thumbOffsetMode ? "⊕ 拇指准星:开" : "⊕ 拇指准星:关"}
+                  </button>
+                  <span className="ml-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">
+                    {statusMessage}
+                  </span>
+                </div>
+                <div className="hidden xl:block text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  {shadingFullLabel} · 闭合 {gapCloseRadius}px · 色差 {fillTolerance} · 梯度 {localStepThreshold} · {imgSize.w}×{imgSize.h}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Row 4 (Mobile < 1024px Only): Bottom Sheet Drawer Triggers */}
@@ -8282,6 +8376,14 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
 
         {/* MOBILE PORTRAIT BELOW-CANVAS STAGING & USED PAINT PANEL (< 1024px, placed directly below [STUDIO_CANVAS]) */}
         {renderMobileBelowCanvasStaging()}
+
+        {/* MOBILE PORTRAIT 3D SHOULDER STUDIO DROPDOWN MENUS (< 1024px, placed directly below 📌 备选与已上色漆号) */}
+        {is3DShoulderMode && (
+          <div
+            id="gk-3d-mobile-below-staging-slot"
+            className="lg:hidden w-full flex flex-col gap-2.5"
+          />
+        )}
 
         {/* DESKTOP SPLIT RESIZE HANDLE (10px wide, col-resize, double-click resets to 420px) */}
         {!isDesktopPaletteCollapsed && (

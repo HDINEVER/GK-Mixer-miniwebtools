@@ -1,4 +1,15 @@
-/** sRGB D65 Lab + CIEDE2000, matching iOS CIEDE2000.swift and the catalog importer. */
+/**
+ * ============================================================================
+ * GK PAINT MIXER — ENCRYPTED CORE ALGORITHM MODULE (ciede2000.ts)
+ * ============================================================================
+ * License: PolyForm Noncommercial License 1.0.0 (see /LICENSE)
+ * Required Notice: Copyright (c) 2025-2026 HDINEVER / HDIN Studio
+ *
+ * NOTICE: This core algorithm module is protected via stream-cipher payload
+ * encryption to prevent unauthorized commercial plagiarism while supporting
+ * 100% offline client-side execution. Commercial use is strictly prohibited.
+ * ============================================================================
+ */
 
 export interface Lab {
   l: number;
@@ -6,110 +17,63 @@ export interface Lab {
   b: number;
 }
 
-const linearize = (channel: number) => {
-  const c = channel / 255;
-  return c > 0.04045 ? ((c + 0.055) / 1.055) ** 2.4 : c / 12.92;
+const __GK_CORE_CIPHER_PAYLOAD__ = [
+  "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",
+  "CGo0+GQ1o0s="
+].join("");
+
+const _gkDeps: Record<string, any> = {
+
 };
 
-const labF = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
-
-export const labFromRgb = (r: number, g: number, b: number): Lab => {
-  const rLin = linearize(r);
-  const gLin = linearize(g);
-  const bLin = linearize(b);
-  const x = (rLin * 0.4124564 + gLin * 0.3575761 + bLin * 0.1804375) * 100;
-  const y = (rLin * 0.2126729 + gLin * 0.7151522 + bLin * 0.072175) * 100;
-  const z = (rLin * 0.0193339 + gLin * 0.119192 + bLin * 0.9503041) * 100;
-  const xN = labF(x / 95.047);
-  const yN = labF(y / 100);
-  const zN = labF(z / 108.883);
-  return {
-    l: 116 * yN - 16,
-    a: 500 * (xN - yN),
-    b: 200 * (yN - zN),
-  };
-};
-
-export const rgbFromHex = (hex: string): { r: number; g: number; b: number } | null => {
-  if (!hex || typeof hex !== "string") return null;
-  const cleaned = hex.trim().replace(/^#/, "");
-  if (!/^[0-9A-Fa-f]{6}$/.test(cleaned)) return null;
-  return {
-    r: parseInt(cleaned.slice(0, 2), 16),
-    g: parseInt(cleaned.slice(2, 4), 16),
-    b: parseInt(cleaned.slice(4, 6), 16),
-  };
-};
-
-export const labFromHex = (hex: string): Lab | null => {
-  const rgb = rgbFromHex(hex);
-  return rgb ? labFromRgb(rgb.r, rgb.g, rgb.b) : null;
-};
-
-export const deltaE2000 = (lhs: Lab, rhs: Lab, kL = 1, kC = 1, kH = 1): number => {
-  const { l: l1, a: a1, b: b1 } = lhs;
-  const { l: l2, a: a2, b: b2 } = rhs;
-
-  const c1 = Math.hypot(a1, b1);
-  const c2 = Math.hypot(a2, b2);
-  const cBar = (c1 + c2) / 2;
-  const cBar7 = cBar ** 7;
-  const g = 0.5 * (1 - Math.sqrt(cBar7 / (cBar7 + 6103515625)));
-
-  const a1p = (1 + g) * a1;
-  const a2p = (1 + g) * a2;
-  const c1p = Math.hypot(a1p, b1);
-  const c2p = Math.hypot(a2p, b2);
-
-  let h1p = Math.atan2(b1, a1p);
-  if (h1p < 0) h1p += 2 * Math.PI;
-  if (a1p === 0 && b1 === 0) h1p = 0;
-
-  let h2p = Math.atan2(b2, a2p);
-  if (h2p < 0) h2p += 2 * Math.PI;
-  if (a2p === 0 && b2 === 0) h2p = 0;
-
-  const dLp = l2 - l1;
-  const dCp = c2p - c1p;
-
-  let dhp = h2p - h1p;
-  if (c1p * c2p === 0) {
-    dhp = 0;
-  } else if (dhp > Math.PI) {
-    dhp -= 2 * Math.PI;
-  } else if (dhp < -Math.PI) {
-    dhp += 2 * Math.PI;
+function _decodeGkCorePayload(b64: string): Record<string, any> {
+  const key = "GKMixer::PolyForm-Noncommercial-1.0.0::CoreCipherKey::2026#HDINEVER";
+  const binStr = typeof atob === "function" ? atob(b64) : Buffer.from(b64, "base64").toString("binary");
+  const len = binStr.length;
+  const out = new Uint8Array(len);
+  let state = 0x5a3c9e17;
+  for (let i = 0; i < len; i++) {
+    const k = key.charCodeAt(i % key.length);
+    state = (Math.imul(state ^ k, 0x01000193) + (i & 0xff)) >>> 0;
+    const mask = ((state >>> 16) ^ state ^ k ^ (i * 31)) & 0xff;
+    out[i] = (binStr.charCodeAt(i) & 0xff) ^ mask;
   }
-  const dHp = 2 * Math.sqrt(c1p * c2p) * Math.sin(dhp / 2);
+  const code = new TextDecoder("utf-8").decode(out);
+  const mod = { exports: {} as Record<string, any> };
+  const req = (id: string) => {
+    if (id in _gkDeps) return _gkDeps[id];
+    throw new Error("Unknown core dependency: " + id);
+  };
+  const fn = new Function("module", "exports", "require", code);
+  fn(mod, mod.exports, req);
+  return mod.exports;
+}
 
-  let hp = (h1p + h2p) / 2;
-  if (c1p * c2p === 0) {
-    hp = h1p + h2p;
-  } else if (Math.abs(h1p - h2p) > Math.PI) {
-    if (h1p + h2p < 2 * Math.PI) hp += Math.PI;
-    else hp -= Math.PI;
-  }
+const _gkCore = _decodeGkCorePayload(__GK_CORE_CIPHER_PAYLOAD__);
 
-  const lBarp = (l1 + l2) / 2;
-  const cBarp = (c1p + c2p) / 2;
-  const t =
-    1 -
-    0.17 * Math.cos(hp - Math.PI / 6) +
-    0.24 * Math.cos(2 * hp) +
-    0.32 * Math.cos(3 * hp + Math.PI / 30) -
-    0.2 * Math.cos(4 * hp - (63 * Math.PI) / 180);
-
-  const hueDeg = (hp * 180) / Math.PI;
-  const dTheta = ((30 * Math.PI) / 180) * Math.exp(-Math.pow((hueDeg - 275) / 25, 2));
-  const cBarp7 = cBarp ** 7;
-  const rc = 2 * Math.sqrt(cBarp7 / (cBarp7 + 6103515625));
-  const sl = 1 + (0.015 * (lBarp - 50) ** 2) / Math.sqrt(20 + (lBarp - 50) ** 2);
-  const sc = 1 + 0.045 * cBarp;
-  const sh = 1 + 0.015 * cBarp * t;
-  const rt = -Math.sin(2 * dTheta) * rc;
-
-  const lTerm = dLp / (kL * sl);
-  const cTerm = dCp / (kC * sc);
-  const hTerm = dHp / (kH * sh);
-  return Math.sqrt(lTerm * lTerm + cTerm * cTerm + hTerm * hTerm + rt * cTerm * hTerm);
-};
+export const deltaE2000: any = _gkCore.deltaE2000;
+export const labFromHex: any = _gkCore.labFromHex;
+export const labFromRgb: any = _gkCore.labFromRgb;
+export const rgbFromHex: any = _gkCore.rgbFromHex;

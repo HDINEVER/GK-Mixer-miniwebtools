@@ -902,14 +902,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </div>
 
-              {/* Technology & Algorithms Credit */}
-              <div className="mt-2.5 border-t border-slate-200/60 pt-2.5 text-[11px] text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
+              {/* Technology, Licensing & Compliance Notice (Plan B: PolyForm Noncommercial 1.0.0 + Encrypted Core) */}
+              <div className="mt-2.5 border-t border-slate-200/60 pt-2.5 text-[11px] text-slate-500 dark:border-slate-700/60 dark:text-slate-400 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">GK-Mixer v2.0</span>
-                  <span className="text-[10px] text-slate-400">Android APK & Web Edition</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    GK Paint Mixer v2.5
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Web · iOS App Store (JP/US/HK) · Android
+                  </span>
                 </div>
-                <div className="mt-1 text-[10px] text-slate-400">
-                  Powered by: Mixbox 2.0 · CIEDE2000 · RAL · miniature-paints · ModKit Swatch
+                <div className="text-[10px] text-slate-400 leading-relaxed">
+                  Powered by: Mixbox 2.0 · CIEDE2000 · RAL Classic · OpenSCAD CSG & PBR/NPR Shader Engine
+                </div>
+                <div className="rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/60 p-2 text-[9.5px] leading-relaxed text-slate-500 dark:text-slate-400 space-y-1">
+                  <div className="font-bold text-slate-700 dark:text-slate-200">
+                    ⚖️ 开源协议与防抄袭合规声明 (PolyForm Noncommercial 1.0.0)
+                  </div>
+                  <div>
+                    1. <strong>非商业开源授权</strong>：本仓库基于 <strong>PolyForm Noncommercial License 1.0.0</strong> 发布，仅供个人涂装爱好者学习与非商业使用，严禁任何未经授权的商业用途；核心调色与光影推导算法已做加密保护。
+                  </div>
+                  <div>
+                    2. <strong>商标与原创资产免责</strong>：应用内收录之油漆品牌名称与色号仅作客观色彩检索与工艺参考，相关商标归各自权利人所有，与本应用无隶属或背书关系；内置 3D 几何体均为参数化数学建模原创生成，不含任何第三方受版权保护的模型资产。
+                  </div>
                 </div>
               </div>
             </div>

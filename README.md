@@ -1,373 +1,129 @@
-# GK Paint Mixing Simulator (GK_混色模拟器)
+# GK Paint Mixer (GK 模玩涂装与混色工作台 · Web & App Store Edition)
 
-> A futuristic, programmer-style color mixing tool for model kit painters.
-> 专为 GK 模玩爱好者设计的赛博风格调漆模拟器。
-> 模型塗装のための調色シミュレーションツールです。
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm_Noncommercial_1.0.0-2563eb?style=for-the-badge)](./LICENSE)
+[![Web Studio](https://img.shields.io/badge/Web_Studio-Live_Online-10b981?style=for-the-badge)](https://gk-colormixer.com.hdinever.top/)
+[![App Store](https://img.shields.io/badge/App_Store-JP_%7C_US_%7C_HK-0f172a?style=for-the-badge&logo=apple&logoColor=white)](https://gk-colormixer.com.hdinever.top/)
+
+> **跨平台模型模拟上色、3D 节点光影预览、物理颜料混色与涂装工程管理工具**  
+> **Web 在线工作台 + iOS App Store（🇯🇵 日区 / 🇺🇸 美区 / 🇭🇰 港区已上线）**  
+> *A Cross-Platform Miniature & Garage Kit Painting Studio, 3D Volumetric Shader Previewer, and Pigment Mixing Workbench.*
 
 ![OG Preview](./public/og-image.png)
 
-🔗 **Live Demo**: [gk-colormixer.com.hdinever.top](https://gk-colormixer.com.hdinever.top/)
+🔗 **Web 在线体验 (Live Studio)**: [gk-colormixer.com.hdinever.top](https://gk-colormixer.com.hdinever.top/)  
+📱 **iOS / iPadOS 原生版**: 已上架 Apple App Store（日本 / 美国 / 中国香港区）
 
+---
 
-## 🎨 Project Overview
+## ⚠️ 开源许可证与核心算法保护声明 (License & Core Protection Notice)
 
-**GK Mixer** allows modelers to extract colors from reference images and simulate paint mixing using real-world physics. It bridges the gap between digital RGB colors and physical pigment mixing (FDM/Resin/Paints).
+> **1. 许可证条款（[PolyForm Noncommercial License 1.0.0](./LICENSE)）**  
+> 本仓库采用 **[PolyForm Noncommercial License 1.0.0](./LICENSE)** 开放。允许个人涂装爱好者、非营利组织与学术研究进行个人学习、实验、非商业修改与分享；**明确禁止任何未经书面授权的商业用途**（包括但不限于商业竞品抄袭移植、付费 SaaS/App 分发、品牌商业集成）。
+>
+> **2. 核心算法加密与知识产权保护（Encrypted Core Engine）**  
+> 本项目中的核心调色与图形算法模块（包括 `mixbox.ts` 物理颜料潜空间引擎、`colorUtils.ts` 逆向比例求解器、`brandTintRecipe.ts` 品牌漆微调配方求解、`ciede2000.ts` 色差矩阵及 `coloringEngine.ts` 四层体积光影推导管线）在公开仓库中以**本地流密码加密载荷（Encrypted Runtime Payload）**形式交付，支持前端离线零延迟运行，但不公开明文算法逻辑。如需商业授权或品牌定制合作，请联系版权方获取书面许可。
 
-Designed with a clean, low-saturation "Macaron" aesthetic for high readability, with comprehensive mobile optimization and professional color space support.
+---
 
-## ✨ Key Features
+## 🌟 产品全景介绍 (Web 版与多端核心能力)
 
-### 1. Visual Input & Analysis (源图像输入)
-* **Smart Extraction**: Drag & drop images to auto-detect up to 8 prominent colors.
-* **Precision Tools**: Zoom/Pan loupe with manual eyedropper for precise color picking.
-* **Color Space Support**: 🆕 Native support for **sRGB, Display P3, and Adobe RGB (1998)** color spaces.
-* **Gamut Validation**: Automatic out-of-gamut detection with visual indicators.
-* **Color Decomposition**: Breaks down colors into standard RGB & CMYK percentages with real-time conversion.
+**GK Paint Mixer v2.5** 面向机甲模玩、GK 树脂白模与微缩战棋涂装玩家，打通了从**「参考图取色 ➔ 物理调漆配比 ➔ 2D/3D 实时试色与战损预览 ➔ 涂装工序编排 ➔ 跨端二维码/工程包分享」**的完整工作流。
 
-### 2. Paint Mixing Console (混色控制台)
-* **Physical Simulation**: Uses **Kubelka-Munk theory** (via Mixbox) for realistic pigment mixing (Blue + Yellow = Green), distinct from standard digital blending.
-* **Brand Matching**: Auto-matches colors to **Mr. Hobby, Gaia, Jumpwind, and Gunze** paint databases with ΔE color distance calculation.
-* **CMY Mode**: Uses only Cyan, Magenta, Yellow primaries (no K/black) for authentic subtractive color mixing.
-* **Dual Modes**:
-    * **CMYK Correction**: Standard subtractive mixing for color matching.
-    * **Universal Blend**: Base Paint + Additive X (CMY or other brands).
+### 1. 🎨 模拟试色台 (`[STUDIO_CANVAS]`：2D 智能分件上色 + 3D 几何光影节点工作台)
 
-### 3. Interactive Mixing Modes 🆕
+#### 1.1 2D 线稿与实拍分件试色沙盒
+- **多源底图支持**：支持直接上传黑白线稿、彩色设定官图或灰模实拍照片，也可从取色画布或涂装库一键送入。
+- **智能闭合填色与选区工具**：提供智能魔棒选区、边缘闭合填色、手动补线/擦线与橡皮擦微调，精准分离外甲分件。
+- **四层体积光影推导**：自动根据原图明暗梯度保留高光、主色、暗部与深暗渗线四层光影体积感，换色不丢立体细节。
+- **备选与已上色漆号联动**：画布下方/侧栏实时记录已涂品牌色号，支持一键吸色、替换同色系不同品牌油漆及原图长按对比。
 
-#### 3.1 Radial Palette Mixer (径向自选混合)
-* **Interactive Canvas**: Drag-and-drop sliders arranged radially around a central mixing circle.
-* **Real-time Blending**: Uses Mixbox latent space for physical paint mixing simulation.
-* **Volume Calculator**: Automatically calculates ml needed for each color based on target volume (10-60ml presets).
-* **Visual Feedback**: 
-  - Radial slider positioning (outer=0%, inner=100%)
-  - Mosaic pattern when no colors mixed
-  - Target color comparison ring
-  - Animated transitions with anime.js
-* **Smooth Dragging**: Elastic animations and glow effects during interaction.
-* **Color Selection**: Choose from extracted palette or use any available colors.
+#### 1.2 3D 参数化装甲与 Blender 光影涂装节点工作台 (`ShoulderPad3DStudio`)
+- **参数化 CSG 3D 几何生成与外部模型导入**：
+  - 内置无版权风险的**原创参数化重装肩甲数学建模引擎（OpenSCAD CSG 1:1 解析求解）**，支持实时调节左右总宽、前后总深、上下总高、穹顶占比、下部外扩钟形系数、浮雕金框厚度及底口倾角。
+  - 支持直接导出标准二进制 `.STL` 供 3D 打印切片，或导入外部自定义 `.STL` / `.GLB` 3D 零件模型进行涂装预览。
+- **Blender 风格 5 阶体积光影 ColorRamp 节点（Shader-to-RGB）**：
+  - 将**法线天顶受光（Normal · Light）+ 环境光遮蔽凹槽（AO）+ 棱边曲率（Curvature）+ 3D 空间多频点拍笔触（Stipple）**实时映射至 3 阶或 5 阶色带（`-25%L 深暗` ➔ `-13%L 微暗` ➔ `0%L 主色` ➔ `+16%L 提亮` ➔ `+31%L 极亮`）。
+  - 内置 **5 种涂装过渡风格**：`盒照描边`、`手涂肌理`、`战棋分层`、`喷笔柔边`、`NMM 非金属伪金属`，配合 `消光 Matte` / `半光 Satin` / `光油 Gloss` 清漆层实时切换。
+  - **🎯 喷涂分布区域向导**：新手可一键开启等高分界线模式，在 3D 表面直观查看“哪里喷暗部、哪里喷主色、哪些棱角提亮高光”。
+- **6 大独立可控精细涂装与物理战损图层（含密度/尺寸/随机种子子控件）**：
+  1. `📐 边缘高光描线`：沿折角与边框内缘自动勾勒双层刀锋棱边高光。
+  2. `⚪ 曲面白点高光`：在穹顶受光焦点生成聚光白化原点，支持无级调节高光白点聚散尺寸。
+  3. `🛢️ 做旧与污渍`：在凹槽与裙边底部自动沉积旧化渍洗污垢，支持调节污渍覆盖密度与浓淡。
+  4. `🔩 金属裸露磕碰`：在高频受撞击棱角生成双层海绵掉漆（暗褐底漆黑边 + 寒铁金属裸露内芯），支持调节掉漆密度与斑块大小。
+  5. `🗡️ 利刃流弹划痕`：生成稀疏锐利的银白金属划痕与暗色立体伴行阴影。
+  6. `💥 3D 物理弹坑凹陷与翻起漆唇`：直接在 3D 网格顶点上雕刻真实的爆矢弹坑与链锯劈砍凹槽并重算法线，同步套用**外圈翻起高光漆唇 ➔ 中圈深灰底漆坡面 ➔ 坑底寒铁裸露与中心灼烧黑核**的多层体积涂装。
+- **全端自适应交互优化**：
+  - **桌面端横屏**：支持左右双列停靠及自由拖拽、缩放的不透明独立节点窗口。
+  - **移动端竖屏**：4 个节点折叠菜单自动收纳至 `📌 备选与已上色漆号` 下方，画布 100% 无遮挡；配备专属 **3D 触屏操控栏**（`− 100% +`、`🎯 复位`、`🔄 单指:旋转 / ✥ 单指:平移` 一键切换、`斜视/正视/侧视/顶视` 快速方位及双击画布复位）。
 
-#### 3.2 Basic Color Mixer (基础色混合) 🆕
-* **Foundation Palette**: Pre-loaded with 5 Gaia base colors (White, Black, Red, Blue, Yellow).
-* **Physical Mixing Engine**: Powered by Mixbox for realistic subtractive color blending.
-* **Interactive Sliders**: Drag radial sliders to adjust each color's contribution (0-100%).
-* **Real-time Preview**: Central mixing circle updates instantly with resulting color.
-* **Volume Calculation**: Precise ml breakdown for each component based on target volume.
-* **Responsive Design**: Fluid layout adapts from mobile (240px minimum) to desktop (500px base).
-* **Performance Optimized**: Throttled rendering for smooth 60fps animation on all devices.
+---
 
-### 4. Palette Visualizer (色板生成器) 🆕
-* **Export Modes**: 
-  - **STRIPES**: Horizontal color band layout
-  - **CLAY**: Organic stone/clay texture overlay
-  - **COMIC**: Comic-style speech bubble design
-  - **TICKET**: Circular "Infinity Stones" themed arrangement
-* **High-Quality Export**: One-click export to PNG with 2x resolution scaling via html2canvas.
-* **Source Image Integration**: Optionally include reference image in visualizations.
-* **Dynamic Layout**: Automatically adapts to extracted color count (1-8 colors).
+### 2. 🏷️ 选漆与微调 (Paint Selection & Tonal Micro-Tuning)
 
-### 5. Virtual Paint Bottle (调漆瓶模拟器)
-* **Visual Feedback**: Real-time liquid simulation showing the mixed color inside a calibrated bottle.
-* **Volume Presets**: One-click scaling for 10ml, 20ml, 30ml, 40ml, 50ml, 60ml batches.
-* **Dynamic Recipe**: Instantly calculates exactly how many mL of target paint to add to the base.
-* **Fluid Animations**: Powered by `anime.js` for smooth liquid transitions.
-* **CMYK Layer Visualization**: Stacked liquid layers representing each CMYK component.
+- **品牌油漆直涂 vs. 明度色板调色**：支持直接从多品牌现成色库选漆上色，或通过色相/明度/彩度矩阵自由定制目标色。
+- **期望明暗变化阶梯**：围绕当前主色自动推导 3 阶 / 5 阶冷暖自然偏色（暗部偏冷紫、高光偏暖白）的高光与阴影色阶，并自动匹配各品牌最接近的现成油漆。
+- **双品牌漆物理混色试验台（Dual-Brand Trial Mixer）**：任选两款品牌油漆按比例拖动试混，实时预览物理减色混合色带（0%–100%），并一键反查最接近的现成单瓶色号。
 
-### 6. Brightness Algorithm (明度调配算法)
-* **Custom Algorithm**: Self-developed brightness-based color mixing calculation.
-* **Primer Recommendation**: Intelligent primer selection (white/gray/black) based on target color luminance.
-* **Accurate Ratios**: Precise percentage calculations for achieving target brightness levels.
-* **No External API**: Fully offline, instant response without network dependency.
+---
 
-### 7. Advanced UX/UI
-* **Theming**: Seamless Dark/Light mode toggle with system preference detection.
-* **i18n**: Full support for English, Chinese (中文), and Japanese (日文).
-* **Responsive Layout**: Fluid grid system adapts from mobile (320px) to desktop (1920px+).
-* **Mobile Optimization**: 🆕 Touch-optimized interactions, pinch-to-zoom, and responsive canvas rendering.
-* **Performance**: Throttled event handlers, RAF-based animations, and lazy color extraction for smooth 60fps experience.
+### 3. 🧪 混色工作台 (Pigment Mixing Workbench)
 
-## 🛠 Tech Stack
+- **广色域源图取色**：支持拖拽或粘贴图片自动提取主色调，配备高倍像素放大镜（Loupe），原生支持 **sRGB、Display P3 与 Adobe RGB (1998)** 色彩空间及超色域预警。
+- **物理颜料减色混色引擎**：基于 Kubelka-Munk 光学颜料模型（蓝 + 黄 = 绿，而非 RGB 灰），提供**实色 8 色反演配方**与**纯净 CMY 减色配方**双模式。
+- **虚拟调漆瓶与毫升/滴数换算**：支持 10ml–60ml 目标容量预设，实时动态计算底漆与各色源的毫升数（mL）与滴数比例，并给出智能水补土底漆（白底/灰底/黑底/粉底）建议。
 
-* **Frontend**: React 19, TypeScript, Vite
-* **Styling**: Tailwind CSS with custom Macaron color palette
-* **Animation**: Anime.js for fluid UI transitions
-* **Canvas**: HTML5 Canvas API with color space support
-* **Algorithm**: Mixbox (Physics-based Kubelka-Munk pigment mixing) + Custom Brightness Algorithm
-* **Export**: html2canvas for high-resolution palette exports
-* **Deployment**: Cloudflare Pages with serverless functions
+---
 
-## 📊 Technical Highlights
+### 4. 🗂️ 涂装库与色卡 (Project Library & Dual-Channel Sharing)
 
-### Color Space Implementation
-* **RGB ↔ XYZ ↔ Linear RGB** conversions with proper gamma correction
-* **sRGB, Display P3, Adobe RGB** transformation matrices (D65 white point)
-* **Gamut mapping** with visual indicators for out-of-gamut colors
-* **Canvas color space rendering** for accurate color display
+- **快捷指令式（Shortcuts-Style）涂装工序流**：
+  - 涵盖 **`🛠️ 基础打底`**、**`💨 主色喷涂`**、**`✨ 进阶光影`**、**`🛡️ 封层保护`** 与 **`🖌️ 微缩手涂`** 五大标准工序分类。
+  - 支持点按胶囊免打字切换喷笔口径/画笔型号、稀释比（如 `1:2.0`、`1:4.0 Glaze`、`1:0.3 湿盘`）、气压（`bar/psi`）与技法备注，并提供一键套用成套流派模板。
+- **工业说明书级分享海报 & `.gkmix` 跨端工程包**：
+  - 一键生成带 **90° CAD 折线部位标注、所用油漆色号清单、涂装工序流与高容错二维码**的高清分享海报。
+  - 支持导出 `.gkmix` 专属工程文件或直接扫码，在 Web 端与 iOS App Store 原生端之间**免服务器无损还原**完整可编辑涂装工程。
 
-### Performance Optimizations 🆕
-* **Responsive Canvas Sizing**: Dynamic scaling based on container width (240px-500px)
-* **Event Throttling**: Touch/mouse events limited to 16ms intervals (60fps)
-* **RAF-based Animations**: RequestAnimationFrame for smooth rendering
-* **Lazy Color Extraction**: Debounced palette generation to prevent UI blocking
-* **Memory Management**: Proper cleanup of event listeners and animation frames
+---
 
-### Mobile-First Design 🆕
-* **Touch Interactions**: Native touch event handling with gesture support
-* **Fluid Typography**: Responsive font sizing (10px-16px range)
-* **Flexible Layouts**: CSS Grid/Flexbox with breakpoint-aware spacing
-* **High-DPI Support**: Retina display optimization with proper pixel ratio handling
+### 5. 🗄️ 多品牌油漆数据库 (Multi-Brand Paint Catalog)
 
-## ⚡ Quick Start
+- 收录主流模玩与微缩涂装品牌色卡：**Gaia（盖亚）、Mr. Hobby（郡士）、Jumpwind（匠域）、Night Works（夜之工坊）、Hobby Mio（喵匠）、Sunin7（星影）、Citadel、Vallejo（AV 水性漆）、Scale75、The Army Painter** 及 **RAL Classic 工业标准色卡**。
+- 支持多词空格分词检索（如品牌 + 编号 + 颜色名）、光泽/金属/透明特性过滤、双视图切换及一键加入备选试色栏。
+
+---
+
+## ⚡ 快速开始 (Quick Start)
 
 ```bash
-# Install dependencies
+# 1. 安装依赖
 npm install
 
-# Start development server
+# 2. 启动本地开发服务器
 npm run dev
 
-# Build for production
+# 3. 构建生产环境产物
 npm run build
 
-# Preview production build locally
+# 4. 本地预览生产构建
 npm run preview
 ```
 
+---
 
-## � Git Workflow
+## ⚖️ 知识产权、第三方组件与合规声明 (IP & Compliance)
 
-### Quick Push (推送更新)
-```bash
-# Stage all changes
-git add .
-
-# Commit with message
-git commit -m "feat: your feature description"
-
-# Push to remote
-git push origin main
-```
-
-### Commit Message Convention
-| Prefix | Usage |
-|--------|-------|
-| `feat:` | New feature |
-| `fix:` | Bug fix |
-| `docs:` | Documentation update |
-| `style:` | UI/CSS changes |
-| `perf:` | Performance optimization |
-| `refactor:` | Code refactoring |
-
-### After Push
-- Cloudflare Pages auto-deploys on push to `main`
-- Wait ~1-2 minutes for build completion
-- Verify at: https://gk-colormixer.com.hdinever.top/
-
-## �📱 Browser Compatibility
-
-* **Desktop**: Chrome 94+, Firefox 94+, Safari 15+, Edge 94+
-* **Mobile**: iOS Safari 15+, Chrome for Android 94+
-* **Color Spaces**: Display P3 (Safari/iOS), sRGB (universal), Adobe RGB (calculated fallback)
-
-## 🚀 Deployment
-
-### Cloudflare Pages
-Detailed deployment guide: [CLOUDFLARE_DOCS.md](./CLOUDFLARE_DOCS.md)
-
-**Quick Deploy:**
-1. Connect Git repository to Cloudflare Dashboard
-2. Build command: `npm run build`
-3. Build output: `dist`
-4. Access: `https://your-project.pages.dev`
-
-📖 More deployment info: [docs/deployment/](./docs/deployment/)
-
-## �️ Social Media Preview (OG Image)
-
-Open Graph meta tags enable rich link previews on Telegram, Discord, Twitter, Facebook, etc.
-
-### Configuration
-Located in `index.html`:
-```html
-<meta property="og:image" content="https://gk-colormixer.com.hdinever.top/og-image.png" />
-<meta property="og:title" content="GK Paint Mixer - 模型喷涂调色模拟器" />
-<meta property="og:description" content="模型喷涂调色模拟工具..." />
-```
-
-### Image Specifications
-| Property | Value |
-|----------|-------|
-| Location | `public/og-image.png` |
-| Size | 1200 × 630 px |
-| Format | PNG |
-| Max Size | < 5MB |
-
-### Refresh Telegram Preview Cache
-If preview doesn't update after deployment:
-1. Search `@WebpageBot` in Telegram
-2. Send your URL to force re-fetch
-
-### Validation Tools
-- [opengraph.xyz](https://www.opengraph.xyz/) - Preview checker
-- [Facebook Debugger](https://developers.facebook.com/tools/debug/) - Meta debugger
-- [Twitter Card Validator](https://cards-dev.twitter.com/validator)
-
-## �📚 Documentation
-
-* [Color Space Support](./docs/COLOR_SPACE_SUPPORT.md) - Technical details on sRGB/P3/Adobe RGB implementation
-* [Mobile Optimization](./docs/MOBILE_OPTIMIZATION.md) - Performance improvements and responsive design
-* [Radial Mixer Details](./docs/RADIAL_MIXER_OPTIMIZATION.md) - Interactive mixing canvas architecture
-* [Color Calibration](./docs/COLOR_CALIBRATION.md) - Gamut mapping and color accuracy
-* [Mobile Testing Guide](./docs/MOBILE_TEST_GUIDE.md) - Cross-device testing procedures
-
-## 🔬 Architecture Notes
-
-### Utils Module Overview (工具模块概览)
-
-| 模块 | 功能 | 核心函数 |
-|------|------|---------|
-| **colorUtils.ts** | 色彩转换 & 混色算法 | `rgbToHsb`, `rgbToLab`, `hexToRgb`, `rgbToCmyk` |
-| | 图片取色 | `extractProminentColors` (量化+采样) |
-| | 物理混色 | `mixboxBlend`, `mixboxMultiBlend` (Kubelka-Munk) |
-| | 明度配方算法 | `calculateMixboxRatios`, `analyzeBrightnessStrategy` |
-| | 品牌漆数据库 | `GAIA_PAINTS`, `JUMPWIND_PAINTS`, `GUNZE_PAINTS` |
-| | 品牌漆匹配 | `findNearestPaints` (欧氏距离) |
-| | RAL 工业色 | `findNearestRAL`, `hexToRAL`, `colorDataToRAL` |
-| **mixbox.ts** | Mixbox 物理混色引擎 | `lerp`, `rgbToLatent`, `latentToRgb` |
-| | 潜空间混合 | 7维 latent space 实现真实颜料混合 |
-| **colorSpaceConverter.ts** | 色彩空间转换 | `convertToWorkingSpace`, `convertFromWorkingSpace` |
-| | 色域检测 | `isInGamut` (sRGB/P3/Adobe RGB) |
-| | Gamma 校正 | sRGB/Adobe RGB/P3 gamma 曲线 |
-| **translations.ts** | 多语言支持 | 中文/English/日本語 UI 文本 |
-
-### Key Algorithms (核心算法)
-
-**1. 明度配方算法 (`analyzeBrightnessStrategy`)**
-- 基于 HSB 明度 (B) 判断底漆选择
-- 高明度 (>70%): 白色底漆 + 少量色相
-- 中明度 (30-70%): 灰色底漆 + 色相调整
-- 低明度 (<30%): 黑色底漆 + 提亮色相
-- 输出: 调色步骤 + 各色百分比
-
-**2. Mixbox 物理混色 (`mixboxBlend`)**
-- Kubelka-Munk 颜料理论
-- 蓝 + 黄 = 绿 (非灰色)
-- 7维潜空间 (latent space) 混合
-
-**3. 图片取色 (`extractProminentColors`)**
-- 图片缩放至 300px (性能优化)
-- 量化表 (QUANT_TABLE) 快速采样
-- 跳跃采样 (SAMPLE_STRIDE=40)
-- HSB 排序返回主色
-
-### Component Structure
-```
-App.tsx                      # Main orchestrator, state management
-├── DropZone                # Image upload & drag-drop
-├── ColorPalette            # Extracted color grid with manual picker
-├── MixerResult             # CMYK analysis + brightness algorithm + bottle simulator
-├── RadialPaletteMixer      # Interactive radial canvas mixer
-├── BasicColorMixer         # Foundation color blending tool
-└── PaletteVisualizer       # Export palette as styled images
-```
-
-### Data Flow
-```
-Image Upload → Color Extraction → Color Space Conversion → Palette Display
-                                                         ↓
-Selected Color → CMYK Decomposition → Paint Matching → Brightness Calculation
-                                                         ↓
-                                   Mixing Simulation → Volume Calculation → Bottle Visualization
-```
-
-### Critical Patterns
-1. **Single Selected Color Model**: Only one color drives the mixing console at a time
-2. **Brightness Algorithm**: Custom luminance-based primer and ratio calculation
-3. **Base Paint Toggle**: Deselecting paint triggers pure CMYK mode
-4. **Volume Calculation**: Mixing bottle layers scaled by CMYK % × total volume
-5. **Canvas Coordinate Mapping**: Proper scaling between display size and pixel coordinates
+1. **非商业许可证约束（PolyForm Noncommercial 1.0.0）**：
+   - 本仓库全部源码、加密核心模块与配置数据均受 **[PolyForm Noncommercial License 1.0.0](./LICENSE)** 约束，严禁任何未经授权的商业使用或商业产品集成。
+2. **第三方开源组件致谢**：
+   - **React / Vite / Tailwind CSS / Three.js / Phosphor Icons / Vaul**：遵循 **MIT License**。
+   - **Mixbox 2.0** (Secret Weapons, Šárka Sochorová & Ondřej Jamriska)：遵循 Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)。
+3. **第三方品牌商标与原创 3D 资产免责声明**：
+   - 应用内提及之油漆品牌名称、系列名称及色号仅用于客观色彩检索、色差对比与涂装工艺记录，所有商标与品牌标识均归其各自合法权利人所有，与本项目无隶属、赞助或官方背书关系。
+   - 内置 3D 装甲预览模型均由参数化数学方程（CSG）实时生成，不内置任何受第三方版权保护的商业模型网格资产。
 
 ---
 
-## ⚖️ Credits & Licenses
+## 📄 许可证 (License)
 
-### Core Mixing Algorithm: Mixbox
-This project uses **Mixbox** for accurate pigment mixing simulation based on Kubelka-Munk theory.
-
-* **Copyright**: (c) 2022 Secret Weapons
-* **License**: Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
-* **Authors**: Šárka Sochorová and Ondřej Jamriska
-* **Source**: https://github.com/scrtwpns/mixbox
-* **Citation**: Šárka Sochorová and Ondřej Jamriska. 2021. Practical Pigment Mixing for Digital Painting. ACM Trans. Graph. 40, 6, Article 234 (December 2021), 11 pages. DOI: https://doi.org/10.1145/3478513.3480581
-
-**Note**: This project is for educational and non-commercial use. For commercial licensing, please contact the Mixbox authors.
-
-### Additional Libraries
-* **html2canvas**: MIT License - DOM screenshot capability
-* **Anime.js**: MIT License - Animation engine
-* **Tailwind CSS**: MIT License - Utility-first CSS framework
-
----
-
-## 🎯 Roadmap
-
-- [x] Basic color extraction and CMYK decomposition
-- [x] Paint brand database matching (Mr. Hobby, Gaia, Jumpwind, Gunze)
-- [x] Custom brightness algorithm for primer selection
-- [x] Dark/Light theme toggle
-- [x] Multi-language support (EN/中文/日文)
-- [x] Radial palette mixer with drag-and-drop
-- [x] Basic color mixer with foundation palette
-- [x] Color space support (sRGB, Display P3, Adobe RGB)
-- [x] Mobile optimization and responsive design
-- [x] Palette visualizer with export modes
-- [x] Cloudflare Pages deployment
-- [ ] LAB color space support for better perceptual matching
-- [ ] User-uploaded custom paint databases
-- [ ] Batch color extraction from multiple images
-- [ ] Recipe saving and sharing system
-- [ ] PWA support for offline usage
-- [ ] Advanced AI suggestions with brand preference learning
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-**Development Notes:**
-* Follow existing TypeScript patterns and interfaces
-* Maintain i18n support for all user-facing strings
-* Test on both mobile and desktop breakpoints
-* Preserve Mixbox license attribution
-* Document color space conversions clearly
-
----
-
-## 📄 License
-
-This project is licensed under **CC BY-NC 4.0** (Creative Commons Attribution-NonCommercial 4.0 International) to maintain compatibility with the Mixbox library license.
-
-**You are free to:**
-- Share: Copy and redistribute the material
-- Adapt: Remix, transform, and build upon the material
-
-**Under the following terms:**
-- Attribution: Give appropriate credit
-- NonCommercial: Not for commercial use without permission
-
-For commercial use inquiries, please contact the repository owner.
-
----
-
-**Developed with ❤️ by HDINEVER**
-
-*Last Updated: December 2025*
-
-
-
+本项目基于 **[PolyForm Noncommercial License 1.0.0](./LICENSE)** 授权发布。  
+`Required Notice: Copyright (c) 2025-2026 HDINEVER / HDIN Studio (GK Paint Mixer — https://gk-colormixer.com.hdinever.top/)`

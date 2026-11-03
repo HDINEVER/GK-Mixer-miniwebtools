@@ -1,869 +1,19 @@
-import { RGB, CMYK, HSB, LAB, ColorData, PaintBrand, ColorSpace, RALColor } from '../types';
-import * as mixbox from './mixbox';
-import { convertToWorkingSpace } from './colorSpaceConverter';
-
-// Import simple-color-converter for RAL support
-// @ts-ignore - Dynamic import for CJS module compatibility
-import simpleColorConverterModule from 'simple-color-converter';
-const simpleColorConverter = (simpleColorConverterModule as any).default || simpleColorConverterModule;
-
-// Helper to create unique IDs
-export const generateId = (): string => Math.random().toString(36).substr(2, 9);
-
-// Precomputed quantization table to avoid repeated Math.round calls during sampling
-const COLOR_QUANT_STEP = 20;
-const QUANT_TABLE: Uint8Array = (() => {
-  const table = new Uint8Array(256);
-  for (let i = 0; i < 256; i++) {
-    const quantized = Math.round(i / COLOR_QUANT_STEP) * COLOR_QUANT_STEP;
-    table[i] = quantized > 255 ? 255 : quantized;
-  }
-  return table;
-})();
-
-const SAMPLE_STRIDE = 40; // Skip 9 pixels between samples to keep extraction fast
-
 /**
- * Process pixels synchronously - safe because image is already scaled down to max 300px
- * For a 300x300 image with stride 40, we only process ~2250 pixels which is fast enough
+ * ============================================================================
+ * GK PAINT MIXER — ENCRYPTED CORE ALGORITHM MODULE (colorUtils.ts)
+ * ============================================================================
+ * License: PolyForm Noncommercial License 1.0.0 (see /LICENSE)
+ * Required Notice: Copyright (c) 2025-2026 HDINEVER / HDIN Studio
+ *
+ * NOTICE: This core algorithm module is protected via stream-cipher payload
+ * encryption to prevent unauthorized commercial plagiarism while supporting
+ * 100% offline client-side execution. Commercial use is strictly prohibited.
+ * ============================================================================
  */
-const processPixelsSync = (data: Uint8ClampedArray, colorMap: Map<number, number>, stride: number): void => {
-  const totalLength = data.length;
-  for (let index = 0; index < totalLength; index += stride) {
-    const alpha = data[index + 3];
-    if (alpha >= 128) {
-      const qr = QUANT_TABLE[data[index]];
-      const qg = QUANT_TABLE[data[index + 1]];
-      const qb = QUANT_TABLE[data[index + 2]];
-      const packed = (qr << 16) | (qg << 8) | qb;
-      colorMap.set(packed, (colorMap.get(packed) || 0) + 1);
-    }
-  }
-};
-
-export const hexToRgb = (hex: string): RGB => {
-  if (!hex || typeof hex !== 'string') return { r: 0, g: 0, b: 0 };
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
-  return result ? {
-    r: parseInt(result[1], 16),
-    g: parseInt(result[2], 16),
-    b: parseInt(result[3], 16)
-  } : { r: 0, g: 0, b: 0 };
-};
-
-export const rgbToHex = (r: number, g: number, b: number): string => {
-  const sr = Number.isFinite(r) ? Math.max(0, Math.min(255, Math.round(r))) : 0;
-  const sg = Number.isFinite(g) ? Math.max(0, Math.min(255, Math.round(g))) : 0;
-  const sb = Number.isFinite(b) ? Math.max(0, Math.min(255, Math.round(b))) : 0;
-  return "#" + ((1 << 24) + (sr << 16) + (sg << 8) + sb).toString(16).slice(1).toUpperCase();
-};
-
-export const rgbToCmyk = (r: number, g: number, b: number): CMYK => {
-  let c = 0;
-  let m = 0;
-  let y = 0;
-  let k = 0;
-
-  r = r / 255;
-  g = g / 255;
-  b = b / 255;
-
-  k = Math.min(1 - r, 1 - g, 1 - b);
-  if (k === 1) {
-    return { c: 0, m: 0, y: 0, k: 100 };
-  }
-  
-  c = (1 - r - k) / (1 - k);
-  m = (1 - g - k) / (1 - k);
-  y = (1 - b - k) / (1 - k);
-
-  return {
-    c: Math.round(c * 100),
-    m: Math.round(m * 100),
-    y: Math.round(y * 100),
-    k: Math.round(k * 100)
-  };
-};
-
-export const getContrastColor = (hex: string): string => {
-  const rgb = hexToRgb(hex);
-  // YIQ equation
-  const yiq = ((rgb.r * 299) + (rgb.g * 587) + (rgb.b * 114)) / 1000;
-  return yiq >= 128 ? '#000000' : '#FFFFFF';
-};
-
-// Simple Euclidean distance for color matching (for speed)
-export const getColorDistance = (c1: RGB, c2: RGB): number => {
-  return Math.sqrt(
-    Math.pow(c1.r - c2.r, 2) +
-    Math.pow(c1.g - c2.g, 2) +
-    Math.pow(c1.b - c2.b, 2)
-  );
-};
-
-/**
- * Convert RGB to HSB (HSV) color space
- * Based on Photoshop color picker algorithm
- * H: 0-360° (full color wheel)
- * S: 0-100% (saturation)
- * B: 0-100% (brightness/value)
- */
-export const rgbToHsb = (r: number, g: number, b: number): HSB => {
-  // Normalize RGB values to 0-1
-  const rNorm = r / 255;
-  const gNorm = g / 255;
-  const bNorm = b / 255;
-
-  const max = Math.max(rNorm, gNorm, bNorm);
-  const min = Math.min(rNorm, gNorm, bNorm);
-  const delta = max - min;
-
-  // Calculate brightness (value)
-  const brightness = max * 100;
-
-  // Calculate saturation
-  const saturation = max === 0 ? 0 : (delta / max) * 100;
-
-  // Calculate hue
-  let hue = 0;
-  if (delta !== 0) {
-    if (max === rNorm) {
-      hue = ((gNorm - bNorm) / delta + (gNorm < bNorm ? 6 : 0)) * 60;
-    } else if (max === gNorm) {
-      hue = ((bNorm - rNorm) / delta + 2) * 60;
-    } else {
-      hue = ((rNorm - gNorm) / delta + 4) * 60;
-    }
-  }
-
-  return {
-    h: Math.round(hue),
-    s: Math.round(saturation),
-    b: Math.round(brightness)
-  };
-};
-
-/**
- * Convert HSB (HSV) to RGB color space
- * Based on Photoshop color picker algorithm
- * Inverse of rgbToHsb
- */
-export const hsbToRgb = (h: number, s: number, b: number): RGB => {
-  // Normalize inputs
-  const hNorm = h / 360;
-  const sNorm = s / 100;
-  const bNorm = b / 100;
-
-  const hIndex = Math.floor(hNorm * 6);
-  const f = hNorm * 6 - hIndex;
-  const p = bNorm * (1 - sNorm);
-  const q = bNorm * (1 - f * sNorm);
-  const t = bNorm * (1 - (1 - f) * sNorm);
-
-  let rNorm = 0, gNorm = 0, bNormOut = 0;
-
-  switch (hIndex % 6) {
-    case 0: rNorm = bNorm; gNorm = t; bNormOut = p; break;
-    case 1: rNorm = q; gNorm = bNorm; bNormOut = p; break;
-    case 2: rNorm = p; gNorm = bNorm; bNormOut = t; break;
-    case 3: rNorm = p; gNorm = q; bNormOut = bNorm; break;
-    case 4: rNorm = t; gNorm = p; bNormOut = bNorm; break;
-    case 5: rNorm = bNorm; gNorm = p; bNormOut = q; break;
-  }
-
-  return {
-    r: Math.round(rNorm * 255),
-    g: Math.round(gNorm * 255),
-    b: Math.round(bNormOut * 255)
-  };
-};
-
-/**
- * Convert RGB to LAB color space (via XYZ)
- * LAB provides perceptual uniformity for color mixing
- * L: 0-100 (lightness)
- * a: -128~127 (green to red)
- * b: -128~127 (blue to yellow)
- */
-export const rgbToLab = (r: number, g: number, b: number): LAB => {
-  // Step 1: RGB to XYZ (D65 illuminant, sRGB color space)
-  let rNorm = r / 255;
-  let gNorm = g / 255;
-  let bNorm = b / 255;
-
-  // Apply gamma correction (sRGB)
-  rNorm = rNorm > 0.04045 ? Math.pow((rNorm + 0.055) / 1.055, 2.4) : rNorm / 12.92;
-  gNorm = gNorm > 0.04045 ? Math.pow((gNorm + 0.055) / 1.055, 2.4) : gNorm / 12.92;
-  bNorm = bNorm > 0.04045 ? Math.pow((bNorm + 0.055) / 1.055, 2.4) : bNorm / 12.92;
-
-  // Convert to XYZ (D65 standard observer)
-  const x = (rNorm * 0.4124564 + gNorm * 0.3575761 + bNorm * 0.1804375) * 100;
-  const y = (rNorm * 0.2126729 + gNorm * 0.7151522 + bNorm * 0.0721750) * 100;
-  const z = (rNorm * 0.0193339 + gNorm * 0.1191920 + bNorm * 0.9503041) * 100;
-
-  // Step 2: XYZ to LAB
-  // Reference white point D65
-  const refX = 95.047;
-  const refY = 100.000;
-  const refZ = 108.883;
-
-  let xNorm = x / refX;
-  let yNorm = y / refY;
-  let zNorm = z / refZ;
-
-  // Apply LAB transformation function
-  const labF = (t: number) => t > 0.008856 ? Math.pow(t, 1/3) : (7.787 * t + 16/116);
-
-  xNorm = labF(xNorm);
-  yNorm = labF(yNorm);
-  zNorm = labF(zNorm);
-
-  const l = (116 * yNorm) - 16;
-  const a = 500 * (xNorm - yNorm);
-  const bLab = 200 * (yNorm - zNorm);
-
-  return {
-    l: Math.round(l * 100) / 100,
-    a: Math.round(a * 100) / 100,
-    b: Math.round(bLab * 100) / 100
-  };
-};
-
-/**
- * Convert LAB to RGB color space (via XYZ)
- * Inverse of rgbToLab
- */
-export const labToRgb = (l: number, a: number, b: number): RGB => {
-  // Step 1: LAB to XYZ
-  let y = (l + 16) / 116;
-  let x = a / 500 + y;
-  let z = y - b / 200;
-
-  // Inverse LAB transformation
-  const labInvF = (t: number) => t > 0.206897 ? Math.pow(t, 3) : (t - 16/116) / 7.787;
-
-  x = labInvF(x);
-  y = labInvF(y);
-  z = labInvF(z);
-
-  // Reference white point D65
-  const refX = 95.047;
-  const refY = 100.000;
-  const refZ = 108.883;
-
-  x *= refX;
-  y *= refY;
-  z *= refZ;
-
-  // Step 2: XYZ to RGB
-  let rNorm = (x * 0.0032404542 + y * -0.0015371385 + z * -0.0004985314) / 100;
-  let gNorm = (x * -0.0009692660 + y * 0.0018760108 + z * 0.0004155506) / 100;
-  let bNorm = (x * 0.0005563008 + y * -0.0002040259 + z * 0.0010572252) / 100;
-
-  // Apply inverse gamma correction (sRGB)
-  rNorm = rNorm > 0.0031308 ? 1.055 * Math.pow(rNorm, 1/2.4) - 0.055 : 12.92 * rNorm;
-  gNorm = gNorm > 0.0031308 ? 1.055 * Math.pow(gNorm, 1/2.4) - 0.055 : 12.92 * gNorm;
-  bNorm = bNorm > 0.0031308 ? 1.055 * Math.pow(bNorm, 1/2.4) - 0.055 : 12.92 * bNorm;
-
-  // Clamp to valid RGB range
-  const r = Math.max(0, Math.min(255, Math.round(rNorm * 255)));
-  const g = Math.max(0, Math.min(255, Math.round(gNorm * 255)));
-  const bOut = Math.max(0, Math.min(255, Math.round(bNorm * 255)));
-
-  return { r, g, b: bOut };
-};
-
-// Mock Database of common GK paints
-// GAIA paint database (localized names are stored in `name` as Chinese names)
-export const GAIA_PAINTS: PaintBrand[] = [
-  { id: 'gaia-001', brand: 'Gaia', code: '001', name: '光泽白', hex: '#FFFFFF' },
-  { id: 'gaia-002', brand: 'Gaia', code: '002', name: '光泽黑', hex: '#000000' },
-  { id: 'gaia-003', brand: 'Gaia', code: '003', name: '光泽红', hex: '#E60012' },
-  { id: 'gaia-004', brand: 'Gaia', code: '004', name: '光泽蓝', hex: '#004098' },
-  { id: 'gaia-005', brand: 'Gaia', code: '005', name: '光泽黄', hex: '#FFD900' },
-  { id: 'gaia-006', brand: 'Gaia', code: '006', name: '消光添加剂', hex: '#F0F0F0' },
-  { id: 'gaia-007', brand: 'Gaia', code: '007', name: '透明光泽', hex: '#E0E0E0' },
-  { id: 'gaia-008', brand: 'Gaia', code: '008', name: '透明消光', hex: '#D6D6D6' },
-  { id: 'gaia-009', brand: 'Gaia', code: '009', name: '亮银', hex: '#C0C0C0' },
-  { id: 'gaia-010', brand: 'Gaia', code: '010', name: '亮金', hex: '#FFD700' },
-  { id: 'gaia-011', brand: 'Gaia', code: '011', name: '消光白', hex: '#F5F5F5' },
-  { id: 'gaia-012', brand: 'Gaia', code: '012', name: '消光黑', hex: '#1A1A1A' },
-  { id: 'gaia-013', brand: 'Gaia', code: '013', name: '浓绿 (光泽)', hex: '#006400' },
-  { id: 'gaia-014', brand: 'Gaia', code: '014', name: '红褐 (光泽)', hex: '#8B4513' },
-  { id: 'gaia-015', brand: 'Gaia', code: '015', name: '橙色 (光泽)', hex: '#FF8C00' },
-  { id: 'gaia-016', brand: 'Gaia', code: '016', name: '粉色 (光泽)', hex: '#FF69B4' },
-  { id: 'gaia-017', brand: 'Gaia', code: '017', name: '紫罗兰 (光泽)', hex: '#8A2BE2' },
-  { id: 'gaia-018', brand: 'Gaia', code: '018', name: '宝绿 (光泽)', hex: '#50C878' },
-  { id: 'gaia-019', brand: 'Gaia', code: '019', name: '薰衣草紫 (光泽)', hex: '#E6E6FA' },
-  { id: 'gaia-020', brand: 'Gaia', code: '020', name: '金属黑', hex: '#2F353B' },
-  { id: 'gaia-021', brand: 'Gaia', code: '021', name: '半光泽白', hex: '#F8F8FF' },
-  { id: 'gaia-022', brand: 'Gaia', code: '022', name: '半光泽黑', hex: '#0D0D0D' },
-  { id: 'gaia-023', brand: 'Gaia', code: '023', name: '猩红', hex: '#FF2400' },
-  { id: 'gaia-024', brand: 'Gaia', code: '024', name: '钴蓝', hex: '#0047AB' },
-  { id: 'gaia-025', brand: 'Gaia', code: '025', name: '橙黄色', hex: '#FFB347' },
-  { id: 'gaia-026', brand: 'Gaia', code: '026', name: '浅绿', hex: '#90EE90' },
-  { id: 'gaia-027', brand: 'Gaia', code: '027', name: '深绿', hex: '#013220' },
-  { id: 'gaia-028', brand: 'Gaia', code: '028', name: '石绿', hex: '#556B2F' },
-  { id: 'gaia-030', brand: 'Gaia', code: '030', name: '半光泽添加剂', hex: '#EBEBEB' },
-  { id: 'gaia-031', brand: 'Gaia', code: '031', name: '纯白', hex: '#FEFEFE' },
-  { id: 'gaia-032', brand: 'Gaia', code: '032', name: '纯黑', hex: '#050505' },
-  { id: 'gaia-033', brand: 'Gaia', code: '033', name: '纯蓝', hex: '#00B7EB' },
-  { id: 'gaia-034', brand: 'Gaia', code: '034', name: '纯红', hex: '#FF00FF' },
-  { id: 'gaia-035', brand: 'Gaia', code: '035', name: '纯黄', hex: '#FFFF33' },
-  { id: 'gaia-036', brand: 'Gaia', code: '036', name: '纯绿', hex: '#00FF00' },
-  { id: 'gaia-037', brand: 'Gaia', code: '037', name: '光泽紫罗兰', hex: '#9400D3' },
-  { id: 'gaia-041', brand: 'Gaia', code: '041', name: '光泽透明红', hex: '#CC0000' },
-  { id: 'gaia-042', brand: 'Gaia', code: '042', name: '光泽透明橙', hex: '#FF8000' },
-  { id: 'gaia-043', brand: 'Gaia', code: '043', name: '光泽透明黑', hex: '#333333' },
-  { id: 'gaia-044', brand: 'Gaia', code: '044', name: '光泽透明蓝', hex: '#0000CC' },
-  { id: 'gaia-045', brand: 'Gaia', code: '045', name: '光泽透明黄', hex: '#FFFF00' },
-  { id: 'gaia-046', brand: 'Gaia', code: '046', name: '光泽透明褐', hex: '#8B4513' },
-  { id: 'gaia-047', brand: 'Gaia', code: '047', name: '光泽透明紫', hex: '#800080' },
-  { id: 'gaia-048', brand: 'Gaia', code: '048', name: '光泽透明绿', hex: '#008000' },
-  { id: 'gaia-049', brand: 'Gaia', code: '049', name: '光泽透明粉', hex: '#FFC0CB' },
-  { id: 'gaia-050', brand: 'Gaia', code: '050', name: '光泽透明白', hex: '#F8F8FF' },
-  { id: 'gaia-051', brand: 'Gaia', code: '051', name: '肌肤色', hex: '#FFDAB9' },
-  { id: 'gaia-052', brand: 'Gaia', code: '052', name: '肌肤白色', hex: '#FFF5EE' },
-  { id: 'gaia-053', brand: 'Gaia', code: '053', name: '肌肤粉色', hex: '#FFC1C1' },
-  { id: 'gaia-054', brand: 'Gaia', code: '054', name: '肌肤橙色', hex: '#FFCC99' },
-  { id: 'gaia-059', brand: 'Gaia', code: '059', name: '透明肌肤粉', hex: '#FFCCCC' },
-  { id: 'gaia-060', brand: 'Gaia', code: '060', name: '透明肌肤橙', hex: '#FFD1B3' },
-  { id: 'gaia-061', brand: 'Gaia', code: '061', name: '午夜蓝', hex: '#191970' },
-  { id: 'gaia-062', brand: 'Gaia', code: '062', name: '中蓝', hex: '#7B68EE' },
-  { id: 'gaia-063', brand: 'Gaia', code: '063', name: '蓝灰色', hex: '#6699CC' },
-  { id: 'gaia-071', brand: 'Gaia', code: '071', name: '中间灰 I', hex: '#E8E8E8' },
-  { id: 'gaia-072', brand: 'Gaia', code: '072', name: '中间灰 II', hex: '#C0C0C0' },
-  { id: 'gaia-073', brand: 'Gaia', code: '073', name: '中间灰 III', hex: '#909090' },
-  { id: 'gaia-074', brand: 'Gaia', code: '074', name: '中间灰 IV', hex: '#606060' },
-  { id: 'gaia-075', brand: 'Gaia', code: '075', name: '中间灰 V', hex: '#303030' },
-  { id: 'gaia-101', brand: 'Gaia', code: '101', name: '荧光蓝', hex: '#00FFFF' },
-  { id: 'gaia-102', brand: 'Gaia', code: '102', name: '荧光粉', hex: '#FF1493' },
-  { id: 'gaia-103', brand: 'Gaia', code: '103', name: '荧光红', hex: '#FF0000' },
-  { id: 'gaia-104', brand: 'Gaia', code: '104', name: '荧光绿', hex: '#39FF14' },
-  { id: 'gaia-105', brand: 'Gaia', code: '105', name: '荧光黄', hex: '#CCFF00' },
-  { id: 'gaia-106', brand: 'Gaia', code: '106', name: '荧光橙', hex: '#FF4500' },
-  { id: 'gaia-107', brand: 'Gaia', code: '107', name: '荧光黄绿', hex: '#ADFF2F' },
-  { id: 'gaia-108', brand: 'Gaia', code: '108', name: '荧光蓝绿', hex: '#00FF7F' },
-  { id: 'gaia-110', brand: 'Gaia', code: '110', name: '荧光透明', hex: '#F0F8FF' },
-  { id: 'gaia-121', brand: 'Gaia', code: '121', name: '星光银', hex: '#C5C5C5' },
-  { id: 'gaia-122', brand: 'Gaia', code: '122', name: '星光金', hex: '#E5C100' },
-  { id: 'gaia-123', brand: 'Gaia', code: '123', name: '星光铝', hex: '#A9A9A9' },
-  { id: 'gaia-124', brand: 'Gaia', code: '124', name: '星光铜', hex: '#B87333' },
-  { id: 'gaia-125', brand: 'Gaia', code: '125', name: '星光铁', hex: '#434B4D' },
-  { id: 'gaia-131', brand: 'Gaia', code: '131', name: '珍珠银', hex: '#E0E0E0' },
-  { id: 'gaia-132', brand: 'Gaia', code: '132', name: '珍珠金', hex: '#FFF8DC' },
-  { id: 'gaia-133', brand: 'Gaia', code: '133', name: '珍珠铜', hex: '#CD7F32' },
-  { id: 'gaia-134', brand: 'Gaia', code: '134', name: '棱镜紫绿', hex: '#9370DB' },
-  { id: 'gaia-135', brand: 'Gaia', code: '135', name: '棱镜蓝绿', hex: '#20B2AA' },
-  { id: 'gaia-136', brand: 'Gaia', code: '136', name: '棱镜红金', hex: '#DA70D6' },
-  { id: 'gaia-201', brand: 'Gaia', code: '201', name: '暗黄色 1', hex: '#BDB76B' },
-  { id: 'gaia-202', brand: 'Gaia', code: '202', name: '德国迷彩绿', hex: '#556B2F' },
-  { id: 'gaia-203', brand: 'Gaia', code: '203', name: '德国迷彩褐', hex: '#8B4513' },
-  { id: 'gaia-204', brand: 'Gaia', code: '204', name: '暗黄色 2', hex: '#EEE8AA' },
-  { id: 'gaia-221', brand: 'Gaia', code: '221', name: '德国灰色', hex: '#4D4D4D' },
-  { id: 'gaia-222', brand: 'Gaia', code: '222', name: '铁锈红色', hex: '#800000' },
-  { id: 'gaia-223', brand: 'Gaia', code: '223', name: '战车内构色', hex: '#F5DEB3' },
-  { id: 'gaia-EX01', brand: 'Gaia', code: 'EX01', name: '光泽白 (大瓶)', hex: '#FFFFFF' },
-  { id: 'gaia-EX02', brand: 'Gaia', code: 'EX02', name: '光泽黑 (大瓶)', hex: '#000000' },
-  { id: 'gaia-EX03', brand: 'Gaia', code: 'EX03', name: '光泽透明 (大瓶)', hex: '#E0E0E0' },
-  { id: 'gaia-EX04', brand: 'Gaia', code: 'EX04', name: '消光透明 (大瓶)', hex: '#D6D6D6' },
-  { id: 'gaia-EX07', brand: 'Gaia', code: 'EX07', name: '星光银 (大瓶)', hex: '#C0C0C0' },
-  { id: 'gaia-EX08', brand: 'Gaia', code: 'EX08', name: '星光金 (大瓶)', hex: '#FFD700' },
-  { id: 'gaia-GP-01', brand: 'Gaia', code: 'GP-01', name: '海洋蓝', hex: '#120A8F' },
-  { id: 'gaia-GP-02', brand: 'Gaia', code: 'GP-02', name: '魔幻红', hex: '#D9001B' },
-  { id: 'gaia-GP-02p', brand: 'Gaia', code: 'GP-02p', name: '超级珍珠红', hex: '#DC143C' },
-  { id: 'gaia-GP-03', brand: 'Gaia', code: 'GP-03', name: '海洋深蓝 2', hex: '#000080' },
-  { id: 'gaia-GP-04', brand: 'Gaia', code: 'GP-04', name: '星光珍珠白', hex: '#F0F8FF' },
-  { id: 'gaia-GP-05', brand: 'Gaia', code: 'GP-05', name: '超级海洋蓝', hex: '#0047AB' },
-  { id: 'gaia-GP-05p', brand: 'Gaia', code: 'GP-05p', name: '超级珍珠蓝', hex: '#4169E1' },
-  { id: 'gaia-GP-06', brand: 'Gaia', code: 'GP-06', name: '透明海洋蓝', hex: '#0000CD' },
-  { id: 'gaia-GP-07', brand: 'Gaia', code: 'GP-07', name: '高级电镀银', hex: '#DCDCDC' },
-  { id: 'gaia-GP-08', brand: 'Gaia', code: 'GP-08', name: '镜面电镀银', hex: '#E3E4E5' },
-  { id: 'gaia-GP-09', brand: 'Gaia', code: 'GP-09', name: '棱镜蓝黑', hex: '#0A0A1A' },
-  { id: 'gaia-NC001', brand: 'Gaia', code: 'NC001', name: '钢白', hex: '#E6E6FA' },
-  { id: 'gaia-NC002', brand: 'Gaia', code: 'NC002', name: '冰霜黑', hex: '#2C2C2C' },
-  { id: 'gaia-NC003', brand: 'Gaia', code: 'NC003', name: '火焰红', hex: '#FF4500' },
-  { id: 'gaia-NC004', brand: 'Gaia', code: 'NC004', name: '万蓝色', hex: '#6495ED' },
-  { id: 'gaia-NC005', brand: 'Gaia', code: 'NC005', name: '浅暖灰', hex: '#D3D3D3' },
-  { id: 'gaia-NC006', brand: 'Gaia', code: 'NC006', name: '蓝雾白', hex: '#F0F8FF' },
-  { id: 'gaia-NC007', brand: 'Gaia', code: 'NC007', name: '关节灰', hex: '#708090' },
-  { id: 'gaia-VO-01', brand: 'Gaia', code: 'VO-01', name: '暖白', hex: '#FDF5E6' },
-  { id: 'gaia-VO-02', brand: 'Gaia', code: 'VO-02', name: '冰钴蓝', hex: '#0047AB' },
-  { id: 'gaia-VO-03', brand: 'Gaia', code: 'VO-03', name: '鲜艳橙', hex: '#FF4500' },
-  { id: 'gaia-VO-04', brand: 'Gaia', code: 'VO-04', name: '骨架金属色', hex: '#555555' },
-  { id: 'gaia-EV-01', brand: 'Gaia', code: 'EV-01', name: 'EVA 紫', hex: '#6A5ACD' },
-  { id: 'gaia-EV-02', brand: 'Gaia', code: 'EV-02', name: 'EVA 绿', hex: '#32CD32' },
-  { id: 'gaia-EV-03', brand: 'Gaia', code: 'EV-03', name: 'EVA 黄', hex: '#FFD700' }
-];
-
-// Jumpwind/Jiangyu paint database
-export const JUMPWIND_PAINTS: PaintBrand[] = [
-  // NEO Basic Series (NO.xxx)
-  { id: 'jw-NO-001', brand: 'Jumpwind', code: 'NO.001', name: '白色 / White', hex: '#FFFFFF' },
-  { id: 'jw-NO-002', brand: 'Jumpwind', code: 'NO.002', name: '黑色 / Black', hex: '#000000' },
-  { id: 'jw-NO-003', brand: 'Jumpwind', code: 'NO.003', name: '红色 / Red', hex: '#D81C26' },
-  { id: 'jw-NO-004', brand: 'Jumpwind', code: 'NO.004', name: '黄色 / Yellow', hex: '#FFD200' },
-  { id: 'jw-NO-005', brand: 'Jumpwind', code: 'NO.005', name: '蓝色 / Blue', hex: '#005BAC' },
-  { id: 'jw-NO-006', brand: 'Jumpwind', code: 'NO.006', name: '绿色 / Green', hex: '#009140' },
-  { id: 'jw-NO-007', brand: 'Jumpwind', code: 'NO.007', name: '橙色 / Orange', hex: '#F37021' },
-  { id: 'jw-NO-008', brand: 'Jumpwind', code: 'NO.008', name: '紫色 / Purple', hex: '#6C3B95' },
-  { id: 'jw-NO-009', brand: 'Jumpwind', code: 'NO.009', name: '棕色 / Brown', hex: '#8B4513' },
-  { id: 'jw-NO-010', brand: 'Jumpwind', code: 'NO.010', name: '光泽透明 / Clear', hex: '#F2F2F2' },
-  { id: 'jw-NO-011', brand: 'Jumpwind', code: 'NO.011', name: '半光透明 / Semi-gloss Clear', hex: '#E6E6E6' },
-  { id: 'jw-NO-012', brand: 'Jumpwind', code: 'NO.012', name: '消光透明 / Matt Clear', hex: '#D9D9D9' },
-  { id: 'jw-NO-017', brand: 'Jumpwind', code: 'NO.017', name: '桃红 / Pink', hex: '#F15A98' },
-  { id: 'jw-NO-018', brand: 'Jumpwind', code: 'NO.018', name: '橙黄 / Orange Yellow', hex: '#FFAE00' },
-  { id: 'jw-NO-019', brand: 'Jumpwind', code: 'NO.019', name: '天蓝 / Sky Blue', hex: '#00A0E9' },
-  { id: 'jw-NO-020', brand: 'Jumpwind', code: 'NO.020', name: '中灰 / Neutral Grey', hex: '#808080' },
-  { id: 'jw-NO-021', brand: 'Jumpwind', code: 'NO.021', name: '半光白 / Semi-gloss White', hex: '#FDFDFD' },
-  { id: 'jw-NO-022', brand: 'Jumpwind', code: 'NO.022', name: '半光黑 / Semi-gloss Black', hex: '#141414' },
-  { id: 'jw-NO-023', brand: 'Jumpwind', code: 'NO.023', name: '亮红 / Shine Red', hex: '#E60012' },
-  { id: 'jw-NO-024', brand: 'Jumpwind', code: 'NO.024', name: '钴蓝 / Cobalt Blue', hex: '#0047AB' },
-  { id: 'jw-NO-025', brand: 'Jumpwind', code: 'NO.025', name: '钴紫 / Cobalt Purple', hex: '#4B0082' },
-  { id: 'jw-NO-026', brand: 'Jumpwind', code: 'NO.026', name: '橙红 / Orange Red', hex: '#FF4500' },
-  { id: 'jw-NO-027', brand: 'Jumpwind', code: 'NO.027', name: '草绿 / Grass Green', hex: '#409D37' },
-  { id: 'jw-NO-028', brand: 'Jumpwind', code: 'NO.028', name: '薰衣草紫 / Lavender', hex: '#B57EDC' },
-  { id: 'jw-NO-029', brand: 'Jumpwind', code: 'NO.029', name: '木棕 / Wood Brown', hex: '#C19A6B' },
-  { id: 'jw-NO-030', brand: 'Jumpwind', code: 'NO.030', name: '雪灰 / Snow Gray', hex: '#DCDCDC' },
-  { id: 'jw-NO-031', brand: 'Jumpwind', code: 'NO.031', name: '消光白 / Matt White', hex: '#FAF9F6' },
-  { id: 'jw-NO-032', brand: 'Jumpwind', code: 'NO.032', name: '消光黑 / Matt Black', hex: '#0F0F0F' },
-  { id: 'jw-NO-033', brand: 'Jumpwind', code: 'NO.033', name: '舰底红 / Hull Red', hex: '#6C2E2E' },
-  { id: 'jw-NO-034', brand: 'Jumpwind', code: 'NO.034', name: '海军蓝 / Navy Blue', hex: '#1F2F3E' },
-  { id: 'jw-NO-035', brand: 'Jumpwind', code: 'NO.035', name: '沙黄 / Sandy Yellow', hex: '#C2B280' },
-  { id: 'jw-NO-036', brand: 'Jumpwind', code: 'NO.036', name: '暗绿 / Dark Green', hex: '#013220' },
-  { id: 'jw-NO-037', brand: 'Jumpwind', code: 'NO.037', name: '桃木红 / Mahogany', hex: '#4D2626' },
-  { id: 'jw-NO-038', brand: 'Jumpwind', code: 'NO.038', name: '沙棕 / Sandy Brown', hex: '#C8AD7F' },
-  { id: 'jw-NO-039', brand: 'Jumpwind', code: 'NO.039', name: '海鸥灰 / Gull Gray', hex: '#9EA2A2' },
-  { id: 'jw-NO-040', brand: 'Jumpwind', code: 'NO.040', name: '德国灰 / German Gray', hex: '#4D5656' },
-  // MEKA Series (MC.xxx)
-  { id: 'jw-MC-51', brand: 'Jumpwind', code: 'MC.51', name: '冷白 / Cool White', hex: '#F0F8FF' },
-  { id: 'jw-MC-52', brand: 'Jumpwind', code: 'MC.52', name: '明红 / Bright Red', hex: '#EE1C25' },
-  { id: 'jw-MC-53', brand: 'Jumpwind', code: 'MC.53', name: '明黄 / Bright Yellow', hex: '#FFDD00' },
-  { id: 'jw-MC-54', brand: 'Jumpwind', code: 'MC.54', name: '明蓝 / Bright Blue', hex: '#0055A4' },
-  { id: 'jw-MC-55', brand: 'Jumpwind', code: 'MC.55', name: '冻绿 / Trick Green', hex: '#008F81' },
-  { id: 'jw-MC-56', brand: 'Jumpwind', code: 'MC.56', name: '木槿紫 / Hibiscus Purple', hex: '#B088D0' },
-  { id: 'jw-MC-57', brand: 'Jumpwind', code: 'MC.57', name: '砂岩红 / Malmstone Red', hex: '#E38676' },
-  { id: 'jw-MC-58', brand: 'Jumpwind', code: 'MC.58', name: '波尔多红 / Bordeaux Red', hex: '#800020' },
-  { id: 'jw-MC-59', brand: 'Jumpwind', code: 'MC.59', name: '幻影灰 / Phantom Gray', hex: '#3E424B' },
-  { id: 'jw-MC-60', brand: 'Jumpwind', code: 'MC.60', name: '石绿 / Stone Green', hex: '#508B8D' },
-  { id: 'jw-MC-61', brand: 'Jumpwind', code: 'MC.61', name: '沙白 / Sandy White', hex: '#E8E4C9' },
-  { id: 'jw-MC-62', brand: 'Jumpwind', code: 'MC.62', name: '橄榄绿 / Olive Green', hex: '#808000' },
-  { id: 'jw-MC-63', brand: 'Jumpwind', code: 'MC.63', name: '深橄榄绿 / Deep Olive Green', hex: '#556B2F' },
-  { id: 'jw-MC-64', brand: 'Jumpwind', code: 'MC.64', name: '夜空蓝 / Night Blue', hex: '#191970' },
-  { id: 'jw-MC-65', brand: 'Jumpwind', code: 'MC.65', name: '亮蓝 / Shine Blue', hex: '#4169E1' },
-  { id: 'jw-MC-66', brand: 'Jumpwind', code: 'MC.66', name: '茜草红 / Madder Red', hex: '#E32636' },
-  { id: 'jw-MC-67', brand: 'Jumpwind', code: 'MC.67', name: '冰钴蓝 / Ice Cobalt', hex: '#008ECC' },
-  { id: 'jw-MC-68', brand: 'Jumpwind', code: 'MC.68', name: '翠绿 / Emerald Green', hex: '#50C878' },
-  { id: 'jw-MC-69', brand: 'Jumpwind', code: 'MC.69', name: '珊瑚橙 / Coral Orange', hex: '#FF7F50' },
-  { id: 'jw-MC-70', brand: 'Jumpwind', code: 'MC.70', name: '珊瑚粉 / Coral Pink', hex: '#F88379' },
-  { id: 'jw-MC-71', brand: 'Jumpwind', code: 'MC.71', name: '绯红 / Scarlet Red', hex: '#FF2400' },
-  { id: 'jw-MC-72', brand: 'Jumpwind', code: 'MC.72', name: '薄群青 / Light Ultramarine', hex: '#4D88FF' },
-  { id: 'jw-MC-73', brand: 'Jumpwind', code: 'MC.73', name: '山吹橙 / Kerria Orange', hex: '#FFBF00' },
-  { id: 'jw-MC-74', brand: 'Jumpwind', code: 'MC.74', name: '薄荷绿 / Mint Green', hex: '#98FF98' },
-  { id: 'jw-MC-75', brand: 'Jumpwind', code: 'MC.75', name: '樱花粉 / Sakura Pink', hex: '#FFB7C5' },
-  { id: 'jw-MC-76', brand: 'Jumpwind', code: 'MC.76', name: '酒红 / Wine Red', hex: '#722F37' },
-  { id: 'jw-MC-77', brand: 'Jumpwind', code: 'MC.77', name: '栗红 / Chestnut Red', hex: '#954535' },
-  { id: 'jw-MC-78', brand: 'Jumpwind', code: 'MC.78', name: '风暴蓝 / Storm Blue', hex: '#4682B4' },
-  { id: 'jw-MC-79', brand: 'Jumpwind', code: 'MC.79', name: '风暴紫 / Storm Purple', hex: '#483D8B' },
-  { id: 'jw-MC-80', brand: 'Jumpwind', code: 'MC.80', name: '风暴灰 / Storm Gray', hex: '#708090' },
-  { id: 'jw-MC-81', brand: 'Jumpwind', code: 'MC.81', name: '幽灵白 / Ghost White', hex: '#F8F8FF' },
-  { id: 'jw-MC-82', brand: 'Jumpwind', code: 'MC.82', name: '火焰红 / Flame Red', hex: '#FF4500' },
-  { id: 'jw-MC-83', brand: 'Jumpwind', code: 'MC.83', name: '浅柑 / Light Orange', hex: '#FFB347' },
-  { id: 'jw-MC-84', brand: 'Jumpwind', code: 'MC.84', name: '水蓝 / Aqua Blue', hex: '#00FFFF' },
-  { id: 'jw-MC-85', brand: 'Jumpwind', code: 'MC.85', name: '卡其 / Khaki', hex: '#F0E68C' },
-  { id: 'jw-MC-86', brand: 'Jumpwind', code: 'MC.86', name: '野莓红 / Berry Red', hex: '#C71585' },
-  { id: 'jw-MC-87', brand: 'Jumpwind', code: 'MC.87', name: '野莓紫 / Berry Purple', hex: '#800080' },
-  { id: 'jw-MC-88', brand: 'Jumpwind', code: 'MC.88', name: '樱草黄 / Primrose Yellow', hex: '#FDE910' },
-  { id: 'jw-MC-89', brand: 'Jumpwind', code: 'MC.89', name: '火山灰 / Volcanic Ash', hex: '#737C82' },
-  { id: 'jw-MC-90', brand: 'Jumpwind', code: 'MC.90', name: '野蕨绿 / Fern Green', hex: '#4F7942' },
-  { id: 'jw-MC-91', brand: 'Jumpwind', code: 'MC.91', name: '装备白 / Device White', hex: '#F5F5F5' },
-  { id: 'jw-MC-92', brand: 'Jumpwind', code: 'MC.92', name: '装备黄 / Device Yellow', hex: '#E3DFA6' },
-  { id: 'jw-MC-93', brand: 'Jumpwind', code: 'MC.93', name: '装备灰 / Device Gray', hex: '#A9A9A9' },
-  { id: 'jw-MC-94', brand: 'Jumpwind', code: 'MC.94', name: '装备蓝 / Device Blue', hex: '#ADD8E6' },
-  { id: 'jw-MC-95', brand: 'Jumpwind', code: 'MC.95', name: '内构灰 / Structure Gray', hex: '#696969' },
-  { id: 'jw-MC-96', brand: 'Jumpwind', code: 'MC.96', name: '太空白 / Space White', hex: '#EFEFEF' },
-  { id: 'jw-MC-97', brand: 'Jumpwind', code: 'MC.97', name: '制空蓝 / Air Superiority Blue', hex: '#72A0C1' },
-  { id: 'jw-MC-98', brand: 'Jumpwind', code: 'MC.98', name: '雾霾蓝 / Haze Blue', hex: '#5F7686' },
-  { id: 'jw-MC-99', brand: 'Jumpwind', code: 'MC.99', name: '暗夜紫 / Dark Night Purple', hex: '#3A243B' },
-  { id: 'jw-MC-100', brand: 'Jumpwind', code: 'MC.100', name: '午夜蓝 / Midnight Blue', hex: '#191970' }
-];
-
-// Gunze paint database
-export const GUNZE_PAINTS: PaintBrand[] = [
-  { id: 'gz-N-1', brand: 'Gunze', code: 'N-1', name: '白色 / White', hex: '#FFFFFF' },
-  { id: 'gz-N-2', brand: 'Gunze', code: 'N-2', name: '黑色 / Black', hex: '#000000' },
-  { id: 'gz-N-3', brand: 'Gunze', code: 'N-3', name: '红色 / Red', hex: '#E60012' },
-  { id: 'gz-N-4', brand: 'Gunze', code: 'N-4', name: '黄色 / Yellow', hex: '#FFD700' },
-  { id: 'gz-N-5', brand: 'Gunze', code: 'N-5', name: '蓝色 / Blue', hex: '#0047AB' },
-  { id: 'gz-N-6', brand: 'Gunze', code: 'N-6', name: '绿色 / Green', hex: '#008000' },
-  { id: 'gz-N-7', brand: 'Gunze', code: 'N-7', name: '棕色 / Brown', hex: '#8B4513' },
-  { id: 'gz-N-8', brand: 'Gunze', code: 'N-8', name: '银色 / Silver', hex: '#C0C0C0' },
-  { id: 'gz-N-9', brand: 'Gunze', code: 'N-9', name: '金色 / Gold', hex: '#FFD700' },
-  { id: 'gz-N-10', brand: 'Gunze', code: 'N-10', name: '铜色 / Copper', hex: '#B87333' },
-  { id: 'gz-N-11', brand: 'Gunze', code: 'N-11', name: '消光白色 / Flat White', hex: '#F5F5F5' },
-  { id: 'gz-N-12', brand: 'Gunze', code: 'N-12', name: '消光黑色 / Flat Black', hex: '#1A1A1A' },
-  { id: 'gz-N-13', brand: 'Gunze', code: 'N-13', name: '消光红色 / Flat Red', hex: '#CD5C5C' },
-  { id: 'gz-N-14', brand: 'Gunze', code: 'N-14', name: '橙色 / Orange', hex: '#FFA500' },
-  { id: 'gz-N-15', brand: 'Gunze', code: 'N-15', name: '亮蓝色 / Bright Blue', hex: '#1E90FF' },
-  { id: 'gz-N-16', brand: 'Gunze', code: 'N-16', name: '黄绿色 / Yellow Green', hex: '#9ACD32' },
-  { id: 'gz-N-17', brand: 'Gunze', code: 'N-17', name: '船底色 / Hull Red', hex: '#800000' },
-  { id: 'gz-N-18', brand: 'Gunze', code: 'N-18', name: '黑铁色 / Black Iron', hex: '#2F353B' },
-  { id: 'gz-N-19', brand: 'Gunze', code: 'N-19', name: '粉红色 / Pink', hex: '#FFC0CB' },
-  { id: 'gz-N-20', brand: 'Gunze', code: 'N-20', name: '消光透明漆 / Flat Clear', hex: '#E8E8E8' },
-  { id: 'gz-N-21', brand: 'Gunze', code: 'N-21', name: '米白色 / Beige', hex: '#FAF0E6' },
-  { id: 'gz-N-22', brand: 'Gunze', code: 'N-22', name: '中灰色 / Neutral Grey', hex: '#808080' },
-  { id: 'gz-N-23', brand: 'Gunze', code: 'N-23', name: '亮红色 / Bright Red', hex: '#FF2400' },
-  { id: 'gz-N-24', brand: 'Gunze', code: 'N-24', name: '黄橙色 / Yellow Orange', hex: '#FFCC00' },
-  { id: 'gz-N-25', brand: 'Gunze', code: 'N-25', name: '天蓝色 / Sky Blue', hex: '#87CEEB' },
-  { id: 'gz-N-26', brand: 'Gunze', code: 'N-26', name: '亮绿色 / Bright Green', hex: '#228B22' },
-  { id: 'gz-N-27', brand: 'Gunze', code: 'N-27', name: '木甲板色 / Wood Deck', hex: '#D2B48C' },
-  { id: 'gz-N-28', brand: 'Gunze', code: 'N-28', name: '金属黑色 / Metallic Black', hex: '#2F2F2F' },
-  { id: 'gz-N-30', brand: 'Gunze', code: 'N-30', name: '透明漆 / Clear', hex: '#FFFFFF' },
-  { id: 'gz-N-32', brand: 'Gunze', code: 'N-32', name: '德国灰色 / German Grey', hex: '#4D4D4D' },
-  { id: 'gz-N-33', brand: 'Gunze', code: 'N-33', name: '红褐色 / Red Brown', hex: '#80461B' },
-  { id: 'gz-N-34', brand: 'Gunze', code: 'N-34', name: '奶黄色 / Cream Yellow', hex: '#FFFDD0' },
-  { id: 'gz-N-35', brand: 'Gunze', code: 'N-35', name: '钴蓝色 / Cobalt Blue', hex: '#0047AB' },
-  { id: 'gz-N-36', brand: 'Gunze', code: 'N-36', name: '暗绿 Nakajima / Dark Green Nakajima', hex: '#124428' },
-  { id: 'gz-N-37', brand: 'Gunze', code: 'N-37', name: '木棕色 / Wood Brown', hex: '#8B5A2B' },
-  { id: 'gz-N-38', brand: 'Gunze', code: 'N-38', name: '铁红色 / Iron Red', hex: '#782F2F' },
-  { id: 'gz-N-39', brand: 'Gunze', code: 'N-39', name: '紫色 / Purple', hex: '#800080' },
-  { id: 'gz-N-40', brand: 'Gunze', code: 'N-40', name: '消光添加剂 / Flat Base', hex: '#D3D3D3' },
-  { id: 'gz-N-43', brand: 'Gunze', code: 'N-43', name: '栗色 / Maroon', hex: '#800000' },
-  { id: 'gz-N-44', brand: 'Gunze', code: 'N-44', name: '肌肤色 / Skin Tone', hex: '#FFDAB9' },
-  { id: 'gz-N-45', brand: 'Gunze', code: 'N-45', name: '淡蓝色 / Light Blue', hex: '#ADD8E6' },
-  { id: 'gz-N-46', brand: 'Gunze', code: 'N-46', name: '翡翠绿色 / Emerald Green', hex: '#50C878' },
-  { id: 'gz-N-47', brand: 'Gunze', code: 'N-47', name: '红棕色 / Brown Red', hex: '#A52A2A' },
-  { id: 'gz-N-49', brand: 'Gunze', code: 'N-49', name: '紫罗兰色 / Violet', hex: '#EE82EE' },
-  { id: 'gz-N-50', brand: 'Gunze', code: 'N-50', name: '莱姆绿色 / Lime Green', hex: '#32CD32' },
-  { id: 'gz-N-51', brand: 'Gunze', code: 'N-51', name: '海鸥灰色 / Gull Grey', hex: '#9EA2A2' },
-  { id: 'gz-N-52', brand: 'Gunze', code: 'N-52', name: '橄榄绿 1 / Olive Green 1', hex: '#6B8E23' },
-  { id: 'gz-N-54', brand: 'Gunze', code: 'N-54', name: '海军蓝色 / Navy Blue', hex: '#000080' },
-  { id: 'gz-N-55', brand: 'Gunze', code: 'N-55', name: '午夜蓝色 / Midnight Blue', hex: '#191970' },
-  { id: 'gz-N-56', brand: 'Gunze', code: 'N-56', name: '中蓝色 / Medium Blue', hex: '#5F9EA0' },
-  { id: 'gz-N-57', brand: 'Gunze', code: 'N-57', name: '飞机灰色 / Aircraft Grey', hex: '#DCDCDC' },
-  { id: 'gz-N-58', brand: 'Gunze', code: 'N-58', name: '机体内部色 / Interior Color', hex: '#A9BA9D' },
-  { id: 'gz-N-60', brand: 'Gunze', code: 'N-60', name: '浓绿色 / Deep Green', hex: '#006400' },
-  { id: 'gz-N-61', brand: 'Gunze', code: 'N-61', name: '明灰白 (三菱) / Light Grey Mitsubishi', hex: '#B0C4DE' },
-  { id: 'gz-N-62', brand: 'Gunze', code: 'N-62', name: '明灰绿 (中岛) / Light Grey Green Nakajima', hex: '#A9A9A9' },
-  { id: 'gz-N-63', brand: 'Gunze', code: 'N-63', name: '蓝绿色 / Blue Green', hex: '#0095B6' },
-  { id: 'gz-N-66', brand: 'Gunze', code: 'N-66', name: 'RLM79 沙漠黄 / RLM79 Desert Yellow', hex: '#DEB887' },
-  { id: 'gz-N-67', brand: 'Gunze', code: 'N-67', name: 'RLM65 浅蓝 / RLM65 Light Blue', hex: '#87CEEB' },
-  { id: 'gz-N-68', brand: 'Gunze', code: 'N-68', name: 'RLM74 灰绿 / RLM74 Grey Green', hex: '#696969' },
-  { id: 'gz-N-69', brand: 'Gunze', code: 'N-69', name: 'RLM75 灰紫 / RLM75 Grey Purple', hex: '#778899' },
-  { id: 'gz-N-70', brand: 'Gunze', code: 'N-70', name: 'RLM02 灰 / RLM02 Grey', hex: '#808069' },
-  { id: 'gz-N-71', brand: 'Gunze', code: 'N-71', name: '中石色 / Medium Stone', hex: '#BDB76B' },
-  { id: 'gz-N-72', brand: 'Gunze', code: 'N-72', name: '暗土色 / Dark Earth', hex: '#554433' },
-  { id: 'gz-N-73', brand: 'Gunze', code: 'N-73', name: '暗绿色 / Dark Green', hex: '#013220' },
-  { id: 'gz-N-76', brand: 'Gunze', code: 'N-76', name: '烧铁色 / Burnt Iron', hex: '#454545' },
-  { id: 'gz-N-77', brand: 'Gunze', code: 'N-77', name: '轮胎黑色 / Tire Black', hex: '#1C1C1C' },
-  { id: 'gz-N-78', brand: 'Gunze', code: 'N-78', name: '橄榄绿 2 / Olive Green 2', hex: '#4B5320' },
-  { id: 'gz-N-79', brand: 'Gunze', code: 'N-79', name: '暗黄色 / Dark Yellow', hex: '#C2B280' },
-  { id: 'gz-N-80', brand: 'Gunze', code: 'N-80', name: '卡其绿色 / Khaki Green', hex: '#556B2F' },
-  { id: 'gz-N-81', brand: 'Gunze', code: 'N-81', name: '卡其色 / Khaki', hex: '#F0E68C' },
-  { id: 'gz-N-82', brand: 'Gunze', code: 'N-82', name: '军舰灰 1 / Warship Grey 1', hex: '#5A6369' },
-  { id: 'gz-N-83', brand: 'Gunze', code: 'N-83', name: '军舰灰 2 / Warship Grey 2', hex: '#4F565C' },
-  { id: 'gz-N-84', brand: 'Gunze', code: 'N-84', name: '红木色 / Red Wood', hex: '#C04040' },
-  { id: 'gz-N-85', brand: 'Gunze', code: 'N-85', name: '帆布色 / Canvas', hex: '#F5F5DC' },
-  { id: 'gz-N-86', brand: 'Gunze', code: 'N-86', name: '鲜红色 / Fresh Red', hex: '#FF0000' },
-  { id: 'gz-N-87', brand: 'Gunze', code: 'N-87', name: '金属红色 / Metallic Red', hex: '#A30000' },
-  { id: 'gz-N-88', brand: 'Gunze', code: 'N-88', name: '金属蓝色 / Metallic Blue', hex: '#4169E1' },
-  { id: 'gz-N-89', brand: 'Gunze', code: 'N-89', name: '金属绿色 / Metallic Green', hex: '#2E8B57' },
-  { id: 'gz-N-90', brand: 'Gunze', code: 'N-90', name: '透明红色 / Clear Red', hex: '#DC143C' },
-  { id: 'gz-N-91', brand: 'Gunze', code: 'N-91', name: '透明黄色 / Clear Yellow', hex: '#FFFF00' },
-  { id: 'gz-N-92', brand: 'Gunze', code: 'N-92', name: '透明橙色 / Clear Orange', hex: '#FFA500' },
-  { id: 'gz-N-93', brand: 'Gunze', code: 'N-93', name: '透明蓝色 / Clear Blue', hex: '#0000FF' },
-  { id: 'gz-N-94', brand: 'Gunze', code: 'N-94', name: '透明绿色 / Clear Green', hex: '#008000' },
-  { id: 'gz-N-95', brand: 'Gunze', code: 'N-95', name: '烟灰色 / Smoke Grey', hex: '#696969' },
-  { id: 'gz-N-97', brand: 'Gunze', code: 'N-97', name: '荧光黄色 / Fluorescent Yellow', hex: '#CCFF00' },
-  { id: 'gz-N-98', brand: 'Gunze', code: 'N-98', name: '荧光橙色 / Fluorescent Orange', hex: '#FF6600' },
-  { id: 'gz-N-99', brand: 'Gunze', code: 'N-99', name: '荧光粉红色 / Fluorescent Pink', hex: '#FF00CC' },
-  { id: 'gz-N-100', brand: 'Gunze', code: 'N-100', name: '荧光绿色 / Fluorescent Green', hex: '#00FF00' },
-  { id: 'gz-N-101', brand: 'Gunze', code: 'N-101', name: '荧光红色 / Fluorescent Red', hex: '#FF4500' },
-  { id: 'gz-N-127', brand: 'Gunze', code: 'N-127', name: '座舱绿 (中岛) / Cockpit Green Nakajima', hex: '#8FBC8F' }
-];
-
-export const COMMON_PAINTS: PaintBrand[] = [
-  { id: '1', brand: 'Mr.Hobby', code: 'C1', name: 'White', hex: '#FFFFFF' },
-  { id: '2', brand: 'Mr.Hobby', code: 'C2', name: 'Black', hex: '#000000' },
-  { id: '3', brand: 'Mr.Hobby', code: 'C3', name: 'Red', hex: '#E60012' },
-  { id: '4', brand: 'Mr.Hobby', code: 'C4', name: 'Yellow', hex: '#FFF100' },
-  { id: '5', brand: 'Mr.Hobby', code: 'C5', name: 'Blue', hex: '#00479D' },
-  // Jumpwind / other brand examples
-  { id: '9', brand: 'Jumpwind', code: 'JW01', name: 'Cold White', hex: '#F0F8FF' },
-  { id: '10', brand: 'Jumpwind', code: 'JW02', name: 'Mechanic Grey', hex: '#708090' },
-  // Merge GAIA paints into the common pool for matching purposes
-  ...GAIA_PAINTS,
-  ...JUMPWIND_PAINTS,
-  ...GUNZE_PAINTS
-];
-
-/**
- * CMY Pigment Colors (颜料三原色)
- * Used in professional spray painting workflow
- * Different from RGB solid colors - these are subtractive color primaries
- */
-export const CMY_PIGMENT_COLORS: PaintBrand[] = [
-  {
-    id: 'cmy-pigment-white',
-    brand: 'CMY Pigment',
-    code: 'WHITE',
-    name: '白色',
-    hex: '#FFFFFF'
-  },
-  {
-    id: 'cmy-pigment-black',
-    brand: 'CMY Pigment',
-    code: 'BLACK',
-    name: '黑色',
-    hex: '#000000'
-  },
-  {
-    id: 'cmy-pigment-cyan',
-    brand: 'CMY Pigment',
-    code: 'CYAN',
-    name: '青色颜料',
-    hex: '#00FFFF'
-  },
-  {
-    id: 'cmy-pigment-magenta',
-    brand: 'CMY Pigment',
-    code: 'MAGENTA',
-    name: '品红颜料',
-    hex: '#FF00FF'
-  },
-  {
-    id: 'cmy-pigment-yellow',
-    brand: 'CMY Pigment',
-    code: 'YELLOW',
-    name: '黄色颜料',
-    hex: '#FFFF00'
-  }
-];
-
-/**
- * CMY Solid Colors (实色三原色)
- * Using RGB primaries as solid colors for mixing
- */
-export const CMY_SOLID_COLORS: PaintBrand[] = [
-  {
-    id: 'cmy-solid-white',
-    brand: 'CMY Solid',
-    code: 'WHITE',
-    name: '白色',
-    hex: '#FFFFFF'
-  },
-  {
-    id: 'cmy-solid-black',
-    brand: 'CMY Solid',
-    code: 'BLACK',
-    name: '黑色',
-    hex: '#000000'
-  },
-  {
-    id: 'cmy-solid-red',
-    brand: 'CMY Solid',
-    code: 'RED',
-    name: '红色实色',
-    hex: '#FF0000'
-  },
-  {
-    id: 'cmy-solid-blue',
-    brand: 'CMY Solid',
-    code: 'BLUE',
-    name: '蓝色实色',
-    hex: '#0000FF'
-  },
-  {
-    id: 'cmy-solid-yellow',
-    brand: 'CMY Solid',
-    code: 'YELLOW',
-    name: '黄色实色',
-    hex: '#FFFF00'
-  }
-];
-
-/**
- * Base Mixing Colors (Gaia 001-005) for Mixbox algorithm
- * White, Black, Red, Blue, Yellow
- * These are used in BasicColorMixer and MixerResult physical mixing
- */
-export const BASE_MIXING_COLORS: PaintBrand[] = [
-  {
-    id: 'gaia-001',
-    brand: 'Gaia',
-    code: '001',
-    name: '纯白',
-    hex: '#FFFFFF'
-  },
-  {
-    id: 'gaia-002',
-    brand: 'Gaia',
-    code: '002',
-    name: '纯黑',
-    hex: '#000000'
-  },
-  {
-    id: 'gaia-003',
-    brand: 'Gaia',
-    code: '003',
-    name: '红色',
-    hex: '#FF0000'
-  },
-  {
-    id: 'gaia-004',
-    brand: 'Gaia',
-    code: '004',
-    name: '蓝色',
-    hex: '#0000FF'
-  },
-  {
-    id: 'gaia-005',
-    brand: 'Gaia',
-    code: '005',
-    name: '黄色',
-    hex: '#FFFF00'
-  }
-];
-
-/**
- * Extended Mixing Colors (8-color system for better color coverage)
- * Adds Cyan, Magenta, Orange to cover more hues accurately.
- * Note: `code` keeps 001..008 for legacy snapshot ID compatibility (`legacy-001`..`legacy-008`),
- * while `displayCode` reflects the real Gaia catalog code (`034` Magenta, `033` Cyan, `015` Orange).
- */
-export const EXTENDED_MIXING_COLORS: PaintBrand[] = [
-  {
-    id: 'gaia-001',
-    brand: 'Gaia',
-    code: '001',
-    displayCode: '001',
-    name: '纯白',
-    hex: '#FFFFFF',
-    role: 'base',
-    roleLabel: '底漆',
-    propertyLabel: '光泽白 (实色底漆)',
-    isSecondary: false,
-  },
-  {
-    id: 'gaia-002',
-    brand: 'Gaia',
-    code: '002',
-    displayCode: '002',
-    name: '纯黑',
-    hex: '#000000',
-    role: 'base',
-    roleLabel: '底漆',
-    propertyLabel: '光泽黑 (实色消色)',
-    isSecondary: false,
-  },
-  {
-    id: 'gaia-003',
-    brand: 'Gaia',
-    code: '003',
-    displayCode: '003',
-    name: '红色',
-    hex: '#FF0000',
-    role: 'primary',
-    roleLabel: '主色',
-    propertyLabel: '光泽红 (实色主色)',
-    isSecondary: false,
-  },
-  {
-    id: 'gaia-006',
-    brand: 'Gaia',
-    code: '006',
-    displayCode: '034',
-    name: '品红',
-    hex: '#FF00FF',
-    role: 'cmy',
-    roleLabel: '色源',
-    propertyLabel: '色源品红 (CMY半透明)',
-    isSecondary: false,
-  },
-  {
-    id: 'gaia-004',
-    brand: 'Gaia',
-    code: '004',
-    displayCode: '004',
-    name: '蓝色',
-    hex: '#0000FF',
-    role: 'primary',
-    roleLabel: '主色',
-    propertyLabel: '光泽蓝 (实色主色)',
-    isSecondary: false,
-  },
-  {
-    id: 'gaia-007',
-    brand: 'Gaia',
-    code: '007',
-    displayCode: '033',
-    name: '青色',
-    hex: '#00FFFF',
-    role: 'cmy',
-    roleLabel: '色源',
-    propertyLabel: '色源青 (CMY半透明)',
-    isSecondary: false,
-  },
-  {
-    id: 'gaia-005',
-    brand: 'Gaia',
-    code: '005',
-    displayCode: '035',
-    name: '色源黄',
-    hex: '#FFFF00',
-    role: 'cmy',
-    roleLabel: '色源',
-    propertyLabel: '色源黄 (CMY半透明原色)',
-    isSecondary: false,
-  },
-  {
-    id: 'gaia-008',
-    brand: 'Gaia',
-    code: '008',
-    displayCode: '015',
-    name: '橙色',
-    hex: '#FF8000',
-    role: 'secondary',
-    roleLabel: '间色',
-    propertyLabel: '色源橙 (半透明间色)',
-    isSecondary: true,
-  },
-];
-
-/**
- * Full Gaia Pure Color Source System:
- * - Base Opaque Paints (2): 001 Gloss White (#FFFFFF), 002 Gloss Black (#000000)
- * - CMY Primary Color Sources (3): 033 Cyan (#00FFFF), 034 Magenta (#FF00FF), 035 Yellow (#FFFF00)
- * - Secondary Color Sources (3): 015 Orange (#FF8000), 036 Green (#00FF00), 037 Purple (#8000FF)
- * (Slots 2 and 4 are kept in the 10-slot layout for snapshot compatibility with weight strictly 0.)
- */
-export const FULL_MIXING_COLORS: PaintBrand[] = [
-  ...EXTENDED_MIXING_COLORS,
-  {
-    id: 'gaia-009',
-    brand: 'Gaia',
-    code: '009',
-    displayCode: '036',
-    name: '绿色',
-    hex: '#00FF00',
-    role: 'secondary',
-    roleLabel: '间色',
-    propertyLabel: '色源绿 (半透明间色)',
-    isSecondary: true,
-  },
-  {
-    id: 'gaia-010',
-    brand: 'Gaia',
-    code: '010',
-    displayCode: '037',
-    name: '紫色',
-    hex: '#8000FF',
-    role: 'secondary',
-    roleLabel: '间色',
-    propertyLabel: '色源紫 (半透明间色)',
-    isSecondary: true,
-  },
-];
+import type { RGB, CMYK, HSB, LAB, ColorData, PaintBrand, ColorSpace, RALColor } from "../types";
+import * as _dep_mixbox from "./mixbox";
+import * as _dep_colorSpace from "./colorSpaceConverter";
+import _dep_scc from "simple-color-converter";
 
 export interface MixingPigmentDescriptor {
   code: string;
@@ -875,447 +25,6 @@ export interface MixingPigmentDescriptor {
   propertyHint: string;
   isSecondary: boolean;
 }
-
-const PIGMENT_DESCRIPTORS_BY_HEX: Record<
-  string,
-  {
-    code: string;
-    displayCode: string;
-    zh: { shortName: string; fullName: string; roleBadge: string; propertyHint: string };
-    en: { shortName: string; fullName: string; roleBadge: string; propertyHint: string };
-    ja: { shortName: string; fullName: string; roleBadge: string; propertyHint: string };
-    role: 'base' | 'primary' | 'cmy' | 'secondary';
-    isSecondary: boolean;
-  }
-> = {
-  '#FFFFFF': {
-    code: '001',
-    displayCode: '001',
-    role: 'base',
-    isSecondary: false,
-    zh: { shortName: '白', fullName: '光泽白', roleBadge: '底漆', propertyHint: '实色遮盖底漆' },
-    en: { shortName: 'White', fullName: 'Gloss White', roleBadge: 'Base', propertyHint: 'Opaque Base' },
-    ja: { shortName: '白', fullName: 'ピュアホワイト', roleBadge: '下地', propertyHint: '隠蔽ベース' },
-  },
-  '#000000': {
-    code: '002',
-    displayCode: '002',
-    role: 'base',
-    isSecondary: false,
-    zh: { shortName: '黑', fullName: '光泽黑', roleBadge: '底漆', propertyHint: '实色压暗底漆' },
-    en: { shortName: 'Black', fullName: 'Gloss Black', roleBadge: 'Base', propertyHint: 'Opaque Shade' },
-    ja: { shortName: '黒', fullName: 'ピュアブラック', roleBadge: '下地', propertyHint: '暗色ベース' },
-  },
-  '#FF0000': {
-    code: '003',
-    displayCode: '003',
-    role: 'primary',
-    isSecondary: false,
-    zh: { shortName: '红', fullName: '光泽红', roleBadge: '主色', propertyHint: '实色基础色' },
-    en: { shortName: 'Red', fullName: 'Bright Red', roleBadge: 'Primary', propertyHint: 'Solid Primary' },
-    ja: { shortName: '赤', fullName: 'ブライトレッド', roleBadge: '主色', propertyHint: 'ソリッド原色' },
-  },
-  '#FF00FF': {
-    code: '006',
-    displayCode: '034',
-    role: 'cmy',
-    isSecondary: false,
-    zh: { shortName: '色源品红', fullName: '色源品红', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
-    en: { shortName: 'Magenta', fullName: 'Primary Magenta', roleBadge: 'CMY', propertyHint: 'Translucent CMY' },
-    ja: { shortName: 'マゼンタ', fullName: '純色マゼンタ', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
-  },
-  '#0000FF': {
-    code: '004',
-    displayCode: '004',
-    role: 'primary',
-    isSecondary: false,
-    zh: { shortName: '蓝', fullName: '光泽蓝', roleBadge: '主色', propertyHint: '实色基础色' },
-    en: { shortName: 'Blue', fullName: 'Ultra Blue', roleBadge: 'Primary', propertyHint: 'Solid Primary' },
-    ja: { shortName: '青', fullName: 'ウルトラブルー', roleBadge: '主色', propertyHint: 'ソリッド原色' },
-  },
-  '#00FFFF': {
-    code: '007',
-    displayCode: '033',
-    role: 'cmy',
-    isSecondary: false,
-    zh: { shortName: '色源青', fullName: '色源青', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
-    en: { shortName: 'Cyan', fullName: 'Primary Cyan', roleBadge: 'CMY', propertyHint: 'Translucent CMY' },
-    ja: { shortName: 'シアン', fullName: '純色シアン', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
-  },
-  '#FFFF00': {
-    code: '005',
-    displayCode: '005',
-    role: 'primary',
-    isSecondary: false,
-    zh: { shortName: '光泽黄', fullName: '光泽黄', roleBadge: '主色', propertyHint: '实色基础色' },
-    en: { shortName: 'Yellow', fullName: 'Primary Yellow', roleBadge: 'Primary', propertyHint: 'Opaque Solid' },
-    ja: { shortName: '黄', fullName: 'ブライトイエロー', roleBadge: '主色', propertyHint: 'ソリッド基本色' },
-  },
-  '#FFEF00': {
-    code: '035',
-    displayCode: '035',
-    role: 'cmy',
-    isSecondary: false,
-    zh: { shortName: '色源黄', fullName: '色源黄', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
-    en: { shortName: 'Source Yellow', fullName: 'Source Yellow', roleBadge: 'CMY', propertyHint: 'Translucent CMY' },
-    ja: { shortName: 'ソースイエロー', fullName: '純色イエロー', roleBadge: '色源', propertyHint: 'CMY半透明原色' },
-  },
-  '#FF8000': {
-    code: '008',
-    displayCode: '015',
-    role: 'secondary',
-    isSecondary: true,
-    zh: { shortName: '色源橙', fullName: '色源橙', roleBadge: '间色', propertyHint: '半透明间色 (替红/品红+黄)' },
-    en: { shortName: 'Orange', fullName: 'Source Orange', roleBadge: 'Secondary', propertyHint: 'Replaces Red/Magenta+Yellow' },
-    ja: { shortName: '橙', fullName: '純色オレンジ', roleBadge: '間色', propertyHint: '赤/マゼンタ+黄の代替' },
-  },
-  '#00FF00': {
-    code: '009',
-    displayCode: '036',
-    role: 'secondary',
-    isSecondary: true,
-    zh: { shortName: '色源绿', fullName: '色源绿', roleBadge: '间色', propertyHint: '半透明间色 (替青+黄)' },
-    en: { shortName: 'Green', fullName: 'Source Green', roleBadge: 'Secondary', propertyHint: 'Replaces Cyan+Yellow' },
-    ja: { shortName: '緑', fullName: '純色グリーン', roleBadge: '間色', propertyHint: 'シアン+黄の代替' },
-  },
-  '#8000FF': {
-    code: '010',
-    displayCode: '037',
-    role: 'secondary',
-    isSecondary: true,
-    zh: { shortName: '色源紫', fullName: '色源紫', roleBadge: '间色', propertyHint: '半透明间色 (替蓝/青+品红)' },
-    en: { shortName: 'Purple', fullName: 'Source Violet', roleBadge: 'Secondary', propertyHint: 'Replaces Blue/Cyan+Magenta' },
-    ja: { shortName: '紫', fullName: '純色バイオレット', roleBadge: '間色', propertyHint: '青/シアン+マゼンタの代替' },
-  },
-};
-
-export const getMixingPigmentInfo = (
-  hex: string,
-  lang: 'zh' | 'en' | 'ja' = 'zh',
-  fallbackLabel?: string,
-  pureColorSourceOnly: boolean = false
-): MixingPigmentDescriptor => {
-  const upper = hex.toUpperCase();
-  const lookupKey = pureColorSourceOnly && upper === '#FFFF00' ? '#FFEF00' : upper;
-  const entry = PIGMENT_DESCRIPTORS_BY_HEX[lookupKey];
-  if (entry) {
-    const loc = entry[lang] ?? entry.zh;
-    return {
-      code: entry.code,
-      displayCode: entry.displayCode,
-      shortName: loc.shortName,
-      fullName: loc.fullName,
-      role: entry.role,
-      roleBadge: loc.roleBadge,
-      propertyHint: loc.propertyHint,
-      isSecondary: entry.isSecondary,
-    };
-  }
-  return {
-    code: fallbackLabel ?? hex,
-    displayCode: fallbackLabel ?? hex,
-    shortName: fallbackLabel ?? hex,
-    fullName: fallbackLabel ?? hex,
-    role: 'primary',
-    roleBadge: lang === 'zh' ? '主色' : lang === 'ja' ? '主色' : 'Paint',
-    propertyHint: '',
-    isSecondary: false,
-  };
-};
-
-export const findNearestPaints = (targetHex: string, count: number = 3): PaintBrand[] => {
-  const targetRgb = hexToRgb(targetHex);
-  const sorted = [...COMMON_PAINTS].sort((a, b) => {
-    const distA = getColorDistance(targetRgb, hexToRgb(a.hex));
-    const distB = getColorDistance(targetRgb, hexToRgb(b.hex));
-    return distA - distB;
-  });
-  return sorted.slice(0, count);
-};
-
-export const extractProminentColors = async (
-  imgElement: HTMLImageElement,
-  count: number = 5,
-  colorSpace: ColorSpace = 'srgb'
-): Promise<ColorData[]> => {
-  try {
-    const canvas = document.createElement('canvas');
-    const canvasColorSpace = colorSpace === 'adobe-rgb' ? 'srgb' : colorSpace;
-    const ctx = canvas.getContext('2d', {
-      colorSpace: canvasColorSpace,
-      willReadFrequently: true
-    });
-
-    if (!ctx) return [];
-
-    // Scale down to max 300px - this makes the image small enough for fast sync processing
-    // 4K (3840x2160) -> ~300x169, 8K -> ~300x169
-    const maxDimension = 300;
-    const scale = Math.min(1, maxDimension / Math.max(imgElement.naturalWidth, imgElement.naturalHeight));
-    canvas.width = Math.floor(imgElement.naturalWidth * scale);
-    canvas.height = Math.floor(imgElement.naturalHeight * scale);
-
-    ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
-    
-    // Use try-catch for getImageData as it can fail on tainted canvases
-    let data: Uint8ClampedArray;
-    try {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      data = imageData.data;
-    } catch (e) {
-      console.warn('Failed to get image data:', e);
-      return [];
-    }
-
-    const colorMap = new Map<number, number>();
-    
-    // Sync processing is safe here because:
-    // - Max canvas size is 300x300 = 90,000 pixels
-    // - With stride 40, we process ~9,000 samples
-    // - This takes <5ms on modern hardware
-    processPixelsSync(data, colorMap, SAMPLE_STRIDE);
-
-    const sorted = Array.from(colorMap.entries())
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, count)
-      .map(([packed]) => {
-        const r = (packed >> 16) & 0xff;
-        const g = (packed >> 8) & 0xff;
-        const b = packed & 0xff;
-        return rgbToHex(r, g, b);
-      });
-
-    return sorted.map(hex => {
-      let rgb = hexToRgb(hex);
-
-      if (colorSpace === 'adobe-rgb') {
-        rgb = convertToWorkingSpace(rgb, 'adobe-rgb');
-      }
-
-      const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
-      const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
-
-      return {
-        id: generateId(),
-        hex: rgbToHex(rgb.r, rgb.g, rgb.b),
-        rgb,
-        cmyk: rgbToCmyk(rgb.r, rgb.g, rgb.b),
-        hsb,
-        lab,
-        source: 'auto',
-        colorSpace: colorSpace
-      } as ColorData;
-    });
-  } catch (error) {
-    console.error('Error extracting colors:', error);
-    return [];
-  }
-};
-
-/**
- * Mixbox Color Blending (Physical-Level Algorithm)
- * Uses Secret Weapons Mixbox algorithm for more realistic color mixing
- * 
- * Example: Blue (#0000FF) + Yellow (#FFFF00) at 50% = Green (not Gray)
- * This is physically accurate paint mixing, not optical mixing
- */
-export const mixboxBlend = (color1Hex: string, color2Hex: string, t: number = 0.5): string => {
-  const result = mixbox.lerp(color1Hex, color2Hex, t);
-  if (result && result.length >= 3) {
-    return rgbToHex(result[0], result[1], result[2]);
-  }
-  // Fallback to old algorithm if mixbox fails
-  return opticalBlend(color1Hex, color2Hex, t);
-};
-
-/**
- * Optical-Level Blending (Fallback)
- * Simple RGB average - produces gray when mixing blue + yellow
- * Used for backward compatibility
- */
-export const opticalBlend = (color1Hex: string, color2Hex: string, t: number = 0.5): string => {
-  const c1 = hexToRgb(color1Hex);
-  const c2 = hexToRgb(color2Hex);
-  const r = Math.round(c1.r * (1 - t) + c2.r * t);
-  const g = Math.round(c1.g * (1 - t) + c2.g * t);
-  const b = Math.round(c1.b * (1 - t) + c2.b * t);
-  return rgbToHex(r, g, b);
-};
-
-/**
- * CMY (Cyan, Magenta, Yellow) Primary Paint Colors
- * This represents the true subtractive color mixing primaries (no K/black)
- */
-export const CMY_PRIMARIES = {
-  CYAN: '#00FFFF',
-  MAGENTA: '#FF00FF', 
-  YELLOW: '#FFFF00'
-};
-
-/**
- * Expand Pure Color Source weights (CMY 033/034/035 + Secondary 015/036/037 + BW 001/002)
- * by modeling the physical subtractive reaction of:
- * - Magenta (#FF00FF) + Orange (#FF8000) -> Red (#FF0000)
- * - Magenta (#FF00FF) + Yellow (#FFFF00) -> Red (#FF0000) / Orange
- * - Cyan (#00FFFF) + Purple (#8000FF) -> Blue (#0000FF)
- * - Cyan (#00FFFF) + Magenta (#FF00FF) -> Blue (#0000FF) / Purple
- */
-export const expandPureColorSourceWeights = (
-  colorWeights: { hex: string; weight: number }[]
-): { hex: string; weight: number }[] => {
-  const byHex = new Map<string, number>();
-  for (const cw of colorWeights) {
-    if (cw.weight <= 1e-6) continue;
-    const rawHex = cw.hex.toUpperCase();
-    const h = rawHex === '#FFEF00' ? '#FFFF00' : rawHex;
-    byHex.set(h, (byHex.get(h) ?? 0) + cw.weight);
-  }
-
-  const wM = byHex.get('#FF00FF') ?? 0;
-  const wC = byHex.get('#00FFFF') ?? 0;
-  const wY = byHex.get('#FFFF00') ?? 0;
-  const wO = byHex.get('#FF8000') ?? 0;
-  const wP = byHex.get('#8000FF') ?? 0;
-  const wR = byHex.get('#FF0000') ?? 0;
-  const wB = byHex.get('#0000FF') ?? 0;
-
-  if (wR <= 1e-6) {
-    if (wM > 0 && wO > 0 && wY <= 1e-6 && wC <= 1e-6 && wP <= 1e-6) {
-      const react = Math.min(wM, wO);
-      byHex.set('#FF0000', (byHex.get('#FF0000') ?? 0) + 2 * react);
-      byHex.set('#FF00FF', wM - react);
-      byHex.set('#FF8000', wO - react);
-    } else if (wM > 0 && wY > 0 && wO <= 1e-6 && wC <= 1e-6) {
-      const react = Math.min(wM, wY);
-      byHex.set('#FF0000', (byHex.get('#FF0000') ?? 0) + 2 * react);
-      byHex.set('#FF00FF', wM - react);
-      byHex.set('#FFFF00', wY - react);
-    }
-  }
-
-  const wM2 = byHex.get('#FF00FF') ?? 0;
-  if (wB <= 1e-6) {
-    if (wC > 0 && wP > 0 && wM2 <= 1e-6) {
-      const react = Math.min(wC, wP);
-      byHex.set('#0000FF', (byHex.get('#0000FF') ?? 0) + 2 * react);
-      byHex.set('#00FFFF', wC - react);
-      byHex.set('#8000FF', wP - react);
-    } else if (wC > 0 && wM2 > 0 && wP <= 1e-6 && wY <= 1e-6) {
-      const react = Math.min(wC, wM2);
-      byHex.set('#0000FF', (byHex.get('#0000FF') ?? 0) + 2 * react);
-      byHex.set('#00FFFF', wC - react);
-      byHex.set('#FF00FF', wM2 - react);
-    }
-  }
-
-  return Array.from(byHex.entries())
-    .filter(([, weight]) => weight > 1e-6)
-    .map(([hex, weight]) => ({ hex, weight }));
-};
-
-/**
- * Project internal 10-vertex weights [0:W, 1:K, 2:R_virt, 3:M, 4:B_virt, 5:C, 6:Y, 7:O, 8:G, 9:P]
- * onto the 8-bottle Gaia Pure Color Source System by decomposing virtual Red (2) and Blue (4)
- * into their exact CMY/Secondary pairs:
- * - Red (2) -> 50% Magenta (3) + 50% Orange (7) [if secondary ON] or 50% Magenta (3) + 50% Yellow (6) [if secondary OFF]
- * - Blue (4) -> 50% Cyan (5) + 50% Purple (9) [if secondary ON & 10-slot] or 50% Cyan (5) + 50% Magenta (3) [if secondary OFF]
- */
-const projectToPureColorSourceWeights = (
-  weights: number[],
-  useSecondaryColors: boolean = true
-): number[] => {
-  if (weights.length <= 5) return weights;
-  const out = weights.slice();
-  const wRed = out[2] ?? 0;
-  const wBlue = out[4] ?? 0;
-  out[2] = 0;
-  out[4] = 0;
-
-  const hasOrange = out.length > 7 && useSecondaryColors;
-  const hasPurple = out.length > 9 && useSecondaryColors;
-
-  if (wRed > 0) {
-    if (hasOrange) {
-      out[3] = (out[3] ?? 0) + 0.5 * wRed;
-      out[7] = (out[7] ?? 0) + 0.5 * wRed;
-    } else {
-      out[3] = (out[3] ?? 0) + 0.5 * wRed;
-      out[6] = (out[6] ?? 0) + 0.5 * wRed;
-    }
-  }
-
-  if (wBlue > 0) {
-    if (hasPurple) {
-      out[5] = (out[5] ?? 0) + 0.5 * wBlue;
-      out[9] = (out[9] ?? 0) + 0.5 * wBlue;
-    } else {
-      out[5] = (out[5] ?? 0) + 0.5 * wBlue;
-      out[3] = (out[3] ?? 0) + 0.5 * wBlue;
-    }
-  }
-
-  return out;
-};
-
-/**
- * Multi-Color Mixbox Blending (Physical Paint Mixing)
- * Takes an array of colors with weights and uses Mixbox latent space
- * to mix them like real paint (subtractive mixing)
- * 
- * @param colorWeights Array of {hex, weight} objects
- * @returns Mixed color hex string
- */
-export const mixboxMultiBlend = (colorWeights: { hex: string; weight: number }[]): string => {
-  // Filter out zero weights
-  const filtered = colorWeights.filter(cw => cw.weight > 0.0001);
-  
-  if (filtered.length === 0) {
-    return '#CCCCCC'; // Gray fallback
-  }
-  
-  if (filtered.length === 1) {
-    return filtered[0].hex;
-  }
-
-  // Apply Pure Color Source subtractive coupling (e.g. Magenta+Orange -> Red, Cyan+Purple -> Blue)
-  const effectiveWeights = expandPureColorSourceWeights(filtered);
-  
-  // Normalize weights
-  const totalWeight = effectiveWeights.reduce((sum, cw) => sum + cw.weight, 0);
-  
-  // Convert all colors to latent space
-  const latents = effectiveWeights.map(cw => {
-    const rgb = hexToRgb(cw.hex);
-    return {
-      latent: mixbox.rgbToLatent(rgb.r, rgb.g, rgb.b),
-      weight: cw.weight / totalWeight
-    };
-  });
-  
-  // Mix in latent space (weighted average)
-  const mixedLatent = [0, 0, 0, 0, 0, 0, 0];
-  for (const { latent, weight } of latents) {
-    if (latent) {
-      for (let i = 0; i < 7; i++) {
-        mixedLatent[i] += latent[i] * weight;
-      }
-    }
-  }
-  
-  // Convert back to RGB
-  const result = mixbox.latentToRgb(mixedLatent);
-  if (result && result.length >= 3) {
-    return rgbToHex(result[0], result[1], result[2]);
-  }
-  
-  // Fallback
-  return filtered[0].hex;
-};
-
-/** Professional beaker hides pigments below this percent. */
-export const PROFESSIONAL_RATIO_THRESHOLD = 0.5;
-/** Mixbox inverse beaker shows smaller residual pigments. */
-export const MIXBOX_INVERSE_RATIO_THRESHOLD = 0.3;
 
 export interface MixboxSolveOptions {
   /** Whether secondary translucent color sources (Orange, Green, Purple) are enabled. Default: true */
@@ -1330,1144 +39,717 @@ export interface MixboxSolveOptions {
   pureColorSourceOnly?: boolean;
 }
 
-const resolvePalette = (
-  useExtendedPalette: boolean,
-  options?: MixboxSolveOptions
-): PaintBrand[] => {
-  if (!useExtendedPalette) return BASE_MIXING_COLORS;
-  if (options?.includeFullSecondaryPalette) return FULL_MIXING_COLORS;
-  return EXTENDED_MIXING_COLORS;
+const __GK_CORE_CIPHER_PAYLOAD__ = [
+  "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"
+].join("");
+
+const _gkDeps: Record<string, any> = {
+  "./mixbox": _dep_mixbox,
+  "./colorSpaceConverter": _dep_colorSpace,
+  "simple-color-converter": _dep_scc,
 };
 
-const emptyPaletteWeights = (
-  useExtendedPalette: boolean,
-  options?: MixboxSolveOptions
-): number[] => new Array(resolvePalette(useExtendedPalette, options).length).fill(0);
-
-const rgbHueDegrees = (r: number, g: number, b: number): number => {
-  const rNorm = r / 255;
-  const gNorm = g / 255;
-  const bNorm = b / 255;
-  const max = Math.max(rNorm, gNorm, bNorm);
-  const min = Math.min(rNorm, gNorm, bNorm);
-  const delta = max - min;
-  if (delta === 0) return 0;
-  if (max === rNorm) {
-    return ((gNorm - bNorm) / delta + (gNorm < bNorm ? 6 : 0)) * 60;
+function _decodeGkCorePayload(b64: string): Record<string, any> {
+  const key = "GKMixer::PolyForm-Noncommercial-1.0.0::CoreCipherKey::2026#HDINEVER";
+  const binStr = typeof atob === "function" ? atob(b64) : Buffer.from(b64, "base64").toString("binary");
+  const len = binStr.length;
+  const out = new Uint8Array(len);
+  let state = 0x5a3c9e17;
+  for (let i = 0; i < len; i++) {
+    const k = key.charCodeAt(i % key.length);
+    state = (Math.imul(state ^ k, 0x01000193) + (i & 0xff)) >>> 0;
+    const mask = ((state >>> 16) ^ state ^ k ^ (i * 31)) & 0xff;
+    out[i] = (binStr.charCodeAt(i) & 0xff) ^ mask;
   }
-  if (max === gNorm) {
-    return ((bNorm - rNorm) / delta + 2) * 60;
-  }
-  return ((rNorm - gNorm) / delta + 4) * 60;
-};
-
-const normalizeSimplex = (weights: number[], allowedMask?: boolean[]): number[] => {
-  const values = weights.map((weight, idx) => {
-    if (allowedMask && !allowedMask[idx]) return 0;
-    return Math.max(0, Number.isFinite(weight) ? weight : 0);
-  });
-  const sum = values.reduce((total, weight) => total + weight, 0);
-  if (sum <= 1e-12) {
-    if (allowedMask) {
-      const allowedCount = allowedMask.filter(Boolean).length || 1;
-      return values.map((_, idx) => (allowedMask[idx] ? 1 / allowedCount : 0));
-    }
-    return values.map(() => 1 / Math.max(1, values.length));
-  }
-  return values.map(weight => weight / sum);
-};
-
-/**
- * Build candidate active index subsets for a given target hue (0..360°),
- * enforcing:
- * 1. Hue-neighborhood isolation: opposite-hemisphere pigments (e.g. Orange/Yellow in Blue/Purple/Green) are strictly 0.
- * 2. Intermediate Color Replacement ("以一顶二"):
- *    - When `useSecondaryColors` is true:
- *      * In the Orange sector (12°..55°), Orange (7) replaces Red+Yellow (never Red + Yellow + Orange all 3 together).
- *      * In the Green sector (75°..170°), Green (8) replaces Cyan+Yellow (never Cyan + Yellow + Green all 3 together).
- *      * In the Purple sector (252°..315°), Purple (9) replaces Blue+Magenta (never Blue + Magenta + Purple all 3 together).
- *    - When `useSecondaryColors` is false: secondary indices (7, 8, 9) are strictly 0.
- */
-const getCandidateActiveSubsets = (
-  hue: number,
-  paletteLength: number,
-  useSecondaryColors: boolean = true
-): number[][] => {
-  if (paletteLength <= 5) {
-    return [[0, 1, 2, 3, 4]];
-  }
-  const hasOrange = paletteLength > 7 && useSecondaryColors;
-  const hasGreen = paletteLength > 8 && useSecondaryColors;
-  const hasPurple = paletteLength > 9 && useSecondaryColors;
-
-  // 1. Orange Zone (12°..55°): Intermediate Orange (7) replaces Magenta/Red + Yellow (6)
-  if (hue >= 12 && hue < 55) {
-    if (hasOrange) {
-      return [
-        [0, 1, 7],
-        [0, 1, 7, 2],
-        [0, 1, 7, 6],
-      ];
-    }
-    return [
-      [0, 1, 2, 6],
-    ];
-  }
-
-  // 2. Red / Warm-Red Zone (345°..360° or 0°..12°)
-  if (hue >= 345 || hue < 12) {
-    if (hasOrange) {
-      return [
-        [0, 1, 2, 3],
-        [0, 1, 2, 7],
-      ];
-    }
-    return [
-      [0, 1, 2, 3],
-      [0, 1, 2, 6],
-    ];
-  }
-
-  // 3. Yellow Zone (55°..75°)
-  if (hue >= 55 && hue < 75) {
-    const subsets: number[][] = [
-      [0, 1, 6],
-      [0, 1, 6, 5],
-    ];
-    if (hasOrange) {
-      subsets.push([0, 1, 6, 7]);
-    } else {
-      subsets.push([0, 1, 6, 2]);
-    }
-    if (hasGreen) {
-      subsets.push([0, 1, 6, 8]);
-    }
-    return subsets;
-  }
-
-  // 4. Green Zone (75°..170°): Intermediate Green (8) replaces Cyan (5) + Yellow (6)
-  if (hue >= 75 && hue < 170) {
-    if (hasGreen) {
-      return [
-        [0, 1, 8],
-        [0, 1, 8, 6],
-        [0, 1, 8, 5],
-      ];
-    }
-    return [
-      [0, 1, 5, 6],
-    ];
-  }
-
-  // 5. Cyan / Teal Zone (170°..205°)
-  if (hue >= 170 && hue < 205) {
-    if (hasGreen) {
-      return [
-        [0, 1, 5],
-        [0, 1, 4, 5],
-        [0, 1, 5, 8],
-      ];
-    }
-    return [
-      [0, 1, 5],
-      [0, 1, 4, 5],
-      [0, 1, 5, 6],
-    ];
-  }
-
-  // 6. Sky Blue / Cobalt / Cornflower / Periwinkle Zone (205°..252°)
-  if (hue >= 205 && hue < 252) {
-    if (hasPurple) {
-      return [
-        [0, 1, 4, 5],
-        [0, 1, 4, 9],
-      ];
-    }
-    return [
-      [0, 1, 4, 5],
-      [0, 1, 3, 4],
-    ];
-  }
-
-  // 7. Purple / Violet Zone (252°..315°): Intermediate Purple (9) replaces Cyan (5) + Magenta (3)
-  if (hue >= 252 && hue < 315) {
-    if (hasPurple) {
-      return [
-        [0, 1, 9],
-        [0, 1, 9, 4],
-        [0, 1, 9, 3],
-      ];
-    }
-    return [
-      [0, 1, 3, 4],
-    ];
-  }
-
-  // 8. Magenta / Rose Zone (315°..345°)
-  if (hasPurple) {
-    return [
-      [0, 1, 3],
-      [0, 1, 2, 3],
-      [0, 1, 3, 9],
-    ];
-  }
-  return [
-    [0, 1, 3],
-    [0, 1, 2, 3],
-    [0, 1, 3, 4],
-  ];
-};
-
-const subsetToMask = (subset: number[], paletteLength: number): boolean[] => {
-  const mask = new Array(paletteLength).fill(false);
-  for (const idx of subset) {
-    if (idx >= 0 && idx < paletteLength) {
-      mask[idx] = true;
-    }
-  }
-  return mask;
-};
-
-const getPrimarySchemeAMask = (
-  hue: number,
-  paletteLength: number,
-  useSecondaryColors: boolean = true
-): boolean[] => {
-  if (paletteLength <= 5) {
-    return [true, true, true, true, true];
-  }
-  const hasOrange = paletteLength > 7 && useSecondaryColors;
-  const hasGreen = paletteLength > 8 && useSecondaryColors;
-  const hasPurple = paletteLength > 9 && useSecondaryColors;
-
-  if (hue >= 12 && hue < 55) {
-    if (hasOrange) {
-      return subsetToMask(hue < 34 ? [0, 1, 2, 7] : [0, 1, 6, 7], paletteLength);
-    }
-    return subsetToMask([0, 1, 2, 6], paletteLength);
-  }
-  if (hue >= 75 && hue < 170) {
-    if (hasGreen) {
-      return subsetToMask(hue < 122 ? [0, 1, 6, 8] : [0, 1, 5, 8], paletteLength);
-    }
-    return subsetToMask([0, 1, 5, 6], paletteLength);
-  }
-  if (hue >= 252 && hue < 315) {
-    if (hasPurple) {
-      return subsetToMask(hue < 282 ? [0, 1, 4, 9] : [0, 1, 3, 9], paletteLength);
-    }
-    return subsetToMask([0, 1, 3, 4], paletteLength);
-  }
-
-  const subsets = getCandidateActiveSubsets(hue, paletteLength, useSecondaryColors);
-  if (hue >= 205 && hue < 252) {
-    return subsetToMask([0, 1, 4, 5], paletteLength);
-  }
-  return subsetToMask(subsets[0], paletteLength);
-};
-
-const loadBaseLatents = (palette: PaintBrand[]): number[][] | null => {
-  const latents = palette.map(color => {
-    const rgb = hexToRgb(color.hex);
-    return mixbox.rgbToLatent(rgb.r, rgb.g, rgb.b);
-  });
-  if (latents.some(latent => !latent)) return null;
-  return latents as number[][];
-};
-
-const mixLatents = (baseLatents: number[][], weights: number[]): number[] => {
-  const mixed = [0, 0, 0, 0, 0, 0, 0];
-  const normalized = normalizeSimplex(weights);
-  for (let i = 0; i < normalized.length; i++) {
-    if (normalized[i] <= 0) continue;
-    for (let j = 0; j < 7; j++) {
-      mixed[j] += baseLatents[i][j] * normalized[i];
-    }
-  }
-  return mixed;
-};
-
-const latentMse = (left: number[], right: number[]): number => {
-  let error = 0;
-  for (let i = 0; i < 7; i++) {
-    const diff = left[i] - right[i];
-    error += diff * diff;
-  }
-  return error;
-};
-
-const refineWeightsToLatent = (
-  weights: number[],
-  baseLatents: number[][],
-  targetLatent: number[],
-  iterations = 80,
-  allowedMask?: boolean[]
-): number[] => {
-  let current = normalizeSimplex(weights, allowedMask);
-  let learningRate = 0.15;
-  for (let iter = 0; iter < iterations; iter++) {
-    const mixed = mixLatents(baseLatents, current);
-    const error = latentMse(mixed, targetLatent);
-    if (error < 1e-8) break;
-
-    const gradient = new Array(current.length).fill(0);
-    for (let j = 0; j < 7; j++) {
-      const diff = mixed[j] - targetLatent[j];
-      for (let i = 0; i < current.length; i++) {
-        if (allowedMask && !allowedMask[i]) continue;
-        gradient[i] += 2 * diff * baseLatents[i][j];
-      }
-    }
-
-    for (let i = 0; i < current.length; i++) {
-      if (allowedMask && !allowedMask[i]) {
-        current[i] = 0;
-      } else {
-        current[i] = Math.max(0, current[i] - learningRate * gradient[i]);
-      }
-    }
-    current = normalizeSimplex(current, allowedMask);
-    if (iter > 20) {
-      learningRate = Math.max(0.01, learningRate * 0.96);
-    }
-  }
-  return current;
-};
-
-const linearizeSrgb = (value: number): number => (
-  value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4)
-);
-
-const rgb01ToOkLab = (r: number, g: number, b: number): { l: number; a: number; b: number } => {
-  const lr = linearizeSrgb(r);
-  const lg = linearizeSrgb(g);
-  const lb = linearizeSrgb(b);
-  const l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
-  const m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
-  const s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
-  const lRoot = Math.cbrt(l);
-  const mRoot = Math.cbrt(m);
-  const sRoot = Math.cbrt(s);
-  return {
-    l: 0.2104542553 * lRoot + 0.7936177850 * mRoot - 0.0040720468 * sRoot,
-    a: 1.9779984951 * lRoot - 2.4285922050 * mRoot + 0.4505937099 * sRoot,
-    b: 0.0259040371 * lRoot + 0.7827717662 * mRoot - 0.8086757660 * sRoot,
+  const code = new TextDecoder("utf-8").decode(out);
+  const mod = { exports: {} as Record<string, any> };
+  const req = (id: string) => {
+    if (id in _gkDeps) return _gkDeps[id];
+    throw new Error("Unknown core dependency: " + id);
   };
-};
+  const fn = new Function("module", "exports", "require", code);
+  fn(mod, mod.exports, req);
+  return mod.exports;
+}
 
-const mixboxForwardRgb01 = (
-  baseLatents: number[][],
-  weights: number[]
-): { r: number; g: number; b: number } | null => {
-  const rgb = mixbox.latentToFloatRgb(mixLatents(baseLatents, weights));
-  if (!rgb || rgb.length < 3) return null;
-  return { r: rgb[0], g: rgb[1], b: rgb[2] };
-};
+const _gkCore = _decodeGkCorePayload(__GK_CORE_CIPHER_PAYLOAD__);
 
-const inverseObjective = (
-  weights: number[],
-  baseLatents: number[][],
-  targetRgb01: { r: number; g: number; b: number },
-  targetLab: { l: number; a: number; b: number }
-): number => {
-  const mixed = mixboxForwardRgb01(baseLatents, weights);
-  if (!mixed) return Number.POSITIVE_INFINITY;
-  const lab = rgb01ToOkLab(mixed.r, mixed.g, mixed.b);
-  const dL = lab.l - targetLab.l;
-  const dA = lab.a - targetLab.a;
-  const dB = lab.b - targetLab.b;
-  const dr = mixed.r - targetRgb01.r;
-  const dg = mixed.g - targetRgb01.g;
-  const db = mixed.b - targetRgb01.b;
-  return (dL * dL + dA * dA + dB * dB) + 0.025 * (dr * dr + dg * dg + db * db);
-};
-
-const pairwiseCoordinateDescent = (
-  start: number[],
-  baseLatents: number[][],
-  targetRgb01: { r: number; g: number; b: number },
-  targetLab: { l: number; a: number; b: number },
-  allowedMask?: boolean[]
-): number[] => {
-  let weights = normalizeSimplex(start, allowedMask);
-  let currentError = inverseObjective(weights, baseLatents, targetRgb01, targetLab);
-  let step = 0.25;
-  while (step >= 1 / 4096) {
-    for (let inner = 0; inner < 24; inner++) {
-      let bestTrial: number[] | null = null;
-      let bestError = currentError;
-      for (let donor = 0; donor < weights.length; donor++) {
-        if (allowedMask && !allowedMask[donor]) continue;
-        if (weights[donor] <= 0) continue;
-        const amount = Math.min(step, weights[donor]);
-        if (amount <= 0) continue;
-        for (let receiver = 0; receiver < weights.length; receiver++) {
-          if (receiver === donor) continue;
-          if (allowedMask && !allowedMask[receiver]) continue;
-          const trial = weights.slice();
-          trial[donor] -= amount;
-          trial[receiver] += amount;
-          const error = inverseObjective(trial, baseLatents, targetRgb01, targetLab);
-          if (error + 1e-14 < bestError) {
-            bestTrial = trial;
-            bestError = error;
-          }
-        }
-      }
-      if (!bestTrial) break;
-      weights = bestTrial;
-      currentError = bestError;
-    }
-    step *= 0.5;
-  }
-  return normalizeSimplex(weights, allowedMask);
-};
-
-const extendedChromaInit = (
-  hue: number,
-  numChromatic: number = 6,
-  useSecondaryColors: boolean = true
-): number[] => {
-  // Chromatic indices relative to palette index 2:
-  // [0:red(2), 1:magenta(3), 2:blue(4), 3:cyan(5), 4:yellow(6), 5:orange(7), 6:green(8), 7:purple(9)]
-  const init = new Array(numChromatic).fill(0);
-  const hasOrange = numChromatic >= 6 && useSecondaryColors;
-  const hasGreen = numChromatic >= 7 && useSecondaryColors;
-  const hasPurple = numChromatic >= 8 && useSecondaryColors;
-
-  if (hue >= 345 || hue < 12) {
-    init[0] = 0.9;
-    init[1] = 0.05;
-    if (hasOrange) init[5] = 0.05;
-    else init[4] = 0.05;
-  } else if (hue >= 12 && hue < 34) {
-    if (hasOrange) {
-      init[0] = 0.35;
-      init[5] = 0.65;
-    } else {
-      init[0] = 0.65;
-      init[4] = 0.35;
-    }
-  } else if (hue >= 34 && hue < 55) {
-    if (hasOrange) {
-      init[4] = 0.35;
-      init[5] = 0.65;
-    } else {
-      init[0] = 0.35;
-      init[4] = 0.65;
-    }
-  } else if (hue >= 55 && hue < 75) {
-    init[4] = 0.92;
-    if (hasOrange) init[5] = 0.08;
-    else init[0] = 0.08;
-  } else if (hue >= 75 && hue < 122) {
-    if (hasGreen) {
-      init[6] = 0.7;
-      init[4] = 0.3;
-    } else {
-      init[3] = 0.3;
-      init[4] = 0.7;
-    }
-  } else if (hue >= 122 && hue < 170) {
-    if (hasGreen) {
-      init[6] = 0.7;
-      init[3] = 0.3;
-    } else {
-      init[3] = 0.6;
-      init[4] = 0.4;
-    }
-  } else if (hue >= 170 && hue < 195) {
-    init[3] = 0.9;
-    if (hasGreen) init[6] = 0.1;
-    else init[4] = 0.1;
-  } else if (hue >= 195 && hue < 205) {
-    init[2] = 0.7;
-    init[3] = 0.3;
-  } else if (hue >= 205 && hue < 225) {
-    init[0] = 0.05;
-    init[2] = 0.7;
-    init[3] = 0.25;
-  } else if (hue >= 225 && hue < 252) {
-    init[0] = 0.05;
-    init[2] = 0.85;
-    init[3] = 0.1;
-  } else if (hue >= 252 && hue < 282) {
-    if (hasPurple) {
-      init[7] = 0.75;
-      init[2] = 0.25;
-    } else {
-      init[1] = 0.6;
-      init[2] = 0.4;
-    }
-  } else if (hue >= 282 && hue < 315) {
-    if (hasPurple) {
-      init[7] = 0.75;
-      init[1] = 0.25;
-    } else {
-      init[1] = 0.85;
-      init[2] = 0.15;
-    }
-  } else {
-    init[0] = 0.5;
-    init[1] = 0.5;
-  }
-  return init;
-};
-
-const extendedLowSatChroma = (
-  hue: number,
-  numChromatic: number = 6,
-  useSecondaryColors: boolean = true
-): number[] => {
-  const init = new Array(numChromatic).fill(0);
-  const hasOrange = numChromatic >= 6 && useSecondaryColors;
-  const hasGreen = numChromatic >= 7 && useSecondaryColors;
-  const hasPurple = numChromatic >= 8 && useSecondaryColors;
-
-  if (hue >= 345 || hue < 20) {
-    init[0] = 1;
-  } else if (hue >= 20 && hue < 50) {
-    if (hasOrange) init[5] = 1;
-    else {
-      init[0] = 0.5;
-      init[4] = 0.5;
-    }
-  } else if (hue >= 50 && hue < 75) {
-    init[4] = 1;
-  } else if (hue >= 75 && hue < 160) {
-    if (hasGreen) init[6] = 1;
-    else {
-      init[3] = 0.35;
-      init[4] = 0.65;
-    }
-  } else if (hue >= 160 && hue < 195) {
-    init[3] = 1;
-  } else if (hue >= 195 && hue < 210) {
-    init[2] = 1;
-  } else if (hue >= 210 && hue < 252) {
-    init[0] = 0.08;
-    init[2] = 0.92;
-  } else if (hue >= 252 && hue < 310) {
-    if (hasPurple) init[7] = 1;
-    else {
-      init[1] = 0.7;
-      init[2] = 0.3;
-    }
-  } else {
-    init[0] = 0.5;
-    init[1] = 0.5;
-  }
-  return init;
-};
-
-const desaturatedChromaticTarget = (targetRgb: RGB, minChannel: number, hue: number): RGB => {
-  const chromaR = targetRgb.r - minChannel;
-  const chromaG = targetRgb.g - minChannel;
-  const chromaB = targetRgb.b - minChannel;
-  const chromaMax = Math.max(chromaR, chromaG, chromaB);
-  if (chromaMax <= 0) {
-    return hsbToRgb(hue, 100, 100);
-  }
-  const scale = 255 / chromaMax;
-  return {
-    r: Math.round(chromaR * scale),
-    g: Math.round(chromaG * scale),
-    b: Math.round(chromaB * scale),
-  };
-};
-
-const EXTENDED_RATIO_LABELS = [
-  '光泽白 (Gaia 001 · 底漆)',
-  '光泽黑 (Gaia 002 · 底漆)',
-  '光泽红 (Gaia 003 · 主色)',
-  '色源品红 (Gaia 034 · 色源)',
-  '光泽蓝 (Gaia 004 · 主色)',
-  '色源青 (Gaia 033 · 色源)',
-  '色源黄 (Gaia 035 · 色源)',
-  '色源橙 (Gaia 015 · 间色)',
-  '色源绿 (Gaia 036 · 间色)',
-  '色源紫 (Gaia 037 · 间色)',
-] as const;
-
-const percentagesToExtendedRatios = (
-  percentages: number[],
-  minPercent = PROFESSIONAL_RATIO_THRESHOLD
-): { color: string; percentage: number }[] => (
-  percentages
-    .map((percentage, index) => ({
-      color: EXTENDED_RATIO_LABELS[index] ?? `色 ${index}`,
-      percentage: Math.round(percentage * 10) / 10,
-    }))
-    .filter(item => item.percentage >= minPercent)
-);
-
-const chromaticSummary = (ratios: { color: string; percentage: number }[]): string => {
-  const chromatic = ratios.filter(item => !item.color.includes('光泽白') && !item.color.includes('光泽黑') && !item.color.includes('白色') && !item.color.includes('黑色'));
-  if (chromatic.length === 0) return '无';
-  return chromatic
-    .map(item => `${item.color.split(' ')[0]}${item.percentage.toFixed(1)}%`)
-    .join(' + ');
-};
-
-/**
- * Internal unprojected Scheme A solver (used as warm-start inside the 10-vertex simplex).
- */
-const solveMixboxRatiosRaw = (
-  targetHex: string,
-  colorSpace: ColorSpace = 'srgb',
-  useExtendedPalette: boolean = false,
-  options?: MixboxSolveOptions
-): number[] => {
-  const useSecondaryColors = options?.useSecondaryColors ?? true;
-  const palette = resolvePalette(useExtendedPalette, options);
-  const zeros = emptyPaletteWeights(useExtendedPalette, options);
-  let targetRgb = hexToRgb(targetHex);
-
-  if (colorSpace !== 'srgb') {
-    targetRgb = convertToWorkingSpace(targetRgb, colorSpace);
-  }
-
-  const targetLatent = mixbox.rgbToLatent(targetRgb.r, targetRgb.g, targetRgb.b);
-  if (!targetLatent) return zeros;
-
-  const baseLatents = loadBaseLatents(palette);
-  if (!baseLatents) return zeros;
-
-  const hsb = rgbToHsb(targetRgb.r, targetRgb.g, targetRgb.b);
-  const hue = rgbHueDegrees(targetRgb.r, targetRgb.g, targetRgb.b);
-  const maxChannel = Math.max(targetRgb.r, targetRgb.g, targetRgb.b);
-  const minChannel = Math.min(targetRgb.r, targetRgb.g, targetRgb.b);
-  const saturation = maxChannel === 0 ? 0 : (maxChannel - minChannel) / maxChannel;
-
-  const toPercentages = (weights: number[]): number[] => {
-    const padded = weights.length >= zeros.length
-      ? weights.slice(0, zeros.length)
-      : [...weights, ...zeros.slice(weights.length)];
-    return padded.map(weight => weight * 100);
-  };
-
-  if (saturation < 0.05) {
-    const white = hsb.b / 100;
-    return toPercentages([white, 1 - white, ...new Array(palette.length - 2).fill(0)]);
-  }
-
-  const allowedMask = getPrimarySchemeAMask(hue, palette.length, useSecondaryColors);
-  const chromaAllowedMask = allowedMask.slice(2);
-  let weights: number[];
-
-  if (saturation < 0.12) {
-    const whiteRatio = (hsb.b / 100) * (1 - saturation);
-    const blackRatio = (1 - hsb.b / 100) * (1 - saturation);
-    const colorRatio = saturation;
-
-    if (useExtendedPalette) {
-      const chroma = normalizeSimplex(
-        extendedLowSatChroma(hue, palette.length - 2, useSecondaryColors),
-        chromaAllowedMask
-      );
-      weights = [whiteRatio, blackRatio, ...chroma.map(weight => weight * colorRatio)];
-    } else {
-      let red = 0;
-      let blue = 0;
-      let yellow = 0;
-      if (hue >= 15 && hue < 75) {
-        yellow = colorRatio;
-      } else if (hue >= 165 && hue < 285) {
-        blue = colorRatio;
-      } else if (hue >= 75 && hue < 165) {
-        yellow = colorRatio;
-      } else {
-        red = colorRatio;
-      }
-      weights = [whiteRatio, blackRatio, red, blue, yellow];
-    }
-  } else {
-    const chromaticTargetRgb = desaturatedChromaticTarget(targetRgb, minChannel, hue);
-    const pureHueLatent = mixbox.rgbToLatent(
-      chromaticTargetRgb.r,
-      chromaticTargetRgb.g,
-      chromaticTargetRgb.b
-    );
-    if (!pureHueLatent) return zeros;
-
-    const numChromatic = palette.length - 2;
-    const chromaStartIdx = 2;
-    let chromaWeights = useExtendedPalette
-      ? extendedChromaInit(hue, numChromatic, useSecondaryColors)
-      : (hue >= 345 || hue < 15)
-        ? [0.8, 0.1, 0.1]
-        : hue < 45
-          ? [0.5, 0.0, 0.5]
-          : hue < 75
-            ? [0.1, 0.1, 0.8]
-            : hue < 165
-              ? [0.0, 0.5, 0.5]
-              : hue < 220
-                ? [0.0, 0.6, 0.4]
-                : hue < 260
-                  ? [0.1, 0.8, 0.1]
-                  : hue < 300
-                    ? [0.4, 0.6, 0.0]
-                    : [0.55, 0.45, 0.0];
-
-    chromaWeights = normalizeSimplex(chromaWeights, chromaAllowedMask);
-
-    let learningRate = 0.2;
-    for (let iter = 0; iter < 100; iter++) {
-      const mixedLatent = [0, 0, 0, 0, 0, 0, 0];
-      for (let i = 0; i < numChromatic; i++) {
-        if (chromaAllowedMask && !chromaAllowedMask[i]) continue;
-        for (let j = 0; j < 7; j++) {
-          mixedLatent[j] += baseLatents[chromaStartIdx + i][j] * chromaWeights[i];
-        }
-      }
-
-      let error = 0;
-      const gradient = new Array(numChromatic).fill(0);
-      for (let j = 0; j < 7; j++) {
-        const diff = mixedLatent[j] - pureHueLatent[j];
-        error += diff * diff;
-        for (let i = 0; i < numChromatic; i++) {
-          if (chromaAllowedMask && !chromaAllowedMask[i]) continue;
-          gradient[i] += 2 * diff * baseLatents[chromaStartIdx + i][j];
-        }
-      }
-      if (error < 0.0001) break;
-
-      for (let i = 0; i < numChromatic; i++) {
-        if (chromaAllowedMask && !chromaAllowedMask[i]) {
-          chromaWeights[i] = 0;
-        } else {
-          chromaWeights[i] = Math.max(0, chromaWeights[i] - learningRate * gradient[i]);
-        }
-      }
-      chromaWeights = normalizeSimplex(chromaWeights, chromaAllowedMask);
-      if (iter > 20) {
-        learningRate = Math.max(0.01, learningRate * 0.95);
-      }
-    }
-
-    const grayAmount = minChannel / 255;
-    const chromaRatio = 1 - grayAmount;
-    weights = [
-      grayAmount * (hsb.b / 100),
-      grayAmount * (1 - hsb.b / 100),
-      ...chromaWeights.map(weight => weight * chromaRatio),
-    ];
-  }
-
-  return toPercentages(refineWeightsToLatent(weights, baseLatents, targetLatent, 80, allowedMask));
-};
-
-/**
- * Pure Color Source Mixbox ratios (projected onto BW + CMY + OGP when extended palette is used).
- *
- * @returns Array of weights [white, black, ...chromatic colors] as percentages
- */
-export const calculateMixboxRatios = (
-  targetHex: string, 
-  colorSpace: ColorSpace = 'srgb',
-  useExtendedPalette: boolean = false,
-  options?: MixboxSolveOptions
-): number[] => {
-  const useSecondaryColors = options?.useSecondaryColors ?? true;
-  const pureColorSourceOnly = options?.pureColorSourceOnly ?? true;
-  const raw = solveMixboxRatiosRaw(targetHex, colorSpace, useExtendedPalette, options);
-  return useExtendedPalette && pureColorSourceOnly
-    ? projectToPureColorSourceWeights(raw, useSecondaryColors)
-    : raw;
-};
-
-/**
- * True Mixbox inverse: simplex search matching Mixbox forward OKLab
- * within the target hue's active pigment subsets, enforcing Intermediate Color Replacement ("以一顶二").
- * - Standard Mixbox mode (`pureColorSourceOnly: false` default): includes solid Red (003), Blue (004), Yellow (005).
- * - HSB / Pure Color Source mode (`pureColorSourceOnly: true`): removes solid Red/Blue/Yellow, using only BW + CMY (033/034/035) + Secondary (015/036/037).
- */
-export const calculateMixboxInverseRatios = (
-  targetHex: string,
-  colorSpace: ColorSpace = 'srgb',
-  useExtendedPalette: boolean = true,
-  options?: MixboxSolveOptions
-): number[] => {
-  const useSecondaryColors = options?.useSecondaryColors ?? true;
-  const pureColorSourceOnly = options?.pureColorSourceOnly ?? false;
-  const palette = resolvePalette(useExtendedPalette, options);
-  const zeros = emptyPaletteWeights(useExtendedPalette, options);
-  let targetRgb = hexToRgb(targetHex);
-  if (colorSpace !== 'srgb') {
-    targetRgb = convertToWorkingSpace(targetRgb, colorSpace);
-  }
-
-  const baseLatents = loadBaseLatents(palette);
-  if (!baseLatents) return zeros;
-
-  const exactIndex = palette.findIndex((color) => {
-    if (!useSecondaryColors && color.isSecondary) return false;
-    return color.hex.toUpperCase() === targetHex.toUpperCase();
-  });
-  if (exactIndex >= 0) {
-    const oneHot = zeros.slice();
-    oneHot[exactIndex] = 100;
-    return useExtendedPalette && pureColorSourceOnly
-      ? projectToPureColorSourceWeights(oneHot, useSecondaryColors)
-      : oneHot;
-  }
-
-  const targetRgb01 = {
-    r: targetRgb.r / 255,
-    g: targetRgb.g / 255,
-    b: targetRgb.b / 255,
-  };
-  const maxChannel = Math.max(targetRgb.r, targetRgb.g, targetRgb.b);
-  const minChannel = Math.min(targetRgb.r, targetRgb.g, targetRgb.b);
-  const saturation = maxChannel === 0 ? 0 : (maxChannel - minChannel) / maxChannel;
-  if (saturation < 0.05) {
-    const rawGray = solveMixboxRatiosRaw(targetHex, colorSpace, useExtendedPalette, options);
-    return useExtendedPalette && pureColorSourceOnly
-      ? projectToPureColorSourceWeights(rawGray, useSecondaryColors)
-      : rawGray;
-  }
-  const hue = rgbHueDegrees(targetRgb.r, targetRgb.g, targetRgb.b);
-  const targetLab = rgb01ToOkLab(targetRgb01.r, targetRgb01.g, targetRgb01.b);
-  const count = palette.length;
-
-  const candidateSubsets = getCandidateActiveSubsets(hue, count, useSecondaryColors);
-  const luminance = 0.2126 * targetRgb01.r + 0.7152 * targetRgb01.g + 0.0722 * targetRgb01.b;
-  const grayscale = zeros.map((_, index) => (
-    index === 0 ? luminance : index === 1 ? 1 - luminance : 0
-  ));
-  const warmStart = solveMixboxRatiosRaw(targetHex, colorSpace, useExtendedPalette, options)
-    .map(percent => percent / 100);
-
-  let globalBestWeights: number[] | null = null;
-  let globalBestScore = Number.POSITIVE_INFINITY;
-
-  for (const subset of candidateSubsets) {
-    const mask = subsetToMask(subset, count);
-    // Find nearest allowed chromatic pigment in this subset
-    const nearestInSubset = subset.reduce(
-      (best, idx) => {
-        const rgb = hexToRgb(palette[idx].hex);
-        const dist =
-          (rgb.r - targetRgb.r) ** 2 +
-          (rgb.g - targetRgb.g) ** 2 +
-          (rgb.b - targetRgb.b) ** 2;
-        return dist < best.dist ? { index: idx, dist } : best;
-      },
-      { index: subset[subset.length - 1] ?? 0, dist: Number.POSITIVE_INFINITY }
-    ).index;
-
-    const oneHot = zeros.map((_, index) => (index === nearestInSubset ? 1 : 0));
-    const subsetUniform = normalizeSimplex(zeros.map((_, idx) => (mask[idx] ? 1 : 0)), mask);
-    const maskedWarmStart = normalizeSimplex(warmStart, mask);
-
-    const starts = [maskedWarmStart, subsetUniform, oneHot, grayscale];
-    let subsetBest = maskedWarmStart;
-    let subsetBestError = inverseObjective(subsetBest, baseLatents, targetRgb01, targetLab);
-
-    for (const start of starts) {
-      const candidate = pairwiseCoordinateDescent(start, baseLatents, targetRgb01, targetLab, mask);
-      const error = inverseObjective(candidate, baseLatents, targetRgb01, targetLab);
-      if (error < subsetBestError) {
-        subsetBest = candidate;
-        subsetBestError = error;
-      }
-    }
-
-    // Parsimony tie-breaker: slightly prefer subsets with fewer active chromatic pigments
-    // (e.g. pure intermediate color [0, 1, 7] when accuracy is virtually identical).
-    const activeChromaticCount = subsetBest.slice(2).filter(w => w > 0.005).length;
-    const score = subsetBestError + activeChromaticCount * 1e-5;
-    if (score < globalBestScore) {
-      globalBestScore = score;
-      globalBestWeights = subsetBest;
-    }
-  }
-
-  const bestWeights = globalBestWeights ?? normalizeSimplex(warmStart);
-  const padded = bestWeights.length >= count
-    ? bestWeights.slice(0, count)
-    : [...bestWeights, ...new Array(count - bestWeights.length).fill(0)];
-  const percentages = padded.map(weight => weight * 100);
-  return useExtendedPalette && pureColorSourceOnly
-    ? projectToPureColorSourceWeights(percentages, useSecondaryColors)
-    : percentages;
-};
-
-/**
- * Professional Paint Mixing Recipe Calculator
- * Based on real-world spray painting experience
- * 
- * Workflow:
- * - High Brightness (B > 70%): White-base spray workflow
- * - Mid Brightness (30% < B ≤ 70%): Standard mixing
- * - Low Brightness (B ≤ 30%): Black-base workflow
- * 
- * @param targetHex Target color hex string
- * @param options Optional secondary color settings
- * @returns Mixing recipe with HSB/LAB analysis and step-by-step instructions
- */
-export const calculateProfessionalRecipe = (
-  targetHex: string,
-  options?: MixboxSolveOptions
-): {
-  hsb: { h: number; s: number; b: number };
-  lab: { l: number; a: number; b: number };
-  strategy: 'high-brightness' | 'mid-brightness' | 'low-brightness';
-  steps: string[];
-  ratios: { color: string; percentage: number }[];
-} => {
-  const rgb = hexToRgb(targetHex);
-  const hsb = rgbToHsb(rgb.r, rgb.g, rgb.b);
-  const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
-
-  let strategy: 'high-brightness' | 'mid-brightness' | 'low-brightness';
-  let steps: string[] = [];
-  let ratios: { color: string; percentage: number }[] = [];
-
-  // Check for grayscale first (saturation-based detection)
-  const maxChannel = Math.max(rgb.r, rgb.g, rgb.b);
-  const minChannel = Math.min(rgb.r, rgb.g, rgb.b);
-  const saturation = maxChannel === 0 ? 0 : (maxChannel - minChannel) / maxChannel;
-  
-  // Handle pure grayscale colors (< 5% saturation)
-  if (saturation < 0.05) {
-    strategy = hsb.b > 50 ? 'high-brightness' : 'low-brightness';
-    
-    const whitePercent = hsb.b;
-    const blackPercent = 100 - hsb.b;
-    
-    ratios = [
-      { color: '光泽白 (Gaia 001 · 底漆)', percentage: Math.round(whitePercent * 10) / 10 },
-      { color: '光泽黑 (Gaia 002 · 底漆)', percentage: Math.round(blackPercent * 10) / 10 }
-    ].filter(r => r.percentage > 0);
-    
-    steps = [
-      `1. 色彩分析: 纯灰色 (饱和度 < 5%)`,
-      `2. 明度分析: B=${hsb.b.toFixed(1)}% → ${strategy === 'high-brightness' ? '浅灰色' : '深灰色'}`,
-      `3. 配方: 光泽白 ${whitePercent.toFixed(1)}% + 光泽黑 ${blackPercent.toFixed(1)}%`,
-      `4. 调色步骤:`,
-      `   a) 准备基础白色和黑色`,
-      `   b) 按比例混合，确保均匀`,
-      `   c) 使用灰度卡验证明度`,
-      `5. LAB 校准: L*=${lab.l.toFixed(1)} (目标明度)`
-    ];
-    
-    return { hsb, lab, strategy, steps, ratios };
-  }
-
-  const mixboxRatios = calculateMixboxInverseRatios(targetHex, 'srgb', true, {
-    includeFullSecondaryPalette: true,
-    pureColorSourceOnly: true,
-    ...options,
-  });
-  ratios = percentagesToExtendedRatios(mixboxRatios, MIXBOX_INVERSE_RATIO_THRESHOLD);
-  const whiteAmount = mixboxRatios[0] ?? 0;
-  const blackAmount = mixboxRatios[1] ?? 0;
-  const chromaText = chromaticSummary(ratios);
-
-  if (hsb.b > 70) {
-    strategy = 'high-brightness';
-    steps = [
-      `1. 明度分析: B=${hsb.b}% (高明度) → 采用"白底调色"策略`,
-      `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
-      `3. 饱和度分析: S=${hsb.s}% → 联合微调后白色底漆约 ${whiteAmount.toFixed(1)}%`,
-      `4. 调色步骤:`,
-      `   a) 准备白色底漆 ${whiteAmount.toFixed(1)}%`,
-      `   b) 混合色相颜料: ${chromaText}`,
-      `   c) 将色相颜料逐步加入白色底漆中,边加边测试`,
-      `5. LAB 校准: L*=${lab.l.toFixed(1)} (目标明度), a*=${lab.a.toFixed(1)}, b*=${lab.b.toFixed(1)}`
-    ];
-  } else if (hsb.b > 30) {
-    strategy = 'mid-brightness';
-    steps = [
-      `1. 明度分析: B=${hsb.b}% (中等明度) → 采用"标准混合"策略`,
-      `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
-      `3. HSB 初始化 + Mixbox 潜空间色相扇区微调`,
-      `4. 调色步骤:`,
-      `   a) 按比例准备对应色区颜料`,
-      `   b) 先混合主色相 (占比最大的颜色)`,
-      `   c) 逐步加入其他颜色,充分搅拌`,
-      `   d) 使用分光光度计或色卡进行对比校准`,
-      `5. LAB 校准: L*=${lab.l.toFixed(1)}, a*=${lab.a.toFixed(1)}, b*=${lab.b.toFixed(1)}`
-    ];
-  } else {
-    strategy = 'low-brightness';
-    steps = [
-      `1. 明度分析: B=${hsb.b}% (低明度) → 采用"黑底提亮"策略`,
-      `2. 色相分析: H=${hsb.h}° (${getHueName(hsb.h)})`,
-      `3. 深色调色注意: 黑色底漆约 ${blackAmount.toFixed(1)}%`,
-      `4. 调色步骤:`,
-      `   a) 准备黑色底漆 ${blackAmount.toFixed(1)}%`,
-      `   b) 混合色相颜料: ${chromaText}`,
-      `   c) 将色相颜料少量多次加入黑色底漆`,
-      `   d) 深色容易过深,建议预留5-10%用于微调`,
-      `5. LAB 校准: L*=${lab.l.toFixed(1)} (低明度), a*=${lab.a.toFixed(1)}, b*=${lab.b.toFixed(1)}`
-    ];
-  }
-
-  return { hsb, lab, strategy, steps, ratios };
-};
-
-/**
- * Get Chinese hue name from HSB hue value (0-360°)
- */
-const getHueName = (hue: number): string => {
-  if (hue >= 0 && hue < 30) return '红色系';
-  if (hue >= 30 && hue < 60) return '橙色系';
-  if (hue >= 60 && hue < 90) return '黄色系';
-  if (hue >= 90 && hue < 150) return '绿色系';
-  if (hue >= 150 && hue < 210) return '青色系';
-  if (hue >= 210 && hue < 270) return '蓝色系';
-  if (hue >= 270 && hue < 330) return '紫色系';
-  return '红色系';
-};
-
-/**
- * Helper: Calculate relative luminance (perceived brightness)
- * Uses ITU-R BT.709 coefficients
- */
-const getLuminance = (rgb: RGB): number => {
-  const r = rgb.r / 255;
-  const g = rgb.g / 255;
-  const b = rgb.b / 255;
-  
-  const rLinear = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
-  const gLinear = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
-  const bLinear = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
-  
-  return 0.2126 * rLinear + 0.7152 * gLinear + 0.0722 * bLinear;
-};
-
-// ==================== RAL Color System Support ====================
-
-/**
- * Find the nearest RAL color for a given RGB value
- * Uses Delta E (CIE76) algorithm through LAB color space for perceptually accurate matching
- * 
- * @param rgb RGB color object
- * @returns RALColor object with RAL number, name, LRV, hex, and RGB
- */
-export const findNearestRAL = (rgb: RGB): RALColor | null => {
-  try {
-    const converter = new simpleColorConverter({
-      rgb: { r: rgb.r, g: rgb.g, b: rgb.b },
-      to: 'ral'
-    });
-    
-    if (converter.color && converter.color.ral) {
-      return {
-        ral: converter.color.ral,
-        name: converter.color.name || `RAL ${converter.color.ral}`,
-        lrv: converter.color.lrv || 0,
-        hex: rgbToHex(rgb.r, rgb.g, rgb.b),
-        rgb: rgb,
-        type: 'ral'
-      };
-    }
-    return null;
-  } catch (error) {
-    console.warn('RAL conversion failed:', error);
-    return null;
-  }
-};
-
-/**
- * Convert Hex color to RAL standard color
- * 
- * @param hex Hex color string
- * @returns RALColor object or null if conversion fails
- */
-export const hexToRAL = (hex: string): RALColor | null => {
-  const rgb = hexToRgb(hex);
-  return findNearestRAL(rgb);
-};
-
-/**
- * Convert CMYK color to RAL standard color
- * 
- * @param cmyk CMYK color object
- * @returns RALColor object or null if conversion fails
- */
-export const cmykToRAL = (cmyk: CMYK): RALColor | null => {
-  try {
-    const converter = new simpleColorConverter({
-      cmyk: { c: cmyk.c, m: cmyk.m, y: cmyk.y, k: cmyk.k },
-      to: 'ral'
-    });
-    
-    if (converter.color && converter.color.ral) {
-      // Convert back to RGB for hex representation
-      const rgbConverter = new simpleColorConverter({
-        ral: { ral: converter.color.ral },
-        to: 'rgb'
-      });
-      
-      const rgb = rgbConverter.color || { r: 128, g: 128, b: 128 };
-      
-      return {
-        ral: converter.color.ral,
-        name: converter.color.name || `RAL ${converter.color.ral}`,
-        lrv: converter.color.lrv || 0,
-        hex: rgbToHex(rgb.r, rgb.g, rgb.b),
-        rgb: rgb,
-        type: 'ral'
-      };
-    }
-    return null;
-  } catch (error) {
-    console.warn('CMYK to RAL conversion failed:', error);
-    return null;
-  }
-};
-
-/**
- * Get RAL color information by RAL number
- * 
- * @param ralNumber RAL color number (e.g., 3009)
- * @returns RALColor object or null if not found
- */
-export const getRALByNumber = (ralNumber: number): RALColor | null => {
-  try {
-    const converter = new simpleColorConverter({
-      ral: { ral: ralNumber },
-      to: 'rgb'
-    });
-    
-    if (converter.color) {
-      const rgb = converter.color;
-      const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-      
-      // Get full RAL info
-      const ralInfo = new simpleColorConverter({
-        rgb: rgb,
-        to: 'ral'
-      });
-      
-      return {
-        ral: ralNumber,
-        name: ralInfo.color?.name || `RAL ${ralNumber}`,
-        lrv: ralInfo.color?.lrv || 0,
-        hex: hex,
-        rgb: rgb,
-        type: 'ral'
-      };
-    }
-    return null;
-  } catch (error) {
-    console.warn(`RAL ${ralNumber} lookup failed:`, error);
-    return null;
-  }
-};
-
-/**
- * Convert ColorData to RAL (convenience function)
- * 
- * @param colorData ColorData object
- * @returns RALColor object or null
- */
-export const colorDataToRAL = (colorData: ColorData): RALColor | null => {
-  return findNearestRAL(colorData.rgb);
-};
-
+export const BASE_MIXING_COLORS: any = _gkCore.BASE_MIXING_COLORS;
+export const CMY_PIGMENT_COLORS: any = _gkCore.CMY_PIGMENT_COLORS;
+export const CMY_PRIMARIES: any = _gkCore.CMY_PRIMARIES;
+export const CMY_SOLID_COLORS: any = _gkCore.CMY_SOLID_COLORS;
+export const COMMON_PAINTS: any = _gkCore.COMMON_PAINTS;
+export const EXTENDED_MIXING_COLORS: any = _gkCore.EXTENDED_MIXING_COLORS;
+export const FULL_MIXING_COLORS: any = _gkCore.FULL_MIXING_COLORS;
+export const GAIA_PAINTS: any = _gkCore.GAIA_PAINTS;
+export const GUNZE_PAINTS: any = _gkCore.GUNZE_PAINTS;
+export const JUMPWIND_PAINTS: any = _gkCore.JUMPWIND_PAINTS;
+export const MIXBOX_INVERSE_RATIO_THRESHOLD: any = _gkCore.MIXBOX_INVERSE_RATIO_THRESHOLD;
+export const PROFESSIONAL_RATIO_THRESHOLD: any = _gkCore.PROFESSIONAL_RATIO_THRESHOLD;
+export const calculateMixboxInverseRatios: any = _gkCore.calculateMixboxInverseRatios;
+export const calculateMixboxRatios: any = _gkCore.calculateMixboxRatios;
+export const calculateProfessionalRecipe: any = _gkCore.calculateProfessionalRecipe;
+export const cmykToRAL: any = _gkCore.cmykToRAL;
+export const colorDataToRAL: any = _gkCore.colorDataToRAL;
+export const expandPureColorSourceWeights: any = _gkCore.expandPureColorSourceWeights;
+export const extractProminentColors: any = _gkCore.extractProminentColors;
+export const findNearestPaints: any = _gkCore.findNearestPaints;
+export const findNearestRAL: any = _gkCore.findNearestRAL;
+export const generateId: any = _gkCore.generateId;
+export const getColorDistance: any = _gkCore.getColorDistance;
+export const getContrastColor: any = _gkCore.getContrastColor;
+export const getMixingPigmentInfo: any = _gkCore.getMixingPigmentInfo;
+export const getRALByNumber: any = _gkCore.getRALByNumber;
+export const hexToRAL: any = _gkCore.hexToRAL;
+export const hexToRgb: any = _gkCore.hexToRgb;
+export const hsbToRgb: any = _gkCore.hsbToRgb;
+export const labToRgb: any = _gkCore.labToRgb;
+export const mixboxBlend: any = _gkCore.mixboxBlend;
+export const mixboxMultiBlend: any = _gkCore.mixboxMultiBlend;
+export const opticalBlend: any = _gkCore.opticalBlend;
+export const rgbToCmyk: any = _gkCore.rgbToCmyk;
+export const rgbToHex: any = _gkCore.rgbToHex;
+export const rgbToHsb: any = _gkCore.rgbToHsb;
+export const rgbToLab: any = _gkCore.rgbToLab;

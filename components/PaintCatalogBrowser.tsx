@@ -24,6 +24,7 @@ import {
   PaintApplicationType,
   PaintSolventType,
   getPaintApplicationType,
+  getPaintSearchAliases,
   getPaintSolventType,
   loadPaintCatalog,
   localizedBrand,
@@ -200,7 +201,8 @@ const PaintCatalogBrowser: React.FC<PaintCatalogBrowserProps> = ({
       const appLabel = appType === "airbrush" ? "喷涂 喷笔" : "手涂 笔涂";
       const solventLabel = solventType === "oil" ? "油性 硝基 珐琅" : "水性 丙烯";
       const localizedB = localizedBrand(paint.brand, "zh").toLowerCase();
-      const hay = `${paint.brand} ${localizedB} ${paint.code} ${paint.name} ${paint.hex} ${paint.set} ${paint.finish} ${appLabel} ${solventLabel}`.toLowerCase();
+      const aliases = getPaintSearchAliases(paint);
+      const hay = `${paint.brand} ${localizedB} ${paint.code} ${aliases} ${paint.name} ${paint.hex} ${paint.set} ${paint.finish} ${appLabel} ${solventLabel}`.toLowerCase();
       map.set(paint.id, { pfx, hay, appType, solventType });
     }
     return map;

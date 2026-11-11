@@ -289,6 +289,96 @@ export interface PartCanvas {
   studioSession?: StudioSessionSnapshot;
 }
 
+// ==========================================
+// 取件表 (Parts Checklist) —— 零版权：玩家实拍封面 + 板件色彩编码 + 部位 Icon + 号码方块
+// ==========================================
+
+/** 多色成型板件 / 同板分色涂装：按零件号覆盖颜色与色卡信息 */
+export interface RunnerPartColorOverride {
+  colorHex: string;
+  paintBrand?: string;
+  paintCode?: string;
+  paintName?: string;
+}
+
+/** 板件（流道）定义：A / B / K / PC / Iron Chain … */
+export interface ChecklistRunner {
+  id: string; // 板件代号，如 "A"、"K"、"PC"
+  maxNumber: number; // 该板件最大零件号（自动生成 1..maxNumber 号码池）
+  colorHex: string; // 板件主底色（可从项目指派油漆一键绑定）
+  paintBrand?: string;
+  paintCode?: string;
+  paintName?: string; // 关联的油漆名称或成形色名称
+  /** 多色成型板件 / 同板分色：按零件号独立指派颜色（如 A1~A10 颜色1、A11~A18 颜色2） */
+  partColors?: Record<number, RunnerPartColorOverride>;
+}
+
+/** 角标：*2 对称件 / *4 / x2 两件 / ▲ 隐藏水口或预涂装件 */
+export type ChecklistBadge = '*2' | '*4' | 'x2' | '▲';
+
+/** 部位中的单个零件号（渲染时按板件归组，连续号自动折叠为 22-24） */
+export interface ChecklistPart {
+  id: string;
+  runnerId: string;
+  number: number;
+  badge?: ChecklistBadge;
+  qty?: number; // 非标准数量（如外部导入的 ×8 / ×12）；有 badge 时以 badge 为准
+  isCut?: boolean; // 实操时已剪下 / 已打磨
+}
+
+export type ChecklistRegionCategory =
+  | 'head'
+  | 'torso'
+  | 'core'
+  | 'backpack'
+  | 'waist'
+  | 'arm_common'
+  | 'arm_r'
+  | 'arm_l'
+  | 'shoulder'
+  | 'leg_common'
+  | 'leg_l'
+  | 'leg_r'
+  | 'weapon'
+  | 'shield'
+  | 'effect'
+  | 'adapter'
+  | 'decal'
+  | 'other';
+
+export interface ChecklistRegion {
+  id: string;
+  category: ChecklistRegionCategory;
+  title: string; // 如 "头部"、"手臂/右手"、"武器/光束步枪"
+  parts: ChecklistPart[];
+}
+
+/** 取件表视图分组：按部位（数据源） / 按板件（实时倒排视图） */
+export type ChecklistGroupBy = 'region' | 'runner';
+
+/** 外部取件表来源（仅记录文本数据出处，不含任何板件实拍图） */
+export interface ChecklistImportSource {
+  provider: 'dammiz';
+  schemeId: number;
+  url: string;
+  title: string;
+  revision?: string;
+  importedAt: number;
+}
+
+export interface PartsChecklist {
+  version: 1;
+  groupBy?: ChecklistGroupBy; // 剪件打勾 / 海报导出的视图分组（默认按部位）
+  source?: ChecklistImportSource;
+  modelTitle?: string; // 海报机型大标题（默认取项目标题）
+  subtitle?: string; // 比例 / 版本，如 "1/100 MG"
+  coverImageDataUrl?: string; // 取件表专用封面（默认取项目封面）
+  mergeConsecutive: boolean; // 连号自动折叠
+  runners: ChecklistRunner[];
+  regions: ChecklistRegion[];
+  updatedAt: number;
+}
+
 export interface PaintProject {
   id: string;
   title: string;
@@ -298,6 +388,8 @@ export interface PaintProject {
   updatedAt: number;
   categoryId?: string | null;
   parts: PartCanvas[];
+  /** 整台模型的交互式取件表（按项目而非单张零件图存储） */
+  partsChecklist?: PartsChecklist;
 }
 
 export interface PaletteCategory {
@@ -360,4 +452,5 @@ export interface GKMixArchivePayload {
   createdAt: number;
   parts: GKMixArchivePart[];
   customCoverData?: string; // Base64 encoded JPEG/PNG bytes (optional)
+  partsChecklist?: PartsChecklist; // Optional web checklist data (ignored gracefully by iOS Codable CodingKeys)
 }

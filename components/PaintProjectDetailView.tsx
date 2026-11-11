@@ -16,7 +16,9 @@ import { PaintingStepBuilderView } from "./PaintingStepBuilderView";
 import { ProjectSharePosterModal } from "./ProjectSharePosterModal";
 import { LightnessAndChromaModule } from "./ChromaStudioPanel";
 import { NearestMatchesModule } from "./BrandMatchPanel";
+import { PartsChecklistWorkbench } from "./partsChecklist/PartsChecklistWorkbench";
 import PaintBottleHover from "./PaintBottleHover";
+import { computeChecklistStats, createEmptyChecklist } from "../utils/partsChecklist";
 import { colorsToFloatingNodes, floatingNodesToColors } from "../utils/projectStore";
 import {
   createCoverThumbnail,
@@ -48,6 +50,7 @@ import {
   PencilSimpleIcon,
   PaletteIcon,
   ListChecksIcon,
+  PuzzlePieceIcon,
   ImageSquareIcon,
   CheckIcon,
   CheckCircle as CheckCircleIcon,
@@ -94,7 +97,8 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
   lang,
 }) => {
   const [activePartIndex, setActivePartIndex] = useState<number>(0);
-  const [detailSubTab, setDetailSubTab] = useState<"paints" | "steps">("paints");
+  const [detailSubTab, setDetailSubTab] = useState<"paints" | "steps" | "checklist">("paints");
+  const [isChecklistExpanded, setIsChecklistExpanded] = useState<boolean>(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showCategoryMenu, setShowCategoryMenu] = useState<boolean>(false);
   const [showMoreMenu, setShowMoreMenu] = useState<boolean>(false);
@@ -169,6 +173,14 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
       activePart.nodes[0]
     );
   }, [activePart, selectedNodeId]);
+
+  const checklistStats = useMemo(
+    () =>
+      computeChecklistStats(
+        project.partsChecklist ?? createEmptyChecklist(project.title)
+      ),
+    [project.partsChecklist, project.title]
+  );
 
   const currentCategory = categories.find((c) => c.id === project.categoryId);
 
@@ -331,6 +343,207 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
     };
     img.src = activePartImageSrc;
   };
+
+  const partStageCard = activePart ? (
+    <div
+      className="bp-canvas-stage min-w-0 rounded-3xl border border-slate-200/85 dark:border-slate-800 bg-slate-950 p-3 sm:p-4 shadow-lg space-y-3"
+      onTouchStart={(e) => {
+        touchStartXRef.current = e.touches[0]?.clientX ?? null;
+      }}
+      onTouchEnd={(e) => {
+        if (touchStartXRef.current == null) return;
+        const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
+        const dx = endX - touchStartXRef.current;
+        touchStartXRef.current = null;
+        if (Math.abs(dx) > 48) {
+          if (dx < 0 && safePartIdx < project.parts.length - 1) {
+            setActivePartIndex(safePartIdx + 1);
+          } else if (dx > 0 && safePartIdx > 0) {
+            setActivePartIndex(safePartIdx - 1);
+          }
+        }
+      }}
+    >
+      {/* Part Switcher Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="bp-badge rounded-full bg-coral/20 border border-coral/40 px-2.5 py-0.5 font-mono text-[11px] font-black text-coral whitespace-nowrap shrink-0 tabular-nums">
+            零件 {safePartIdx + 1}/{project.parts.length}
+          </span>
+          {isEditingPartName ? (
+            <input
+              type="text"
+              value={partNameInput}
+              onChange={(e) => setPartNameInput(e.target.value)}
+              onBlur={handleSavePartName}
+              onKeyDown={(e) => e.key === "Enter" && handleSavePartName()}
+              autoFocus
+              className="bp-input rounded-lg border border-coral bg-white dark:bg-slate-900 px-2 py-0.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsEditingPartName(true)}
+              className="flex items-center gap-1 text-xs sm:text-sm font-extrabold text-white hover:text-coral transition cursor-pointer min-w-0"
+            >
+              <span className="truncate">{activePart.partName}</span>
+              <PencilSimpleIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            </button>
+          )}
+        </div>
+
+        {/* Part Paging Controls */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-0.5 pr-0.5">
+          {project.parts.map((partItem, pIdx) => (
+            <button
+              key={partItem.id}
+              type="button"
+              onClick={() => setActivePartIndex(pIdx)}
+              className={`inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[11px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                pIdx === safePartIdx
+                  ? "bp-pill-active bg-white text-slate-950 shadow-xs"
+                  : "bp-pill bg-white/10 text-slate-300 hover:bg-white/20"
+              }`}
+            >
+              #{pIdx + 1} {partItem.partName.slice(0, 8)}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => addPartFileRef.current?.click()}
+            className="bp-pill inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white hover:bg-coral transition cursor-pointer shrink-0"
+            title="添加新零件图"
+          >
+            <PlusIcon className="h-3.5 w-3.5" weight="bold" />
+          </button>
+        </div>
+      </div>
+
+      {/* 1:1 Export Aspect Ratio Annotated Preview Stage (allowDrag={false}) */}
+      <div className="bp-canvas-stage relative flex items-center justify-center min-h-[280px] sm:min-h-[360px] lg:min-h-[380px] lg:max-h-[calc(100dvh-220px)] rounded-2xl bg-slate-900/90 overflow-hidden p-2">
+        {project.parts.length > 1 && safePartIdx > 0 && (
+          <button
+            type="button"
+            onClick={() => setActivePartIndex(safePartIdx - 1)}
+            className="bp-btn absolute left-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
+            title="上一个零件"
+          >
+            <CaretLeftIcon className="h-4 w-4" weight="bold" />
+          </button>
+        )}
+
+        <ProjectAnnotatedCanvas
+          imageSrc={activePartImageSrc}
+          alt={activePart.partName}
+          colors={partColors}
+          selectedId={selectedNode?.id || null}
+          swatchSettings={swatchSettings}
+          readOnly={false}
+          maxHeightPx={typeof window !== "undefined" ? Math.max(320, window.innerHeight - 260) : 560}
+          onSelect={(cOrId) => {
+            const id = typeof cOrId === "string" ? cOrId : cOrId?.id;
+            if (id) setSelectedNodeId(id);
+          }}
+          onUpdatePosition={(id, nx, ny) => {
+            updateActivePart((part) => ({
+              ...part,
+              nodes: part.nodes.map((n) =>
+                n.id === id ? { ...n, offsetX: nx, offsetY: ny } : n
+              ),
+            }));
+          }}
+        />
+
+        {project.parts.length > 1 && safePartIdx < project.parts.length - 1 && (
+          <button
+            type="button"
+            onClick={() => setActivePartIndex(safePartIdx + 1)}
+            className="bp-btn absolute right-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
+            title="下一个零件"
+          >
+            <CaretRightIcon className="h-4 w-4" weight="bold" />
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-0.5 text-[11px] text-slate-400">
+        <span className="truncate">拖拽画面色卡可自由移动 · 点按色卡查看详情</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {onSendImageToColoring && activePartImageSrc && (
+            <button
+              type="button"
+              onClick={() =>
+                onSendImageToColoring(
+                  activePartImageSrc,
+                  `${project.title} · ${activePart.partName}`,
+                  true,
+                  { projectId: project.id, partId: activePart.id }
+                )
+              }
+              className="bp-pill gk-btn-secondary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-coral/15 hover:bg-coral/25 border border-coral/40 px-3 text-xs font-extrabold text-coral transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+              title="返回模拟试色台继续对当前试色项目进行上色与调整"
+            >
+              <PaintBrushIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+              <span>试色改色</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsSwatchEditorOpen(true)}
+            className="bp-pill-active gk-btn-primary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover px-3.5 text-xs font-extrabold text-white shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <SlidersHorizontalIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+            <span>进入排版工作台 →</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const subTabBar = (
+    <div className="flex justify-center lg:justify-start">
+      <div className="bp-segmented inline-flex rounded-full border border-white/50 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-1 shadow-md max-w-full overflow-x-auto no-scrollbar">
+        <button
+          type="button"
+          onClick={() => setDetailSubTab("paints")}
+          className={`bp-segmented-item flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
+            detailSubTab === "paints"
+              ? "bp-segmented-item-active bg-coral text-white shadow-sm"
+              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <PaletteIcon className="h-4 w-4 shrink-0" weight="bold" />
+          <span>指派油漆详情 ({activePart?.nodes.length || 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setDetailSubTab("steps")}
+          className={`bp-segmented-item flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
+            detailSubTab === "steps"
+              ? "bp-segmented-item-active bg-coral text-white shadow-sm"
+              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <ListChecksIcon className="h-4 w-4 shrink-0" weight="bold" />
+          <span>涂装工序 ({activePart?.steps.length || 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setDetailSubTab("checklist")}
+          className={`bp-segmented-item flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
+            detailSubTab === "checklist"
+              ? "bp-segmented-item-active bg-coral text-white shadow-sm"
+              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <PuzzlePieceIcon className="h-4 w-4 shrink-0" weight="bold" />
+          <span>
+            取件表 ({checklistStats.partsCount}/{checklistStats.regionsCount})
+          </span>
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4 pb-8 animate-fadeIn relative">
@@ -551,196 +764,64 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
         </div>
       </div>
 
-      {/* Workspace: mobile stacked (canvas → tabs → panels); desktop lg+ left canvas / right inspector */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6 lg:items-start">
-      {/* 2. Upper Zone: 1:1 Export Aspect Ratio Preview & Multi-Part Horizontal Paging (Drag locked to prevent gesture conflict) */}
-      {activePart && (
-        <div
-          className="bp-canvas-stage lg:col-span-6 xl:col-span-5 lg:sticky lg:top-4 min-w-0 rounded-3xl border border-slate-200/85 dark:border-slate-800 bg-slate-950 p-3 sm:p-4 shadow-lg space-y-3"
-          onTouchStart={(e) => {
-            touchStartXRef.current = e.touches[0]?.clientX ?? null;
-          }}
-          onTouchEnd={(e) => {
-            if (touchStartXRef.current == null) return;
-            const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
-            const dx = endX - touchStartXRef.current;
-            touchStartXRef.current = null;
-            if (Math.abs(dx) > 48) {
-              if (dx < 0 && safePartIdx < project.parts.length - 1) {
-                setActivePartIndex(safePartIdx + 1);
-              } else if (dx > 0 && safePartIdx > 0) {
-                setActivePartIndex(safePartIdx - 1);
-              }
+      {/* Workspace: checklist promotes body regions to full 12-col width below Row 1; paints/steps keep sticky 2-col */}
+      {detailSubTab === "checklist" ? (
+        <PartsChecklistWorkbench
+          project={project}
+          onUpdateChecklist={(updater) =>
+            onUpdateProject((prev) => ({
+              ...prev,
+              partsChecklist: updater(
+                prev.partsChecklist ?? createEmptyChecklist(prev.title)
+              ),
+              updatedAt: Date.now(),
+            }))
+          }
+          isExpanded={isChecklistExpanded || !activePart}
+          onToggleExpand={
+            activePart
+              ? () => setIsChecklistExpanded((v) => !v)
+              : undefined
+          }
+          topLeftStage={activePart && !isChecklistExpanded ? partStageCard : undefined}
+          topTabBar={subTabBar}
+          isWideMode={isWideMode || !onToggleWideMode}
+          onNavigateToPaintTab={() => setDetailSubTab("paints")}
+          onNavigateToColoringStudio={() => {
+            if (onSendImageToColoring && activePart && activePartImageSrc) {
+              onSendImageToColoring(
+                activePartImageSrc,
+                `${project.title} · ${activePart.partName}`,
+                true,
+                { projectId: project.id, partId: activePart.id }
+              );
+            } else if (activePart) {
+              setIsSwatchEditorOpen(true);
+            } else {
+              setDetailSubTab("paints");
             }
           }}
-        >
-          {/* Part Switcher Header */}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="bp-badge rounded-full bg-coral/20 border border-coral/40 px-2.5 py-0.5 font-mono text-[11px] font-black text-coral whitespace-nowrap shrink-0 tabular-nums">
-                零件 {safePartIdx + 1}/{project.parts.length}
-              </span>
-              {isEditingPartName ? (
-                <input
-                  type="text"
-                  value={partNameInput}
-                  onChange={(e) => setPartNameInput(e.target.value)}
-                  onBlur={handleSavePartName}
-                  onKeyDown={(e) => e.key === "Enter" && handleSavePartName()}
-                  autoFocus
-                  className="bp-input rounded-lg border border-coral bg-white dark:bg-slate-900 px-2 py-0.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsEditingPartName(true)}
-                  className="flex items-center gap-1 text-xs sm:text-sm font-extrabold text-white hover:text-coral transition cursor-pointer min-w-0"
-                >
-                  <span className="truncate">{activePart.partName}</span>
-                  <PencilSimpleIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                </button>
-              )}
-            </div>
-
-            {/* Part Paging Controls */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-0.5 pr-0.5">
-              {project.parts.map((partItem, pIdx) => (
-                <button
-                  key={partItem.id}
-                  type="button"
-                  onClick={() => setActivePartIndex(pIdx)}
-                  className={`inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[11px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
-                    pIdx === safePartIdx
-                      ? "bp-pill-active bg-white text-slate-950 shadow-xs"
-                      : "bp-pill bg-white/10 text-slate-300 hover:bg-white/20"
-                  }`}
-                >
-                  #{pIdx + 1} {partItem.partName.slice(0, 8)}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => addPartFileRef.current?.click()}
-                className="bp-pill inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white hover:bg-coral transition cursor-pointer shrink-0"
-                title="添加新零件图"
-              >
-                <PlusIcon className="h-3.5 w-3.5" weight="bold" />
-              </button>
-            </div>
-          </div>
-
-          {/* 1:1 Export Aspect Ratio Annotated Preview Stage (allowDrag={false}) */}
-          <div className="bp-canvas-stage relative flex items-center justify-center min-h-[280px] sm:min-h-[360px] lg:min-h-[380px] lg:max-h-[calc(100dvh-220px)] rounded-2xl bg-slate-900/90 overflow-hidden p-2">
-            {project.parts.length > 1 && safePartIdx > 0 && (
-              <button
-                type="button"
-                onClick={() => setActivePartIndex(safePartIdx - 1)}
-                className="bp-btn absolute left-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
-                title="上一个零件"
-              >
-                <CaretLeftIcon className="h-4 w-4" weight="bold" />
-              </button>
-            )}
-
-            <ProjectAnnotatedCanvas
-              imageSrc={activePartImageSrc}
-              alt={activePart.partName}
-              colors={partColors}
-              selectedId={selectedNode?.id || null}
-              swatchSettings={swatchSettings}
-              readOnly={false}
-              maxHeightPx={typeof window !== "undefined" ? Math.max(320, window.innerHeight - 260) : 560}
-              onSelect={(cOrId) => {
-                const id = typeof cOrId === "string" ? cOrId : cOrId?.id;
-                if (id) setSelectedNodeId(id);
-              }}
-              onUpdatePosition={(id, nx, ny) => {
-                updateActivePart((part) => ({
-                  ...part,
-                  nodes: part.nodes.map((n) =>
-                    n.id === id ? { ...n, offsetX: nx, offsetY: ny } : n
-                  ),
-                }));
-              }}
-            />
-
-            {project.parts.length > 1 && safePartIdx < project.parts.length - 1 && (
-              <button
-                type="button"
-                onClick={() => setActivePartIndex(safePartIdx + 1)}
-                className="bp-btn absolute right-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
-                title="下一个零件"
-              >
-                <CaretRightIcon className="h-4 w-4" weight="bold" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-0.5 text-[11px] text-slate-400">
-            <span className="truncate">拖拽画面色卡可自由移动 · 点按色卡查看详情</span>
-            <div className="flex items-center gap-2 shrink-0">
-              {onSendImageToColoring && activePartImageSrc && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    onSendImageToColoring(
-                      activePartImageSrc,
-                      `${project.title} · ${activePart.partName}`,
-                      true,
-                      { projectId: project.id, partId: activePart.id }
-                    )
-                  }
-                  className="bp-pill gk-btn-secondary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-coral/15 hover:bg-coral/25 border border-coral/40 px-3 text-xs font-extrabold text-coral transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-                  title="返回模拟试色台继续对当前试色项目进行上色与调整"
-                >
-                  <PaintBrushIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-                  <span>试色改色</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setIsSwatchEditorOpen(true)}
-                className="bp-pill-active gk-btn-primary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover px-3.5 text-xs font-extrabold text-white shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <SlidersHorizontalIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-                <span>进入排版工作台 →</span>
-              </button>
-            </div>
-          </div>
+          lang={lang}
+        />
+      ) : (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6 lg:items-start">
+      {/* 2. Upper Zone: 1:1 Export Aspect Ratio Preview & Multi-Part Horizontal Paging (Drag locked to prevent gesture conflict) */}
+      {partStageCard && (
+        <div className="lg:col-span-6 xl:col-span-5 lg:sticky lg:top-4 min-w-0">
+          {partStageCard}
         </div>
       )}
 
       {/* Right inspector column (desktop) */}
-      <div className="lg:col-span-6 xl:col-span-7 min-w-0 flex flex-col gap-4 pr-1.5 pb-1.5">
-      {/* 3. Floating Liquid Glass Sub-Tab Switcher: [指派油漆详情 | 涂装工序] */}
-      <div className="flex justify-center lg:justify-start">
-        <div className="bp-segmented inline-flex rounded-full border border-white/50 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-1 shadow-md max-w-full overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setDetailSubTab("paints")}
-            className={`bp-segmented-item flex items-center gap-1.5 rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
-              detailSubTab === "paints"
-                ? "bp-segmented-item-active bg-coral text-white shadow-sm"
-                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <PaletteIcon className="h-4 w-4 shrink-0" weight="bold" />
-            <span>指派油漆详情 ({activePart?.nodes.length || 0})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setDetailSubTab("steps")}
-            className={`bp-segmented-item flex items-center gap-1.5 rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
-              detailSubTab === "steps"
-                ? "bp-segmented-item-active bg-coral text-white shadow-sm"
-                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <ListChecksIcon className="h-4 w-4 shrink-0" weight="bold" />
-            <span>涂装工序 ({activePart?.steps.length || 0})</span>
-          </button>
-        </div>
-      </div>
+      <div
+        className={`${
+          !activePart
+            ? "lg:col-span-12"
+            : "lg:col-span-6 xl:col-span-7"
+        } min-w-0 flex flex-col gap-4 pr-1.5 pb-1.5`}
+      >
+      {/* 3. Floating Liquid Glass Sub-Tab Switcher: [指派油漆详情 | 涂装工序 | 取件表] */}
+      {subTabBar}
 
       {/* 4. Sub-Tab 1: 指派油漆详情 (Horizontal Paint Carousel + Module A Lightness/Chroma + Module B Nearest Matches) */}
       {detailSubTab === "paints" && activePart && (
@@ -891,6 +972,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
       )}
       </div>
       </div>
+      )}
 
       {/* Bottom-Right Floating Export Button (QR Poster Card + .gkmix Archive Export, Screenshot 3) */}
       <div className="fixed bottom-24 lg:bottom-8 right-5 z-40 overflow-visible">

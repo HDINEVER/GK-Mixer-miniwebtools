@@ -65,7 +65,7 @@ const AIRBRUSH_PRIMARY_BRANDS = new Set([
 
 /**
  * Distinguishes Oil-based (硝基/珐琅 油性漆) from Water-based (水性/丙烯漆) paints,
- * including brand-internal series distinctions (e.g. Jumpwind Aqueous JW-A, Mr.Hobby H/N, Tamiya X/XF vs LP/TS).
+ * including brand-internal series distinctions (e.g. Mr.Hobby H/N, Tamiya X/XF vs LP/TS).
  */
 export const getPaintSolventType = (paint: CatalogPaint): PaintSolventType => {
   const brand = paint.brand.trim();
@@ -76,23 +76,11 @@ export const getPaintSolventType = (paint: CatalogPaint): PaintSolventType => {
   // Pure oil-based lacquer/enamel brands
   if (
     brand === "Gaia" ||
+    brand === "Jumpwind" ||
     brand === "Hobby Mio" ||
     brand === "Sunin7" ||
     brand === "AK Real Colors"
   ) {
-    return "oil";
-  }
-
-  // Jumpwind (匠域): JW-A / Aqueous is water-based; Basic/MEKA/NEO/Metal/Pearl/Clear are oil-based lacquer
-  if (brand === "Jumpwind") {
-    if (
-      setLower.includes("aqueous") ||
-      setLower.includes("水性") ||
-      /^jw-?a/i.test(code) ||
-      nameLower.includes("水性")
-    ) {
-      return "water";
-    }
     return "oil";
   }
 
@@ -314,6 +302,25 @@ export const paintPrefix = (paint: CatalogPaint): string => {
   return set || OTHER_PREFIX;
 };
 
+export const getPaintSearchAliases = (paint: CatalogPaint): string => {
+  const code = (paint.code || "").trim();
+  if (!code) return "";
+  const compact = code.replace(/[\s.\-_]+/g, "").toLowerCase();
+  if (paint.brand === "Jumpwind") {
+    const noMatch = code.match(/^NO\.?(\d+)$/i);
+    if (noMatch) {
+      const padded = noMatch[1].padStart(3, "0");
+      return `${compact} jw-${padded} jw${padded} no${padded}`;
+    }
+    const jwMatch = code.match(/^JW-?(\d+)$/i);
+    if (jwMatch) {
+      const padded = jwMatch[1].padStart(3, "0");
+      return `${compact} no.${padded} no${padded} jw${padded}`;
+    }
+  }
+  return compact;
+};
+
 export const sortPaints = (paints: CatalogPaint[]) =>
   [...paints].sort((a, b) => {
     const code = a.code.localeCompare(b.code, undefined, { numeric: true });
@@ -332,7 +339,7 @@ export const prefixGroups = (
     if (paint.brand !== brand) return false;
     if (solidsOnly && paint.finish !== "standard") return false;
     if (searchText) {
-      const hay = `${paint.code} ${paint.name} ${paint.hex} ${paint.set}`.toLowerCase();
+      const hay = `${paint.code} ${getPaintSearchAliases(paint)} ${paint.name} ${paint.hex} ${paint.set}`.toLowerCase();
       if (!hay.includes(searchText.toLowerCase())) return false;
     }
     return true;
@@ -500,7 +507,7 @@ export class PaintMatchEngine {
     for (const paint of catalog) {
       if (solidsOnly && paint.finish !== "standard") continue;
       if (query) {
-        const hay = `${paint.code} ${paint.name} ${paint.hex} ${paint.set} ${paint.brand}`.toLowerCase();
+        const hay = `${paint.code} ${getPaintSearchAliases(paint)} ${paint.name} ${paint.hex} ${paint.set} ${paint.brand}`.toLowerCase();
         if (!hay.includes(query)) continue;
       }
       const deltaE = deltaE2000(target, labOf(paint));

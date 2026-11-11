@@ -719,7 +719,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       Aa 字体：FT System (Roboto Flex 可变三轴 wght 100–900 · wdth 50–151 · opsz 8–144) + Arial + 思源黑体
                     </span>
                     <span className="inline-flex items-center gap-1 border border-current/35 bg-[var(--ft-light-plate,#ced9f0)] px-2 py-0.5 text-[10px] text-[var(--ft-light-stage-ink,#24352b)] tabular-nums">
-                      <span>Good things take type.</span>
+                      <span>GK-Mixer · Specimen Edition</span>
                     </span>
                   </div>
                 </button>

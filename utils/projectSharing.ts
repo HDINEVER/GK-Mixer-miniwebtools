@@ -1157,6 +1157,7 @@ export async function exportGKMixArchive(project: PaintProject): Promise<void> {
     customCoverData: project.customCoverImageDataUrl
       ? dataUrlToBase64Bytes(project.customCoverImageDataUrl)
       : undefined,
+    partsChecklist: project.partsChecklist,
   };
 
   const jsonStr = JSON.stringify(archive);
@@ -1251,5 +1252,6 @@ export async function importGKMixArchive(
     createdAt: now,
     updatedAt: now,
     parts,
+    partsChecklist: archive.partsChecklist,
   };
 }

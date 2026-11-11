@@ -1913,10 +1913,9 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Fieldwork Type (FT System — Independent Type Foundry Specimen Stage & Editorial Footer Rule) */}
+      {/* Fieldwork Type (FT System — Subtle Top-Right Editorial Specimen Watermark only; bottom third-party fieldwork bar removed) */}
       {uiStyle === 'catalog' && (
         <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true">
-          {/* Top-Right Subtle Editorial Specimen Watermark (FT System Variable Axis Specimen) */}
           <div
             className="hidden xl:flex fixed top-14 right-8 select-none pointer-events-none opacity-[0.045] dark:opacity-[0.055] text-[var(--ft-ink)]"
             style={{
@@ -1928,26 +1927,6 @@ const App: React.FC = () => {
             }}
           >
             Aa
-          </div>
-          {/* Bottom Fieldwork Type Running Specimen Rule */}
-          <div className="hidden lg:flex fixed bottom-0 inset-x-0 items-center justify-between px-6 py-1 bg-[var(--ft-paper)] border-t border-[var(--ft-line)] text-[11px] text-[var(--ft-muted)] pointer-events-none z-10">
-            <div className="flex items-center gap-4">
-              <span
-                className="text-[var(--ft-ink)]"
-                style={{
-                  fontFamily: '"FT", "Roboto Flex", sans-serif',
-                  fontVariationSettings: "'wght' 760, 'wdth' 110, 'opsz' 50",
-                  letterSpacing: '-0.04em',
-                }}
-              >
-                fieldwork<sup className="text-[8px] ml-0.5 font-sans">®</sup>
-              </span>
-              <span>FT System · No. 05 / Variable Specimen</span>
-            </div>
-            <div className="flex items-center gap-5 tabular-nums">
-              <span>Upright · Weight 100–900 · Width 50–151 · Optical 8–144</span>
-              <span className="text-[var(--ft-ink)]">Good things take type.</span>
-            </div>
           </div>
         </div>
       )}

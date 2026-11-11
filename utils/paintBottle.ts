@@ -53,6 +53,11 @@ const codeCandidates = (brand: string, code: string): string[] => {
   if (brand === "Jumpwind" || brand === "匠域") {
     const mc = compact.match(/^MC\.?(\d+)$/i);
     if (mc) preferred.push(`MC${mc[1]}`);
+    const no = compact.match(/^NO\.?(\d+)$/i);
+    if (no) {
+      const padded = no[1].padStart(3, "0");
+      preferred.push(`JW-${padded}`, `NO.${padded}`, `NO${padded}`);
+    }
   }
   if (brand === "Mr.Hobby" || brand === "Gunze" || brand === "郡士") {
     const digits = compact.match(/^C?(\d+[A-Za-z]?)$/i);

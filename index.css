@@ -1690,7 +1690,7 @@ html[data-ui-style="craft"]
       .bp-segmented-item
     ):not(.gk-tab-pill):not(.bp-gray-step-btn):not(.bp-subcard):not(
       .bp-subcard-active
-    ):not(.bp-swatch):not(.bp-matrix-cell):not(.bp-dot):not(
+    ):not(.bp-swatch):not(.bp-matrix-cell):not(.bp-capsule-tile):not(.bp-dot):not(
       .bp-swatch-stage-btn
     ):not(:disabled)
   ) {
@@ -1706,7 +1706,7 @@ html[data-ui-style="craft"] .bp-pill-active:not(:disabled),
 html[data-ui-style="craft"]
   button[aria-pressed="true"]:not(.bp-subcard):not(.bp-subcard-active):not(
     .gk-tab-pill
-  ):not(.bp-segmented-item):not(.bp-swatch-stage-btn):not(:disabled) {
+  ):not(.bp-segmented-item):not(.bp-swatch-stage-btn):not(.bp-badge-opt):not(:disabled) {
   border-radius: 10px !important;
   border: 1px solid color-mix(in srgb, var(--accent-color) 32%, transparent) !important;
   background: var(--neu-base) !important;
@@ -1958,7 +1958,9 @@ html[data-ui-style="craft"] .bp-dashed-box {
           .bp-segmented-item
         ):not(.gk-tab-pill):not(.bp-gray-step-btn):not(.bp-swatch-stage-btn):not(.bp-pill-active):not(
           [aria-pressed="true"]
-        ):not(.gk-mech-primary):not(.gk-btn-primary):not(:disabled)
+        ):not(.gk-mech-primary):not(.gk-btn-primary):not(.bp-matrix-cell):not(
+          .bp-capsule-tile
+        ):not(:disabled)
       ):hover:not(:active):not([data-bp-pressed="true"]) {
       box-shadow: var(--neu-btn-shadow-hover) !important;
     }
@@ -1984,7 +1986,9 @@ html[data-ui-style="craft"] .bp-dashed-box {
         [class*="border-t"]
       ):not([class*="border-0"]):not([class*="border-transparent"]):not(
         .bp-gray-step-btn
-      ):not(.bp-swatch-stage-btn):not(:disabled)
+      ):not(.bp-swatch-stage-btn):not(.bp-matrix-cell):not(
+        .bp-capsule-tile
+      ):not(:disabled)
     ):is(:active, [data-bp-pressed="true"]),
   html[data-ui-style="craft"]
     :where(.bp-subcard-interactive, .bp-project-card, .bp-extracted-card):not(
@@ -3298,12 +3302,1229 @@ html[data-ui-style="catalog"] .bp-dashed-box {
   }
 }
 
+/* ==========================================================================
+   17. Parts Checklist Concentric Runner Pool Chips, Capsules & Multi-Style Sync
+   ========================================================================== */
 
+/* Base / Liquid Glass Defaults (also ensures clean first paint before hydration) */
+.bp-runner-chip {
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+}
+.bp-runner-chip-badge,
+.bp-runner-chip-label {
+  border-radius: 8px; /* 12px outer - 4px padding = 8px exact concentric */
+}
+.bp-runner-chip-badge:active {
+  transform: scale(0.95);
+}
+.bp-pool-icon,
+.bp-region-icon {
+  border-radius: 8px;
+}
 
+/* Runner Group Capsule: [A | 12 | 21 | 33] (8px outer tray - 2px padding = 6px concentric inner keycaps) */
+.bp-capsule-shell {
+  gap: 2px;
+  border-radius: 8px;
+  padding: 2px;
+  background-color: #0F172A;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.22);
+}
+html.dark .bp-capsule-shell {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.bp-capsule-head {
+  border-radius: 6px;
+  margin-right: 2px;
+}
+.bp-capsule-tile {
+  border-radius: 6px;
+}
+.bp-capsule-tile-active {
+  box-shadow: 0 0 0 2px #0F172A, 0 0 0 4px var(--accent-color);
+}
+button.bp-capsule-tile:not(:disabled):active {
+  transform: scale(0.95);
+}
+.bp-capsule-sub {
+  border-radius: 6px;
+}
 
+/* Matrix Number Grid Tiles, Indicators, Stack Drag Cards & Flying Tiles */
+.bp-matrix-tile {
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+.bp-matrix-tile.bp-matrix-cell-active {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color), 0 4px 10px -2px rgba(0, 0, 0, 0.24);
+  transform: scale(1.05);
+}
+.bp-matrix-tile:not(:disabled):active {
+  transform: scale(0.95);
+}
+.bp-used-dot {
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.42);
+}
+.bp-stack-card,
+.bp-stack-shadow {
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+.bp-stack-card {
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.16);
+}
+.bp-stack-card-drag,
+.bp-stack-shadow-drag {
+  border-radius: 12px;
+}
+.bp-stack-card-drag {
+  border: 2px solid rgba(0, 0, 0, 0.72);
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.45);
+}
+.bp-stack-count {
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.38);
+  color: #FFFFFF;
+}
+.bp-stack-hint {
+  border-radius: 9999px;
+  background-color: rgba(15, 23, 42, 0.95);
+  color: var(--accent-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+.bp-flying-tile {
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 20px -6px rgba(0, 0, 0, 0.35);
+}
 
+/* Inline Segment Badge Picker Options */
+.bp-badge-opt {
+  border-radius: 6px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background-color: #FFFFFF;
+  color: #475569;
+}
+html.dark .bp-badge-opt {
+  border-color: #334155;
+  background-color: #0F172A;
+  color: #CBD5E1;
+}
+.bp-badge-opt-active {
+  border-color: var(--accent-color);
+  background-color: var(--accent-color);
+  color: #FFFFFF;
+}
 
+/* Hover feedback guarded by @media (hover: hover) to prevent sticky touch highlights */
+@media (hover: hover) {
+  button.bp-capsule-tile:not(:disabled):hover,
+  .bp-matrix-tile-idle:not(:disabled):hover {
+    filter: brightness(1.08);
+  }
+  .bp-matrix-tile-used:not(:disabled):hover {
+    opacity: 0.92;
+  }
+  .bp-badge-opt:not(.bp-badge-opt-active):hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+  }
+}
 
+/* --------------------------------------------------------------------------
+   Style A: Blueprint Wireframe (data-ui-style="blueprint")
+   6px outer trays / 3px inner keycaps, 1.5px ink borders, 2px hard offset shadow
+   -------------------------------------------------------------------------- */
+html[data-ui-style="blueprint"] .bp-runner-chip {
+  border-radius: 6px !important;
+  padding: 3px !important;
+  gap: 3px !important;
+  border: 1.5px solid #CBD5E1 !important;
+  background-color: #F8FAFC !important;
+  box-shadow: none !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-runner-chip {
+  border-color: #334155 !important;
+  background-color: #1E293B !important;
+}
+html[data-ui-style="blueprint"] .bp-runner-chip-active {
+  border-color: #0F172A !important;
+  background-color: var(--accent-soft) !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-runner-chip-active {
+  border-color: var(--accent-color) !important;
+  background-color: rgba(15, 23, 42, 0.92) !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="blueprint"] .bp-runner-chip-badge,
+html[data-ui-style="blueprint"] .bp-runner-chip-label {
+  border-radius: 3px !important;
+}
+html[data-ui-style="blueprint"] .bp-runner-chip-badge {
+  border: 1.5px solid #0F172A !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-runner-chip-badge {
+  border-color: #64748B !important;
+}
+html[data-ui-style="blueprint"] .bp-pool-icon,
+html[data-ui-style="blueprint"] .bp-region-icon,
+html[data-ui-style="blueprint"] .bp-mini-swatch,
+html[data-ui-style="blueprint"] .bp-menu-item {
+  border-radius: 4px !important;
+}
+html[data-ui-style="blueprint"] .bp-region-icon-active {
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-region-locked {
+  border-color: var(--accent-color) !important;
+  box-shadow: 2.5px 2.5px 0px var(--accent-color) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="blueprint"] .bp-region-hover {
+  border-color: #0F172A !important;
+  background-color: var(--accent-soft) !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="blueprint"] .bp-region-landed {
+  border-color: #10B981 !important;
+  box-shadow: 2.5px 2.5px 0px #10B981 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="blueprint"] .bp-dashed-box-hover {
+  border-color: var(--accent-color) !important;
+  background-color: var(--accent-soft) !important;
+  color: var(--accent-color) !important;
+}
+html[data-ui-style="blueprint"] .bp-gallery-mat {
+  border-radius: 4px !important;
+  border: 1px dashed #CBD5E1 !important;
+  background-color: #F8FAFC !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-gallery-mat {
+  border-color: #334155 !important;
+  background-color: #0F172A !important;
+}
 
+/* Blueprint Runner Group Capsules & Part Number Tiles */
+html[data-ui-style="blueprint"] .bp-capsule-shell {
+  border-radius: 6px !important;
+  padding: 3px !important;
+  gap: 3px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-capsule-shell {
+  border-color: #475569 !important;
+  background-color: #0F172A !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-capsule-head {
+  border-radius: 3px !important;
+  margin-right: 2px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: none !important;
+  font-family: "Chakra Petch", "JetBrains Mono", ui-monospace, monospace !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-capsule-head {
+  border-color: #64748B !important;
+}
+html[data-ui-style="blueprint"] .bp-capsule-tile {
+  border-radius: 3px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: none !important;
+  font-family: "Chakra Petch", "JetBrains Mono", ui-monospace, monospace !important;
+  transition: transform 0.14s cubic-bezier(0.34, 1.65, 0.64, 1), box-shadow 0.14s ease !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-capsule-tile {
+  border-color: #64748B !important;
+}
+html[data-ui-style="blueprint"] button.bp-capsule-tile:not(:disabled):active {
+  transform: translate(1.5px, 1.5px) !important;
+  scale: 1 !important;
+  box-shadow: 0px 0px 0px #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-capsule-tile-active {
+  border: 2px solid #0F172A !important;
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: 1px !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  scale: 1 !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-capsule-tile-active {
+  border-color: #F8FAFC !important;
+}
+html[data-ui-style="blueprint"] .bp-capsule-sub {
+  border-radius: 3px !important;
+  border: 1.5px solid #334155 !important;
+  font-family: "Chakra Petch", "JetBrains Mono", ui-monospace, monospace !important;
+}
+html[data-ui-style="blueprint"] .bp-matrix-tile {
+  border-radius: 4px !important;
+  font-family: "Chakra Petch", "JetBrains Mono", ui-monospace, monospace !important;
+}
+html[data-ui-style="blueprint"] .bp-matrix-tile.bp-matrix-cell-active {
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: 1px !important;
+  transform: none !important;
+  scale: 1 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="blueprint"] .bp-used-dot {
+  border-radius: 2px !important;
+  border: 1px solid #0F172A !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="blueprint"] .bp-stack-card,
+html[data-ui-style="blueprint"] .bp-stack-shadow,
+html[data-ui-style="blueprint"] .bp-flying-tile {
+  border-radius: 5px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+  font-family: "Chakra Petch", "JetBrains Mono", ui-monospace, monospace !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-stack-card,
+html.dark[data-ui-style="blueprint"] .bp-stack-shadow,
+html.dark[data-ui-style="blueprint"] .bp-flying-tile {
+  border-color: #64748B !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-stack-card-drag,
+html[data-ui-style="blueprint"] .bp-stack-shadow-drag {
+  border-radius: 6px !important;
+  box-shadow: 4px 4px 0px #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-stack-count {
+  border-radius: 3px !important;
+  background-color: #0F172A !important;
+  color: #FFFFFF !important;
+}
+html[data-ui-style="blueprint"] .bp-stack-hint {
+  border-radius: 4px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #0F172A !important;
+  color: var(--accent-color) !important;
+  box-shadow: 2px 2px 0px var(--accent-color) !important;
+}
+html[data-ui-style="blueprint"] .bp-icon-btn {
+  border-radius: 4px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-icon-btn {
+  border-color: #475569 !important;
+  background-color: #1E293B !important;
+  color: #F1F5F9 !important;
+  box-shadow: 1.5px 1.5px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-icon-btn:disabled {
+  box-shadow: none !important;
+}
+html[data-ui-style="blueprint"] .bp-icon-btn:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-badge-opt:not(:disabled):active,
+html[data-ui-style="blueprint"] .bp-runner-chip-badge:active {
+  transform: translate(1.5px, 1.5px) !important;
+  scale: 1 !important;
+  box-shadow: 0px 0px 0px #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-badge-opt {
+  border-radius: 4px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+  font-family: "Chakra Petch", "JetBrains Mono", ui-monospace, monospace !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-badge-opt {
+  border-color: #475569 !important;
+  background-color: #1E293B !important;
+  color: #F1F5F9 !important;
+  box-shadow: 1.5px 1.5px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-badge-opt-active {
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  border-color: #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-danger-pill {
+  color: #DC2626 !important;
+}
+html[data-ui-style="blueprint"] .bp-toast {
+  border-radius: 6px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: 3px 3px 0px #0F172A !important;
+}
 
+/* Blueprint Poster Sync */
+html[data-ui-style="blueprint"] .bp-checklist-poster {
+  border-radius: 6px !important;
+  border: 2px solid #0F172A !important;
+  box-shadow: 4px 4px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-checklist-poster {
+  border-color: #475569 !important;
+  box-shadow: 4px 4px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-checklist-poster .bp-poster-stat,
+html[data-ui-style="blueprint"] .bp-checklist-poster .bp-poster-icon,
+html[data-ui-style="blueprint"] .bp-checklist-poster .bp-poster-bar,
+html[data-ui-style="blueprint"] .bp-checklist-poster .bp-poster-tag,
+html[data-ui-style="blueprint"] .bp-checklist-poster .bp-poster-pct,
+html[data-ui-style="blueprint"] .bp-checklist-poster .bp-poster-progress,
+html[data-ui-style="blueprint"] .bp-checklist-poster .bp-poster-progress-bar {
+  border-radius: 4px !important;
+}
+html[data-ui-style="blueprint"] .bp-checklist-poster .bp-capsule-shell {
+  background-color: #0B1220 !important;
+  border-color: #475569 !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-checklist-poster .bp-capsule-head,
+html[data-ui-style="blueprint"] .bp-checklist-poster .bp-capsule-tile {
+  border-color: #64748B !important;
+}
 
+/* --------------------------------------------------------------------------
+   Style C: Craft / Neumorphism (data-ui-style="craft")
+   12px outer clay tray - 4px padding = 8px concentric soft-clay wells
+   -------------------------------------------------------------------------- */
+html[data-ui-style="craft"] .bp-runner-chip {
+  border-radius: 12px !important;
+  padding: 4px !important;
+  gap: 4px !important;
+  border: 1px solid transparent !important;
+  background: var(--neu-grad-convex) !important;
+  box-shadow: var(--neu-btn-shadow) !important;
+}
+html[data-ui-style="craft"] .bp-runner-chip-active {
+  border: 1px solid color-mix(in srgb, var(--accent-color) 40%, transparent) !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="craft"] .bp-runner-chip-badge,
+html[data-ui-style="craft"] .bp-runner-chip-label {
+  border-radius: 8px !important;
+}
+html[data-ui-style="craft"] .bp-runner-chip-badge {
+  border: 1.5px solid var(--neu-base) !important;
+  box-shadow: 1.5px 1.5px 3px var(--neu-dark), -1.5px -1.5px 3px var(--neu-light) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="craft"] .bp-pool-icon,
+html[data-ui-style="craft"] .bp-region-icon,
+html[data-ui-style="craft"] .bp-menu-item {
+  border-radius: 8px !important;
+}
+html[data-ui-style="craft"] .bp-mini-swatch {
+  border-radius: 6px !important;
+  border: 1.5px solid var(--neu-base) !important;
+}
+html[data-ui-style="craft"] .bp-region-icon-active {
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  box-shadow: var(--neu-btn-shadow) !important;
+}
+html[data-ui-style="craft"] .bp-region-locked {
+  border: 1.5px solid color-mix(in srgb, var(--accent-color) 55%, transparent) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="craft"] .bp-region-hover {
+  border: 1.5px solid var(--accent-color) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="craft"] .bp-region-landed {
+  border: 1.5px solid #10B981 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="craft"] .bp-dashed-box-hover {
+  border: 1.5px solid color-mix(in srgb, var(--accent-color) 55%, transparent) !important;
+  color: var(--accent-color) !important;
+}
+html[data-ui-style="craft"] .bp-gallery-mat {
+  border-radius: 9px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+
+/* Craft Capsules & Part Tiles (Preserves runner hex backgrounds, only morphs socket bevel & shadows) */
+html[data-ui-style="craft"] .bp-capsule-shell {
+  border-radius: 12px !important;
+  padding: 4px !important;
+  gap: 4px !important;
+  border: 1px solid transparent !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-btn-shadow) !important;
+}
+html[data-ui-style="craft"] .bp-capsule-head {
+  border-radius: 8px !important;
+  margin-right: 2px !important;
+  border: 1.5px solid var(--neu-base) !important;
+  box-shadow: 1.5px 1.5px 3px var(--neu-dark), -1.5px -1.5px 3px var(--neu-light) !important;
+}
+html[data-ui-style="craft"] .bp-capsule-tile {
+  border-radius: 8px !important;
+  border: 1.5px solid var(--neu-base) !important;
+  box-shadow: 1.5px 1.5px 3px var(--neu-dark), -1.5px -1.5px 3px var(--neu-light) !important;
+  font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace !important;
+  transition: box-shadow 160ms ease, transform 150ms ease, filter 150ms ease !important;
+}
+html[data-ui-style="craft"] button.bp-capsule-tile:not(:disabled):active {
+  transform: scale(0.95) !important;
+  scale: 1 !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+html[data-ui-style="craft"] .bp-capsule-tile-active {
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: 1px !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  scale: 1 !important;
+}
+html[data-ui-style="craft"] .bp-capsule-sub {
+  border-radius: 8px !important;
+}
+html[data-ui-style="craft"] .bp-matrix-tile {
+  border-radius: 9px !important;
+  font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace !important;
+}
+html[data-ui-style="craft"] .bp-matrix-tile.bp-matrix-cell-active {
+  transform: none !important;
+  scale: 1 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="craft"] .bp-matrix-tile:not(:disabled):is(:active, [data-bp-pressed="true"]) {
+  scale: 0.96 !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+html[data-ui-style="craft"] .bp-used-dot {
+  border-radius: 9999px !important;
+  border: 1px solid var(--neu-base) !important;
+  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.28) !important;
+}
+html[data-ui-style="craft"] .bp-stack-card,
+html[data-ui-style="craft"] .bp-stack-shadow,
+html[data-ui-style="craft"] .bp-flying-tile {
+  border-radius: 10px !important;
+  border: 2px solid var(--neu-base) !important;
+  box-shadow: var(--neu-btn-shadow) !important;
+}
+html[data-ui-style="craft"] .bp-stack-card-drag,
+html[data-ui-style="craft"] .bp-stack-shadow-drag {
+  border-radius: 14px !important;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.32) !important;
+}
+html[data-ui-style="craft"] .bp-stack-count {
+  border-radius: 6px !important;
+}
+html[data-ui-style="craft"] .bp-stack-hint {
+  border-radius: 9999px !important;
+  box-shadow: var(--neu-subcard-shadow) !important;
+}
+html[data-ui-style="craft"] .bp-icon-btn {
+  border-radius: 9px !important;
+  border: 1px solid transparent !important;
+  background: var(--neu-grad-convex) !important;
+  color: var(--neu-muted) !important;
+  box-shadow: var(--neu-btn-shadow) !important;
+}
+html[data-ui-style="craft"] .bp-icon-btn:not(:disabled):is(:active, [data-bp-pressed="true"]) {
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+  scale: 0.96 !important;
+}
+html[data-ui-style="craft"] .bp-badge-opt {
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  background: var(--neu-grad-convex) !important;
+  color: var(--neu-text) !important;
+  box-shadow: var(--neu-btn-shadow) !important;
+  font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace !important;
+}
+html[data-ui-style="craft"] .bp-badge-opt-active {
+  border: 1px solid color-mix(in srgb, var(--accent-color) 38%, transparent) !important;
+  background: var(--neu-base) !important;
+  color: var(--accent-color) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+html[data-ui-style="craft"] .bp-checklist-poster {
+  border-radius: 24px !important;
+  box-shadow: var(--neu-card-shadow) !important;
+}
+html[data-ui-style="craft"] .bp-checklist-poster .bp-capsule-shell {
+  background: #161922 !important;
+  border: 1px solid #262A34 !important;
+  box-shadow: 3px 3px 6px #040508, -2px -2px 5px #242834 !important;
+}
+html[data-ui-style="craft"] .bp-checklist-poster .bp-capsule-head,
+html[data-ui-style="craft"] .bp-checklist-poster .bp-capsule-tile {
+  border-color: #161922 !important;
+  box-shadow: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Style D: ASCII / TUI Terminal (data-ui-style="ascii")
+   0px crisp terminal frames, --tui-border + 2px stipple shadows, Geist/Zpix Mono
+   -------------------------------------------------------------------------- */
+html[data-ui-style="ascii"] .bp-runner-chip {
+  border-radius: 0px !important;
+  padding: 3px !important;
+  gap: 3px !important;
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--tui-subsurface) !important;
+  box-shadow: 1.5px 1.5px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-runner-chip-active {
+  border: 1.5px solid var(--accent-color) !important;
+  background-color: var(--tui-surface) !important;
+  box-shadow: 2px 2px 0px 0px var(--accent-color) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="ascii"] .bp-runner-chip-badge {
+  border: 1px solid var(--tui-border) !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="ascii"] .bp-region-icon-active {
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .bp-region-locked {
+  border: 1.5px solid var(--accent-color) !important;
+  box-shadow: 3px 3px 0px 0px var(--accent-color) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="ascii"] .bp-region-hover {
+  border: 1.5px solid var(--tui-ink) !important;
+  background-color: var(--tui-header-tint) !important;
+  box-shadow: 3px 3px 0px 0px var(--accent-color) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="ascii"] .bp-region-landed {
+  border: 1.5px solid #10B981 !important;
+  box-shadow: 3px 3px 0px 0px #10B981 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="ascii"] .bp-dashed-box-hover {
+  border: 1px dashed var(--accent-color) !important;
+  background-color: var(--tui-header-tint) !important;
+  color: var(--accent-color) !important;
+}
+html[data-ui-style="ascii"] .bp-gallery-mat {
+  border: 1px solid var(--tui-rule) !important;
+  background-color: var(--tui-well) !important;
+}
+
+/* ASCII Capsules & Part Number Tiles */
+html[data-ui-style="ascii"] .bp-capsule-shell {
+  padding: 3px !important;
+  gap: 3px !important;
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--tui-well) !important;
+  box-shadow: 2px 2px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-capsule-head {
+  margin-right: 2px !important;
+  border: 1px solid var(--tui-border) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="ascii"] .bp-capsule-tile {
+  border: 1px solid var(--tui-border) !important;
+  box-shadow: none !important;
+  transition: transform 50ms steps(2, end), box-shadow 50ms steps(2, end) !important;
+}
+html[data-ui-style="ascii"] button.bp-capsule-tile:not(:disabled):active {
+  transform: translate(1.5px, 1.5px) !important;
+  scale: 1 !important;
+  box-shadow: 0px 0px 0px 0px transparent !important;
+}
+html[data-ui-style="ascii"] .bp-capsule-tile-active {
+  border: 1.5px solid var(--tui-ink) !important;
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: 0px !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  scale: 1 !important;
+}
+html[data-ui-style="ascii"] .bp-capsule-sub {
+  border: 1px solid var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .bp-matrix-tile.bp-matrix-cell-active {
+  transform: none !important;
+  scale: 1 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="ascii"] .bp-used-dot {
+  border: 1px solid var(--tui-border) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="ascii"] .bp-stack-card,
+html[data-ui-style="ascii"] .bp-stack-shadow,
+html[data-ui-style="ascii"] .bp-flying-tile {
+  border: 1.5px solid var(--tui-border) !important;
+  box-shadow: 2.5px 2.5px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-stack-card-drag,
+html[data-ui-style="ascii"] .bp-stack-shadow-drag {
+  box-shadow: 4px 4px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-stack-count,
+html[data-ui-style="ascii"] .bp-stack-hint {
+  border: 1px solid var(--tui-border) !important;
+  box-shadow: 2px 2px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-icon-btn {
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--tui-surface) !important;
+  color: var(--tui-ink) !important;
+  box-shadow: 1.5px 1.5px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-icon-btn:not(:disabled):is(:active, [data-bp-pressed="true"]) {
+  transform: translate(1.5px, 1.5px) !important;
+  scale: 1 !important;
+  box-shadow: 0px 0px 0px 0px transparent !important;
+}
+html[data-ui-style="ascii"] .bp-badge-opt {
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--tui-surface) !important;
+  color: var(--tui-ink) !important;
+  box-shadow: 1.5px 1.5px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-badge-opt-active {
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  border-color: var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .bp-checklist-poster {
+  border: 2px solid var(--tui-border) !important;
+  box-shadow: 4px 4px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-checklist-poster .bp-capsule-shell {
+  background-color: #0D1420 !important;
+  border-color: var(--tui-border) !important;
+  box-shadow: 2px 2px 0px 0px #000000 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Style E: Catalog / Fieldwork Type (data-ui-style="catalog")
+   Zero shadows, crisp 0px square geometry, 1px hairline forest ink rules,
+   --ft-acid specimen highlight stage, and Roboto Flex variable axis glyphs
+   -------------------------------------------------------------------------- */
+html[data-ui-style="catalog"] .bp-runner-chip {
+  border-radius: 0px !important;
+  padding: 3px !important;
+  gap: 3px !important;
+  border: 1px solid var(--ft-line) !important;
+  background-color: var(--ft-subsurface) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-runner-chip-active {
+  border-color: var(--ft-stage-ink) !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="catalog"] .bp-runner-chip-active .bp-runner-chip-label,
+html[data-ui-style="catalog"] .bp-runner-chip-active .bp-runner-chip-label span {
+  color: var(--ft-stage-ink) !important;
+}
+html[data-ui-style="catalog"] .bp-runner-chip-badge {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  font-family: var(--font-ft-display) !important;
+  font-weight: 400 !important;
+  font-variation-settings: "wght" 700, "wdth" 104, "opsz" 28;
+}
+html[data-ui-style="catalog"] .bp-runner-chip-badge:active,
+html[data-ui-style="ascii"] .bp-runner-chip-badge:active {
+  transform: translateY(1px) !important;
+  scale: 1 !important;
+}
+html[data-ui-style="catalog"] .bp-runner-chip-label,
+html[data-ui-style="catalog"] .bp-pool-icon,
+html[data-ui-style="catalog"] .bp-region-icon,
+html[data-ui-style="catalog"] .bp-mini-swatch,
+html[data-ui-style="catalog"] .bp-menu-item,
+html[data-ui-style="catalog"] .bp-toast {
+  border-radius: 0px !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-mini-swatch {
+  border: 1px solid var(--ft-line) !important;
+}
+html[data-ui-style="catalog"] .bp-region-icon-active {
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+  border: 1px solid var(--ft-stage-ink) !important;
+}
+html[data-ui-style="catalog"] .bp-region-locked {
+  border: 1px solid var(--ft-ink) !important;
+  outline: 2px solid var(--ft-acid) !important;
+  outline-offset: -2px !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-region-hover {
+  border: 1px solid var(--ft-stage-ink) !important;
+  background-color: color-mix(in srgb, var(--ft-acid) 35%, var(--ft-paper)) !important;
+  transform: none !important;
+  scale: 1 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-region-landed {
+  border: 1.5px solid var(--ft-ink) !important;
+  outline: 2px solid #10B981 !important;
+  outline-offset: -2px !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-dashed-box-hover {
+  border: 1px solid var(--ft-stage-ink) !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+}
+html[data-ui-style="catalog"] .bp-gallery-mat {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-line) !important;
+  background-color: var(--ft-paper) !important;
+  box-shadow: none !important;
+}
+
+/* Catalog / Fieldwork Type Runner Capsules & Internal Part Number Tiles */
+html[data-ui-style="catalog"] .bp-capsule-shell {
+  border-radius: 0px !important;
+  padding: 3px !important;
+  gap: 3px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-paper) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-capsule-head {
+  border-radius: 0px !important;
+  margin-right: 2px !important;
+  border: 1px solid var(--ft-ink) !important;
+  box-shadow: none !important;
+  font-family: var(--font-ft-display) !important;
+  font-weight: 400 !important;
+  font-variation-settings: "wght" 720, "wdth" 105, "opsz" 32;
+}
+html[data-ui-style="catalog"] .bp-capsule-tile {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-line) !important;
+  box-shadow: none !important;
+  font-family: var(--font-ft-mono) !important;
+  font-weight: 400 !important;
+  font-variation-settings: "wght" 620, "wdth" 102, "opsz" 24;
+  transition: border-color 160ms var(--ft-ease), transform 140ms var(--ft-ease) !important;
+}
+html[data-ui-style="catalog"] button.bp-capsule-tile:not(:disabled):active {
+  transform: translateY(1px) !important;
+  scale: 1 !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-capsule-tile-active {
+  border: 1.5px solid var(--ft-stage-ink) !important;
+  outline: 2px solid var(--ft-acid) !important;
+  outline-offset: 0px !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  scale: 1 !important;
+}
+html[data-ui-style="catalog"] .bp-capsule-sub {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-line) !important;
+  font-family: var(--font-ft-mono) !important;
+}
+html[data-ui-style="catalog"] .bp-matrix-tile {
+  border-radius: 0px !important;
+  font-family: var(--font-ft-mono) !important;
+  font-weight: 400 !important;
+  font-variation-settings: "wght" 620, "wdth" 102, "opsz" 24;
+}
+html[data-ui-style="catalog"] .bp-matrix-tile.bp-matrix-cell-active {
+  border: 1.5px solid var(--ft-stage-ink) !important;
+  outline: 2px solid var(--ft-acid) !important;
+  outline-offset: 0px !important;
+  transform: none !important;
+  scale: 1 !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="catalog"] .bp-matrix-tile:not(:disabled):active {
+  transform: translateY(1px) !important;
+  scale: 1 !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-used-dot {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-stage-ink) !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="catalog"] .bp-stack-card,
+html[data-ui-style="catalog"] .bp-stack-shadow,
+html[data-ui-style="catalog"] .bp-flying-tile {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  box-shadow: none !important;
+  font-family: var(--font-ft-mono) !important;
+  font-weight: 400 !important;
+  font-variation-settings: "wght" 640, "wdth" 102, "opsz" 28;
+}
+html[data-ui-style="catalog"] .bp-stack-count {
+  border-radius: 0px !important;
+  background-color: var(--ft-stage-ink) !important;
+  color: var(--ft-acid) !important;
+}
+html[data-ui-style="catalog"] .bp-stack-hint {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-stage-ink) !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-icon-btn {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-line) !important;
+  background-color: transparent !important;
+  color: var(--ft-ink) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-icon-btn:not(:disabled):active {
+  transform: translateY(1px) !important;
+  scale: 1 !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-badge-opt {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: transparent !important;
+  color: var(--ft-ink) !important;
+  box-shadow: none !important;
+  font-family: var(--font-ft-mono) !important;
+  font-weight: 400 !important;
+  font-variation-settings: "wght" 540, "wdth" 100, "opsz" 20;
+}
+html[data-ui-style="catalog"] .bp-badge-opt:not(:disabled):active {
+  transform: translateY(1px) !important;
+  scale: 1 !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-badge-opt-active {
+  border: 1px solid var(--ft-stage-ink) !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+  font-variation-settings: "wght" 680, "wdth" 104, "opsz" 24;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-toast {
+  border: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-ink) !important;
+  color: var(--ft-solid-fg) !important;
+}
+
+/* Catalog Poster Sync */
+html[data-ui-style="catalog"] .bp-checklist-poster {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-poster-stat,
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-poster-icon,
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-poster-bar,
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-poster-tag,
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-poster-pct,
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-poster-progress,
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-poster-progress-bar {
+  border-radius: 0px !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-capsule-shell {
+  border-color: #3E4554 !important;
+  background-color: #12151C !important;
+}
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-capsule-head,
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-capsule-tile,
+html[data-ui-style="catalog"] .bp-checklist-poster .bp-capsule-sub {
+  border-color: #2E3442 !important;
+}
+
+/* Assigned Paint Assignment Panel & Cards across 5 UI Styles */
+.bp-paint-assign-card:active,
+button.bp-runner-chip:active {
+  transform: scale(0.98);
+}
+
+html[data-ui-style="blueprint"] .bp-paint-assign-panel {
+  border-radius: 6px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: 2.5px 2.5px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-paint-assign-panel {
+  border-color: #475569 !important;
+  box-shadow: 2.5px 2.5px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-paint-scope-bar {
+  border-radius: 5px !important;
+  border: 1.5px solid #0F172A !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 1.5px 1.5px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-paint-scope-bar {
+  border-color: #475569 !important;
+  background-color: #0F172A !important;
+  box-shadow: 1.5px 1.5px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-paint-bound-badge,
+html[data-ui-style="blueprint"] .bp-legend-swatch {
+  border-radius: 3px !important;
+  border: 1px solid #0F172A !important;
+  box-shadow: 1px 1px 0px #0F172A !important;
+}
+html[data-ui-style="blueprint"] .bp-paint-assign-card {
+  border-radius: 5px !important;
+  border: 1.5px solid #0F172A !important;
+  box-shadow: 2px 2px 0px #0F172A !important;
+}
+html.dark[data-ui-style="blueprint"] .bp-paint-assign-card {
+  border-color: #475569 !important;
+  box-shadow: 2px 2px 0px #020617 !important;
+}
+html[data-ui-style="blueprint"] .bp-paint-assign-card-active {
+  border-color: var(--accent-color) !important;
+  background-color: var(--accent-soft) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="blueprint"] button.bp-runner-chip:active,
+html[data-ui-style="blueprint"] .bp-paint-assign-card:active {
+  transform: translate(1.5px, 1.5px) !important;
+  scale: 1 !important;
+  box-shadow: 0px 0px 0px #0F172A !important;
+}
+
+html[data-ui-style="craft"] .bp-paint-assign-panel {
+  border-radius: 16px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
+}
+html[data-ui-style="craft"] .bp-paint-scope-bar {
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  background-color: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+html[data-ui-style="craft"] .bp-paint-bound-badge {
+  border-radius: 7px !important;
+}
+html[data-ui-style="craft"] .bp-legend-swatch {
+  border-radius: 4px !important;
+}
+html[data-ui-style="craft"] .bp-paint-assign-card {
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  background: var(--neu-grad-convex) !important;
+  box-shadow: var(--neu-btn-shadow) !important;
+}
+html[data-ui-style="craft"] .bp-paint-assign-card-active {
+  border: 1px solid color-mix(in srgb, var(--accent-color) 42%, transparent) !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="craft"] button.bp-runner-chip:active,
+html[data-ui-style="craft"] .bp-paint-assign-card:active {
+  scale: 0.97 !important;
+  box-shadow: var(--neu-inset-shadow-sm) !important;
+}
+
+html[data-ui-style="ascii"] .bp-paint-assign-panel {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--accent-color) !important;
+  background-color: var(--tui-subsurface) !important;
+  box-shadow: 3px 3px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-paint-scope-bar {
+  border-radius: 0px !important;
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--tui-surface) !important;
+  box-shadow: 2px 2px 0px 0px var(--tui-shadow) !important;
+}
+html[data-ui-style="ascii"] .bp-paint-bound-badge,
+html[data-ui-style="ascii"] .bp-legend-swatch {
+  border-radius: 0px !important;
+  border: 1px solid var(--tui-border) !important;
+}
+html[data-ui-style="ascii"] .bp-paint-assign-card {
+  border-radius: 0px !important;
+  border: 1px solid var(--tui-border) !important;
+  background-color: var(--tui-surface) !important;
+  box-shadow: 2px 2px 0px 0px var(--tui-shadow) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="ascii"] .bp-paint-assign-card-active {
+  border: 1.5px solid var(--accent-color) !important;
+  background-color: var(--tui-header-tint) !important;
+  box-shadow: 2.5px 2.5px 0px 0px var(--accent-color) !important;
+}
+html[data-ui-style="ascii"] button.bp-runner-chip:active,
+html[data-ui-style="ascii"] .bp-paint-assign-card:active {
+  transform: translate(1.5px, 1.5px) !important;
+  scale: 1 !important;
+  box-shadow: 0px 0px 0px 0px transparent !important;
+}
+
+html[data-ui-style="catalog"] .bp-paint-assign-panel {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-subsurface) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-paint-scope-bar {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-paper) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-paint-bound-badge {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-stage-ink) !important;
+  background-color: var(--ft-stage-ink) !important;
+  color: var(--ft-solid-fg) !important;
+  box-shadow: none !important;
+}
+html[data-ui-style="catalog"] .bp-legend-swatch {
+  border-radius: 0px !important;
+  border: 1.5px solid var(--ft-stage-ink) !important;
+  background-color: var(--ft-acid) !important;
+}
+html[data-ui-style="catalog"] .bp-paint-assign-card {
+  border-radius: 0px !important;
+  border: 1px solid var(--ft-ink) !important;
+  background-color: var(--ft-paper) !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+html[data-ui-style="catalog"] .bp-paint-assign-card-active {
+  border: 1px solid var(--ft-stage-ink) !important;
+  background-color: var(--ft-acid) !important;
+  color: var(--ft-stage-ink) !important;
+}
+html[data-ui-style="catalog"] .bp-paint-assign-card-active *:not(.bp-paint-bound-badge):not(.bp-paint-bound-badge *) {
+  color: var(--ft-stage-ink) !important;
+}
+html[data-ui-style="catalog"] button.bp-runner-chip:active,
+html[data-ui-style="catalog"] .bp-paint-assign-card:active {
+  transform: translateY(1px) !important;
+  scale: 1 !important;
+  box-shadow: none !important;
+}
+
+/* Hover-Capable Pointer Feedback across Themes (Flat Top-Level Media Query) */
+@media (hover: hover) {
+  html[data-ui-style="blueprint"] .bp-runner-chip:hover {
+    border-color: #0F172A !important;
+  }
+  html.dark[data-ui-style="blueprint"] .bp-runner-chip:hover {
+    border-color: #64748B !important;
+  }
+  html[data-ui-style="blueprint"] button.bp-capsule-tile:not(:disabled):hover {
+    transform: translate(-0.5px, -0.5px) !important;
+    box-shadow: 1.5px 1.5px 0px #0F172A !important;
+  }
+  html.dark[data-ui-style="blueprint"] button.bp-capsule-tile:not(:disabled):hover {
+    box-shadow: 1.5px 1.5px 0px #020617 !important;
+  }
+  html[data-ui-style="blueprint"] .bp-icon-btn:not(:disabled):hover,
+  html[data-ui-style="blueprint"] .bp-badge-opt:not(.bp-badge-opt-active):hover {
+    background-color: var(--accent-soft) !important;
+  }
+  html[data-ui-style="blueprint"] .bp-icon-btn-danger:not(:disabled):hover,
+  html[data-ui-style="blueprint"] .bp-danger-pill:not(:disabled):hover {
+    background-color: #EF4444 !important;
+    color: #FFFFFF !important;
+    border-color: #0F172A !important;
+  }
+  html.dark[data-ui-style="blueprint"] .bp-icon-btn-danger:not(:disabled):hover,
+  html.dark[data-ui-style="blueprint"] .bp-danger-pill:not(:disabled):hover {
+    border-color: #F87171 !important;
+  }
+  html[data-ui-style="craft"] .bp-runner-chip:not(.bp-runner-chip-active):hover,
+  html[data-ui-style="craft"] .bp-paint-assign-card:not(.bp-paint-assign-card-active):hover,
+  html[data-ui-style="craft"] .bp-icon-btn:not(:disabled):hover,
+  html[data-ui-style="craft"] .bp-badge-opt:not(.bp-badge-opt-active):hover {
+    color: var(--neu-text) !important;
+    box-shadow: var(--neu-btn-shadow-hover) !important;
+  }
+  html[data-ui-style="craft"] .bp-icon-btn-danger:not(:disabled):hover,
+  html[data-ui-style="craft"] .bp-danger-pill:not(:disabled):hover {
+    color: #EF4444 !important;
+  }
+  html[data-ui-style="ascii"] .bp-runner-chip:not(.bp-runner-chip-active):hover,
+  html[data-ui-style="ascii"] .bp-paint-assign-card:not(.bp-paint-assign-card-active):hover {
+    border-color: var(--accent-color) !important;
+    background-color: var(--tui-header-tint) !important;
+    box-shadow: 2.5px 2.5px 0px 0px var(--accent-color) !important;
+  }
+  html[data-ui-style="ascii"] button.bp-capsule-tile:not(:disabled):hover {
+    box-shadow: 1.5px 1.5px 0px 0px var(--tui-border) !important;
+    filter: brightness(1.06);
+  }
+  html[data-ui-style="ascii"] .bp-icon-btn:not(:disabled):hover,
+  html[data-ui-style="ascii"] .bp-badge-opt:not(.bp-badge-opt-active):hover {
+    background-color: var(--tui-ink) !important;
+    color: var(--tui-surface) !important;
+    border-color: var(--accent-color) !important;
+  }
+  html[data-ui-style="ascii"] .bp-icon-btn-danger:not(:disabled):hover,
+  html[data-ui-style="ascii"] .bp-danger-pill:not(:disabled):hover {
+    background-color: #EF4444 !important;
+    color: #FFFFFF !important;
+    border-color: var(--tui-border) !important;
+  }
+  html[data-ui-style="catalog"] .bp-runner-chip:not(.bp-runner-chip-active):hover {
+    border-color: var(--ft-stage-ink) !important;
+    background-color: var(--ft-acid) !important;
+  }
+  html[data-ui-style="catalog"] .bp-runner-chip:not(.bp-runner-chip-active):hover .bp-runner-chip-label,
+  html[data-ui-style="catalog"] .bp-runner-chip:not(.bp-runner-chip-active):hover .bp-runner-chip-label span {
+    color: var(--ft-stage-ink) !important;
+  }
+  html[data-ui-style="catalog"] .bp-paint-assign-card:hover:not(:active) *:not(.bp-paint-bound-badge):not(.bp-paint-bound-badge *) {
+    color: var(--ft-stage-ink) !important;
+  }
+  html[data-ui-style="catalog"] button.bp-capsule-tile:not(:disabled):hover,
+  html[data-ui-style="catalog"] .bp-matrix-tile:not(:disabled):hover {
+    border-color: var(--ft-ink) !important;
+  }
+  html[data-ui-style="catalog"] .bp-icon-btn:not(:disabled):hover,
+  html[data-ui-style="catalog"] .bp-badge-opt:not(.bp-badge-opt-active):hover {
+    background-color: var(--ft-acid) !important;
+    color: var(--ft-stage-ink) !important;
+    border-color: var(--ft-stage-ink) !important;
+  }
+  html[data-ui-style="catalog"] .bp-icon-btn-danger:not(:disabled):hover,
+  html[data-ui-style="catalog"] .bp-danger-pill:not(:disabled):hover {
+    background-color: #EF4444 !important;
+    color: #FFFFFF !important;
+    border-color: var(--ft-ink) !important;
+  }
+}

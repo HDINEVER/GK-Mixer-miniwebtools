@@ -19,6 +19,28 @@ function copyPaintCatalog(): Plugin {
   };
 }
 
+/** 本地 dev / preview 下模拟 Cloudflare Pages Function：GET /api/dammiz-scheme?id=917 */
+function dammizSchemeProxy(): Plugin {
+  const handler = async (req: any, res: any) => {
+    const url = new URL(req.url || '', 'http://localhost');
+    const { fetchDammizScheme } = await import('./functions/_lib/dammiz.js');
+    const { status, body } = await fetchDammizScheme(url.searchParams.get('id') ?? '');
+    res.statusCode = status;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.end(JSON.stringify(body));
+  };
+  return {
+    name: 'dammiz-scheme-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/dammiz-scheme', handler);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use('/api/dammiz-scheme', handler);
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
@@ -27,7 +49,7 @@ export default defineConfig(({ mode }) => {
         host: '127.0.0.1',
         strictPort: false,
       },
-      plugins: [react(), copyPaintCatalog()],
+      plugins: [react(), copyPaintCatalog(), dammizSchemeProxy()],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

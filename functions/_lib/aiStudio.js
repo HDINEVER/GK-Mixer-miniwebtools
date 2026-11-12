@@ -291,10 +291,10 @@ export async function callVolcengineSeedream({
     const body = {
       model: model || DEFAULT_ARK_MODEL,
       prompt,
+      response_format: "url",
       size: sizeValue,
-      response_format: "b64_json",
+      stream: false,
       watermark: false,
-      sequential_image_generation: "disabled",
     };
     if (imgField !== undefined) {
       body.image = imgField;

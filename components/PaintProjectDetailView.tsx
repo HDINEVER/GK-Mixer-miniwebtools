@@ -17,6 +17,8 @@ import { ProjectSharePosterModal } from "./ProjectSharePosterModal";
 import { LightnessAndChromaModule } from "./ChromaStudioPanel";
 import { NearestMatchesModule } from "./BrandMatchPanel";
 import { PartsChecklistWorkbench } from "./partsChecklist/PartsChecklistWorkbench";
+import { AiPaintStudioModal } from "./aiStudio/AiPaintStudioModal";
+import type { AiStudioMode } from "../utils/aiPaintStudio";
 import PaintBottleHover from "./PaintBottleHover";
 import { computeChecklistStats, createEmptyChecklist } from "../utils/partsChecklist";
 import { colorsToFloatingNodes, floatingNodesToColors } from "../utils/projectStore";
@@ -58,6 +60,9 @@ import {
   ArrowsOutSimpleIcon,
   ArrowsInSimpleIcon,
   ExportIcon,
+  SparkleIcon,
+  MagicWandIcon,
+  ArrowCounterClockwiseIcon,
 } from "@phosphor-icons/react";
 
 interface PaintProjectDetailViewProps {
@@ -105,6 +110,8 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
   const [showExportFabMenu, setShowExportFabMenu] = useState<boolean>(false);
   const [isSwatchEditorOpen, setIsSwatchEditorOpen] = useState<boolean>(false);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState<boolean>(false);
+  const [isAiStudioOpen, setIsAiStudioOpen] = useState<boolean>(false);
+  const [aiStudioInitialMode, setAiStudioInitialMode] = useState<AiStudioMode | undefined>(undefined);
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
   const [titleInput, setTitleInput] = useState<string>(project.title);
   const [isEditingPartName, setIsEditingPartName] = useState<boolean>(false);
@@ -323,6 +330,118 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
     setShowMoreMenu(false);
   };
 
+  const openAiStudio = (mode?: AiStudioMode) => {
+    setAiStudioInitialMode(mode);
+    setIsAiStudioOpen(true);
+  };
+
+  const handleApplyAiReplaceCoverAndPart = async (
+    imageDataUrl: string,
+    appliedLabel: string
+  ) => {
+    const thumb = (await createCoverThumbnail(imageDataUrl)) || imageDataUrl;
+    onUpdateProject((prev) => {
+      const targetId = activePart?.id;
+      const nextParts = prev.parts.map((pt) => {
+        if (pt.id !== targetId) return pt;
+        return {
+          ...pt,
+          originalBeforeAiImageDataUrl:
+            pt.originalBeforeAiImageDataUrl || pt.sourceImageDataUrl,
+          sourceImageDataUrl: imageDataUrl,
+          aiLastAppliedLabel: appliedLabel,
+        };
+      });
+      return {
+        ...prev,
+        coverImageDataUrl: thumb,
+        customCoverImageDataUrl: imageDataUrl,
+        partsChecklist: prev.partsChecklist
+          ? {
+              ...prev.partsChecklist,
+              coverImageDataUrl: imageDataUrl,
+              updatedAt: Date.now(),
+            }
+          : prev.partsChecklist,
+        parts: nextParts,
+        updatedAt: Date.now(),
+      };
+    });
+    setToastMessage("已将 AI 效果图设为当前色卡与取件表底图（可随时还原原图）");
+    setTimeout(() => setToastMessage(null), 2800);
+  };
+
+  const handleAppendAiNewPart = async (
+    imageDataUrl: string,
+    partName: string,
+    appliedLabel: string
+  ) => {
+    const now = Date.now();
+    const thumb = (await createCoverThumbnail(imageDataUrl)) || imageDataUrl;
+    const clonedNodes = (activePart?.nodes || []).map((n, i) => ({
+      ...n,
+      id: `${n.id}-ai-${now}-${i}`,
+    }));
+    const newPart: PartCanvas = {
+      id: `part-ai-${now}`,
+      partName: partName || `AI 效果图 ${project.parts.length + 1}`,
+      sourceImageDataUrl: imageDataUrl,
+      aiLastAppliedLabel: appliedLabel,
+      nodes: clonedNodes,
+      steps: activePart?.steps ? [...activePart.steps] : inferStepsFromNodes(clonedNodes),
+      createdAt: now,
+    };
+    const nextIndex = project.parts.length;
+    onUpdateProject((prev) => ({
+      ...prev,
+      coverImageDataUrl: thumb,
+      customCoverImageDataUrl: imageDataUrl,
+      partsChecklist: prev.partsChecklist
+        ? {
+            ...prev.partsChecklist,
+            coverImageDataUrl: imageDataUrl,
+            updatedAt: now,
+          }
+        : prev.partsChecklist,
+      parts: [...prev.parts, newPart],
+      updatedAt: now,
+    }));
+    setActivePartIndex(nextIndex);
+    setToastMessage(`已新增零件页「${newPart.partName}」并同步封面与取件表头图`);
+    setTimeout(() => setToastMessage(null), 2800);
+  };
+
+  const handleRestoreBeforeAiImage = async () => {
+    if (!activePart?.originalBeforeAiImageDataUrl) return;
+    const restoredSrc = activePart.originalBeforeAiImageDataUrl;
+    const thumb = (await createCoverThumbnail(restoredSrc)) || restoredSrc;
+    onUpdateProject((prev) => ({
+      ...prev,
+      coverImageDataUrl: thumb,
+      customCoverImageDataUrl: undefined,
+      partsChecklist: prev.partsChecklist
+        ? {
+            ...prev.partsChecklist,
+            coverImageDataUrl: undefined,
+            updatedAt: Date.now(),
+          }
+        : prev.partsChecklist,
+      parts: prev.parts.map((pt) =>
+        pt.id === activePart.id
+          ? {
+              ...pt,
+              sourceImageDataUrl: restoredSrc,
+              originalBeforeAiImageDataUrl: undefined,
+              aiLastAppliedLabel: undefined,
+            }
+          : pt
+      ),
+      updatedAt: Date.now(),
+    }));
+    setToastMessage("已无损还原至 AI 润色前的原始底图");
+    setTimeout(() => setToastMessage(null), 2400);
+  };
+
   const handleExportCurrentPartPng = async () => {
     if (!activePart || !activePartImageSrc) return;
     const img = new Image();
@@ -489,6 +608,15 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           )}
           <button
             type="button"
+            onClick={() => openAiStudio(activePart?.studioSession ? "refine" : "preset")}
+            className="bp-pill inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/45 px-3 text-xs font-extrabold text-amber-300 transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+            title="用多模态模型修复模拟上色边缘溢色，或将素组/灰模一键生成官图级涂装作品"
+          >
+            <SparkleIcon className="h-3.5 w-3.5 shrink-0" weight="fill" />
+            <span>{activePart?.studioSession ? "AI 修溢色" : "AI 效果图"}</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setIsSwatchEditorOpen(true)}
             className="bp-pill-active gk-btn-primary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover px-3.5 text-xs font-extrabold text-white shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
           >
@@ -592,8 +720,30 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           )}
         </div>
 
-        {/* Right: [📁 分类：xxx ⌄] + [宽屏模式 (pro only)] + [•••] */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Right: [✨ AI 润色与效果图生成] + [📁 分类：xxx ⌄] + [宽屏模式 (pro only)] + [•••] */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap shrink-0">
+          {activePart?.originalBeforeAiImageDataUrl && (
+            <button
+              type="button"
+              onClick={handleRestoreBeforeAiImage}
+              className="bp-pill inline-flex h-[34px] box-border items-center justify-center gap-1 rounded-[6px] border border-amber-500/45 bg-amber-500/10 px-2.5 text-[11px] sm:text-xs font-extrabold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition cursor-pointer whitespace-nowrap"
+              title="还原 AI 润色替换之前的原始底图"
+            >
+              <ArrowCounterClockwiseIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+              <span className="leading-none">还原原图</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => openAiStudio(activePart?.studioSession ? "refine" : "preset")}
+            className="bp-pill-active inline-flex h-[34px] box-border items-center justify-center gap-1.5 rounded-[6px] bg-coral hover:opacity-95 px-2.5 sm:px-3 text-[11px] sm:text-xs font-black text-white shadow-xs transition cursor-pointer whitespace-nowrap"
+            title="素组/灰模一键生成涂装作品 · 模拟上色边缘溢色修复 · 替换色卡与取件表底图"
+          >
+            <SparkleIcon className="h-3.5 w-3.5 shrink-0" weight="fill" />
+            <span className="leading-none">AI 润色与效果图生成</span>
+          </button>
+
           {/* Category Reassignment Dropdown Pill ([📁 分类：xxx ⌄]) */}
           <div className="relative shrink-0">
             <button
@@ -820,6 +970,49 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
             : "lg:col-span-6 xl:col-span-7"
         } min-w-0 flex flex-col gap-4 pr-1.5 pb-1.5`}
       >
+      {/* 2.5 Compact AI Retouch & Render Dock (right above Sub-Tab Switcher, matching layout spec) */}
+      <div className="bp-subcard flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 px-3.5 py-2.5 shadow-xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-coral/15 text-coral shrink-0">
+            <SparkleIcon className="h-4 w-4" weight="fill" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-black text-slate-900 dark:text-white">
+                AI 润色与官图级效果图生成
+              </span>
+              {activePart?.aiLastAppliedLabel && (
+                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/35 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300">
+                  当前底图：{activePart.aiLastAppliedLabel}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              支持 Seedream 官方点数通道或接入自有 API，生成后可一键替换色卡与取件表底图
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+          <button
+            type="button"
+            onClick={() => openAiStudio("preset")}
+            className="bp-pill inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:border-coral px-2.5 text-xs font-extrabold text-slate-800 dark:text-slate-100 transition cursor-pointer"
+          >
+            <PaletteIcon className="h-3.5 w-3.5 text-coral" weight="fill" />
+            <span>素组一键涂装</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => openAiStudio("refine")}
+            className="bp-pill inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:border-coral px-2.5 text-xs font-extrabold text-slate-800 dark:text-slate-100 transition cursor-pointer"
+          >
+            <MagicWandIcon className="h-3.5 w-3.5 text-coral" weight="fill" />
+            <span>模拟上色修溢色</span>
+          </button>
+        </div>
+      </div>
+
       {/* 3. Floating Liquid Glass Sub-Tab Switcher: [指派油漆详情 | 涂装工序 | 取件表] */}
       {subTabBar}
 
@@ -1089,6 +1282,18 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           lang={lang}
         />
       )}
+
+      {/* AI Paint Studio & Simulated Coloring Refinement Modal */}
+      <AiPaintStudioModal
+        open={isAiStudioOpen}
+        initialMode={aiStudioInitialMode}
+        projectTitle={project.title}
+        activePart={activePart}
+        activePartImageSrc={activePartImageSrc}
+        onClose={() => setIsAiStudioOpen(false)}
+        onReplaceCoverAndPartImage={handleApplyAiReplaceCoverAndPart}
+        onAppendAsNewPart={handleAppendAiNewPart}
+      />
     </div>
   );
 };

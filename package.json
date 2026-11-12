@@ -9,6 +9,7 @@
     "dev:nightworks": "VITE_BRAND_EDITION='Night Works' vite",
     "build": "vite build",
     "sync:nightworks": "node ../scripts/sync-nightworks-to-github.mjs",
+    "gen:cdk": "node scripts/generate-redeem-codes.mjs",
     "build:ios-algorithms": "esbuild native/ios-bridge.ts --bundle --format=iife --platform=browser --target=safari16 --minify --outfile=../GK-Mixer/GK-Mixer/Resources/gk-color-algorithms.js",
     "verify:dual-unmix": "node scripts/verify-dual-unmix.mjs",
     "verify:drop-ratio": "node --experimental-strip-types scripts/verify-drop-ratio.mjs",

@@ -282,6 +282,10 @@ export interface PartCanvas {
   id: string;
   partName: string;
   sourceImageDataUrl: string; // Clean un-annotated source image data URL
+  /** AI 润色/效果图替换前的原始底图备份（支持一键无损还原） */
+  originalBeforeAiImageDataUrl?: string;
+  /** 最近一次应用的 AI 涂装预设或精修说明 */
+  aiLastAppliedLabel?: string;
   nodes: FloatingSwatchNode[];
   steps: PaintingStep[];
   createdAt: number;

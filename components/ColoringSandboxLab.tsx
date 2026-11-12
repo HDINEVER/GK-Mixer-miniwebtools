@@ -8591,6 +8591,9 @@ export const ColoringSandboxLab: React.FC<ColoringSandboxLabProps> = ({
               将自动合成当前试色效果图作为零件图，并计算每个填色分区的像素几何中心点，生成{" "}
               <strong className="text-slate-800 dark:text-slate-100">{usedPaintsSummary.length}</strong> 个可拖拽悬浮色卡与标准涂装工序。
             </p>
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 leading-relaxed">
+              💡 提示：哪怕只涂了一半或边缘有溢色也没关系！生成工程后点击顶部「✨ AI 润色与效果图生成」，即可自动结合原始素组刻线消除溢色并生成官图级漆面。
+            </div>
             <div className="space-y-2.5">
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">

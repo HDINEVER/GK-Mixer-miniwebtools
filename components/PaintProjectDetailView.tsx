@@ -17,8 +17,11 @@ import { ProjectSharePosterModal } from "./ProjectSharePosterModal";
 import { LightnessAndChromaModule } from "./ChromaStudioPanel";
 import { NearestMatchesModule } from "./BrandMatchPanel";
 import { PartsChecklistWorkbench } from "./partsChecklist/PartsChecklistWorkbench";
-import { AiPaintStudioModal } from "./aiStudio/AiPaintStudioModal";
-import type { AiStudioMode } from "../utils/aiPaintStudio";
+import {
+  AiPaintStudioPanel,
+  AiLiveComparisonStage,
+  type AiLiveStageState,
+} from "./aiStudio/AiPaintStudioPanel";
 import PaintBottleHover from "./PaintBottleHover";
 import { computeChecklistStats, createEmptyChecklist } from "../utils/partsChecklist";
 import { colorsToFloatingNodes, floatingNodesToColors } from "../utils/projectStore";
@@ -102,7 +105,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
   lang,
 }) => {
   const [activePartIndex, setActivePartIndex] = useState<number>(0);
-  const [detailSubTab, setDetailSubTab] = useState<"paints" | "steps" | "checklist">("paints");
+  const [detailSubTab, setDetailSubTab] = useState<"ai" | "steps" | "checklist" | "paints">("ai");
   const [isChecklistExpanded, setIsChecklistExpanded] = useState<boolean>(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showCategoryMenu, setShowCategoryMenu] = useState<boolean>(false);
@@ -110,8 +113,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
   const [showExportFabMenu, setShowExportFabMenu] = useState<boolean>(false);
   const [isSwatchEditorOpen, setIsSwatchEditorOpen] = useState<boolean>(false);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState<boolean>(false);
-  const [isAiStudioOpen, setIsAiStudioOpen] = useState<boolean>(false);
-  const [aiStudioInitialMode, setAiStudioInitialMode] = useState<AiStudioMode | undefined>(undefined);
+  const [aiLiveStage, setAiLiveStage] = useState<AiLiveStageState | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
   const [titleInput, setTitleInput] = useState<string>(project.title);
   const [isEditingPartName, setIsEditingPartName] = useState<boolean>(false);
@@ -330,18 +332,39 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
     setShowMoreMenu(false);
   };
 
-  const openAiStudio = (mode?: AiStudioMode) => {
-    setAiStudioInitialMode(mode);
-    setIsAiStudioOpen(true);
-  };
-
   const handleApplyAiReplaceCoverAndPart = async (
     imageDataUrl: string,
     appliedLabel: string
   ) => {
+    const now = Date.now();
     const thumb = (await createCoverThumbnail(imageDataUrl)) || imageDataUrl;
     onUpdateProject((prev) => {
-      const targetId = activePart?.id;
+      if (prev.parts.length === 0 || !activePart) {
+        const firstPart: PartCanvas = {
+          id: `part-ai-${now}`,
+          partName: appliedLabel || "AI 涂装效果图",
+          sourceImageDataUrl: imageDataUrl,
+          aiLastAppliedLabel: appliedLabel,
+          nodes: [],
+          steps: [],
+          createdAt: now,
+        };
+        return {
+          ...prev,
+          coverImageDataUrl: thumb,
+          customCoverImageDataUrl: imageDataUrl,
+          partsChecklist: prev.partsChecklist
+            ? {
+                ...prev.partsChecklist,
+                coverImageDataUrl: imageDataUrl,
+                updatedAt: now,
+              }
+            : prev.partsChecklist,
+          parts: [firstPart],
+          updatedAt: now,
+        };
+      }
+      const targetId = activePart.id;
       const nextParts = prev.parts.map((pt) => {
         if (pt.id !== targetId) return pt;
         return {
@@ -360,11 +383,11 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           ? {
               ...prev.partsChecklist,
               coverImageDataUrl: imageDataUrl,
-              updatedAt: Date.now(),
+              updatedAt: now,
             }
           : prev.partsChecklist,
         parts: nextParts,
-        updatedAt: Date.now(),
+        updatedAt: now,
       };
     });
     setToastMessage("已将 AI 效果图设为当前色卡与取件表底图（可随时还原原图）");
@@ -463,185 +486,201 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
     img.src = activePartImageSrc;
   };
 
-  const partStageCard = activePart ? (
-    <div
-      className="bp-canvas-stage min-w-0 rounded-3xl border border-slate-200/85 dark:border-slate-800 bg-slate-950 p-3 sm:p-4 shadow-lg space-y-3"
-      onTouchStart={(e) => {
-        touchStartXRef.current = e.touches[0]?.clientX ?? null;
-      }}
-      onTouchEnd={(e) => {
-        if (touchStartXRef.current == null) return;
-        const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
-        const dx = endX - touchStartXRef.current;
-        touchStartXRef.current = null;
-        if (Math.abs(dx) > 48) {
-          if (dx < 0 && safePartIdx < project.parts.length - 1) {
-            setActivePartIndex(safePartIdx + 1);
-          } else if (dx > 0 && safePartIdx > 0) {
-            setActivePartIndex(safePartIdx - 1);
+  const partStageCard =
+    activePart || (detailSubTab === "ai" && aiLiveStage) ? (
+      <div
+        className="bp-canvas-stage min-w-0 rounded-3xl border border-slate-200/85 dark:border-slate-800 bg-slate-950 p-3 sm:p-4 shadow-lg space-y-3"
+        onTouchStart={(e) => {
+          touchStartXRef.current = e.touches[0]?.clientX ?? null;
+        }}
+        onTouchEnd={(e) => {
+          if (touchStartXRef.current == null) return;
+          const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
+          const dx = endX - touchStartXRef.current;
+          touchStartXRef.current = null;
+          if (Math.abs(dx) > 48) {
+            if (dx < 0 && safePartIdx < project.parts.length - 1) {
+              setActivePartIndex(safePartIdx + 1);
+            } else if (dx > 0 && safePartIdx > 0) {
+              setActivePartIndex(safePartIdx - 1);
+            }
           }
-        }
-      }}
-    >
-      {/* Part Switcher Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="bp-badge rounded-full bg-coral/20 border border-coral/40 px-2.5 py-0.5 font-mono text-[11px] font-black text-coral whitespace-nowrap shrink-0 tabular-nums">
-            零件 {safePartIdx + 1}/{project.parts.length}
-          </span>
-          {isEditingPartName ? (
-            <input
-              type="text"
-              value={partNameInput}
-              onChange={(e) => setPartNameInput(e.target.value)}
-              onBlur={handleSavePartName}
-              onKeyDown={(e) => e.key === "Enter" && handleSavePartName()}
-              autoFocus
-              className="bp-input rounded-lg border border-coral bg-white dark:bg-slate-900 px-2 py-0.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
-            />
-          ) : (
+        }}
+      >
+        {/* Part Switcher Header */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="bp-badge rounded-full bg-coral/20 border border-coral/40 px-2.5 py-0.5 font-mono text-[11px] font-black text-coral whitespace-nowrap shrink-0 tabular-nums">
+              {activePart
+                ? `零件 ${safePartIdx + 1}/${project.parts.length}`
+                : "AI 润色画布"}
+            </span>
+            {activePart ? (
+              isEditingPartName ? (
+                <input
+                  type="text"
+                  value={partNameInput}
+                  onChange={(e) => setPartNameInput(e.target.value)}
+                  onBlur={handleSavePartName}
+                  onKeyDown={(e) => e.key === "Enter" && handleSavePartName()}
+                  autoFocus
+                  className="bp-input rounded-lg border border-coral bg-white dark:bg-slate-900 px-2 py-0.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingPartName(true)}
+                  className="flex items-center gap-1 text-xs sm:text-sm font-extrabold text-white hover:text-coral transition cursor-pointer min-w-0"
+                >
+                  <span className="truncate">{activePart.partName}</span>
+                  <PencilSimpleIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                </button>
+              )
+            ) : (
+              <span className="truncate text-xs sm:text-sm font-extrabold text-white">
+                {project.title}
+              </span>
+            )}
+          </div>
+
+          {/* Part Paging Controls */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-0.5 pr-0.5">
+            {project.parts.map((partItem, pIdx) => (
+              <button
+                key={partItem.id}
+                type="button"
+                onClick={() => setActivePartIndex(pIdx)}
+                className={`inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[11px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                  pIdx === safePartIdx
+                    ? "bp-pill-active bg-white text-slate-950 shadow-xs"
+                    : "bp-pill bg-white/10 text-slate-300 hover:bg-white/20"
+                }`}
+              >
+                #{pIdx + 1} {partItem.partName.slice(0, 8)}
+              </button>
+            ))}
             <button
               type="button"
-              onClick={() => setIsEditingPartName(true)}
-              className="flex items-center gap-1 text-xs sm:text-sm font-extrabold text-white hover:text-coral transition cursor-pointer min-w-0"
+              onClick={() => addPartFileRef.current?.click()}
+              className="bp-pill inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white hover:bg-coral transition cursor-pointer shrink-0"
+              title="添加新零件图"
             >
-              <span className="truncate">{activePart.partName}</span>
-              <PencilSimpleIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <PlusIcon className="h-3.5 w-3.5" weight="bold" />
+            </button>
+          </div>
+        </div>
+
+        {/* 1:1 Export Aspect Ratio Annotated Preview Stage (or AI Un-occluded Split Stage) */}
+        <div className="bp-canvas-stage relative flex items-center justify-center min-h-[280px] sm:min-h-[360px] lg:min-h-[380px] lg:max-h-[calc(100dvh-220px)] rounded-2xl bg-slate-900/90 overflow-hidden p-2">
+          {project.parts.length > 1 && safePartIdx > 0 && (
+            <button
+              type="button"
+              onClick={() => setActivePartIndex(safePartIdx - 1)}
+              className="bp-btn absolute left-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
+              title="上一个零件"
+            >
+              <CaretLeftIcon className="h-4 w-4" weight="bold" />
             </button>
           )}
-        </div>
 
-        {/* Part Paging Controls */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-0.5 pr-0.5">
-          {project.parts.map((partItem, pIdx) => (
-            <button
-              key={partItem.id}
-              type="button"
-              onClick={() => setActivePartIndex(pIdx)}
-              className={`inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[11px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
-                pIdx === safePartIdx
-                  ? "bp-pill-active bg-white text-slate-950 shadow-xs"
-                  : "bp-pill bg-white/10 text-slate-300 hover:bg-white/20"
-              }`}
-            >
-              #{pIdx + 1} {partItem.partName.slice(0, 8)}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => addPartFileRef.current?.click()}
-            className="bp-pill inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white hover:bg-coral transition cursor-pointer shrink-0"
-            title="添加新零件图"
-          >
-            <PlusIcon className="h-3.5 w-3.5" weight="bold" />
-          </button>
-        </div>
-      </div>
-
-      {/* 1:1 Export Aspect Ratio Annotated Preview Stage (allowDrag={false}) */}
-      <div className="bp-canvas-stage relative flex items-center justify-center min-h-[280px] sm:min-h-[360px] lg:min-h-[380px] lg:max-h-[calc(100dvh-220px)] rounded-2xl bg-slate-900/90 overflow-hidden p-2">
-        {project.parts.length > 1 && safePartIdx > 0 && (
-          <button
-            type="button"
-            onClick={() => setActivePartIndex(safePartIdx - 1)}
-            className="bp-btn absolute left-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
-            title="上一个零件"
-          >
-            <CaretLeftIcon className="h-4 w-4" weight="bold" />
-          </button>
-        )}
-
-        <ProjectAnnotatedCanvas
-          imageSrc={activePartImageSrc}
-          alt={activePart.partName}
-          colors={partColors}
-          selectedId={selectedNode?.id || null}
-          swatchSettings={swatchSettings}
-          readOnly={false}
-          maxHeightPx={typeof window !== "undefined" ? Math.max(320, window.innerHeight - 260) : 560}
-          onSelect={(cOrId) => {
-            const id = typeof cOrId === "string" ? cOrId : cOrId?.id;
-            if (id) setSelectedNodeId(id);
-          }}
-          onUpdatePosition={(id, nx, ny) => {
-            updateActivePart((part) => ({
-              ...part,
-              nodes: part.nodes.map((n) =>
-                n.id === id ? { ...n, offsetX: nx, offsetY: ny } : n
-              ),
-            }));
-          }}
-        />
-
-        {project.parts.length > 1 && safePartIdx < project.parts.length - 1 && (
-          <button
-            type="button"
-            onClick={() => setActivePartIndex(safePartIdx + 1)}
-            className="bp-btn absolute right-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
-            title="下一个零件"
-          >
-            <CaretRightIcon className="h-4 w-4" weight="bold" />
-          </button>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-0.5 text-[11px] text-slate-400">
-        <span className="truncate">拖拽画面色卡可自由移动 · 点按色卡查看详情</span>
-        <div className="flex items-center gap-2 shrink-0">
-          {onSendImageToColoring && activePartImageSrc && (
-            <button
-              type="button"
-              onClick={() =>
-                onSendImageToColoring(
-                  activePartImageSrc,
-                  `${project.title} · ${activePart.partName}`,
-                  true,
-                  { projectId: project.id, partId: activePart.id }
-                )
+          {detailSubTab === "ai" && aiLiveStage ? (
+            <AiLiveComparisonStage stage={aiLiveStage} />
+          ) : activePart ? (
+            <ProjectAnnotatedCanvas
+              imageSrc={activePartImageSrc}
+              alt={activePart.partName}
+              colors={partColors}
+              selectedId={selectedNode?.id || null}
+              swatchSettings={swatchSettings}
+              readOnly={false}
+              maxHeightPx={
+                typeof window !== "undefined"
+                  ? Math.max(320, window.innerHeight - 260)
+                  : 560
               }
-              className="bp-pill gk-btn-secondary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-coral/15 hover:bg-coral/25 border border-coral/40 px-3 text-xs font-extrabold text-coral transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-              title="返回模拟试色台继续对当前试色项目进行上色与调整"
+              onSelect={(cOrId) => {
+                const id = typeof cOrId === "string" ? cOrId : cOrId?.id;
+                if (id) setSelectedNodeId(id);
+              }}
+              onUpdatePosition={(id, nx, ny) => {
+                updateActivePart((part) => ({
+                  ...part,
+                  nodes: part.nodes.map((n) =>
+                    n.id === id ? { ...n, offsetX: nx, offsetY: ny } : n
+                  ),
+                }));
+              }}
+            />
+          ) : null}
+
+          {project.parts.length > 1 && safePartIdx < project.parts.length - 1 && (
+            <button
+              type="button"
+              onClick={() => setActivePartIndex(safePartIdx + 1)}
+              className="bp-btn absolute right-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition cursor-pointer"
+              title="下一个零件"
             >
-              <PaintBrushIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-              <span>试色改色</span>
+              <CaretRightIcon className="h-4 w-4" weight="bold" />
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => openAiStudio(activePart?.studioSession ? "refine" : "preset")}
-            className="bp-pill inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/45 px-3 text-xs font-extrabold text-amber-300 transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-            title="用多模态模型修复模拟上色边缘溢色，或将素组/灰模一键生成官图级涂装作品"
-          >
-            <SparkleIcon className="h-3.5 w-3.5 shrink-0" weight="fill" />
-            <span>{activePart?.studioSession ? "AI 修溢色" : "AI 效果图"}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsSwatchEditorOpen(true)}
-            className="bp-pill-active gk-btn-primary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover px-3.5 text-xs font-extrabold text-white shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-          >
-            <SlidersHorizontalIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
-            <span>进入排版工作台 →</span>
-          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-0.5 text-[11px] text-slate-400">
+          <span className="truncate">
+            {detailSubTab === "ai"
+              ? aiLiveStage?.resultDataUrl
+                ? "左右拖动滑块对比原图与 AI 效果图"
+                : "无色卡遮挡纯净预览 · 生成后可在此滑动对比"
+              : "拖拽画面色卡可自由移动 · 点按色卡查看详情"}
+          </span>
+          {activePart && (
+            <div className="flex items-center gap-2 shrink-0">
+              {onSendImageToColoring && activePartImageSrc && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSendImageToColoring(
+                      activePartImageSrc,
+                      `${project.title} · ${activePart.partName}`,
+                      true,
+                      { projectId: project.id, partId: activePart.id }
+                    )
+                  }
+                  className="bp-pill gk-btn-secondary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-coral/15 hover:bg-coral/25 border border-coral/40 px-3 text-xs font-extrabold text-coral transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                  title="返回模拟试色台继续对当前试色项目进行上色与调整"
+                >
+                  <PaintBrushIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                  <span>试色改色</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsSwatchEditorOpen(true)}
+                className="bp-pill-active gk-btn-primary inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-accent hover:bg-accent-hover px-3.5 text-xs font-extrabold text-white shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <SlidersHorizontalIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                <span>进入排版工作台 →</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  ) : null;
+    ) : null;
 
   const subTabBar = (
     <div className="flex justify-center lg:justify-start">
       <div className="bp-segmented inline-flex rounded-full border border-white/50 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-1 shadow-md max-w-full overflow-x-auto no-scrollbar">
         <button
           type="button"
-          onClick={() => setDetailSubTab("paints")}
+          onClick={() => setDetailSubTab("ai")}
           className={`bp-segmented-item flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
-            detailSubTab === "paints"
+            detailSubTab === "ai"
               ? "bp-segmented-item-active bg-coral text-white shadow-sm"
               : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
-          <PaletteIcon className="h-4 w-4 shrink-0" weight="bold" />
-          <span>指派油漆详情 ({activePart?.nodes.length || 0})</span>
+          <SparkleIcon className="h-4 w-4 shrink-0" weight="fill" />
+          <span>AI 润色</span>
         </button>
         <button
           type="button"
@@ -668,6 +707,18 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           <span>
             取件表 ({checklistStats.partsCount}/{checklistStats.regionsCount})
           </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setDetailSubTab("paints")}
+          className={`bp-segmented-item flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0 tabular-nums ${
+            detailSubTab === "paints"
+              ? "bp-segmented-item-active bg-coral text-white shadow-sm"
+              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <PaletteIcon className="h-4 w-4 shrink-0" weight="bold" />
+          <span>油漆详情 ({activePart?.nodes.length || 0})</span>
         </button>
       </div>
     </div>
@@ -720,7 +771,7 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           )}
         </div>
 
-        {/* Right: [✨ AI 润色与效果图生成] + [📁 分类：xxx ⌄] + [宽屏模式 (pro only)] + [•••] */}
+        {/* Right: [还原原图 (when AI replaced)] + [📁 分类：xxx ⌄] + [宽屏模式 (pro only)] + [•••] */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap shrink-0">
           {activePart?.originalBeforeAiImageDataUrl && (
             <button
@@ -733,16 +784,6 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
               <span className="leading-none">还原原图</span>
             </button>
           )}
-
-          <button
-            type="button"
-            onClick={() => openAiStudio(activePart?.studioSession ? "refine" : "preset")}
-            className="bp-pill-active inline-flex h-[34px] box-border items-center justify-center gap-1.5 rounded-[6px] bg-coral hover:opacity-95 px-2.5 sm:px-3 text-[11px] sm:text-xs font-black text-white shadow-xs transition cursor-pointer whitespace-nowrap"
-            title="素组/灰模一键生成涂装作品 · 模拟上色边缘溢色修复 · 替换色卡与取件表底图"
-          >
-            <SparkleIcon className="h-3.5 w-3.5 shrink-0" weight="fill" />
-            <span className="leading-none">AI 润色与效果图生成</span>
-          </button>
 
           {/* Category Reassignment Dropdown Pill ([📁 分类：xxx ⌄]) */}
           <div className="relative shrink-0">
@@ -965,61 +1006,35 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
       {/* Right inspector column (desktop) */}
       <div
         className={`${
-          !activePart
+          !partStageCard
             ? "lg:col-span-12"
             : "lg:col-span-6 xl:col-span-7"
         } min-w-0 flex flex-col gap-4 pr-1.5 pb-1.5`}
       >
-      {/* 2.5 Compact AI Retouch & Render Dock (right above Sub-Tab Switcher, matching layout spec) */}
-      <div className="bp-subcard flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 px-3.5 py-2.5 shadow-xs">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-coral/15 text-coral shrink-0">
-            <SparkleIcon className="h-4 w-4" weight="fill" />
-          </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs font-black text-slate-900 dark:text-white">
-                AI 润色与官图级效果图生成
-              </span>
-              {activePart?.aiLastAppliedLabel && (
-                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/35 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300">
-                  当前底图：{activePart.aiLastAppliedLabel}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              支持 Seedream 官方点数通道或接入自有 API，生成后可一键替换色卡与取件表底图
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-          <button
-            type="button"
-            onClick={() => openAiStudio("preset")}
-            className="bp-pill inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:border-coral px-2.5 text-xs font-extrabold text-slate-800 dark:text-slate-100 transition cursor-pointer"
-          >
-            <PaletteIcon className="h-3.5 w-3.5 text-coral" weight="fill" />
-            <span>素组一键涂装</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => openAiStudio("refine")}
-            className="bp-pill inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:border-coral px-2.5 text-xs font-extrabold text-slate-800 dark:text-slate-100 transition cursor-pointer"
-          >
-            <MagicWandIcon className="h-3.5 w-3.5 text-coral" weight="fill" />
-            <span>模拟上色修溢色</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 3. Floating Liquid Glass Sub-Tab Switcher: [指派油漆详情 | 涂装工序 | 取件表] */}
+      {/* 3. Floating Liquid Glass Sub-Tab Switcher: [AI 润色 | 涂装工序 | 取件表 | 油漆详情] */}
       {subTabBar}
 
-      {/* 4. Sub-Tab 1: 指派油漆详情 (Horizontal Paint Carousel + Module A Lightness/Chroma + Module B Nearest Matches) */}
-      {detailSubTab === "paints" && activePart && (
+      {/* 3.5 Sub-Tab 1: AI 润色 (Inline Seedream 5.0 Pro + BYOK Studio & Simulated Coloring Refinement) */}
+      {detailSubTab === "ai" && (
+        <AiPaintStudioPanel
+          projectTitle={project.title}
+          activePart={activePart}
+          activePartImageSrc={activePartImageSrc}
+          onReplaceCoverAndPartImage={handleApplyAiReplaceCoverAndPart}
+          onAppendAsNewPart={handleAppendAiNewPart}
+          onRestoreBeforeAiImage={
+            activePart?.originalBeforeAiImageDataUrl
+              ? handleRestoreBeforeAiImage
+              : undefined
+          }
+          onStageChange={setAiLiveStage}
+        />
+      )}
+
+      {/* 4. Sub-Tab 4: 油漆详情 (Horizontal Paint Carousel + Module A Lightness/Chroma + Module B Nearest Matches) */}
+      {detailSubTab === "paints" && (
         <div className="space-y-4">
-          {activePart.nodes.length === 0 ? (
+          {!activePart || activePart.nodes.length === 0 ? (
             <div className="bp-dashed-box rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 p-8 text-center space-y-2">
               <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
                 当前零件尚未指派悬浮色卡
@@ -1282,18 +1297,6 @@ export const PaintProjectDetailView: React.FC<PaintProjectDetailViewProps> = ({
           lang={lang}
         />
       )}
-
-      {/* AI Paint Studio & Simulated Coloring Refinement Modal */}
-      <AiPaintStudioModal
-        open={isAiStudioOpen}
-        initialMode={aiStudioInitialMode}
-        projectTitle={project.title}
-        activePart={activePart}
-        activePartImageSrc={activePartImageSrc}
-        onClose={() => setIsAiStudioOpen(false)}
-        onReplaceCoverAndPartImage={handleApplyAiReplaceCoverAndPart}
-        onAppendAsNewPart={handleAppendAiNewPart}
-      />
     </div>
   );
 };

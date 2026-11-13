@@ -289,7 +289,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   const rechargeUrlUnifans =
     (import.meta as any).env?.VITE_RECHARGE_URL_UNIFANS ||
     (import.meta as any).env?.VITE_RECHARGE_URL_CN ||
-    "";
+    "https://app.unifans.io/c/gk_mixer0428";
   const rechargeUrlGlobal = (import.meta as any).env?.VITE_RECHARGE_URL_GLOBAL || "";
 
   // Reset part-specific overrides when user switches part tab

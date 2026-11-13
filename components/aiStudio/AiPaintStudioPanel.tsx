@@ -8,9 +8,17 @@ import {
   BYOK_PROVIDER_PRESETS,
   ByokConfig,
   ByokProviderId,
+  DETAIL_CRAFT_OPTIONS,
+  DetailCraftId,
+  LIGHTING_POS_OPTIONS,
+  LightingPosId,
   REFINE_FINISH_OPTIONS,
   RefineFinishStyle,
   RefineUnpaintedPolicy,
+  STUDIO_BG_OPTIONS,
+  SURFACE_FINISH_OPTIONS,
+  StudioBgId,
+  SurfaceFinishId,
   WalletInfo,
   buildPresetRenderPrompt,
   buildRefineRenderPrompt,
@@ -248,8 +256,20 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   const [useDualRefInRefine, setUseDualRefInRefine] = useState<boolean>(hasStudioRawRef);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Preset Mode options
+  // Preset & Process Configurator options
   const [selectedPresetId, setSelectedPresetId] = useState<string>(AI_PRESET_STYLES[0].id);
+  const [finishId, setFinishId] = useState<SurfaceFinishId>(AI_PRESET_STYLES[0].defaultFinish);
+  const [crafts, setCrafts] = useState<DetailCraftId[]>(["panel_lining", "metallic_frame"]);
+  const [bgId, setBgId] = useState<StudioBgId>(AI_PRESET_STYLES[0].defaultBg);
+  const [lightingId, setLightingId] = useState<LightingPosId>(AI_PRESET_STYLES[0].defaultLighting);
+
+  // Style Reference Sample image (backend preset slot + user custom upload)
+  const [customStyleRefSrc, setCustomStyleRefSrc] = useState<string | null>(null);
+  const [useStyleRef, setUseStyleRef] = useState<boolean>(true);
+  const [builtinRefLoaded, setBuiltinRefLoaded] = useState<boolean>(false);
+  const [previewTab, setPreviewTab] = useState<"result" | "ref">("ref");
+  const styleRefInputRef = useRef<HTMLInputElement>(null);
+
   const [injectPalette, setInjectPalette] = useState<boolean>(
     Boolean(activePart?.nodes && activePart.nodes.length > 0)
   );
@@ -391,11 +411,62 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     elapsedSec,
   ]);
 
+  const activePresetObj = useMemo(
+    () => AI_PRESET_STYLES.find((s) => s.id === selectedPresetId) || AI_PRESET_STYLES[0],
+    [selectedPresetId]
+  );
+
+  const effectiveStyleRefSrc = useMemo(() => {
+    if (!useStyleRef) return null;
+    if (customStyleRefSrc) return customStyleRefSrc;
+    if (mode === "preset" && builtinRefLoaded) return activePresetObj.sampleImageUrl;
+    return null;
+  }, [useStyleRef, customStyleRefSrc, mode, builtinRefLoaded, activePresetObj.sampleImageUrl]);
+
+  const handleSelectPreset = (presetId: string) => {
+    setSelectedPresetId(presetId);
+    setBuiltinRefLoaded(false);
+    const p = AI_PRESET_STYLES.find((s) => s.id === presetId);
+    if (p) {
+      setFinishId(p.defaultFinish);
+      setBgId(p.defaultBg);
+      setLightingId(p.defaultLighting);
+    }
+  };
+
+  const toggleCraft = (craftId: DetailCraftId) => {
+    setCrafts((prev) =>
+      prev.includes(craftId) ? prev.filter((id) => id !== craftId) : [...prev, craftId]
+    );
+  };
+
+  const handleUploadStyleRef = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setCustomStyleRefSrc(reader.result);
+        setUseStyleRef(true);
+        setPreviewTab("ref");
+        flashNotice("✓ 已加载自定义风格参考样板图，生成时将学习其喷涂质感与光影");
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   const finalPrompt = useMemo(() => {
     const nodes: FloatingSwatchNode[] = activePart?.nodes || [];
+    const hasStyleRefImage = Boolean(effectiveStyleRefSrc);
     if (mode === "preset") {
       return buildPresetRenderPrompt({
         presetId: selectedPresetId,
+        finishId,
+        crafts,
+        bgId,
+        lightingId,
+        hasStyleRefImage,
         nodes,
         injectPalette,
         extraUserPrompt: extraPrompt,
@@ -403,8 +474,12 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     }
     return buildRefineRenderPrompt({
       hasDualRawImage: Boolean(effectiveDualRawRef),
+      hasStyleRefImage,
       finishStyle: refineFinish,
       unpaintedPolicy,
+      crafts,
+      bgId,
+      lightingId,
       nodes,
       injectPalette,
       extraUserPrompt: extraPrompt,
@@ -412,6 +487,11 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   }, [
     mode,
     selectedPresetId,
+    finishId,
+    crafts,
+    bgId,
+    lightingId,
+    effectiveStyleRefSrc,
     activePart?.nodes,
     injectPalette,
     extraPrompt,
@@ -422,12 +502,11 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
 
   const currentModeSummaryLabel = useMemo(() => {
     if (mode === "preset") {
-      const p = AI_PRESET_STYLES.find((s) => s.id === selectedPresetId);
-      return p ? `AI ${p.name}` : "AI 涂装效果图";
+      return `AI ${activePresetObj.name}`;
     }
     const r = REFINE_FINISH_OPTIONS.find((f) => f.id === refineFinish);
     return r ? `AI 精修 · ${r.name.replace(/（.*）/, "")}` : "AI 模拟上色精修";
-  }, [mode, selectedPresetId, refineFinish]);
+  }, [mode, activePresetObj.name, refineFinish]);
 
   const handleChannelSwitch = (next: AiChannelMode) => {
     setChannel(next);
@@ -539,6 +618,9 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
       const inputSources = effectiveDualRawRef
         ? [effectiveDualRawRef, primaryBeforeSrc]
         : [primaryBeforeSrc];
+      if (effectiveStyleRefSrc) {
+        inputSources.push(effectiveStyleRefSrc);
+      }
 
       const res = await runAiPaintRender({
         channel,
@@ -551,10 +633,11 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
 
       setGeneratedImageUrl(res.imageDataUrl);
       setGeneratedLabel(currentModeSummaryLabel);
+      setPreviewTab("result");
       if (res.wallet) {
         setWallet(res.wallet);
       }
-      flashNotice("✨ AI 涂装效果图生成完成！可在左侧大图拖动滑杆对比细节");
+      flashNotice("✨ AI 涂装效果图已生成！可在右侧预览窗口直接对比与导出");
     } catch (err: any) {
       if (err?.wallet) {
         setWallet(err.wallet);
@@ -972,114 +1055,75 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         )}
       </div>
 
-      {/* 2. Post-Generation Apply Action Bar (Appears right at top once generated!) */}
-      {generatedImageUrl && (
-        <div className="bp-subcard rounded-2xl border-2 border-emerald-500/50 bg-emerald-500/10 p-3.5 space-y-2.5">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-xs font-black text-slate-900 dark:text-white">
-              ✅ 效果图已生成！左侧可拖动滑杆对比细节，一键应用到本项目：
-            </span>
-            <span className="text-[11px] text-slate-600 dark:text-slate-300">
-              自动备份原图，随时可无损还原
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                onReplaceCoverAndPartImage(generatedImageUrl, generatedLabel);
-                setGeneratedImageUrl(null);
-              }}
-              className="flex-1 min-w-[190px] inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-coral hover:opacity-95 px-4 text-xs sm:text-sm font-black text-white shadow-sm cursor-pointer"
-            >
-              <CheckCircleIcon className="h-4 w-4 shrink-0" weight="fill" />
-              <span>设为当前色卡与取件表底图</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onAppendAsNewPart(
-                  generatedImageUrl,
-                  generatedLabel || "AI 涂装效果图",
-                  generatedLabel
-                );
-                setGeneratedImageUrl(null);
-              }}
-              className="bp-pill inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 text-xs font-extrabold text-slate-800 dark:text-slate-100 hover:border-coral cursor-pointer"
-            >
-              <PlusIcon className="h-4 w-4 text-coral" weight="bold" />
-              <span>存为新零件页</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadResult}
-              className="bp-pill inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs font-extrabold text-slate-700 dark:text-slate-200 cursor-pointer"
-            >
-              <DownloadSimpleIcon className="h-4 w-4" weight="bold" />
-              <span>下载 {renderQuality === "1K" ? "1080p" : "2K"} 图</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Main Mode Switcher & Style / Refinement Configuration Card */}
+      {/* 2. Main Process-Block Configurator (Left) + Sample & Result Preview (Right) */}
       <div className="bp-subcard rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 p-3.5 sm:p-4 space-y-4">
-        {/* Two Core Modes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {/* Hidden input for uploading user custom paint reference */}
+        <input
+          ref={styleRefInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleUploadStyleRef}
+        />
+
+        {/* Hidden probe image to check whether backend /ai-style-refs/<id>.jpg exists */}
+        {mode === "preset" && !customStyleRefSrc && (
+          <img
+            key={activePresetObj.sampleImageUrl}
+            src={activePresetObj.sampleImageUrl}
+            alt=""
+            className="hidden"
+            onLoad={() => setBuiltinRefLoaded(true)}
+            onError={() => setBuiltinRefLoaded(false)}
+          />
+        )}
+
+        {/* Two Core Modes - Compact Pills */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setMode("preset")}
-            className={`rounded-2xl border p-3 text-left transition cursor-pointer ${
+            className={`rounded-xl border px-3 py-2 text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               mode === "preset"
                 ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/35 shadow-xs"
                 : "bp-subcard border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 hover:border-slate-300"
             }`}
           >
-            <div className="flex items-center justify-between gap-1">
-              <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                <PaletteIcon className="h-4 w-4 text-coral shrink-0" weight="fill" />
-                <span>模式 1：素组/灰模一键涂装</span>
-              </span>
-              {mode === "preset" && (
-                <CheckCircleIcon className="h-4 w-4 text-coral shrink-0" weight="fill" />
-              )}
-            </div>
-            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              上传素组或灰模，用预设特化提示词一键生成二次元/MAX喷涂作品
-            </p>
+            <span className="inline-flex items-center gap-1.5 text-xs font-black text-slate-900 dark:text-white">
+              <PaletteIcon className="h-4 w-4 text-coral shrink-0" weight="fill" />
+              <span>模式 1：素组/灰模一键涂装</span>
+            </span>
+            {mode === "preset" && (
+              <CheckCircleIcon className="h-4 w-4 text-coral shrink-0" weight="fill" />
+            )}
           </button>
 
           <button
             type="button"
             onClick={() => setMode("refine")}
-            className={`rounded-2xl border p-3 text-left transition cursor-pointer ${
+            className={`rounded-xl border px-3 py-2 text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               mode === "refine"
                 ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/35 shadow-xs"
                 : "bp-subcard border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 hover:border-slate-300"
             }`}
           >
-            <div className="flex items-center justify-between gap-1">
-              <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                <MagicWandIcon className="h-4 w-4 text-coral shrink-0" weight="fill" />
-                <span>模式 2：模拟上色边缘精修</span>
-              </span>
-              {mode === "refine" && (
-                <CheckCircleIcon className="h-4 w-4 text-coral shrink-0" weight="fill" />
-              )}
-            </div>
-            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              修复模拟上色的边缘溢出与局部未涂生硬感，还原锐利刻线与漆面
-            </p>
+            <span className="inline-flex items-center gap-1.5 text-xs font-black text-slate-900 dark:text-white">
+              <MagicWandIcon className="h-4 w-4 text-coral shrink-0" weight="fill" />
+              <span>模式 2：模拟上色边缘精修</span>
+            </span>
+            {mode === "refine" && (
+              <CheckCircleIcon className="h-4 w-4 text-coral shrink-0" weight="fill" />
+            )}
           </button>
         </div>
 
         {/* Smart StudioSession Source Switcher */}
         {!customUploadedSrc && hasStudioRawRef && (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
             {mode === "preset" ? (
               <>
                 <span>
-                  检测到试色工程快照：当前以「{useUnpaintedRawInPreset ? "原始未上色素组图" : "当前模拟上色图"}」作为底图
+                  试色底图源：「{useUnpaintedRawInPreset ? "原始未上色素组图" : "当前模拟上色图"}」
                 </span>
                 <button
                   type="button"
@@ -1093,7 +1137,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               <>
                 <span>
                   {useDualRefInRefine
-                    ? "✓ 已自动启用「原始素组刻线 + 模拟上色分色」双图联合精修"
+                    ? "✓ 已启用「原始素组 + 模拟上色」双图锁定精修"
                     : "当前为单图精修模式"}
                 </span>
                 <button
@@ -1108,144 +1152,422 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
           </div>
         )}
 
-        {/* Mode 1 Presets OR Mode 2 Refinement Controls */}
-        {mode === "preset" ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                选择预设涂装风格
-              </span>
-              <span className="text-[11px] font-bold text-coral">
-                已选：{AI_PRESET_STYLES.find((s) => s.id === selectedPresetId)?.name}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-              {AI_PRESET_STYLES.map((preset) => {
-                const active = selectedPresetId === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => setSelectedPresetId(preset.id)}
-                    className={`rounded-xl border p-2.5 text-left transition cursor-pointer ${
-                      active
-                        ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30"
-                        : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-black text-slate-900 dark:text-white truncate">
-                        {preset.name}
-                      </span>
-                      {active ? (
-                        <span className="rounded bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white shrink-0">
-                          ✓ 已选
-                        </span>
-                      ) : (
-                        <span className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 shrink-0">
-                          {preset.badge}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-snug">
-                      {preset.shortDesc}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <span className="block text-xs font-black text-slate-800 dark:text-slate-200">
-                1. 目标漆面质感与边缘溢色修复
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {REFINE_FINISH_OPTIONS.map((opt) => {
-                  const active = refineFinish === opt.id;
-                  return (
+        {/* Split Workbench: Left (5-Step Process Buttons) | Right (Sample Reference & Output Preview) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+          {/* LEFT: 5-Step Process Configurator */}
+          <div className="lg:col-span-7 space-y-3">
+            {mode === "preset" ? (
+              <>
+                {/* Step 01: Paint Technique */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                      01 涂装技法
+                    </span>
+                    <span className="text-[10px] font-bold text-coral">
+                      {activePresetObj.name}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {AI_PRESET_STYLES.map((preset) => {
+                      const active = selectedPresetId === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => handleSelectPreset(preset.id)}
+                          className={`rounded-xl border px-2.5 py-2 text-left transition cursor-pointer flex items-center justify-between gap-1 ${
+                            active
+                              ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30"
+                              : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 hover:border-slate-300"
+                          }`}
+                        >
+                          <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                            {preset.name}
+                          </span>
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[9px] font-extrabold shrink-0 ${
+                              active
+                                ? "bg-coral text-white"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                            }`}
+                          >
+                            {active ? "✓" : preset.badge}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Step 02: Surface Topcoat Finish */}
+                <div className="space-y-1.5">
+                  <span className="block text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                    02 漆面质感
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {SURFACE_FINISH_OPTIONS.map((opt) => {
+                      const active = finishId === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setFinishId(opt.id)}
+                          className={`rounded-xl border px-2.5 py-1.5 text-center text-[11px] transition cursor-pointer ${
+                            active
+                              ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
+                              : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                          }`}
+                        >
+                          {opt.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Mode 2 Step 01: Edge Refine Finish */}
+                <div className="space-y-1.5">
+                  <span className="block text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                    01 溢色修复漆面
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {REFINE_FINISH_OPTIONS.map((opt) => {
+                      const active = refineFinish === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setRefineFinish(opt.id)}
+                          className={`rounded-xl border px-2.5 py-2 text-center text-[11px] transition cursor-pointer ${
+                            active
+                              ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
+                              : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                          }`}
+                        >
+                          {opt.name.replace("（推荐）", "")}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Mode 2 Step 02: Unpainted Policy */}
+                <div className="space-y-1.5">
+                  <span className="block text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                    02 未涂留白处理
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button
-                      key={opt.id}
                       type="button"
-                      onClick={() => setRefineFinish(opt.id)}
-                      className={`rounded-xl border p-2.5 text-left transition cursor-pointer ${
-                        active
-                          ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30"
-                          : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 hover:border-slate-300"
+                      onClick={() => setUnpaintedPolicy("keep_clean")}
+                      className={`rounded-xl border px-2.5 py-1.5 text-center text-[11px] transition cursor-pointer ${
+                        unpaintedPolicy === "keep_clean"
+                          ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
+                          : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300"
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-black text-slate-900 dark:text-white">
-                          {opt.name.replace("（推荐）", "")}
-                        </span>
-                        {active && (
-                          <CheckCircleIcon className="h-3.5 w-3.5 text-coral shrink-0" weight="fill" />
-                        )}
-                      </div>
-                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                        {opt.desc}
-                      </p>
+                      保留干净白/浅灰外甲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUnpaintedPolicy("harmonize_complete")}
+                      className={`rounded-xl border px-2.5 py-1.5 text-center text-[11px] transition cursor-pointer ${
+                        unpaintedPolicy === "harmonize_complete"
+                          ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
+                          : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      自动协调补全分色
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Step 03: Detail Crafts (Multi-Select) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                  03 工艺细节（可多选）
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  已选 {crafts.length} 项
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {DETAIL_CRAFT_OPTIONS.map((craft) => {
+                  const active = crafts.includes(craft.id);
+                  return (
+                    <button
+                      key={craft.id}
+                      type="button"
+                      onClick={() => toggleCraft(craft.id)}
+                      className={`rounded-xl border px-2.5 py-1.5 text-center text-[11px] transition cursor-pointer inline-flex items-center justify-center gap-1 ${
+                        active
+                          ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
+                          : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                      }`}
+                    >
+                      {active && <CheckIcon className="h-3 w-3 shrink-0" weight="bold" />}
+                      <span>{craft.name}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
+            {/* Step 04: Studio Background */}
             <div className="space-y-1.5">
-              <span className="block text-xs font-black text-slate-800 dark:text-slate-200">
-                2. 未上色留白区域处理策略
+              <span className="block text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                04 摄影背景
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setUnpaintedPolicy("keep_clean")}
-                  className={`rounded-xl border p-2.5 text-left text-xs transition cursor-pointer ${
-                    unpaintedPolicy === "keep_clean"
-                      ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30 font-black"
-                      : "bp-subcard border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span>保留干净白/浅灰外甲</span>
-                    {unpaintedPolicy === "keep_clean" && (
-                      <CheckCircleIcon className="h-3.5 w-3.5 text-coral" weight="fill" />
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-[11px] font-normal text-slate-400">
-                    只修复已涂色区溢色，未涂部位整理为整洁白灰消光装甲
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUnpaintedPolicy("harmonize_complete")}
-                  className={`rounded-xl border p-2.5 text-left text-xs transition cursor-pointer ${
-                    unpaintedPolicy === "harmonize_complete"
-                      ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30 font-black"
-                      : "bp-subcard border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span>自动协调补全整机分色</span>
-                    {unpaintedPolicy === "harmonize_complete" && (
-                      <CheckCircleIcon className="h-3.5 w-3.5 text-coral" weight="fill" />
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-[11px] font-normal text-slate-400">
-                    只涂了局部时，按已涂色逻辑自动协调补完其余装甲分色
-                  </p>
-                </button>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {STUDIO_BG_OPTIONS.map((bg) => {
+                  const active = bgId === bg.id;
+                  return (
+                    <button
+                      key={bg.id}
+                      type="button"
+                      onClick={() => setBgId(bg.id)}
+                      className={`rounded-xl border px-2.5 py-1.5 text-[11px] transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                        active
+                          ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
+                          : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                      }`}
+                    >
+                      <span
+                        className="h-2.5 w-2.5 rounded-full border border-black/20 shrink-0"
+                        style={{ backgroundColor: bg.swatchHex }}
+                      />
+                      <span className="truncate">{bg.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Step 05: Studio Lighting Position */}
+            <div className="space-y-1.5">
+              <span className="block text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                05 打光位置
+              </span>
+              <div className="grid grid-cols-3 gap-1.5">
+                {LIGHTING_POS_OPTIONS.map((light) => {
+                  const active = lightingId === light.id;
+                  return (
+                    <button
+                      key={light.id}
+                      type="button"
+                      onClick={() => setLightingId(light.id)}
+                      className={`rounded-xl border px-2.5 py-1.5 text-center text-[11px] transition cursor-pointer ${
+                        active
+                          ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
+                          : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                      }`}
+                    >
+                      {light.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
-        )}
+
+          {/* RIGHT: Clean Sample Style Reference & Generated Effect Preview Window */}
+          <div className="lg:col-span-5 space-y-2.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-950/60 p-3">
+            {/* Preview Window Switcher Tabs */}
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setPreviewTab("result")}
+                  className={`px-2.5 py-1 rounded-lg font-extrabold transition cursor-pointer ${
+                    previewTab === "result" || generatedImageUrl
+                      ? previewTab === "result"
+                        ? "bg-coral text-white"
+                        : "text-slate-600 dark:text-slate-300"
+                      : "text-slate-400"
+                  }`}
+                >
+                  效果图预览
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewTab("ref")}
+                  className={`px-2.5 py-1 rounded-lg font-extrabold transition cursor-pointer ${
+                    previewTab === "ref"
+                      ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
+                      : "text-slate-600 dark:text-slate-300"
+                  }`}
+                >
+                  风格样板参考
+                </button>
+              </div>
+
+              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300">
+                无悬浮色卡
+              </span>
+            </div>
+
+            {/* Preview Viewport */}
+            {previewTab === "result" && generatedImageUrl ? (
+              <div className="space-y-2.5">
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                  <img
+                    src={generatedImageUrl}
+                    alt={generatedLabel || "AI 涂装效果图"}
+                    className="h-full w-full object-contain"
+                  />
+                  <span className="absolute top-2 left-2 rounded-lg bg-black/65 backdrop-blur-sm px-2 py-0.5 text-[10px] font-extrabold text-white">
+                    ✓ {generatedLabel} · {renderQuality === "1K" ? "1080p" : "2K"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onReplaceCoverAndPartImage(generatedImageUrl, generatedLabel);
+                      setGeneratedImageUrl(null);
+                    }}
+                    className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-coral hover:opacity-95 px-2 text-[11px] font-black text-white cursor-pointer"
+                  >
+                    <CheckCircleIcon className="h-3.5 w-3.5 shrink-0" weight="fill" />
+                    <span>设为底图</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAppendAsNewPart(
+                        generatedImageUrl,
+                        generatedLabel || "AI 涂装效果图",
+                        generatedLabel
+                      );
+                      setGeneratedImageUrl(null);
+                    }}
+                    className="bp-pill inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 text-[11px] font-extrabold text-slate-800 dark:text-slate-100 cursor-pointer"
+                  >
+                    <PlusIcon className="h-3.5 w-3.5 text-coral shrink-0" weight="bold" />
+                    <span>存新零件</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadResult}
+                    className="bp-pill inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 cursor-pointer"
+                  >
+                    <DownloadSimpleIcon className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                    <span>下载</span>
+                  </button>
+                </div>
+              </div>
+            ) : previewTab === "result" && !generatedImageUrl ? (
+              <div className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 p-4 text-center">
+                <SparkleIcon className="h-7 w-7 text-coral/70 mb-1.5" weight="duotone" />
+                <p className="text-xs font-black text-slate-700 dark:text-slate-200">
+                  {rendering
+                    ? `正在渲染 ${renderQuality === "1K" ? "1080p" : "2K"} 涂装成品... (${elapsedSec}s)`
+                    : "选择左侧工序后点击生成"}
+                </p>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  生成后可在此预览并一键设为取件表底图
+                </p>
+              </div>
+            ) : (
+              /* Reference Image Slot (Preset Backend Sample OR User Custom Style Upload) */
+              <div className="space-y-2">
+                {customStyleRefSrc || (mode === "preset" && builtinRefLoaded) ? (
+                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <img
+                      src={customStyleRefSrc || activePresetObj.sampleImageUrl}
+                      alt="风格样板参考图"
+                      className={`h-full w-full object-contain transition ${
+                        useStyleRef ? "opacity-100" : "opacity-40 grayscale"
+                      }`}
+                    />
+                    <span className="absolute top-2 left-2 rounded-lg bg-black/65 backdrop-blur-sm px-2 py-0.5 text-[10px] font-extrabold text-white">
+                      {customStyleRefSrc ? "自定义参考样板" : `预设样板 · ${activePresetObj.name}`}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => styleRefInputRef.current?.click()}
+                    className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 p-4 text-center hover:border-coral transition cursor-pointer"
+                  >
+                    <ImageSquareIcon className="h-7 w-7 text-slate-400 mb-1.5" weight="duotone" />
+                    <span className="text-xs font-black text-slate-700 dark:text-slate-200">
+                      上传涂装样板参考图（选填）
+                    </span>
+                    <span className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                      支持你自己的大神喷涂作品做多图风格迁移，不传则按下方工序纯提示词生成
+                    </span>
+                  </button>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <label className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useStyleRef}
+                      onChange={(e) => setUseStyleRef(e.target.checked)}
+                      className="h-3.5 w-3.5 accent-coral rounded cursor-pointer"
+                    />
+                    <span>多图参考学习笔触</span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    {customStyleRefSrc && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomStyleRefSrc(null)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-rose-400 cursor-pointer"
+                      >
+                        <ArrowCounterClockwiseIcon className="h-3 w-3" weight="bold" />
+                        <span>清自定义</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => styleRefInputRef.current?.click()}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-[10px] font-extrabold text-slate-800 dark:text-slate-200 hover:border-coral cursor-pointer"
+                    >
+                      <UploadSimpleIcon className="h-3 w-3 text-coral" weight="bold" />
+                      <span>{customStyleRefSrc ? "换参考图" : "传参考图"}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Active Process Pill Summary */}
+            <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 px-2.5 py-2 text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              <span className="font-black text-slate-800 dark:text-slate-200">当前工序：</span>
+              <span>
+                {mode === "preset"
+                  ? `${activePresetObj.name} · ${
+                      SURFACE_FINISH_OPTIONS.find((f) => f.id === finishId)?.name
+                    }`
+                  : REFINE_FINISH_OPTIONS.find((f) => f.id === refineFinish)?.name.replace(
+                      "（推荐）",
+                      ""
+                    )}
+                {" · "}
+                {STUDIO_BG_OPTIONS.find((b) => b.id === bgId)?.name}
+                {" · "}
+                {LIGHTING_POS_OPTIONS.find((l) => l.id === lightingId)?.name}
+                {effectiveStyleRefSrc ? " · 已挂参考图" : ""}
+              </span>
+            </div>
+          </div>
+        </div>
 
         {/* Project Paint Swatch Palette Auto-Injection */}
         {activePart && activePart.nodes.length > 0 && (
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 p-2.5 space-y-2">
             <label className="flex items-center justify-between gap-2 cursor-pointer">
               <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100">
-                自动融合当前项目油漆色卡 ({activePart.nodes.length} 色)
+                自动融合当前项目油漆色卡 ({activePart.nodes.length} 色 · 仅作配色指令，图内不画悬浮色卡)
               </span>
               <input
                 type="checkbox"
@@ -1286,14 +1608,14 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               onClick={() => setShowFullPromptPreview((v) => !v)}
               className="text-[11px] font-bold text-coral hover:underline cursor-pointer"
             >
-              {showFullPromptPreview ? "收起内置提示词" : "查看内置特调提示词"}
+              {showFullPromptPreview ? "收起完整提示词" : "查看合成提示词"}
             </button>
           </div>
           <input
             type="text"
             value={extraPrompt}
             onChange={(e) => setExtraPrompt(e.target.value)}
-            placeholder="例如：天线改成金属金色、监视器眼部发绿光、暗黑格纳库背景..."
+            placeholder="例如：天线改成金属金色、胸口加一点轻微掉漆、盾牌做红色分色..."
             className="bp-input w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white"
           />
           {showFullPromptPreview && (

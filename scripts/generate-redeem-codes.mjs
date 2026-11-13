@@ -8,6 +8,9 @@
  *   CREDITS_SIGNING_SECRET="你的签名密钥" node scripts/generate-redeem-codes.mjs --points=100 --count=50
  */
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((arg) => {
@@ -54,5 +57,28 @@ for (let i = 0; i < count; i++) {
   codes.push(`GKM-${points}-${nonce}-${sig}`);
 }
 
-console.log(`# 已生成 ${count} 张 [${points} 灵感点] 兑换码（每张可生成 ${Math.floor(points / 10)} 次 Seedream 2K 涂装图）：\n`);
+const shouldSave = args["no-save"] !== "true";
+let savedFilePath = "";
+if (shouldSave) {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const outDir = path.resolve(__dirname, "../.redeem-codes");
+  fs.mkdirSync(outDir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const fileName = args.out || `cdk-${points}pts-${count}pcs-${stamp}.txt`;
+  savedFilePath = path.isAbsolute(fileName) ? fileName : path.join(outDir, fileName);
+  const header = [
+    `# GK-Mixer AI 兑换码批次 (${points} 点 / 共 ${count} 个)`,
+    `# 可生成: 1080p 试色 ${Math.floor(points / 5)} 张 | 2K Pro 精修 ${Math.floor(points / 10)} 张`,
+    `# 生成时间: ${new Date().toLocaleString("zh-CN")}`,
+    "",
+  ].join("\n");
+  fs.writeFileSync(savedFilePath, header + codes.join("\n") + "\n", "utf8");
+}
+
+console.log(
+  `# 已生成 ${count} 张 [${points} 灵感点] 兑换码（1080p=${Math.floor(points / 5)}张 / 2K Pro=${Math.floor(points / 10)}张）：\n`
+);
 console.log(codes.join("\n"));
+if (savedFilePath) {
+  console.log(`\n✅ 已自动保存至本地文件（已加入 .gitignore 不会上传仓库）：\n${savedFilePath}`);
+}

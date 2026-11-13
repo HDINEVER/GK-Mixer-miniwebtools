@@ -6,7 +6,17 @@
 export const DEFAULT_ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 export const DEFAULT_ARK_MODEL = "doubao-seedream-5-0-pro-260628";
 export const FREE_TRIAL_CREDITS = 20;
-export const COST_PER_RENDER = 10;
+export const COST_PER_RENDER_1K = 5;
+export const COST_PER_RENDER_2K = 10;
+export const COST_PER_RENDER = COST_PER_RENDER_2K;
+
+export function resolveRenderQuality(rawSize) {
+  const normalized = String(rawSize || "2K").trim().toUpperCase();
+  if (normalized === "1K" || normalized === "1080P") {
+    return { size: "1K", cost: COST_PER_RENDER_1K, label: "1080p" };
+  }
+  return { size: "2K", cost: COST_PER_RENDER_2K, label: "2K Pro" };
+}
 
 // Local / fallback in-memory store when Cloudflare KV (AI_CREDITS_KV) is not yet bound
 const memoryStore = new Map();
@@ -573,7 +583,9 @@ export async function processWalletAction(env, body, clientIp = "unknown") {
       ok: true,
       officialReady,
       kvReady,
-      costPerRender: COST_PER_RENDER,
+      costPerRender: COST_PER_RENDER_2K,
+      costPerRender1k: COST_PER_RENDER_1K,
+      costPerRender2k: COST_PER_RENDER_2K,
       wallet,
     };
   }
@@ -584,7 +596,9 @@ export async function processWalletAction(env, body, clientIp = "unknown") {
       ok: true,
       officialReady,
       kvReady,
-      costPerRender: COST_PER_RENDER,
+      costPerRender: COST_PER_RENDER_2K,
+      costPerRender1k: COST_PER_RENDER_1K,
+      costPerRender2k: COST_PER_RENDER_2K,
       addedPoints: result.addedPoints,
       wallet: result.wallet,
     };
@@ -595,6 +609,7 @@ export async function processWalletAction(env, body, clientIp = "unknown") {
 
 export async function processAiRenderRequest(env, body, clientIp = "unknown") {
   const channel = body?.channel === "byok" ? "byok" : "official";
+  const quality = resolveRenderQuality(body?.size);
   const prompt = String(body?.prompt || "").trim();
   const images = Array.isArray(body?.images) ? body.images.filter(Boolean) : [];
   const isConnectivityTest = Boolean(body?.testOnly);
@@ -650,7 +665,7 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
         model,
         prompt,
         images,
-        size: body?.size || "2K",
+        size: quality.size,
       });
     } else if (provider === "gemini") {
       result = await callGeminiImageEdit({
@@ -691,10 +706,10 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
   }
 
   const passkey = body?.passkey;
-  const deduction = await deductWalletCredits(env, passkey, COST_PER_RENDER, clientIp);
+  const deduction = await deductWalletCredits(env, passkey, quality.cost, clientIp);
   if (!deduction.ok) {
     const err = new Error(
-      `当前通行证剩余点数不足（需要 ${COST_PER_RENDER} 点，当前剩余 ${deduction.wallet.credits} 点）。请充值点数，或切换至「自带 API」免费调用。`
+      `当前通行证剩余点数不足（${quality.label} 需要 ${quality.cost} 点，当前剩余 ${deduction.wallet.credits} 点）。请充值点数、切换为 1080p 省点模式（5 点），或使用「自带 API」。`
     );
     err.code = "INSUFFICIENT_CREDITS";
     err.wallet = deduction.wallet;
@@ -708,7 +723,7 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
       model: (env && env.ARK_SEEDREAM_MODEL) || DEFAULT_ARK_MODEL,
       prompt,
       images,
-      size: body?.size || "2K",
+      size: quality.size,
     });
 
     return {
@@ -716,12 +731,13 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
       channel: "official",
       imageDataUrl: result.imageDataUrl,
       modelUsed: result.modelUsed,
-      costCredits: COST_PER_RENDER,
+      sizeUsed: quality.size,
+      costCredits: quality.cost,
       wallet: deduction.wallet,
     };
   } catch (renderErr) {
     // Upstream failed -> refund deducted credits immediately so user never loses points!
-    const refundedWallet = await refundWalletCredits(env, passkey, COST_PER_RENDER);
+    const refundedWallet = await refundWalletCredits(env, passkey, quality.cost);
     renderErr.wallet = refundedWallet || deduction.wallet;
     throw renderErr;
   }

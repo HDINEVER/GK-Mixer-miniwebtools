@@ -3,6 +3,7 @@ import type { FloatingSwatchNode, PartCanvas } from "../../types";
 import {
   AI_PRESET_STYLES,
   AiChannelMode,
+  AiRenderQuality,
   AiStudioMode,
   BYOK_PROVIDER_PRESETS,
   ByokConfig,
@@ -17,10 +18,12 @@ import {
   getOrCreateWalletPasskey,
   loadByokConfig,
   loadPreferredChannel,
+  loadPreferredQuality,
   redeemCreditCode,
   runAiPaintRender,
   saveByokConfig,
   savePreferredChannel,
+  savePreferredQuality,
   saveWalletPasskey,
   testByokConnection,
 } from "../../utils/aiPaintStudio";
@@ -211,9 +214,11 @@ interface AiPaintStudioPanelProps {
 }
 
 const RECHARGE_TIERS = [
-  { points: 100, priceCn: "¥9.9", renders: 10 },
-  { points: 300, priceCn: "¥24.9", renders: 30 },
-  { points: 1000, priceCn: "¥68.0", renders: 100 },
+  { id: "starter", name: "入门特惠包", coins: "10 币", priceNote: "≈¥7.2", points: 60, renders1k: 12, renders2k: 6, badge: "入门" },
+  { id: "lite", name: "轻量尝鲜包", coins: "15 币", priceNote: "≈¥10.8", points: 70, renders1k: 14, renders2k: 7, badge: "" },
+  { id: "main", name: "主力涂装包", coins: "39 币", priceNote: "≈¥28.1", points: 200, renders1k: 40, renders2k: 20, badge: "推荐" },
+  { id: "studio", name: "工作室包", coins: "99 币", priceNote: "≈¥71.3", points: 550, renders1k: 110, renders2k: 55, badge: "" },
+  { id: "monthly", name: "月度赞助", coins: "12 币/月", priceNote: "含50点/月", points: 50, renders1k: 10, renders2k: 5, badge: "赞助" },
 ];
 
 export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
@@ -234,6 +239,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     hasStudioRawRef ? "refine" : "preset"
   );
   const [channel, setChannel] = useState<AiChannelMode>(() => loadPreferredChannel());
+  const [renderQuality, setRenderQuality] = useState<AiRenderQuality>(() => loadPreferredQuality());
   const [drawerTab, setDrawerTab] = useState<"none" | "wallet" | "byok">("none");
 
   // Source image states
@@ -260,9 +266,12 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   const [showRestorePasskey, setShowRestorePasskey] = useState<boolean>(false);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [officialReady, setOfficialReady] = useState<boolean>(true);
-  const [costPerRender, setCostPerRender] = useState<number>(10);
+  const [costPerRender1k, setCostPerRender1k] = useState<number>(5);
+  const [costPerRender2k, setCostPerRender2k] = useState<number>(10);
   const [redeemInput, setRedeemInput] = useState<string>("");
   const [redeeming, setRedeeming] = useState<boolean>(false);
+
+  const activeRenderCost = renderQuality === "1K" ? costPerRender1k : costPerRender2k;
 
   // BYOK state
   const [byok, setByok] = useState<ByokConfig>(() => loadByokConfig());
@@ -277,7 +286,10 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
 
-  const rechargeUrlCn = (import.meta as any).env?.VITE_RECHARGE_URL_CN || "";
+  const rechargeUrlUnifans =
+    (import.meta as any).env?.VITE_RECHARGE_URL_UNIFANS ||
+    (import.meta as any).env?.VITE_RECHARGE_URL_CN ||
+    "";
   const rechargeUrlGlobal = (import.meta as any).env?.VITE_RECHARGE_URL_GLOBAL || "";
 
   // Reset part-specific overrides when user switches part tab
@@ -298,7 +310,10 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         if (cancelled) return;
         setWallet(res.wallet);
         setOfficialReady(res.officialReady);
-        setCostPerRender(res.costPerRender || 10);
+        if (res.costPerRender1k) setCostPerRender1k(res.costPerRender1k);
+        if (res.costPerRender2k || res.costPerRender) {
+          setCostPerRender2k(res.costPerRender2k || res.costPerRender || 10);
+        }
       })
       .catch(() => {});
     return () => {
@@ -531,7 +546,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         byok,
         prompt: finalPrompt,
         rawImageSources: inputSources,
-        size: "2K",
+        size: renderQuality,
       });
 
       setGeneratedImageUrl(res.imageDataUrl);
@@ -696,7 +711,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/70 p-3 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="font-black text-slate-900 dark:text-white">
-                灵感点账户：{wallet ? wallet.credits : 0} 点（每次消耗 {costPerRender} 点 · 新设备赠 20 点）
+                灵感点账户：{wallet ? wallet.credits : 0} 点（1080p 每次 {costPerRender1k} 点 / 2K 每次 {costPerRender2k} 点 · 新设备赠 20 点）
               </span>
               <button
                 type="button"
@@ -767,42 +782,65 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {RECHARGE_TIERS.map((t) => (
-                  <span
-                    key={t.points}
-                    className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-0.5 font-bold text-slate-700 dark:text-slate-200"
-                  >
-                    {t.priceCn}={t.points}点({t.renders}张)
+              <div className="space-y-2 pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
+                  {RECHARGE_TIERS.map((t) => (
+                    <div
+                      key={t.id}
+                      className={`rounded-xl border px-2 py-1.5 text-[11px] ${
+                        t.badge === "推荐"
+                          ? "border-coral/60 bg-coral/10 dark:bg-coral/15"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 font-black text-slate-900 dark:text-white">
+                        <span className="truncate">{t.name}</span>
+                        {t.badge && (
+                          <span className="rounded bg-coral px-1 py-0.2 text-[9px] font-black text-white shrink-0">
+                            {t.badge}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 font-extrabold text-coral tabular-nums">
+                        {t.coins} · {t.points}点
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        1080p {t.renders1k}张 / 2K {t.renders2k}张
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    支持支付宝/微信/PayPal/海外卡，下单后在引力圈私信领 GKM-xxx 兑换码（永久不清零）
                   </span>
-                ))}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {rechargeUrlUnifans && (
+                      <a
+                        href={rechargeUrlUnifans}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg bg-coral hover:opacity-95 px-2.5 py-1 text-xs font-extrabold text-white"
+                      >
+                        <span>前往引力圈购买兑换码</span>
+                        <ArrowSquareOutIcon className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                    {rechargeUrlGlobal && (
+                      <a
+                        href={rechargeUrlGlobal}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-2.5 py-1 text-xs font-extrabold text-white"
+                      >
+                        <span>海外通道</span>
+                        <ArrowSquareOutIcon className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {rechargeUrlCn && (
-                  <a
-                    href={rechargeUrlCn}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-xs font-extrabold text-white"
-                  >
-                    <span>微信/支付宝购卡</span>
-                    <ArrowSquareOutIcon className="h-3.5 w-3.5" />
-                  </a>
-                )}
-                {rechargeUrlGlobal && (
-                  <a
-                    href={rechargeUrlGlobal}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-2.5 py-1 text-xs font-extrabold text-white"
-                  >
-                    <span>Stripe 充值</span>
-                    <ArrowSquareOutIcon className="h-3.5 w-3.5" />
-                  </a>
-                )}
-              </div>
-            </div>
           </div>
         )}
 
@@ -978,7 +1016,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               className="bp-pill inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs font-extrabold text-slate-700 dark:text-slate-200 cursor-pointer"
             >
               <DownloadSimpleIcon className="h-4 w-4" weight="bold" />
-              <span>下载 2K 图</span>
+              <span>下载 {renderQuality === "1K" ? "1080p" : "2K"} 图</span>
             </button>
           </div>
         </div>
@@ -1284,6 +1322,59 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
           </div>
         )}
 
+        {/* Output Resolution & Credit Tier Switcher */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setRenderQuality("1K");
+              savePreferredQuality("1K");
+            }}
+            className={`rounded-xl border px-3 py-2 text-left transition cursor-pointer ${
+              renderQuality === "1K"
+                ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30"
+                : "bp-subcard border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 hover:border-slate-300"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-xs font-black text-slate-900 dark:text-white">
+                1080p 标准试色
+              </span>
+              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                {channel === "official" ? `${costPerRender1k} 点/次` : "省流快出"}
+              </span>
+            </div>
+            <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+              省半价点数 · 适合快速试配色与多次迭代
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setRenderQuality("2K");
+              savePreferredQuality("2K");
+            }}
+            className={`rounded-xl border px-3 py-2 text-left transition cursor-pointer ${
+              renderQuality === "2K"
+                ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30"
+                : "bp-subcard border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 hover:border-slate-300"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-xs font-black text-slate-900 dark:text-white">
+                2K Pro 高清精修
+              </span>
+              <span className="rounded bg-coral/15 px-1.5 py-0.5 font-mono text-[10px] font-black text-coral">
+                {channel === "official" ? `${costPerRender2k} 点/次` : "高清推荐"}
+              </span>
+            </div>
+            <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+              官图级锐利细节 · 适合做封面与取件表底图
+            </p>
+          </button>
+        </div>
+
         {/* Generate CTA */}
         <button
           type="button"
@@ -1294,14 +1385,18 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
           {rendering ? (
             <>
               <CircleNotchIcon className="h-5 w-5 animate-spin" weight="bold" />
-              <span>正在生成 2K 涂装作品... ({elapsedSec}s)</span>
+              <span>
+                正在生成 {renderQuality === "1K" ? "1080p" : "2K"} 涂装作品... ({elapsedSec}s)
+              </span>
             </>
           ) : (
             <>
               <SparkleIcon className="h-5 w-5" weight="fill" />
               <span>{generatedImageUrl ? "重新生成涂装效果图" : "立即生成涂装效果图"}</span>
               <span className="rounded-full bg-black/20 px-2 py-0.5 text-[11px] font-extrabold">
-                {channel === "official" ? `消耗 ${costPerRender} 点` : "自有 API · 免费"}
+                {channel === "official"
+                  ? `消耗 ${activeRenderCost} 点`
+                  : "自有 API · 免费"}
               </span>
             </>
           )}

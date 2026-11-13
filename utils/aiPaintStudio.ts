@@ -3,6 +3,7 @@ import { localizedBrand } from "./paintCatalog";
 
 export type AiStudioMode = "preset" | "refine";
 export type AiChannelMode = "official" | "byok";
+export type AiRenderQuality = "1K" | "2K";
 export type ByokProviderId = "ark" | "gemini" | "openai" | "custom";
 
 export interface ByokConfig {
@@ -25,6 +26,8 @@ export interface WalletStatusResponse {
   officialReady: boolean;
   kvReady: boolean;
   costPerRender: number;
+  costPerRender1k?: number;
+  costPerRender2k?: number;
   wallet: WalletInfo;
   addedPoints?: number;
   error?: string;
@@ -251,6 +254,7 @@ export function buildRefineRenderPrompt(opts: {
 const PASSKEY_STORAGE_KEY = "gk_ai_wallet_passkey_v1";
 const BYOK_STORAGE_KEY = "gk_ai_byok_config_v1";
 const CHANNEL_STORAGE_KEY = "gk_ai_channel_pref_v1";
+const QUALITY_STORAGE_KEY = "gk_ai_quality_pref_v1";
 
 function randomBlock(len = 4): string {
   const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -328,6 +332,18 @@ export function loadPreferredChannel(): AiChannelMode {
 export function savePreferredChannel(ch: AiChannelMode): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(CHANNEL_STORAGE_KEY, ch);
+}
+
+export function loadPreferredQuality(): AiRenderQuality {
+  if (typeof window === "undefined") return "2K";
+  const saved = localStorage.getItem(QUALITY_STORAGE_KEY);
+  if (saved === "1K" || saved === "2K") return saved;
+  return "2K";
+}
+
+export function savePreferredQuality(q: AiRenderQuality): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(QUALITY_STORAGE_KEY, q);
 }
 
 // ==========================================

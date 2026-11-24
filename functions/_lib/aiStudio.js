@@ -4,7 +4,7 @@
  */
 
 export const DEFAULT_ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
-export const DEFAULT_ARK_MODEL = "doubao-seedream-5-0-pro-260628";
+export const DEFAULT_ARK_MODEL = "doubao-seedream-5-5-261028";
 export const FREE_TRIAL_CREDITS = 20;
 export const COST_PER_RENDER_1K = 5;
 export const COST_PER_RENDER_2K = 10;
@@ -286,6 +286,8 @@ export async function callVolcengineSeedream({
   prompt,
   images = [],
   size = "2K",
+  background = "auto",
+  outputFormat,
 }) {
   if (!apiKey) {
     throw new Error("未配置火山引擎 ARK_API_KEY");
@@ -295,17 +297,27 @@ export async function callVolcengineSeedream({
     ? cleanBase
     : `${cleanBase}/images/generations`;
 
+  const targetModel = model || DEFAULT_ARK_MODEL;
+  const wantsTransparent = background === "transparent";
   const normalizedImages = images.map((img) => parseDataUri(img).normalizedDataUri);
 
-  const buildPayload = (imgField, sizeValue) => {
+  const buildPayload = (imgField, sizeValue, includeBgOpts = true) => {
     const body = {
-      model: model || DEFAULT_ARK_MODEL,
+      model: targetModel,
       prompt,
       response_format: "url",
       size: sizeValue,
       stream: false,
       watermark: false,
     };
+    if (includeBgOpts) {
+      if (wantsTransparent) {
+        body.output_format = "png";
+        body.background = "transparent";
+      } else if (outputFormat === "png" || outputFormat === "jpeg") {
+        body.output_format = outputFormat;
+      }
+    }
     if (imgField !== undefined) {
       body.image = imgField;
     }
@@ -325,45 +337,62 @@ export async function callVolcengineSeedream({
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(buildPayload(primaryImageParam, size || "2K")),
+    body: JSON.stringify(buildPayload(primaryImageParam, size || "2K", true)),
   });
 
-  // Fallback for older SeedEdit / Seedream 3.0 models that don't accept sequential_image_generation or array image or "2K"
+  // Fallback for older Seedream / SeedEdit models
   if (!resp.ok && resp.status === 400) {
     const errText = await resp.text();
-    const fallbackBody = {
-      model: model || DEFAULT_ARK_MODEL,
-      prompt,
-      response_format: "b64_json",
-      watermark: false,
-    };
-    if (normalizedImages.length > 0) {
-      // Try last image (simulated colored or primary input) if model only accepts single string image
-      fallbackBody.image =
-        errText.includes("image") && normalizedImages.length > 1
-          ? normalizedImages[normalizedImages.length - 1]
-          : primaryImageParam;
+    const hasBgOpts = wantsTransparent || outputFormat === "png" || outputFormat === "jpeg";
+    if (hasBgOpts && (errText.includes("background") || errText.includes("output_format"))) {
+      // Retry cleanly without 5.5-only params while preserving size and multi-image input
+      const cleanRetryResp = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(buildPayload(primaryImageParam, size || "2K", false)),
+      });
+      if (cleanRetryResp.ok) {
+        resp = cleanRetryResp;
+      }
     }
-    if (!errText.includes("size")) {
-      fallbackBody.size = "adaptive";
-    }
-    const retryResp = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(fallbackBody),
-    });
-    if (retryResp.ok) {
-      resp = retryResp;
-    } else {
-      let msg = errText;
-      try {
-        const parsed = JSON.parse(errText);
-        msg = parsed?.error?.message || msg;
-      } catch {}
-      throw new Error(`Seedream 接口返回错误 (400): ${msg}`);
+    if (!resp.ok) {
+      const fallbackBody = {
+        model: targetModel,
+        prompt,
+        response_format: "b64_json",
+        watermark: false,
+      };
+      if (normalizedImages.length > 0) {
+        // Try last image (simulated colored or primary input) if model only accepts single string image
+        fallbackBody.image =
+          errText.includes("image") && normalizedImages.length > 1
+            ? normalizedImages[normalizedImages.length - 1]
+            : primaryImageParam;
+      }
+      if (!errText.includes("size")) {
+        fallbackBody.size = "adaptive";
+      }
+      const retryResp = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(fallbackBody),
+      });
+      if (retryResp.ok) {
+        resp = retryResp;
+      } else {
+        let msg = errText;
+        try {
+          const parsed = JSON.parse(errText);
+          msg = parsed?.error?.message || msg;
+        } catch {}
+        throw new Error(`Seedream 接口返回错误 (400): ${msg}`);
+      }
     }
   }
 
@@ -382,18 +411,19 @@ export async function callVolcengineSeedream({
   if (!item) {
     throw new Error("Seedream 未返回有效图像数据");
   }
+  const outMime = wantsTransparent || outputFormat === "png" ? "image/png" : "image/jpeg";
   if (item.b64_json) {
     const cleanB64 = String(item.b64_json).replace(/^data:image\/[^;]+;base64,/, "");
     return {
-      imageDataUrl: `data:image/jpeg;base64,${cleanB64}`,
-      modelUsed: model || DEFAULT_ARK_MODEL,
+      imageDataUrl: `data:${outMime};base64,${cleanB64}`,
+      modelUsed: targetModel,
     };
   }
   if (item.url) {
     const dataUrl = await fetchUrlAsDataUri(item.url);
     return {
       imageDataUrl: dataUrl,
-      modelUsed: model || DEFAULT_ARK_MODEL,
+      modelUsed: targetModel,
     };
   }
   throw new Error("Seedream 返回格式无法解析");
@@ -610,6 +640,13 @@ export async function processWalletAction(env, body, clientIp = "unknown") {
 export async function processAiRenderRequest(env, body, clientIp = "unknown") {
   const channel = body?.channel === "byok" ? "byok" : "official";
   const quality = resolveRenderQuality(body?.size);
+  const background = body?.background === "transparent" ? "transparent" : "auto";
+  const outputFormat =
+    background === "transparent"
+      ? "png"
+      : body?.outputFormat === "png" || body?.outputFormat === "jpeg"
+      ? body.outputFormat
+      : undefined;
   const prompt = String(body?.prompt || "").trim();
   const images = Array.isArray(body?.images) ? body.images.filter(Boolean) : [];
   const isConnectivityTest = Boolean(body?.testOnly);
@@ -666,6 +703,8 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
         prompt,
         images,
         size: quality.size,
+        background,
+        outputFormat,
       });
     } else if (provider === "gemini") {
       result = await callGeminiImageEdit({
@@ -724,6 +763,8 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
       prompt,
       images,
       size: quality.size,
+      background,
+      outputFormat,
     });
 
     return {

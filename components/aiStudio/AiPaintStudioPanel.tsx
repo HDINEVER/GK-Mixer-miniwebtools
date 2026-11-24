@@ -199,7 +199,7 @@ export const AiLiveComparisonStage: React.FC<{
           <CircleNotchIcon className="h-10 w-10 text-coral animate-spin" weight="bold" />
           <div className="space-y-1">
             <p className="text-sm font-black text-white">
-              正在调用 Seedream 2K 绘制漆面与刻线细节... ({stage.elapsedSec}s)
+              正在调用 Seedream 5.5 绘制漆面与刻线细节... ({stage.elapsedSec}s)
             </p>
             <p className="text-xs text-slate-300">
               通常耗时 8 ~ 20 秒，若上游接口异常将自动原路退回点数
@@ -622,6 +622,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         inputSources.push(effectiveStyleRefSrc);
       }
 
+      const isTransparentBg = bgId === "transparent";
       const res = await runAiPaintRender({
         channel,
         passkey,
@@ -629,6 +630,8 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         prompt: finalPrompt,
         rawImageSources: inputSources,
         size: renderQuality,
+        background: isTransparentBg ? "transparent" : "auto",
+        outputFormat: isTransparentBg ? "png" : undefined,
       });
 
       setGeneratedImageUrl(res.imageDataUrl);
@@ -653,9 +656,10 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
 
   const handleDownloadResult = () => {
     if (!generatedImageUrl) return;
+    const ext = generatedImageUrl.startsWith("data:image/png") ? "png" : "jpg";
     const a = document.createElement("a");
     a.href = generatedImageUrl;
-    a.download = `${projectTitle || "GK-Mixer"}-${generatedLabel || "AI涂装"}.jpg`;
+    a.download = `${projectTitle || "GK-Mixer"}-${generatedLabel || "AI涂装"}.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -689,7 +693,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               }`}
             >
               <LightningIcon className="h-3.5 w-3.5 text-amber-400" weight="fill" />
-              <span>官方 Seedream</span>
+              <span>官方 Seedream 5.5</span>
               <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] text-amber-600 dark:text-amber-300 tabular-nums">
                 {wallet ? `${wallet.credits}点` : "..."}
               </span>
@@ -1324,9 +1328,10 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               <span className="block text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
                 04 摄影背景
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {STUDIO_BG_OPTIONS.map((bg) => {
                   const active = bgId === bg.id;
+                  const isTransparent = bg.swatchHex === "transparent";
                   return (
                     <button
                       key={bg.id}
@@ -1340,7 +1345,15 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                     >
                       <span
                         className="h-2.5 w-2.5 rounded-full border border-black/20 shrink-0"
-                        style={{ backgroundColor: bg.swatchHex }}
+                        style={
+                          isTransparent
+                            ? {
+                                backgroundImage:
+                                  "repeating-conic-gradient(#cbd5e1 0% 25%, #ffffff 0% 50%)",
+                                backgroundSize: "6px 6px",
+                              }
+                            : { backgroundColor: bg.swatchHex }
+                        }
                       />
                       <span className="truncate">{bg.name}</span>
                     </button>
@@ -1415,7 +1428,18 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
             {/* Preview Viewport */}
             {previewTab === "result" && generatedImageUrl ? (
               <div className="space-y-2.5">
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <div
+                  className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                  style={
+                    generatedImageUrl.startsWith("data:image/png")
+                      ? {
+                          backgroundImage:
+                            "repeating-conic-gradient(#e2e8f0 0% 25%, #ffffff 0% 50%)",
+                          backgroundSize: "14px 14px",
+                        }
+                      : undefined
+                  }
+                >
                   <img
                     src={generatedImageUrl}
                     alt={generatedLabel || "AI 涂装效果图"}

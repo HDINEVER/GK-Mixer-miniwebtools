@@ -46,7 +46,7 @@ export interface AiPresetStyle {
 
 export type SurfaceFinishId = "matte" | "semi_gloss" | "gloss" | "metallic_pearl";
 export type DetailCraftId = "panel_lining" | "decals" | "metallic_frame" | "led_glow";
-export type StudioBgId = "white_studio" | "dark_studio" | "cutting_mat" | "hangar_bay";
+export type StudioBgId = "white_studio" | "dark_studio" | "cutting_mat" | "hangar_bay" | "transparent";
 export type LightingPosId = "soft_dual" | "top_key" | "rim_dramatic";
 
 export type RefineFinishStyle = "matte_studio" | "anime_cel_refine" | "metallic_gloss_refine";
@@ -135,6 +135,13 @@ export const STUDIO_BG_OPTIONS: {
     name: "格纳库整备台",
     swatchHex: "#334155",
     promptFragment: "背景为微缩写实机甲格纳库金属整备架与机械臂底座，带轻微背景虚化。",
+  },
+  {
+    id: "transparent",
+    name: "透明免抠 PNG",
+    swatchHex: "transparent",
+    promptFragment:
+      "纯透明背景（无任何背景色、地台、阴影底板或杂物），仅保留完整洁净的涂装模型本体与锐利边缘，输出透明通道PNG素材。",
   },
 ];
 
@@ -276,15 +283,16 @@ export const BYOK_PROVIDER_PRESETS: {
     name: "火山引擎 · 豆包 Seedream",
     badge: "国内直连首选",
     defaultBaseUrl: "https://ark.cn-beijing.volces.com/api/v3",
-    defaultModel: "doubao-seedream-5-0-pro-260628",
+    defaultModel: "doubao-seedream-5-5-261028",
     modelSuggestions: [
+      "doubao-seedream-5-5-261028",
       "doubao-seedream-5-0-pro-260628",
       "doubao-seedream-5-0-flash-260915",
       "doubao-seedream-5-0-lite-260128",
       "doubao-seedream-4-5-251128",
     ],
     keyApplyUrl: "https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey",
-    placeholderKey: "粘贴火山方舟 API Key（如 8a4f2c...）",
+    placeholderKey: "粘贴火山方舟 API Key（如 ark-...）",
   },
   {
     id: "gemini",
@@ -324,6 +332,7 @@ export const BYOK_PROVIDER_PRESETS: {
     modelSuggestions: [
       "grok-imagine-image",
       "gpt-image-2.6-sunburst",
+      "doubao-seedream-5-5-261028",
       "doubao-seedream-5-0-pro-260628",
     ],
     keyApplyUrl: "",
@@ -655,6 +664,8 @@ export async function runAiPaintRender(params: {
   prompt: string;
   rawImageSources: string[];
   size?: "1K" | "2K";
+  background?: "auto" | "transparent";
+  outputFormat?: "png" | "jpeg";
 }): Promise<{
   imageDataUrl: string;
   modelUsed: string;
@@ -675,6 +686,8 @@ export async function runAiPaintRender(params: {
       prompt: params.prompt,
       images: compressedImages,
       size: params.size || "2K",
+      background: params.background,
+      outputFormat: params.outputFormat,
     }),
   });
 

@@ -2024,11 +2024,11 @@ const App: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsSettingsOpen(true)}
-                className="gk-mech-btn p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all"
+                className="gk-mech-btn h-9 w-9 flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all cursor-pointer"
                 aria-label="Settings"
                 title="Settings"
               >
-                <ListIcon className="w-6 h-6" />
+                <ListIcon className="w-[18px] h-[18px]" weight="bold" />
               </button>
             </div>
           </div>

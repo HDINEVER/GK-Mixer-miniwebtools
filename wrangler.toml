@@ -7,8 +7,6 @@ binding = "AI_CREDITS_KV"
 id = "3362e0d646f14c9188acf3f16e258873"
 
 # Private R2 bucket for AI Paint Studio style reference images (keeps images out of GitHub).
-# After creating bucket `gk-mixer-style-refs` in Cloudflare Dashboard -> R2, either bind
-# `STYLE_REFS_R2` in Pages Settings -> Functions -> R2 bucket bindings, or uncomment below:
-# [[r2_buckets]]
-# binding = "STYLE_REFS_R2"
-# bucket_name = "gk-mixer-style-refs"
+[[r2_buckets]]
+binding = "STYLE_REFS_R2"
+bucket_name = "gk-mixer-style-refs"

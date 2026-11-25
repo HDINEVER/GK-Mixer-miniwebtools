@@ -741,8 +741,9 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown", op
       : body?.styleRefMode === "preset"
       ? "preset"
       : "none";
+  const MAX_PRESET_STYLE_REFS = 2;
   let styleRefAttached = false;
-  let styleRefPathUsed = null;
+  let loadedRefPaths = [];
   const finalImages = [...images];
 
   if (styleRefMode === "custom") {
@@ -750,16 +751,23 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown", op
     if (typeof customImg === "string" && customImg.startsWith("data:image")) {
       finalImages.push(customImg);
       styleRefAttached = true;
-      styleRefPathUsed = "custom";
+      loadedRefPaths = ["custom"];
     }
   } else if (styleRefMode === "preset") {
-    const candidates = [
-      String(body?.presetStyleRefPath || "").trim(),
-      String(body?.fallbackStyleRefPath || "").trim(),
-    ].filter((p, idx, arr) => p && SAFE_PRESET_STYLE_REF_RE.test(p) && arr.indexOf(p) === idx);
+    const rawPaths = [];
+    if (Array.isArray(body?.presetStyleRefPaths)) {
+      for (const p of body.presetStyleRefPaths) rawPaths.push(String(p || "").trim());
+    }
+    if (body?.presetStyleRefPath) {
+      rawPaths.push(String(body.presetStyleRefPath || "").trim());
+    }
+    const candidates = rawPaths.filter(
+      (p, idx, arr) => p && SAFE_PRESET_STYLE_REF_RE.test(p) && arr.indexOf(p) === idx
+    );
 
-    if (candidates.length > 0 && typeof options?.loadStaticAsset === "function") {
+    if (typeof options?.loadStaticAsset === "function") {
       for (const candidatePath of candidates) {
+        if (loadedRefPaths.length >= MAX_PRESET_STYLE_REFS) break;
         try {
           const asset = await options.loadStaticAsset(candidatePath);
           if (
@@ -770,18 +778,37 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown", op
           ) {
             const cleanMime = asset.mimeType.split(";")[0].trim();
             finalImages.push(`data:${cleanMime};base64,${arrayBufferToBase64(asset.buffer)}`);
-            styleRefAttached = true;
-            styleRefPathUsed = candidatePath;
-            break;
+            loadedRefPaths.push(candidatePath);
           }
         } catch {
-          // Missing candidate falls through to next fallback or clean prompt-only mode
+          // Missing candidate falls through cleanly
+        }
+      }
+
+      if (loadedRefPaths.length === 0 && body?.fallbackStyleRefPath) {
+        const fbPath = String(body.fallbackStyleRefPath || "").trim();
+        if (SAFE_PRESET_STYLE_REF_RE.test(fbPath)) {
+          try {
+            const asset = await options.loadStaticAsset(fbPath);
+            if (
+              asset &&
+              asset.buffer &&
+              asset.buffer.byteLength > 0 &&
+              String(asset.mimeType || "").startsWith("image/")
+            ) {
+              const cleanMime = asset.mimeType.split(";")[0].trim();
+              finalImages.push(`data:${cleanMime};base64,${arrayBufferToBase64(asset.buffer)}`);
+              loadedRefPaths.push(fbPath);
+            }
+          } catch {}
         }
       }
     }
+    styleRefAttached = loadedRefPaths.length > 0;
   } else if (body?.hasStyleRefImage) {
     // Backward compatibility if a client already included style ref in images[]
     styleRefAttached = true;
+    loadedRefPaths = ["legacy"];
   }
 
   const finalPrompt = assemblePromptFromBlocks(body?.promptBlocks, rawPrompt, styleRefAttached);
@@ -865,6 +892,7 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown", op
       imageDataUrl: result.imageDataUrl,
       modelUsed: result.modelUsed,
       styleRefApplied: styleRefAttached,
+      styleRefCount: loadedRefPaths.length,
     };
   }
 
@@ -914,6 +942,7 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown", op
       modelUsed: result.modelUsed,
       officialModelUsed: spec.key,
       styleRefApplied: styleRefAttached,
+      styleRefCount: loadedRefPaths.length,
       sizeUsed: spec.size,
       costCredits: spec.cost,
       wallet: deduction.wallet,

@@ -75,6 +75,7 @@ export interface AiPresetStyle {
   defaultBg: StudioBgId;
   defaultLighting: LightingPosId;
   prompt: string;
+  subStyleSelection?: "single" | "multiple";
   subStyles?: AiPresetSubStyle[];
   enabled?: boolean;
 }
@@ -254,8 +255,9 @@ export const AI_PRESET_STYLES: AiPresetStyle[] = [
   {
     id: "heavy_weathering",
     name: "战损旧化涂装",
-    badge: "5项子工艺",
+    badge: "可多选5项",
     sampleImageUrl: "/ai-style-refs/heavy_weathering.jpg",
+    subStyleSelection: "multiple",
     defaultFinish: "matte",
     defaultCrafts: ["panel_lining", "decals", "metallic_frame"],
     defaultBg: "dark_studio",
@@ -336,6 +338,7 @@ export const AI_PRESET_STYLES: AiPresetStyle[] = [
     name: "金属/珍珠/电镀特效涂装",
     badge: "4项子工艺",
     sampleImageUrl: "/ai-style-refs/candy_metallic.jpg",
+    subStyleSelection: "single",
     defaultFinish: "gloss",
     defaultCrafts: ["metallic_frame", "led_glow"],
     defaultBg: "dark_studio",
@@ -476,6 +479,12 @@ export async function fetchPresetStyles(): Promise<AiPresetStyle[]> {
             ? item.defaultLighting
             : "soft_dual") as LightingPosId,
           prompt: String(item.prompt),
+          subStyleSelection:
+            subStyles && subStyles.length > 0
+              ? item.subStyleSelection === "multiple"
+                ? "multiple"
+                : "single"
+              : undefined,
           subStyles: subStyles && subStyles.length > 0 ? subStyles : undefined,
           enabled: item.enabled !== false,
         };
@@ -652,12 +661,14 @@ export function buildProcessClause(opts: {
 export function buildPresetPromptBlocks(opts: {
   presetId: string;
   subStyleId?: string | null;
+  subStyleIds?: string[];
   presetsList?: AiPresetStyle[];
   finishId: SurfaceFinishId;
   crafts: DetailCraftId[];
   bgId: StudioBgId;
   lightingId: LightingPosId;
   hasStyleRefImage: boolean;
+  styleRefLabels?: string[];
   isCustomStyleRef?: boolean;
   nodes: FloatingSwatchNode[];
   injectPalette: boolean;
@@ -665,11 +676,26 @@ export function buildPresetPromptBlocks(opts: {
 }): { blocks: PromptBlock[]; prompt: string; overriddenLabels: string[] } {
   const list = opts.presetsList && opts.presetsList.length > 0 ? opts.presetsList : AI_PRESET_STYLES;
   const preset = list.find((p) => p.id === opts.presetId) || list[0];
-  const subStyle =
-    preset.subStyles && preset.subStyles.length > 0
-      ? preset.subStyles.find((s) => s.id === opts.subStyleId) || preset.subStyles[0]
-      : null;
-  const defaults = resolveEffectivePresetDefaults(preset, subStyle);
+
+  let activeSubStyles: AiPresetSubStyle[] = [];
+  if (preset.subStyles && preset.subStyles.length > 0) {
+    if (Array.isArray(opts.subStyleIds) && opts.subStyleIds.length > 0) {
+      if (preset.subStyleSelection === "multiple") {
+        activeSubStyles = preset.subStyles.filter((s) => opts.subStyleIds!.includes(s.id));
+      } else {
+        const picked = preset.subStyles.find((s) => s.id === opts.subStyleIds![0]);
+        if (picked) activeSubStyles = [picked];
+      }
+    } else if (opts.subStyleId) {
+      const picked = preset.subStyles.find((s) => s.id === opts.subStyleId);
+      if (picked) activeSubStyles = [picked];
+    }
+    if (activeSubStyles.length === 0) {
+      activeSubStyles = [preset.subStyles[0]];
+    }
+  }
+
+  const defaults = resolveEffectivePresetDefaults(preset, activeSubStyles[0] || null);
 
   const finish = SURFACE_FINISH_OPTIONS.find((f) => f.id === opts.finishId);
   const bg = STUDIO_BG_OPTIONS.find((b) => b.id === opts.bgId);
@@ -693,11 +719,11 @@ export function buildPresetPromptBlocks(opts: {
     },
   ];
 
-  if (subStyle) {
+  for (const sub of activeSubStyles) {
     blocks.push({
-      id: "sub_style",
-      label: `01-B 细分 · ${subStyle.name}`,
-      text: subStyle.prompt,
+      id: `sub_style_${sub.id}`,
+      label: `01-B 细分 · ${sub.name}`,
+      text: sub.prompt,
       kind: "core",
     });
   }
@@ -749,10 +775,21 @@ export function buildPresetPromptBlocks(opts: {
   }
 
   if (opts.hasStyleRefImage) {
+    const labels = (opts.styleRefLabels || []).filter(Boolean);
+    const refText =
+      labels.length > 1
+        ? `【多图局部材质参考指令】图1为需要上色的素组/灰模本体，必须100%保持图1的机械轮廓、零件造型与视角；图2为「${labels[0]}」局部涂装材质参考图，图3为「${labels[1]}」局部涂装材质参考图。请分别提取并自然融合图2与图3的局部表面工艺纹理、掉漆/旧化分布颗粒与材质质感并应用到图1模型上，严禁把参考图中的机体形状、其它配色块或背景杂物混入图1；若用户手动指定了漆面光泽、摄影背景或布光，以用户指定工序为准。`
+        : `【多图风格参考指令】图1为需要上色的素组/灰模本体，必须100%保持图1的机械轮廓、零件造型与视角；图2为${
+            labels[0] ? `「${labels[0]}」` : ""
+          }喷涂风格/局部材质参考样板图，请学习图2的表面涂装纹理、明暗过渡、阴影重度与漆面粒子质感并迁移到图1模型上，严禁把图2的机体造型、多余零件或背景杂物混入图1；若用户手动指定了漆面光泽、摄影背景或布光，以用户指定工序为准而非照搬图2环境。`;
     blocks.push({
       id: "style_ref",
-      label: opts.isCustomStyleRef ? "自定义样板参考" : "预设样板参考",
-      text: "【多图风格参考指令】图1为需要上色的素组/灰模本体，必须100%保持图1的机械轮廓、零件造型与视角；图2为喷涂风格参考样板图，请学习图2的涂装笔触、明暗过渡、阴影重度与漆面粒子质感并迁移到图1模型上，严禁把图2的机体造型或多余部件混入图1；若用户手动指定了漆面光泽、摄影背景或布光，以用户指定工序为准而非照搬图2环境。",
+      label: opts.isCustomStyleRef
+        ? "自定义样板参考"
+        : labels.length > 1
+        ? `双特写参考 (${labels.slice(0, 2).join("+")})`
+        : "预设样板参考",
+      text: refText,
       kind: "ref",
       requiresStyleRef: true,
     });
@@ -805,12 +842,14 @@ export function buildPresetPromptBlocks(opts: {
 export function buildPresetRenderPrompt(opts: {
   presetId: string;
   subStyleId?: string | null;
+  subStyleIds?: string[];
   presetsList?: AiPresetStyle[];
   finishId: SurfaceFinishId;
   crafts: DetailCraftId[];
   bgId: StudioBgId;
   lightingId: LightingPosId;
   hasStyleRefImage: boolean;
+  styleRefLabels?: string[];
   isCustomStyleRef?: boolean;
   nodes: FloatingSwatchNode[];
   injectPalette: boolean;
@@ -1170,6 +1209,7 @@ export async function runAiPaintRender(params: {
   rawImageSources: string[];
   styleRefMode?: "none" | "preset" | "custom";
   presetStyleRefPath?: string | null;
+  presetStyleRefPaths?: string[];
   fallbackStyleRefPath?: string | null;
   customStyleRefSrc?: string | null;
   size?: "1K" | "2K";
@@ -1180,6 +1220,7 @@ export async function runAiPaintRender(params: {
   modelUsed: string;
   officialModelUsed?: OfficialModelKey;
   styleRefApplied?: boolean;
+  styleRefCount?: number;
   wallet?: WalletInfo;
   costCredits?: number;
 }> {
@@ -1206,6 +1247,10 @@ export async function runAiPaintRender(params: {
       styleRefMode: params.styleRefMode || "none",
       presetStyleRefPath:
         params.styleRefMode === "preset" ? params.presetStyleRefPath || undefined : undefined,
+      presetStyleRefPaths:
+        params.styleRefMode === "preset" && params.presetStyleRefPaths?.length
+          ? params.presetStyleRefPaths
+          : undefined,
       fallbackStyleRefPath:
         params.styleRefMode === "preset" ? params.fallbackStyleRefPath || undefined : undefined,
       customStyleRefImage: compressedCustomRef,
@@ -1228,6 +1273,7 @@ export async function runAiPaintRender(params: {
     modelUsed: data.modelUsed,
     officialModelUsed: data.officialModelUsed,
     styleRefApplied: data.styleRefApplied,
+    styleRefCount: data.styleRefCount,
     wallet: data.wallet,
     costCredits: data.costCredits,
   };

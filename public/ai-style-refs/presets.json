@@ -38,8 +38,9 @@
   {
     "id": "heavy_weathering",
     "name": "战损旧化涂装",
-    "badge": "5项子工艺",
+    "badge": "可多选5项",
     "sampleImage": "heavy_weathering.jpg",
+    "subStyleSelection": "multiple",
     "defaultFinish": "matte",
     "defaultCrafts": ["panel_lining", "decals", "metallic_frame"],
     "defaultBg": "dark_studio",
@@ -114,6 +115,7 @@
     "name": "金属/珍珠/电镀特效涂装",
     "badge": "4项子工艺",
     "sampleImage": "candy_metallic.jpg",
+    "subStyleSelection": "single",
     "defaultFinish": "gloss",
     "defaultCrafts": ["metallic_frame", "led_glow"],
     "defaultBg": "dark_studio",

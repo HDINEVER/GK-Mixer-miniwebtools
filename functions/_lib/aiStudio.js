@@ -670,7 +670,7 @@ export function assemblePromptFromBlocks(promptBlocks, fallbackPrompt, styleRefA
   return String(fallbackPrompt || "").trim();
 }
 
-export async function processWalletAction(env, body, clientIp = "unknown") {
+export async function processWalletAction(env, body, clientIp = "unknown", options = {}) {
   const action = body?.action || "status";
   const passkey = body?.passkey;
   const officialReady = Boolean(env && env.ARK_API_KEY);
@@ -690,10 +690,38 @@ export async function processWalletAction(env, body, clientIp = "unknown") {
 
   if (action === "status") {
     const wallet = await getOrInitWallet(env, passkey, clientIp);
+    const refSet = new Set();
+    if (env && env.STYLE_REFS_R2 && typeof env.STYLE_REFS_R2.list === "function") {
+      try {
+        const listed = await env.STYLE_REFS_R2.list({ limit: 200 });
+        for (const item of listed?.objects || []) {
+          const cleanName = String(item?.key || "").replace(/^ai-style-refs\//, "");
+          if (/^[a-zA-Z0-9._-]+\.(jpg|jpeg|png|webp)$/i.test(cleanName)) {
+            refSet.add(`/ai-style-refs/${cleanName}`);
+          }
+        }
+      } catch {
+        // Ignore transient R2 list errors
+      }
+    }
+    if (typeof options.listLocalStyleRefs === "function") {
+      try {
+        const localRefs = await options.listLocalStyleRefs();
+        for (const refPath of localRefs || []) {
+          if (SAFE_PRESET_STYLE_REF_RE.test(String(refPath))) {
+            refSet.add(String(refPath));
+          }
+        }
+      } catch {
+        // Ignore local FS listing errors
+      }
+    }
     return {
       ok: true,
       officialReady,
       kvReady,
+      r2Ready: Boolean(env && env.STYLE_REFS_R2),
+      availableStyleRefs: Array.from(refSet).sort(),
       costPerRender: COST_PER_RENDER_2K,
       costPerRender1k: COST_PER_RENDER_1K,
       costPerRender2k: COST_PER_RENDER_2K,

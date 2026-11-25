@@ -29,3 +29,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local AI Paint Studio style reference images (sync to private Cloudflare R2 via `npm run r2:sync-refs`; keep out of GitHub)
+public/ai-style-refs/*.jpg
+public/ai-style-refs/*.jpeg
+public/ai-style-refs/*.png
+public/ai-style-refs/*.webp

@@ -34,6 +34,35 @@ export async function onRequest(context) {
 
   const loadStaticAsset = async (assetPath) => {
     if (!SAFE_STYLE_REF_RE.test(assetPath)) return null;
+
+    // 1. Prefer private Cloudflare R2 bucket (keeps style reference photos out of public GitHub)
+    const fileName = assetPath.replace(/^\/ai-style-refs\//, "");
+    if (env && env.STYLE_REFS_R2 && typeof env.STYLE_REFS_R2.get === "function") {
+      try {
+        let obj = await env.STYLE_REFS_R2.get(fileName);
+        if (!obj) {
+          obj = await env.STYLE_REFS_R2.get(`ai-style-refs/${fileName}`);
+        }
+        if (obj) {
+          const buffer = await obj.arrayBuffer();
+          if (buffer && buffer.byteLength > 0) {
+            const lower = fileName.toLowerCase();
+            const mimeType =
+              obj.httpMetadata?.contentType ||
+              (lower.endsWith(".png")
+                ? "image/png"
+                : lower.endsWith(".webp")
+                ? "image/webp"
+                : "image/jpeg");
+            return { buffer, mimeType };
+          }
+        }
+      } catch {
+        // Fallback to static ASSETS if R2 lookup fails transiently
+      }
+    }
+
+    // 2. Fallback to Cloudflare static ASSETS / local dev
     const assetUrl = new URL(assetPath, request.url);
     const resp =
       env && env.ASSETS && typeof env.ASSETS.fetch === "function"

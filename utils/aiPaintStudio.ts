@@ -43,6 +43,8 @@ export interface WalletStatusResponse {
   ok: boolean;
   officialReady: boolean;
   kvReady: boolean;
+  r2Ready?: boolean;
+  availableStyleRefs?: string[];
   costPerRender: number;
   costPerRender1k?: number;
   costPerRender2k?: number;

@@ -282,10 +282,11 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   const [lightingId, setLightingId] = useState<LightingPosId>(AI_PRESET_STYLES[0].defaultLighting);
   const [primerToneId, setPrimerToneId] = useState<PrimerToneId>("mid_grey");
 
-  // Style Reference Sample image (backend preset/sub-style slot + user custom upload)
+  // Style Reference Sample image (backend R2/static preset slot + user custom upload)
   const [customStyleRefSrc, setCustomStyleRefSrc] = useState<string | null>(null);
   const [useStyleRef, setUseStyleRef] = useState<boolean>(true);
   const [loadedRefMap, setLoadedRefMap] = useState<Record<string, boolean>>({});
+  const [serverStyleRefMap, setServerStyleRefMap] = useState<Record<string, boolean>>({});
   const [previewTab, setPreviewTab] = useState<"result" | "ref">("ref");
   const styleRefInputRef = useRef<HTMLInputElement>(null);
 
@@ -367,6 +368,13 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         setOfficialReady(res.officialReady);
         if (res.pricingMatrix) {
           setPricingMatrix(res.pricingMatrix);
+        }
+        if (Array.isArray(res.availableStyleRefs)) {
+          const nextMap: Record<string, boolean> = {};
+          for (const refPath of res.availableStyleRefs) {
+            nextMap[refPath] = true;
+          }
+          setServerStyleRefMap(nextMap);
         }
       })
       .catch(() => {});
@@ -483,18 +491,30 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   }, [activeSubStyles, activePresetObj.sampleImageUrl]);
 
   const loadedPresetRefItems = useMemo(() => {
+    const isRefReady = (url: string) =>
+      loadedRefMap[url] === true || serverStyleRefMap[url] === true;
     if (activeSubStyles.length > 0) {
       const subItems = activeSubStyles
-        .filter((sub) => loadedRefMap[sub.sampleImageUrl] === true)
+        .filter((sub) => isRefReady(sub.sampleImageUrl))
         .slice(0, 2)
-        .map((sub) => ({ url: sub.sampleImageUrl, label: sub.name }));
+        .map((sub) => ({
+          url: sub.sampleImageUrl,
+          label: sub.name,
+          hasPreview: loadedRefMap[sub.sampleImageUrl] === true,
+        }));
       if (subItems.length > 0) return subItems;
     }
-    if (loadedRefMap[activePresetObj.sampleImageUrl] === true) {
-      return [{ url: activePresetObj.sampleImageUrl, label: activePresetObj.name }];
+    if (isRefReady(activePresetObj.sampleImageUrl)) {
+      return [
+        {
+          url: activePresetObj.sampleImageUrl,
+          label: activePresetObj.name,
+          hasPreview: loadedRefMap[activePresetObj.sampleImageUrl] === true,
+        },
+      ];
     }
     return [];
-  }, [activeSubStyles, activePresetObj, loadedRefMap]);
+  }, [activeSubStyles, activePresetObj, loadedRefMap, serverStyleRefMap]);
 
   const effectiveStyleRefSrc = useMemo(() => {
     if (!useStyleRef) return null;
@@ -1836,39 +1856,67 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                       自定义参考样板
                     </span>
                   </div>
-                ) : mode === "preset" && loadedPresetRefItems.length > 1 ? (
-                  <div className="grid grid-cols-2 gap-1.5 aspect-[4/3] w-full">
-                    {loadedPresetRefItems.slice(0, 2).map((item, idx) => (
-                      <div
-                        key={item.url}
-                        className="relative h-full w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-                      >
+                ) : mode === "preset" && loadedPresetRefItems.length > 0 ? (
+                  loadedPresetRefItems.every((i) => i.hasPreview) ? (
+                    loadedPresetRefItems.length > 1 ? (
+                      <div className="grid grid-cols-2 gap-1.5 aspect-[4/3] w-full">
+                        {loadedPresetRefItems.slice(0, 2).map((item, idx) => (
+                          <div
+                            key={item.url}
+                            className="relative h-full w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                          >
+                            <img
+                              src={item.url}
+                              alt={item.label}
+                              className={`h-full w-full object-cover transition ${
+                                useStyleRef ? "opacity-100" : "opacity-40 grayscale"
+                              }`}
+                            />
+                            <span className="absolute top-1.5 left-1.5 rounded-md bg-black/70 backdrop-blur-sm px-1.5 py-0.5 text-[9px] font-extrabold text-white">
+                              图{idx + 2} · {item.label}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                         <img
-                          src={item.url}
-                          alt={item.label}
-                          className={`h-full w-full object-cover transition ${
+                          src={loadedPresetRefItems[0].url}
+                          alt={loadedPresetRefItems[0].label}
+                          className={`h-full w-full object-contain transition ${
                             useStyleRef ? "opacity-100" : "opacity-40 grayscale"
                           }`}
                         />
-                        <span className="absolute top-1.5 left-1.5 rounded-md bg-black/70 backdrop-blur-sm px-1.5 py-0.5 text-[9px] font-extrabold text-white">
-                          图{idx + 2} · {item.label}
+                        <span className="absolute top-2 left-2 rounded-lg bg-black/65 backdrop-blur-sm px-2 py-0.5 text-[10px] font-extrabold text-white">
+                          图2 · {loadedPresetRefItems[0].label}
                         </span>
                       </div>
-                    ))}
-                  </div>
-                ) : mode === "preset" && loadedPresetRefItems.length === 1 ? (
-                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                    <img
-                      src={loadedPresetRefItems[0].url}
-                      alt={loadedPresetRefItems[0].label}
-                      className={`h-full w-full object-contain transition ${
-                        useStyleRef ? "opacity-100" : "opacity-40 grayscale"
+                    )
+                  ) : (
+                    <div
+                      className={`flex aspect-[4/3] w-full flex-col items-center justify-center rounded-xl border border-emerald-500/35 bg-emerald-500/[0.06] dark:bg-emerald-950/30 p-3 text-center gap-2 transition ${
+                        useStyleRef ? "opacity-100" : "opacity-50"
                       }`}
-                    />
-                    <span className="absolute top-2 left-2 rounded-lg bg-black/65 backdrop-blur-sm px-2 py-0.5 text-[10px] font-extrabold text-white">
-                      图2 · {loadedPresetRefItems[0].label}
-                    </span>
-                  </div>
+                    >
+                      <span className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300">
+                        <CheckCircleIcon className="h-4 w-4 shrink-0" weight="fill" />
+                        <span>云端私有风格样板已挂载</span>
+                      </span>
+                      <div className="flex flex-wrap items-center justify-center gap-1.5">
+                        {loadedPresetRefItems.slice(0, 2).map((item, idx) => (
+                          <span
+                            key={item.url}
+                            className="rounded-md bg-white/90 dark:bg-slate-900/90 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-extrabold text-slate-800 dark:text-slate-100"
+                          >
+                            图{idx + 2} · {item.label}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed max-w-[260px]">
+                        原图存放在私有 R2 空间，生图时由后端私密调用（不对外暴露原图）；也可点下方「传参考图」临时替换
+                      </span>
+                    </div>
+                  )
                 ) : (
                   <button
                     type="button"

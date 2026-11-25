@@ -71,7 +71,15 @@ function aiStudioProxy(env: Record<string, string>): Plugin {
     try {
       const body = await readJsonBody(req);
       const { processWalletAction } = await import('./functions/_lib/aiStudio.js');
-      const result = await processWalletAction(env, body, '127.0.0.1');
+      const listLocalStyleRefs = () => {
+        const refDir = path.resolve(__dirname, 'public', 'ai-style-refs');
+        if (!fs.existsSync(refDir)) return [];
+        return fs
+          .readdirSync(refDir)
+          .filter((f) => /^[a-zA-Z0-9._-]+\.(jpg|jpeg|png|webp)$/i.test(f))
+          .map((f) => `/ai-style-refs/${f}`);
+      };
+      const result = await processWalletAction(env, body, '127.0.0.1', { listLocalStyleRefs });
       res.statusCode = 200;
       res.end(JSON.stringify(result));
     } catch (err: any) {

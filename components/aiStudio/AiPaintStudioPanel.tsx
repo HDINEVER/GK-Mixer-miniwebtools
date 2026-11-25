@@ -4,6 +4,7 @@ import {
   AI_PRESET_STYLES,
   AiChannelMode,
   AiPresetStyle,
+  AiPresetSubStyle,
   AiRenderQuality,
   AiStudioMode,
   BYOK_PROVIDER_PRESETS,
@@ -34,6 +35,7 @@ import {
   loadPreferredOfficialModel,
   loadPreferredQuality,
   redeemCreditCode,
+  resolveEffectivePresetDefaults,
   runAiPaintRender,
   saveByokConfig,
   savePreferredChannel,
@@ -269,15 +271,19 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   // Dynamic Preset Manifest + Process Configurator options
   const [presetStyles, setPresetStyles] = useState<AiPresetStyle[]>(AI_PRESET_STYLES);
   const [selectedPresetId, setSelectedPresetId] = useState<string>(AI_PRESET_STYLES[0].id);
+  const [selectedSubStyleId, setSelectedSubStyleId] = useState<string | null>(
+    AI_PRESET_STYLES[0].subStyles?.[0]?.id || null
+  );
   const [finishId, setFinishId] = useState<SurfaceFinishId>(AI_PRESET_STYLES[0].defaultFinish);
   const [crafts, setCrafts] = useState<DetailCraftId[]>([...AI_PRESET_STYLES[0].defaultCrafts]);
   const [bgId, setBgId] = useState<StudioBgId>(AI_PRESET_STYLES[0].defaultBg);
   const [lightingId, setLightingId] = useState<LightingPosId>(AI_PRESET_STYLES[0].defaultLighting);
 
-  // Style Reference Sample image (backend preset slot + user custom upload)
+  // Style Reference Sample image (backend preset/sub-style slot + user custom upload)
   const [customStyleRefSrc, setCustomStyleRefSrc] = useState<string | null>(null);
   const [useStyleRef, setUseStyleRef] = useState<boolean>(true);
-  const [builtinRefLoaded, setBuiltinRefLoaded] = useState<boolean>(false);
+  const [builtinPrimaryLoaded, setBuiltinPrimaryLoaded] = useState<boolean>(false);
+  const [builtinFallbackLoaded, setBuiltinFallbackLoaded] = useState<boolean>(false);
   const [previewTab, setPreviewTab] = useState<"result" | "ref">("ref");
   const styleRefInputRef = useRef<HTMLInputElement>(null);
 
@@ -442,38 +448,82 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     [presetStyles, selectedPresetId]
   );
 
+  const activeSubStyleObj: AiPresetSubStyle | null = useMemo(() => {
+    if (!activePresetObj.subStyles || activePresetObj.subStyles.length === 0) return null;
+    return (
+      activePresetObj.subStyles.find((s) => s.id === selectedSubStyleId) ||
+      activePresetObj.subStyles[0]
+    );
+  }, [activePresetObj, selectedSubStyleId]);
+
+  const activeDefaults = useMemo(
+    () => resolveEffectivePresetDefaults(activePresetObj, activeSubStyleObj),
+    [activePresetObj, activeSubStyleObj]
+  );
+
+  const primaryBuiltinRefUrl = activeSubStyleObj
+    ? activeSubStyleObj.sampleImageUrl
+    : activePresetObj.sampleImageUrl;
+  const fallbackBuiltinRefUrl = activeSubStyleObj ? activePresetObj.sampleImageUrl : null;
+  const resolvedBuiltinRefUrl = builtinPrimaryLoaded
+    ? primaryBuiltinRefUrl
+    : builtinFallbackLoaded
+    ? fallbackBuiltinRefUrl
+    : null;
+
   const effectiveStyleRefSrc = useMemo(() => {
     if (!useStyleRef) return null;
     if (customStyleRefSrc) return customStyleRefSrc;
-    if (mode === "preset" && builtinRefLoaded) return activePresetObj.sampleImageUrl;
+    if (mode === "preset" && resolvedBuiltinRefUrl) return resolvedBuiltinRefUrl;
     return null;
-  }, [useStyleRef, customStyleRefSrc, mode, builtinRefLoaded, activePresetObj.sampleImageUrl]);
+  }, [useStyleRef, customStyleRefSrc, mode, resolvedBuiltinRefUrl]);
 
-  const applyPresetDefaults = (p: AiPresetStyle) => {
-    setFinishId(p.defaultFinish);
-    setCrafts([...(p.defaultCrafts || ["panel_lining"])]);
-    setBgId(p.defaultBg);
-    setLightingId(p.defaultLighting);
+  const applyPresetDefaults = (p: AiPresetStyle, sub?: AiPresetSubStyle | null) => {
+    const d = resolveEffectivePresetDefaults(p, sub);
+    setFinishId(d.finish);
+    setCrafts([...d.crafts]);
+    setBgId(d.bg);
+    setLightingId(d.lighting);
+    if (p.id === "primer_grey") {
+      setInjectPalette(false);
+    } else if (activePart?.nodes && activePart.nodes.length > 0) {
+      setInjectPalette(true);
+    }
   };
 
   const handleSelectPreset = (presetId: string) => {
     setSelectedPresetId(presetId);
-    setBuiltinRefLoaded(false);
+    setBuiltinPrimaryLoaded(false);
+    setBuiltinFallbackLoaded(false);
     const p = presetStyles.find((s) => s.id === presetId);
     if (p) {
-      applyPresetDefaults(p);
+      const firstSub = p.subStyles?.[0] || null;
+      setSelectedSubStyleId(firstSub?.id || null);
+      applyPresetDefaults(p, firstSub);
+    } else {
+      setSelectedSubStyleId(null);
     }
   };
 
-  const isFinishOverridden = mode === "preset" && finishId !== activePresetObj.defaultFinish;
-  const isBgOverridden = mode === "preset" && bgId !== activePresetObj.defaultBg;
-  const isLightingOverridden = mode === "preset" && lightingId !== activePresetObj.defaultLighting;
+  const handleSelectSubStyle = (subId: string) => {
+    setSelectedSubStyleId(subId);
+    setBuiltinPrimaryLoaded(false);
+    setBuiltinFallbackLoaded(false);
+    const sub = activePresetObj.subStyles?.find((s) => s.id === subId) || null;
+    if (sub) {
+      applyPresetDefaults(activePresetObj, sub);
+    }
+  };
+
+  const isFinishOverridden = mode === "preset" && finishId !== activeDefaults.finish;
+  const isBgOverridden = mode === "preset" && bgId !== activeDefaults.bg;
+  const isLightingOverridden = mode === "preset" && lightingId !== activeDefaults.lighting;
   const isCraftsOverridden = useMemo(() => {
     if (mode !== "preset") return false;
-    const def = [...(activePresetObj.defaultCrafts || [])].sort().join(",");
+    const def = [...activeDefaults.crafts].sort().join(",");
     const cur = [...crafts].sort().join(",");
     return def !== cur;
-  }, [mode, activePresetObj.defaultCrafts, crafts]);
+  }, [mode, activeDefaults.crafts, crafts]);
   const hasAnyOverride =
     isFinishOverridden || isBgOverridden || isLightingOverridden || isCraftsOverridden;
 
@@ -506,6 +556,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     if (mode === "preset") {
       return buildPresetPromptBlocks({
         presetId: selectedPresetId,
+        subStyleId: activeSubStyleObj?.id || null,
         presetsList: presetStyles,
         finishId,
         crafts,
@@ -534,6 +585,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   }, [
     mode,
     selectedPresetId,
+    activeSubStyleObj?.id,
     presetStyles,
     finishId,
     crafts,
@@ -553,11 +605,13 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
 
   const currentModeSummaryLabel = useMemo(() => {
     if (mode === "preset") {
-      return `AI ${activePresetObj.name}`;
+      return activeSubStyleObj
+        ? `AI ${activePresetObj.name} · ${activeSubStyleObj.name}`
+        : `AI ${activePresetObj.name}`;
     }
     const r = REFINE_FINISH_OPTIONS.find((f) => f.id === refineFinish);
     return r ? `AI 精修 · ${r.name.replace(/（.*）/, "")}` : "AI 模拟上色精修";
-  }, [mode, activePresetObj.name, refineFinish]);
+  }, [mode, activePresetObj.name, activeSubStyleObj, refineFinish]);
 
   const handleChannelSwitch = (next: AiChannelMode) => {
     setChannel(next);
@@ -673,7 +727,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         ? "none"
         : customStyleRefSrc
         ? "custom"
-        : mode === "preset" && builtinRefLoaded
+        : mode === "preset" && Boolean(resolvedBuiltinRefUrl)
         ? "preset"
         : "none";
 
@@ -687,7 +741,8 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         promptBlocks: promptAssembly.blocks,
         rawImageSources: inputSources,
         styleRefMode,
-        presetStyleRefPath: styleRefMode === "preset" ? activePresetObj.sampleImageUrl : null,
+        presetStyleRefPath: styleRefMode === "preset" ? primaryBuiltinRefUrl : null,
+        fallbackStyleRefPath: styleRefMode === "preset" ? fallbackBuiltinRefUrl : null,
         customStyleRefSrc: styleRefMode === "custom" ? customStyleRefSrc : null,
         size: renderQuality,
         background: isTransparentBg ? "transparent" : "auto",
@@ -1130,16 +1185,28 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
           onChange={handleUploadStyleRef}
         />
 
-        {/* Hidden probe image to check whether backend /ai-style-refs/<id>.jpg exists */}
+        {/* Hidden probe images to check whether backend /ai-style-refs/<id>.jpg exists */}
         {mode === "preset" && !customStyleRefSrc && (
-          <img
-            key={activePresetObj.sampleImageUrl}
-            src={activePresetObj.sampleImageUrl}
-            alt=""
-            className="hidden"
-            onLoad={() => setBuiltinRefLoaded(true)}
-            onError={() => setBuiltinRefLoaded(false)}
-          />
+          <>
+            <img
+              key={`primary-${primaryBuiltinRefUrl}`}
+              src={primaryBuiltinRefUrl}
+              alt=""
+              className="hidden"
+              onLoad={() => setBuiltinPrimaryLoaded(true)}
+              onError={() => setBuiltinPrimaryLoaded(false)}
+            />
+            {fallbackBuiltinRefUrl && (
+              <img
+                key={`fallback-${fallbackBuiltinRefUrl}`}
+                src={fallbackBuiltinRefUrl}
+                alt=""
+                className="hidden"
+                onLoad={() => setBuiltinFallbackLoaded(true)}
+                onError={() => setBuiltinFallbackLoaded(false)}
+              />
+            )}
+          </>
         )}
 
         {/* Two Core Modes - Compact Pills */}
@@ -1232,7 +1299,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                       {hasAnyOverride && (
                         <button
                           type="button"
-                          onClick={() => applyPresetDefaults(activePresetObj)}
+                          onClick={() => applyPresetDefaults(activePresetObj, activeSubStyleObj)}
                           className="bp-pill inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 cursor-pointer"
                         >
                           <ArrowCounterClockwiseIcon className="h-2.5 w-2.5" weight="bold" />
@@ -1241,10 +1308,11 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                       )}
                       <span className="text-[10px] font-bold text-coral">
                         {activePresetObj.name}
+                        {activeSubStyleObj ? ` · ${activeSubStyleObj.name}` : ""}
                       </span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {presetStyles.map((preset) => {
                       const active = selectedPresetId === preset.id;
                       return (
@@ -1252,13 +1320,13 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                           key={preset.id}
                           type="button"
                           onClick={() => handleSelectPreset(preset.id)}
-                          className={`rounded-xl border px-2 py-2 text-left transition cursor-pointer flex items-center justify-between gap-1 ${
+                          className={`rounded-xl border px-2.5 py-2 text-left transition cursor-pointer flex items-center justify-between gap-1.5 ${
                             active
                               ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30"
                               : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 hover:border-slate-300"
                           }`}
                         >
-                          <span className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white truncate">
+                          <span className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white leading-tight">
                             {preset.name}
                           </span>
                           <span
@@ -1275,6 +1343,50 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                     })}
                   </div>
                 </div>
+
+                {/* Step 01-B: Sub-Style Craft Variants (Weathering / Metallic / Effects) */}
+                {activePresetObj.subStyles && activePresetObj.subStyles.length > 0 && (
+                  <div className="bp-subcard rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 p-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                        01-B 细分效果工艺（独立参考图槽位）
+                      </span>
+                      <span className="text-[10px] font-bold text-coral">
+                        {activeSubStyleObj?.name}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {activePresetObj.subStyles.map((sub) => {
+                        const subActive = activeSubStyleObj?.id === sub.id;
+                        return (
+                          <button
+                            key={sub.id}
+                            type="button"
+                            onClick={() => handleSelectSubStyle(sub.id)}
+                            className={`rounded-xl border px-2.5 py-1.5 text-left transition cursor-pointer flex items-center justify-between gap-1.5 ${
+                              subActive
+                                ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-1 ring-coral/35"
+                                : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 hover:border-slate-300"
+                            }`}
+                          >
+                            <span className="text-[11px] font-black text-slate-900 dark:text-white leading-tight">
+                              {sub.name}
+                            </span>
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[9px] font-extrabold shrink-0 ${
+                                subActive
+                                  ? "bg-coral text-white"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                              }`}
+                            >
+                              {subActive ? "✓" : sub.badge}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Step 02: Surface Topcoat Finish */}
                 <div className="space-y-1.5">
@@ -1597,19 +1709,21 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                 </p>
               </div>
             ) : (
-              /* Reference Image Slot (Preset Backend Sample OR User Custom Style Upload) */
+              /* Reference Image Slot (Preset/Sub-Style Backend Sample OR User Custom Style Upload) */
               <div className="space-y-2">
-                {customStyleRefSrc || (mode === "preset" && builtinRefLoaded) ? (
+                {customStyleRefSrc || (mode === "preset" && Boolean(resolvedBuiltinRefUrl)) ? (
                   <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                     <img
-                      src={customStyleRefSrc || activePresetObj.sampleImageUrl}
+                      src={customStyleRefSrc || resolvedBuiltinRefUrl || primaryBuiltinRefUrl}
                       alt="风格样板参考图"
                       className={`h-full w-full object-contain transition ${
                         useStyleRef ? "opacity-100" : "opacity-40 grayscale"
                       }`}
                     />
                     <span className="absolute top-2 left-2 rounded-lg bg-black/65 backdrop-blur-sm px-2 py-0.5 text-[10px] font-extrabold text-white">
-                      {customStyleRefSrc ? "自定义参考样板" : `预设样板 · ${activePresetObj.name}`}
+                      {customStyleRefSrc
+                        ? "自定义参考样板"
+                        : `预设样板 · ${activeSubStyleObj ? activeSubStyleObj.name : activePresetObj.name}`}
                     </span>
                   </div>
                 ) : (
@@ -1624,9 +1738,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                     </span>
                     <span className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
                       可直接上传别人的精涂成品照作为参考，或由后端自动读取{" "}
-                      <code className="font-mono text-coral">
-                        {activePresetObj.sampleImageUrl}
-                      </code>
+                      <code className="font-mono text-coral">{primaryBuiltinRefUrl}</code>
                     </span>
                   </button>
                 )}
@@ -1670,9 +1782,9 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               <span className="font-black text-slate-800 dark:text-slate-200">当前工序：</span>
               <span>
                 {mode === "preset"
-                  ? `${activePresetObj.name} · ${
-                      SURFACE_FINISH_OPTIONS.find((f) => f.id === finishId)?.name
-                    }`
+                  ? `${activePresetObj.name}${
+                      activeSubStyleObj ? `(${activeSubStyleObj.name})` : ""
+                    } · ${SURFACE_FINISH_OPTIONS.find((f) => f.id === finishId)?.name}`
                   : REFINE_FINISH_OPTIONS.find((f) => f.id === refineFinish)?.name.replace(
                       "（推荐）",
                       ""

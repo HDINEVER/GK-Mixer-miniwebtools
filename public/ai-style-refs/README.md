@@ -1,54 +1,56 @@
 # AI Paint Studio 风格参考样板图与预设清单配置说明
 
-将你拍摄或精选的高质量模型涂装作品放进本目录（`GK-Mixer-miniwebtools-main/public/ai-style-refs/`），并在同目录的 `presets.json` 中声明对应映射，**无需修改任何前端/后端代码**：
-- 网页端会优先读取 `/ai-style-refs/presets.json` 动态渲染「01 涂装技法」选项，并自动检测该目录中的图片是否存在；
-- 当用户未手动上传参考图且开启「多图参考学习笔触」时，**后端（Cloudflare Pages Functions / Vite Dev Proxy）会在服务端直接读取对应图片作为图 2**，随用户的模型原图与「积木式工序提示词」一并发往 Seedream 5.5 / 5.0 Pro；
-- 如果某个图片文件尚未放入本目录，后端会自动安全跳过该图、并自动剔除「图 2 参考指引」提示词积木块，仅用纯净文字积木生图，绝不报错。
+将精选的纯净模型涂装成品照片放进本目录（`GK-Mixer-miniwebtools-main/public/ai-style-refs/`），并在同目录 [`presets.json`](./presets.json) 中配置映射后，**无需修改任何前端或后端代码**：
+- 前端会自动加载 `presets.json` 展示「01 涂装技法」与「01-B 细分工艺（战损旧化 / 金属珍珠电镀子项）」；
+- 后端（Cloudflare Pages Functions / 本地 Vite Dev）会自动把对应子项的参考样板图作为 **图 2** 发送给 Seedream；如果某个子项图暂未上传，后端会自动回退检测其主分类图（如 `heavy_weathering.jpg`），仍未放置则自动剥离参考图指引词并仅靠精调提示词生成，绝不报错。
 
 ---
 
-## 1. 默认 6 个风格样板图放置路径
+## 一、 全部参考图后端槽位总表（共 13 个核心槽位 + 2 个主类兜底槽位）
 
-| 预设 ID | 涂装技法 | 图片放置路径 | 默认联动工序（可在页面上手动覆盖） |
+### A. 4 个独立主技法（放进 `public/ai-style-refs/`）
+
+| 技法 ID | 按钮显示名称 | 文件路径 | 建议找什么样的图 |
 | :--- | :--- | :--- | :--- |
-| `clean_rg` | 平喷直喷 | `public/ai-style-refs/clean_rg.jpg` | 半消光 · 精密渗线 · 纯白棚 · 双侧柔光 |
-| `max_shadow` | MAX 阴影喷涂 | `public/ai-style-refs/max_shadow.jpg` | 纯哑光 · 渗线/水贴/金属骨架 · 深灰暗棚 · 顶部神光 |
-| `anime_cel` | 漫画涂装 | `public/ai-style-refs/anime_cel.jpg` | 纯哑光 · 精密渗线 · 切割垫桌面 · 双侧柔光 |
-| `heavy_weathering` | 战损旧化 | `public/ai-style-refs/heavy_weathering.jpg` | 纯哑光 · 渗线/水贴/金属骨架 · 深灰暗棚 · 侧逆光 |
-| `candy_metallic` | 电镀糖果 | `public/ai-style-refs/candy_metallic.jpg` | 镜面光油 · 金属骨架/发光 · 深灰暗棚 · 侧逆光 |
-| `gk_resin_studio` | GK 灰模精涂 | `public/ai-style-refs/gk_resin_studio.jpg` | 半消光 · 渗线/金属骨架 · 纯白棚 · 顶部神光 |
+| `clean_rg` | **纯色平喷** | `clean_rg.jpg` | 浅灰/纯白无影棚下的官图级平喷分色成品，发色饱满干净、零阴影晕染、半消光质感 |
+| `max_shadow` | **阴影涂装** | `max_shadow.jpg` | 深色背景或杂志棚拍的经典黑底 MAX 预置阴影作品，棱角深色过渡、面心提亮明显 |
+| `anime_cel` | **漫画风波点涂装** | `anime_cel.jpg` | 粗黑轮廓描边 + 硬边三层明暗色块 + 带有漫画网点/波点颗粒阴影的二次元模型作品 |
+| `primer_grey` | **喷灰** | `primer_grey.jpg` | 喷完 #1000/#1200 中性灰水补土后的整机灰模展示照（纯灰无分色、棱角C面与刻线极其锐利） |
 
-> 注意：
-> - 支持 `.jpg` / `.jpeg` / `.png` / `.webp` 格式；建议宽 1024px ~ 1600px、单张 < 1MB。
-> - 图内请使用**纯净摄影成品图**，切勿包含悬浮色卡方块、价签或水印，以确保 AI 输出图干净无杂物。
+### B. 「战损旧化涂装」5 个细分工艺子槽位（若暂缺会兜底尝试读取 `heavy_weathering.jpg`）
+
+| 子工艺 ID | 按钮名称 | 文件路径 | 建议参考图核心画面特征 |
+| :--- | :--- | :--- | :--- |
+| `weathering_chipping` | **海绵/笔涂掉漆** | `weathering_chipping.jpg` | 边缘清晰的海绵掉漆 + 金属银点绘露底，背景与主体依旧整洁分明 |
+| `weathering_wash` | **水洗渍洗滤镜** | `weathering_wash.jpg` | 重点突出凹槽油泥渍洗、螺丝孔渗渍与竖向轻微流痕的高级滤镜质感 |
+| `weathering_grimdark` | **暗黑珐琅旧化** | `weathering_grimdark.jpg` | 全机深沉暗黑珐琅擦拭（Grimdark），凹槽厚重暗垢 + 凸起棱边擦亮强反差 |
+| `weathering_drybrush` | **干扫边缘质感** | `weathering_drybrush.jpg` | 黑灰底色上极其锐利的银色棱边干扫高光 + 重工业机械骨骼摩擦纹理 |
+| `weathering_rust_mud` | **粉彩泥锈战损** | `weathering_rust_mud.jpg` | 红褐色重力流锈水痕、推进器烟熏碳黑、腿部足部真实泥沙粉尘积垢 |
+
+### C. 「金属/珍珠/电镀特效涂装」4 个细分工艺子槽位（若暂缺会兜底尝试读取 `candy_metallic.jpg`）
+
+| 子工艺 ID | 按钮名称 | 文件路径 | 建议参考图核心画面特征 |
+| :--- | :--- | :--- | :--- |
+| `metallic_chrome` | **铬合金镜面电镀** | `metallic_chrome.jpg` | 高反射真空电镀镜面银 / 电镀金 / 黑银高光泽成品，灯带反光清晰锐利 |
+| `metallic_candy` | **糖果透明叠喷** | `metallic_candy.jpg` | 黑底银+多层透明红/蓝罩染成的通透宝石糖果漆成品（如沙扎比/新安洲糖果红） |
+| `metallic_pearl` | **珍珠/云母偏光** | `metallic_pearl.jpg` | 浅白底罩涂珍珠粉或紫青云母偏光漆的高贵丝绸细闪光泽成品 |
+| `metallic_color` | **常规彩色金属漆** | `metallic_color.jpg` | 非透明罩染的实色金属漆（金属蓝/枪铁/阳极氧化铝粉金属漆），颗粒沉稳金属感强 |
 
 ---
 
-## 2. 如何免改代码增减或修改预设风格（编辑 `presets.json`）
+## 二、 如何挑选/拍摄参考图才能让 Seedream 5.5 / 5.0 Pro 发挥最好效果？
 
-打开同目录下的 [`presets.json`](./presets.json)：
+> ⚠️ Seedream 多图参考的原理是「从图 1 锁造型轮廓，从图 2 吸取表面漆面纹理、明暗规律与材质光学反射」。参考图选得好，比堆 200 字提示词更管用；选得不对，则会把参考图上的杂物或错误颜色污染进来！
 
-1. **更换图片文件名或格式**（比如换成了 `.png`）：把对应项里的 `"sampleImage": "clean_rg.jpg"` 改为 `"clean_rg.png"` 即可。
-2. **临时下架某一个预设**：把 `"enabled": true` 改为 `"enabled": false` 即可（无需删掉配置）。
-3. **新增第 7 个 / 更多预设**：
-   - 把新参考图放进本目录（如 `public/ai-style-refs/titanium_finish.jpg`）；
-   - 在 `presets.json` 数组末尾追加一个 JSON 对象（注意 `id` 仅用字母/数字/下划线，`name` 建议 ≤ 7 个字以免按钮截断）：
-   ```json
-   {
-     "id": "titanium_finish",
-     "name": "钛合金白",
-     "badge": "金属质感",
-     "sampleImage": "titanium_finish.jpg",
-     "defaultFinish": "metallic_pearl",
-     "defaultCrafts": ["panel_lining", "metallic_frame"],
-     "defaultBg": "dark_studio",
-     "defaultLighting": "rim_dramatic",
-     "prompt": "钛合金白特殊涂层涂装效果，保留洁净白色金属颗粒反光与边缘折角深色金属过渡。严格保持原图模型结构、比例与视角100%不变。",
-     "enabled": true
-   }
-   ```
-   - 可用的预设字段可选值：
-     - `defaultFinish`：`matte` | `semi_gloss` | `gloss` | `metallic_pearl`
-     - `defaultCrafts`：`panel_lining` | `decals` | `metallic_frame` | `led_glow`（数组可多选）
-     - `defaultBg`：`white_studio` | `dark_studio` | `cutting_mat` | `hangar_bay` | `transparent`
-     - `defaultLighting`：`soft_dual` | `top_key` | `rim_dramatic`
+1. **必须纯图无文字、无色卡、无水印**：
+   - 千万不要用带“XX工作室LOGO”、“B站水印”、底部参数框、悬浮油漆色卡圆点或文字说明的杂志扫描页，否则 AI 极大概率把水印和色卡也学进成图里。
+2. **主体尽量选「高清正面/前45°单机全身或半身特写」**：
+   - 不要选摆得太远的小图，也不要选地台占了大半屏的图；让涂装表面（装甲颗粒、掉漆边缘、金属反光、网点纹理）占画面 60% 以上，AI 才能“看清”微距质感细节。
+3. **「喷灰」一定要找纯灰水补土模（不要找带透明件或带金属改件的图）**：
+   - 只要参考图里出现一丝红色眼部贴纸或黄天线，AI 就可能跟着上局部颜色；真正全素灰 #1000 补土照最稳。
+4. **「电镀/糖果/珍珠」尽量找棚拍灯光分明的作品**：
+   - 暗棚灯条反光干净的图能让 AI 精准理解“哪里该高光镜面、哪里该深邃压暗”；手机随手拍的一团白光过曝图会毁掉金属质感。
+5. **格式与压缩尺寸建议**：
+   - 推荐 **JPG / WebP / PNG**，长边控制在 **1024px ~ 1600px** 之间，单张文件大小 **300KB ~ 800KB**（过大只会拖慢后端读图编码速度，清晰度并不会更高）。
+6. **后续如何免改代码继续扩充**：
+   - 直接打开同目录 `presets.json`，按现有 `subStyles` 格式增加条目即可自动生成新按钮。

@@ -742,6 +742,7 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown", op
       ? "preset"
       : "none";
   let styleRefAttached = false;
+  let styleRefPathUsed = null;
   const finalImages = [...images];
 
   if (styleRefMode === "custom") {
@@ -749,19 +750,33 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown", op
     if (typeof customImg === "string" && customImg.startsWith("data:image")) {
       finalImages.push(customImg);
       styleRefAttached = true;
+      styleRefPathUsed = "custom";
     }
   } else if (styleRefMode === "preset") {
-    const refPath = String(body?.presetStyleRefPath || "").trim();
-    if (SAFE_PRESET_STYLE_REF_RE.test(refPath) && typeof options?.loadStaticAsset === "function") {
-      try {
-        const asset = await options.loadStaticAsset(refPath);
-        if (asset && asset.buffer && asset.buffer.byteLength > 0 && String(asset.mimeType || "").startsWith("image/")) {
-          const cleanMime = asset.mimeType.split(";")[0].trim();
-          finalImages.push(`data:${cleanMime};base64,${arrayBufferToBase64(asset.buffer)}`);
-          styleRefAttached = true;
+    const candidates = [
+      String(body?.presetStyleRefPath || "").trim(),
+      String(body?.fallbackStyleRefPath || "").trim(),
+    ].filter((p, idx, arr) => p && SAFE_PRESET_STYLE_REF_RE.test(p) && arr.indexOf(p) === idx);
+
+    if (candidates.length > 0 && typeof options?.loadStaticAsset === "function") {
+      for (const candidatePath of candidates) {
+        try {
+          const asset = await options.loadStaticAsset(candidatePath);
+          if (
+            asset &&
+            asset.buffer &&
+            asset.buffer.byteLength > 0 &&
+            String(asset.mimeType || "").startsWith("image/")
+          ) {
+            const cleanMime = asset.mimeType.split(";")[0].trim();
+            finalImages.push(`data:${cleanMime};base64,${arrayBufferToBase64(asset.buffer)}`);
+            styleRefAttached = true;
+            styleRefPathUsed = candidatePath;
+            break;
+          }
+        } catch {
+          // Missing candidate falls through to next fallback or clean prompt-only mode
         }
-      } catch {
-        // Missing or unreadable preset ref photo degrades cleanly to prompt-only generation
       }
     }
   } else if (body?.hasStyleRefImage) {

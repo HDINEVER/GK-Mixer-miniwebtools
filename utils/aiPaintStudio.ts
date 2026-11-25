@@ -52,6 +52,19 @@ export interface WalletStatusResponse {
   error?: string;
 }
 
+export interface AiPresetSubStyle {
+  id: string;
+  name: string;
+  badge: string;
+  sampleImageUrl: string;
+  defaultFinish?: SurfaceFinishId;
+  defaultCrafts?: DetailCraftId[];
+  defaultBg?: StudioBgId;
+  defaultLighting?: LightingPosId;
+  prompt: string;
+  enabled?: boolean;
+}
+
 export interface AiPresetStyle {
   id: string;
   name: string;
@@ -62,6 +75,7 @@ export interface AiPresetStyle {
   defaultBg: StudioBgId;
   defaultLighting: LightingPosId;
   prompt: string;
+  subStyles?: AiPresetSubStyle[];
   enabled?: boolean;
 }
 
@@ -200,83 +214,210 @@ export const LIGHTING_POS_OPTIONS: {
 export const AI_PRESET_STYLES: AiPresetStyle[] = [
   {
     id: "clean_rg",
-    name: "平喷直喷",
-    badge: "官图清爽",
+    name: "纯色平喷",
+    badge: "官图标准",
     sampleImageUrl: "/ai-style-refs/clean_rg.jpg",
     defaultFinish: "semi_gloss",
     defaultCrafts: ["panel_lining"],
     defaultBg: "white_studio",
     defaultLighting: "soft_dual",
     prompt:
-      "官方封绘商业产品摄影，微缩高达机甲精涂成品模型，忠实还原并饱和呈现用户指定的油漆分色配方，大师级干净平喷直喷工艺，彻底消除素组塑料水口与半透明塑料感，装甲同色系深浅层次分色清晰锐利。严格保持原图模型的机械结构、装甲比例与拍摄视角100%不变。",
+      "官方封绘级商业产品摄影，微缩高达机甲精涂成品模型，大师级纯色平喷直喷工艺（Solid Flat Airbrush），100%忠实还原并饱和呈现用户指定的油漆分色配方，彻底消除素组塑料水口、分模线与半透明塑料感，漆面均匀发色精准、同色系深浅分色利落清晰。严格保持原图模型的机械结构、装甲比例与拍摄视角100%不变。",
     enabled: true,
   },
   {
     id: "max_shadow",
-    name: "MAX 阴影喷涂",
-    badge: "重涂立体",
+    name: "阴影涂装",
+    badge: "MAX预置",
     sampleImageUrl: "/ai-style-refs/max_shadow.jpg",
     defaultFinish: "matte",
     defaultCrafts: ["panel_lining", "decals", "metallic_frame"],
     defaultBg: "dark_studio",
     defaultLighting: "top_key",
     prompt:
-      "日本模型杂志封面级产品摄影，微缩高达机甲大师级MAX阴影喷涂工艺（黑水补土打底预置阴影 Pre-shading），装甲棱线、转折角与刻线边缘带有克制深邃的重色阴影过渡，装甲板面中心柔和提亮，呈现厚重精涂立体质感。严格保持原图模型的零件轮廓、机械刻线、比例与姿态100%一致。",
+      "日本模型杂志封面级产品摄影，微缩高达机甲MAX黑底预置阴影喷涂工艺（Pre-shading & Post-shading），沿装甲棱线、转折角与刻线边缘保留克制深邃的阴影过渡，装甲板面中心柔和提亮形成厚重体积感与高级发色层次。严格保持原图模型的零件轮廓、机械刻线、比例与姿态100%一致。",
     enabled: true,
   },
   {
     id: "anime_cel",
-    name: "漫画涂装",
-    badge: "二次元",
+    name: "漫画风波点涂装",
+    badge: "二次元网点",
     sampleImageUrl: "/ai-style-refs/anime_cel.jpg",
     defaultFinish: "matte",
     defaultCrafts: ["panel_lining"],
     defaultBg: "cutting_mat",
     defaultLighting: "soft_dual",
     prompt:
-      "产品摄影，微缩高达机甲模型，大师级手涂漫画二次元涂装，清晰粗黑色轮廓勾线，赛璐璐平涂风格，硬边缘明暗色块，强烈明暗对比，每种颜色用高光、基本色、深阴影三层硬边色块划分明暗关系，没有柔和渐变，干净锐利黑色卡通轮廓，近距离微距实拍，机械刻线清晰。严格保持原图模型的机械结构、装甲造型、比例与拍摄角度完全不变。",
+      "微缩高达机甲模型实拍，大师级手涂漫画风波点二次元涂装（Comic Cel-Shading with Halftone Dots）：清晰锐利的粗黑色轮廓描边与机械刻线勾线，高光白、主色、深暗色三层硬边缘赛璐璐明暗切块（无柔和渐变），并在暗部边缘与投影交界处加入复古日系漫画印刷波点/网点颗粒质感，营造极致破次元平面错觉效果。严格保持原图模型的机械结构、装甲造型、比例与拍摄角度完全不变。",
     enabled: true,
   },
   {
     id: "heavy_weathering",
-    name: "战损旧化",
-    badge: "写实战损",
+    name: "战损旧化涂装",
+    badge: "5项子工艺",
     sampleImageUrl: "/ai-style-refs/heavy_weathering.jpg",
     defaultFinish: "matte",
     defaultCrafts: ["panel_lining", "decals", "metallic_frame"],
     defaultBg: "dark_studio",
     defaultLighting: "rim_dramatic",
     prompt:
-      "写实军事微缩模型摄影，高达机甲大师级战损旧化涂装，装甲棱角边缘逼真的海绵掉漆与银灰色金属磨损露底，表面带有细腻渍洗滤镜、自然重力流锈雨痕与喷口烟熏积碳痕迹，下肢轻微陆战沙尘旧化，极具钢铁重量感。严格保持原图模型的机械造型、比例与拍摄角度完全不变。",
+      "写实军事微缩模型微距摄影，高达机甲大师级战损旧化涂装工艺，整体呈现历经真实战场洗礼的钢铁重量感与岁月痕迹。严格保持原图模型的机械造型、比例与拍摄角度完全不变。",
     enabled: true,
+    subStyles: [
+      {
+        id: "weathering_chipping",
+        name: "海绵/笔涂掉漆",
+        badge: "掉漆剥落",
+        sampleImageUrl: "/ai-style-refs/weathering_chipping.jpg",
+        defaultFinish: "matte",
+        defaultCrafts: ["panel_lining", "decals", "metallic_frame"],
+        defaultBg: "dark_studio",
+        defaultLighting: "rim_dramatic",
+        prompt:
+          "主打高频磨损部位的海绵拍涂与00号极细面相笔点绘掉漆工艺（Sponge & Brush Chipping）：在装甲棱角、裙甲边缘、盾牌边沿与活动关节附近点缀大小错落的暗灰底层漆与银色露金属划痕，内部伴随浅色漆层托底立体感，整体控制克制自然不显杂乱。",
+        enabled: true,
+      },
+      {
+        id: "weathering_wash",
+        name: "水洗渍洗滤镜",
+        badge: "滤镜旧化",
+        sampleImageUrl: "/ai-style-refs/weathering_wash.jpg",
+        defaultFinish: "matte",
+        defaultCrafts: ["panel_lining", "decals"],
+        defaultBg: "white_studio",
+        defaultLighting: "soft_dual",
+        prompt:
+          "主打高精度珐琅水洗渍洗与色彩滤镜工艺（Pin Wash & Filter）：沿机械铆钉、装甲落差凹槽与检修口积聚深棕/灰黑油泥渗渍，配合火机油单向竖向擦拭形成微弱重力油渍拉丝痕，同时对主色施加微妙统一的旧化色彩滤镜，消除干净新漆的浮躁感。",
+        enabled: true,
+      },
+      {
+        id: "weathering_grimdark",
+        name: "暗黑珐琅旧化",
+        badge: "Grimdark",
+        sampleImageUrl: "/ai-style-refs/weathering_grimdark.jpg",
+        defaultFinish: "matte",
+        defaultCrafts: ["panel_lining", "metallic_frame", "led_glow"],
+        defaultBg: "dark_studio",
+        defaultLighting: "rim_dramatic",
+        prompt:
+          "战锤Grimdark暗黑写实重度珐琅旧化风格（Streaking Grime Reduction）：先通体罩涂深沉暗棕黑珐琅旧化液后对受光凸面进行白电油局部擦亮还原，深邃暗角积聚厚重陈年油垢与暗影反差，凸显黑暗工业战甲冷峻压迫感。",
+        enabled: true,
+      },
+      {
+        id: "weathering_drybrush",
+        name: "干扫边缘质感",
+        badge: "棱边金属",
+        sampleImageUrl: "/ai-style-refs/weathering_drybrush.jpg",
+        defaultFinish: "matte",
+        defaultCrafts: ["panel_lining", "metallic_frame"],
+        defaultBg: "dark_studio",
+        defaultLighting: "top_key",
+        prompt:
+          "主打硬毛平笔高反差边缘干扫金属磨亮工艺（Metallic & Highlight Edge Drybrush）：在深沉消光装甲所有凸起棱线、散热格栅、关节骨架与铆钉顶点处，通过滤干轻扫呈现锋利的钢银色金属擦亮高光与粗粝金属表面微观颗粒纹理。",
+        enabled: true,
+      },
+      {
+        id: "weathering_rust_mud",
+        name: "粉彩泥锈战损",
+        badge: "泥锈烟熏",
+        sampleImageUrl: "/ai-style-refs/weathering_rust_mud.jpg",
+        defaultFinish: "matte",
+        defaultCrafts: ["panel_lining", "decals", "metallic_frame"],
+        defaultBg: "dark_studio",
+        defaultLighting: "rim_dramatic",
+        prompt:
+          "主打粉彩干粉、天然铁锈氧化流痕与泥土积垢的写实陆战旧化工艺（Pigments, Rust Streaks & Soot）：在铆钉下方与雨水通道产生真实红褐色垂直流锈痕，推进喷口与炮口带黑色烟熏积碳晕染，小腿及足部装甲附着干燥泥沙粉尘堆叠质感。",
+        enabled: true,
+      },
+    ],
   },
   {
     id: "candy_metallic",
-    name: "电镀糖果",
-    badge: "镜面高光",
+    name: "金属/珍珠/电镀特效涂装",
+    badge: "4项子工艺",
     sampleImageUrl: "/ai-style-refs/candy_metallic.jpg",
     defaultFinish: "gloss",
     defaultCrafts: ["metallic_frame", "led_glow"],
     defaultBg: "dark_studio",
     defaultLighting: "rim_dramatic",
     prompt:
-      "高端合金成品模型商业摄影，微缩机甲电镀糖果色金属涂装工艺（黑底亮银打底配合多层透明色罩染），色彩发色通透深邃且极具金属层次。严格保持原图模型的每一个装甲零件轮廓、比例与姿态完全不变，禁止结构变形。",
+      "高端合金成品与精细特殊涂装商业摄影，微缩机甲全金属/珍珠/电镀特效漆面表现。严格保持原图模型的每一个装甲零件轮廓、比例与姿态完全不变，禁止结构变形。",
     enabled: true,
+    subStyles: [
+      {
+        id: "metallic_chrome",
+        name: "铬合金镜面电镀",
+        badge: "镜面电镀",
+        sampleImageUrl: "/ai-style-refs/metallic_chrome.jpg",
+        defaultFinish: "gloss",
+        defaultCrafts: ["metallic_frame", "led_glow"],
+        defaultBg: "dark_studio",
+        defaultLighting: "rim_dramatic",
+        prompt:
+          "极致亮光黑打底配合真空镀铬/超微粒镜面银喷涂（Chrome Mirror Plating）：装甲呈现出如液体水银或真电镀镀铬金属般的超高反射率镜面高光，清晰映照摄影棚柔和灯带轮廓，配合钛金/枪铁金属骨架形成冷冽精密金属感。",
+        enabled: true,
+      },
+      {
+        id: "metallic_candy",
+        name: "糖果透明叠喷",
+        badge: "电镀糖果",
+        sampleImageUrl: "/ai-style-refs/metallic_candy.jpg",
+        defaultFinish: "gloss",
+        defaultCrafts: ["metallic_frame", "led_glow"],
+        defaultBg: "dark_studio",
+        defaultLighting: "rim_dramatic",
+        prompt:
+          "经典黑底亮银打底＋透明光油隔离＋多层透明色罩染糖果漆工艺（Candy Clear Overcoat）：透明漆层呈现出珠宝般深邃浓郁的透射色泽，底层银粉从透明色膜深处闪烁跃出，转角与高光带呈深浅宝石渐变。",
+        enabled: true,
+      },
+      {
+        id: "metallic_pearl",
+        name: "珍珠/云母偏光",
+        badge: "珍珠云母",
+        sampleImageUrl: "/ai-style-refs/metallic_pearl.jpg",
+        defaultFinish: "metallic_pearl",
+        defaultCrafts: ["panel_lining", "metallic_frame"],
+        defaultBg: "white_studio",
+        defaultLighting: "top_key",
+        prompt:
+          "高贵细腻珍珠粉/云母片罩染偏光涂装工艺（Pearl / Mica Shimmer）：漆面内均匀悬浮细密柔和的珍珠云母光泽，随着曲面弧度在主色调中流露出淡雅的丝绸金属偏光过渡，既保留陶瓷温润感又不失高级细闪。",
+        enabled: true,
+      },
+      {
+        id: "metallic_color",
+        name: "常规彩色金属漆",
+        badge: "彩色金属",
+        sampleImageUrl: "/ai-style-refs/metallic_color.jpg",
+        defaultFinish: "metallic_pearl",
+        defaultCrafts: ["panel_lining", "metallic_frame"],
+        defaultBg: "dark_studio",
+        defaultLighting: "soft_dual",
+        prompt:
+          "工业阳极氧化风彩色金属实色漆喷涂（Colored Metallic Paint，如金属红、金属蓝、金属钛灰）：细腻均匀的铝粉/金属粒子融入主色漆膜，既有清晰硬朗的金属反光颗粒质感，又比透明糖果漆更沉稳内敛富有机械力量感。",
+        enabled: true,
+      },
+    ],
   },
   {
-    id: "gk_resin_studio",
-    name: "GK 灰模精涂",
-    badge: "灰模上色",
-    sampleImageUrl: "/ai-style-refs/gk_resin_studio.jpg",
-    defaultFinish: "semi_gloss",
-    defaultCrafts: ["panel_lining", "metallic_frame"],
+    id: "primer_grey",
+    name: "喷灰",
+    badge: "水补土灰模",
+    sampleImageUrl: "/ai-style-refs/primer_grey.jpg",
+    defaultFinish: "matte",
+    defaultCrafts: [],
     defaultBg: "white_studio",
     defaultLighting: "top_key",
     prompt:
-      "殿堂级GK改件涂装成品微距摄影，将单色灰模/白模转化为完整大师级精涂成品，消除打磨痕迹与层纹，自动赋予协调考究的机甲主副色分色方案与精密涂装层次。严格保持原图灰模的每一处装甲造型、刻线走向、比例与视角100%不变。",
+      "专业模型原型制作与改件修件阶段产品摄影：全机均匀薄喷 #1000/#1200 号细腻中性灰色水补土底漆（Uniform Grey Surfacer Primer），将原本五颜六色的杂色塑料素组或分色零件完全覆盖统一为纯净均匀的中灰色水补土原型灰模状态，彻底消除塑料半透明与分模光泽差异，高清凸显每一条装甲C面折角、机械刻线锐利度与原型雕塑起伏感。严格保持原图模型的机械造型、比例与拍摄角度100%不变。",
     enabled: true,
   },
 ];
+
+function resolveSampleUrl(rawSample: string, fallbackId: string): string {
+  const s = String(rawSample || `${fallbackId}.jpg`).trim();
+  if (s.startsWith("/") || s.startsWith("http")) return s;
+  return `/ai-style-refs/${s}`;
+}
 
 export async function fetchPresetStyles(): Promise<AiPresetStyle[]> {
   if (typeof window === "undefined") return AI_PRESET_STYLES;
@@ -288,16 +429,38 @@ export async function fetchPresetStyles(): Promise<AiPresetStyle[]> {
     const valid: AiPresetStyle[] = raw
       .filter((item: any) => item && item.enabled !== false && item.id && item.name && item.prompt)
       .map((item: any) => {
-        const rawSample = String(item.sampleImage || `${item.id}.jpg`).trim();
-        const sampleImageUrl =
-          rawSample.startsWith("/") || rawSample.startsWith("http")
-            ? rawSample
-            : `/ai-style-refs/${rawSample}`;
+        const subStyles: AiPresetSubStyle[] | undefined = Array.isArray(item.subStyles)
+          ? item.subStyles
+              .filter((sub: any) => sub && sub.enabled !== false && sub.id && sub.name && sub.prompt)
+              .map((sub: any) => ({
+                id: String(sub.id),
+                name: String(sub.name),
+                badge: String(sub.badge || ""),
+                sampleImageUrl: resolveSampleUrl(sub.sampleImage, sub.id),
+                defaultFinish: SURFACE_FINISH_OPTIONS.some((f) => f.id === sub.defaultFinish)
+                  ? (sub.defaultFinish as SurfaceFinishId)
+                  : undefined,
+                defaultCrafts: Array.isArray(sub.defaultCrafts)
+                  ? sub.defaultCrafts.filter((c: any) =>
+                      DETAIL_CRAFT_OPTIONS.some((opt) => opt.id === c)
+                    )
+                  : undefined,
+                defaultBg: STUDIO_BG_OPTIONS.some((b) => b.id === sub.defaultBg)
+                  ? (sub.defaultBg as StudioBgId)
+                  : undefined,
+                defaultLighting: LIGHTING_POS_OPTIONS.some((l) => l.id === sub.defaultLighting)
+                  ? (sub.defaultLighting as LightingPosId)
+                  : undefined,
+                prompt: String(sub.prompt),
+                enabled: sub.enabled !== false,
+              }))
+          : undefined;
+
         return {
           id: String(item.id),
           name: String(item.name),
           badge: String(item.badge || ""),
-          sampleImageUrl,
+          sampleImageUrl: resolveSampleUrl(item.sampleImage, item.id),
           defaultFinish: (SURFACE_FINISH_OPTIONS.some((f) => f.id === item.defaultFinish)
             ? item.defaultFinish
             : "semi_gloss") as SurfaceFinishId,
@@ -313,6 +476,7 @@ export async function fetchPresetStyles(): Promise<AiPresetStyle[]> {
             ? item.defaultLighting
             : "soft_dual") as LightingPosId,
           prompt: String(item.prompt),
+          subStyles: subStyles && subStyles.length > 0 ? subStyles : undefined,
           enabled: item.enabled !== false,
         };
       });
@@ -320,6 +484,23 @@ export async function fetchPresetStyles(): Promise<AiPresetStyle[]> {
   } catch {
     return AI_PRESET_STYLES;
   }
+}
+
+export function resolveEffectivePresetDefaults(
+  preset: AiPresetStyle,
+  subStyle?: AiPresetSubStyle | null
+): {
+  finish: SurfaceFinishId;
+  crafts: DetailCraftId[];
+  bg: StudioBgId;
+  lighting: LightingPosId;
+} {
+  return {
+    finish: subStyle?.defaultFinish || preset.defaultFinish,
+    crafts: subStyle?.defaultCrafts ? [...subStyle.defaultCrafts] : [...preset.defaultCrafts],
+    bg: subStyle?.defaultBg || preset.defaultBg,
+    lighting: subStyle?.defaultLighting || preset.defaultLighting,
+  };
 }
 
 export const NO_SWATCH_UI_RULE =
@@ -470,6 +651,7 @@ export function buildProcessClause(opts: {
 
 export function buildPresetPromptBlocks(opts: {
   presetId: string;
+  subStyleId?: string | null;
   presetsList?: AiPresetStyle[];
   finishId: SurfaceFinishId;
   crafts: DetailCraftId[];
@@ -483,13 +665,19 @@ export function buildPresetPromptBlocks(opts: {
 }): { blocks: PromptBlock[]; prompt: string; overriddenLabels: string[] } {
   const list = opts.presetsList && opts.presetsList.length > 0 ? opts.presetsList : AI_PRESET_STYLES;
   const preset = list.find((p) => p.id === opts.presetId) || list[0];
+  const subStyle =
+    preset.subStyles && preset.subStyles.length > 0
+      ? preset.subStyles.find((s) => s.id === opts.subStyleId) || preset.subStyles[0]
+      : null;
+  const defaults = resolveEffectivePresetDefaults(preset, subStyle);
+
   const finish = SURFACE_FINISH_OPTIONS.find((f) => f.id === opts.finishId);
   const bg = STUDIO_BG_OPTIONS.find((b) => b.id === opts.bgId);
   const lighting = LIGHTING_POS_OPTIONS.find((l) => l.id === opts.lightingId);
 
-  const isFinishOverride = opts.finishId !== preset.defaultFinish;
-  const isBgOverride = opts.bgId !== preset.defaultBg;
-  const isLightingOverride = opts.lightingId !== preset.defaultLighting;
+  const isFinishOverride = opts.finishId !== defaults.finish;
+  const isBgOverride = opts.bgId !== defaults.bg;
+  const isLightingOverride = opts.lightingId !== defaults.lighting;
 
   const overriddenLabels: string[] = [];
   if (isFinishOverride && finish) overriddenLabels.push(`漆面质感(${finish.name})`);
@@ -504,6 +692,15 @@ export function buildPresetPromptBlocks(opts: {
       kind: "core",
     },
   ];
+
+  if (subStyle) {
+    blocks.push({
+      id: "sub_style",
+      label: `01-B 细分 · ${subStyle.name}`,
+      text: subStyle.prompt,
+      kind: "core",
+    });
+  }
 
   const craftTexts = opts.crafts
     .map((id) => DETAIL_CRAFT_OPTIONS.find((c) => c.id === id)?.promptFragment)
@@ -607,6 +804,7 @@ export function buildPresetPromptBlocks(opts: {
 
 export function buildPresetRenderPrompt(opts: {
   presetId: string;
+  subStyleId?: string | null;
   presetsList?: AiPresetStyle[];
   finishId: SurfaceFinishId;
   crafts: DetailCraftId[];
@@ -972,6 +1170,7 @@ export async function runAiPaintRender(params: {
   rawImageSources: string[];
   styleRefMode?: "none" | "preset" | "custom";
   presetStyleRefPath?: string | null;
+  fallbackStyleRefPath?: string | null;
   customStyleRefSrc?: string | null;
   size?: "1K" | "2K";
   background?: "auto" | "transparent";
@@ -1007,6 +1206,8 @@ export async function runAiPaintRender(params: {
       styleRefMode: params.styleRefMode || "none",
       presetStyleRefPath:
         params.styleRefMode === "preset" ? params.presetStyleRefPath || undefined : undefined,
+      fallbackStyleRefPath:
+        params.styleRefMode === "preset" ? params.fallbackStyleRefPath || undefined : undefined,
       customStyleRefImage: compressedCustomRef,
       size: params.size || "2K",
       background: params.background,

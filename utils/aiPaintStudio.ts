@@ -69,6 +69,7 @@ export interface AiPresetStyle {
   id: string;
   name: string;
   badge: string;
+  modeType?: "standard" | "primer";
   sampleImageUrl: string;
   defaultFinish: SurfaceFinishId;
   defaultCrafts: DetailCraftId[];
@@ -93,6 +94,13 @@ export type SurfaceFinishId = "matte" | "semi_gloss" | "gloss" | "metallic_pearl
 export type DetailCraftId = "panel_lining" | "decals" | "metallic_frame" | "led_glow";
 export type StudioBgId = "white_studio" | "dark_studio" | "cutting_mat" | "hangar_bay" | "transparent";
 export type LightingPosId = "soft_dual" | "top_key" | "rim_dramatic";
+export type PrimerToneId =
+  | "light_grey"
+  | "mid_grey"
+  | "dark_grey"
+  | "black_primer"
+  | "oxide_red"
+  | "pink_primer";
 
 export type RefineFinishStyle = "matte_studio" | "anime_cel_refine" | "metallic_gloss_refine";
 export type RefineUnpaintedPolicy = "keep_clean" | "harmonize_complete";
@@ -209,6 +217,63 @@ export const LIGHTING_POS_OPTIONS: {
     id: "rim_dramatic",
     name: "侧逆轮廓光",
     promptFragment: "采用戏剧性单侧强主光配合后方冷暖双色轮廓光勾边，强化机甲钢铁轮廓线条。",
+  },
+];
+
+export const PRIMER_TONE_OPTIONS: {
+  id: PrimerToneId;
+  name: string;
+  badge: string;
+  swatchHex: string;
+  promptFragment: string;
+}[] = [
+  {
+    id: "light_grey",
+    name: "浅灰水补土",
+    badge: "#1200",
+    swatchHex: "#C7CDD4",
+    promptFragment:
+      "采用郡士/盖亚 #1200 号超细颗粒浅灰水补土（Light Grey Surfacer #1200），全机呈现明亮干净的浅冷灰色消光灰模质感，极高反差凸显精细刻线与锐利折角。",
+  },
+  {
+    id: "mid_grey",
+    name: "标准中灰",
+    badge: "#1000",
+    swatchHex: "#8E96A0",
+    promptFragment:
+      "采用经典 #1000 号标准中性灰水补土（Neutral Mid-Grey Surfacer #1000），全机呈现均衡沉稳的标准中灰色全哑光原型灰模质感，阴影过渡与形体起伏对比清晰。",
+  },
+  {
+    id: "dark_grey",
+    name: "深灰机械补土",
+    badge: "#1500",
+    swatchHex: "#545C66",
+    promptFragment:
+      "采用重工业风 #1500 号深炭灰机械水补土（Dark Mechanical Grey Surfacer #1500），全机呈现厚重冷峻的深炭灰色全哑光底漆质感，强化重装甲体积感与高光棱线。",
+  },
+  {
+    id: "black_primer",
+    name: "黑水补土",
+    badge: "Evo黑",
+    swatchHex: "#23272D",
+    promptFragment:
+      "采用盖亚 Evo 黑 / 黑补土底漆（Matte Black Surfacer Primer），全机覆涂纯净细腻的深黑哑光底漆，暗部深邃凝实、受光棱角呈现丝绒般微弱素胚高光。",
+  },
+  {
+    id: "oxide_red",
+    name: "红蜡 / 铁红补土",
+    badge: "红蜡原型",
+    swatchHex: "#8F3B34",
+    promptFragment:
+      "采用大师级 GK 原型红蜡 / 氧化铁红补土涂装（Oxide Red / Sculpting Red Wax Primer），全机覆涂温暖厚实的砖红色全哑光雕塑原型底漆质感，细腻体现装甲曲面雕塑层次与雕刻刻线张力。",
+  },
+  {
+    id: "pink_primer",
+    name: "粉红水补土",
+    badge: "红黄打底",
+    swatchHex: "#D88C9A",
+    promptFragment:
+      "采用高发色专业粉红水补土（Pink Surfacer Primer），全机覆涂柔和细腻的淡粉红色全哑光补土底漆，表面均匀无塑料透光感。",
   },
 ];
 
@@ -405,15 +470,16 @@ export const AI_PRESET_STYLES: AiPresetStyle[] = [
     id: "primer_grey",
     name: "喷灰",
     badge: "水补土灰模",
+    modeType: "primer",
     sampleImageUrl: "/ai-style-refs/primer_grey.jpg",
     defaultFinish: "matte",
     defaultCrafts: [],
     defaultBg: "white_studio",
     defaultLighting: "top_key",
     prompt:
-      "专业模型原型制作与改件修件阶段产品摄影：全机均匀薄喷 #1000/#1200 号细腻中性灰色水补土底漆（Uniform Grey Surfacer Primer），将原本五颜六色的杂色塑料素组或分色零件完全覆盖统一为纯净均匀的中灰色水补土原型灰模状态，彻底消除塑料半透明与分模光泽差异，高清凸显每一条装甲C面折角、机械刻线锐利度与原型雕塑起伏感。严格保持原图模型的机械造型、比例与拍摄角度100%不变。",
+      "专业模型原型制作与改件修件阶段产品摄影：全机均匀薄喷超细腻 #1000/#1200 号水补土底漆（Uniform Micro-Matte Surfacer Primer），将原本五颜六色的杂色塑料素组或分色零件完全覆盖统一为纯净无杂色的单色水补土原型灰模状态，彻底消除塑料半透明与分模光泽差异，高清凸显每一条装甲C面折角、机械刻线锐利度与原型雕塑起伏感。具体补土颜色与灰度深浅严格以【补土色系】积木为准。严格保持原图模型的机械造型、比例与拍摄角度100%不变。",
     enabled: true,
-  },
+  },,
 ];
 
 function resolveSampleUrl(rawSample: string, fallbackId: string): string {
@@ -463,6 +529,7 @@ export async function fetchPresetStyles(): Promise<AiPresetStyle[]> {
           id: String(item.id),
           name: String(item.name),
           badge: String(item.badge || ""),
+          modeType: item.modeType === "primer" ? ("primer" as const) : undefined,
           sampleImageUrl: resolveSampleUrl(item.sampleImage, item.id),
           defaultFinish: (SURFACE_FINISH_OPTIONS.some((f) => f.id === item.defaultFinish)
             ? item.defaultFinish
@@ -667,6 +734,7 @@ export function buildPresetPromptBlocks(opts: {
   crafts: DetailCraftId[];
   bgId: StudioBgId;
   lightingId: LightingPosId;
+  primerToneId?: PrimerToneId;
   hasStyleRefImage: boolean;
   styleRefLabels?: string[];
   isCustomStyleRef?: boolean;
@@ -676,9 +744,10 @@ export function buildPresetPromptBlocks(opts: {
 }): { blocks: PromptBlock[]; prompt: string; overriddenLabels: string[] } {
   const list = opts.presetsList && opts.presetsList.length > 0 ? opts.presetsList : AI_PRESET_STYLES;
   const preset = list.find((p) => p.id === opts.presetId) || list[0];
+  const isPrimerMode = preset.modeType === "primer" || preset.id === "primer_grey";
 
   let activeSubStyles: AiPresetSubStyle[] = [];
-  if (preset.subStyles && preset.subStyles.length > 0) {
+  if (!isPrimerMode && preset.subStyles && preset.subStyles.length > 0) {
     if (Array.isArray(opts.subStyleIds) && opts.subStyleIds.length > 0) {
       if (preset.subStyleSelection === "multiple") {
         activeSubStyles = preset.subStyles.filter((s) => opts.subStyleIds!.includes(s.id));
@@ -700,12 +769,17 @@ export function buildPresetPromptBlocks(opts: {
   const finish = SURFACE_FINISH_OPTIONS.find((f) => f.id === opts.finishId);
   const bg = STUDIO_BG_OPTIONS.find((b) => b.id === opts.bgId);
   const lighting = LIGHTING_POS_OPTIONS.find((l) => l.id === opts.lightingId);
+  const primerTone =
+    PRIMER_TONE_OPTIONS.find((t) => t.id === (opts.primerToneId || "mid_grey")) ||
+    PRIMER_TONE_OPTIONS[1];
 
-  const isFinishOverride = opts.finishId !== defaults.finish;
+  const isFinishOverride = !isPrimerMode && opts.finishId !== defaults.finish;
+  const isPrimerToneOverride = isPrimerMode && primerTone.id !== "mid_grey";
   const isBgOverride = opts.bgId !== defaults.bg;
   const isLightingOverride = opts.lightingId !== defaults.lighting;
 
   const overriddenLabels: string[] = [];
+  if (isPrimerToneOverride) overriddenLabels.push(`补土颜色(${primerTone.name})`);
   if (isFinishOverride && finish) overriddenLabels.push(`漆面质感(${finish.name})`);
   if (isBgOverride && bg) overriddenLabels.push(`摄影背景(${bg.name})`);
   if (isLightingOverride && lighting) overriddenLabels.push(`打光位置(${lighting.name})`);
@@ -719,45 +793,55 @@ export function buildPresetPromptBlocks(opts: {
     },
   ];
 
-  for (const sub of activeSubStyles) {
+  if (isPrimerMode) {
     blocks.push({
-      id: `sub_style_${sub.id}`,
-      label: `01-B 细分 · ${sub.name}`,
-      text: sub.prompt,
-      kind: "core",
-    });
-  }
-
-  const craftTexts = opts.crafts
-    .map((id) => DETAIL_CRAFT_OPTIONS.find((c) => c.id === id)?.promptFragment)
-    .filter(Boolean) as string[];
-  if (craftTexts.length > 0) {
-    const craftNames = opts.crafts
-      .map((id) => DETAIL_CRAFT_OPTIONS.find((c) => c.id === id)?.name)
-      .filter(Boolean)
-      .join("/");
-    blocks.push({
-      id: "crafts",
-      label: `03 工艺 (${craftNames})`,
-      text: craftTexts.join(" "),
+      id: "primer_tone",
+      label: `02 补土 · ${primerTone.name}`,
+      text: `${primerTone.promptFragment} 全机表面统一为超细腻全哑光均匀底漆层，禁止出现分色色块、亮光反光、水贴、金属框架或局部掉漆等成品后道工序效果。`,
       kind: "process",
+      isOverride: isPrimerToneOverride,
     });
-  }
+  } else {
+    for (const sub of activeSubStyles) {
+      blocks.push({
+        id: `sub_style_${sub.id}`,
+        label: `01-B 细分 · ${sub.name}`,
+        text: sub.prompt,
+        kind: "core",
+      });
+    }
 
-  if (finish) {
-    blocks.push({
-      id: "finish",
-      label: `02 漆面 · ${finish.name}`,
-      text: finish.promptFragment,
-      kind: "process",
-      isOverride: isFinishOverride,
-    });
+    const craftTexts = opts.crafts
+      .map((id) => DETAIL_CRAFT_OPTIONS.find((c) => c.id === id)?.promptFragment)
+      .filter(Boolean) as string[];
+    if (craftTexts.length > 0) {
+      const craftNames = opts.crafts
+        .map((id) => DETAIL_CRAFT_OPTIONS.find((c) => c.id === id)?.name)
+        .filter(Boolean)
+        .join("/");
+      blocks.push({
+        id: "crafts",
+        label: `03 工艺 (${craftNames})`,
+        text: craftTexts.join(" "),
+        kind: "process",
+      });
+    }
+
+    if (finish) {
+      blocks.push({
+        id: "finish",
+        label: `02 漆面 · ${finish.name}`,
+        text: finish.promptFragment,
+        kind: "process",
+        isOverride: isFinishOverride,
+      });
+    }
   }
 
   if (bg) {
     blocks.push({
       id: "studio_bg",
-      label: `04 背景 · ${bg.name}`,
+      label: `${isPrimerMode ? "03" : "04"} 背景 · ${bg.name}`,
       text: bg.promptFragment,
       kind: "process",
       isOverride: isBgOverride,
@@ -767,7 +851,7 @@ export function buildPresetPromptBlocks(opts: {
   if (lighting) {
     blocks.push({
       id: "lighting",
-      label: `05 布光 · ${lighting.name}`,
+      label: `${isPrimerMode ? "04" : "05"} 布光 · ${lighting.name}`,
       text: lighting.promptFragment,
       kind: "process",
       isOverride: isLightingOverride,
@@ -776,12 +860,15 @@ export function buildPresetPromptBlocks(opts: {
 
   if (opts.hasStyleRefImage) {
     const labels = (opts.styleRefLabels || []).filter(Boolean);
-    const refText =
-      labels.length > 1
-        ? `【多图局部材质参考指令】图1为需要上色的素组/灰模本体，必须100%保持图1的机械轮廓、零件造型与视角；图2为「${labels[0]}」局部涂装材质参考图，图3为「${labels[1]}」局部涂装材质参考图。请分别提取并自然融合图2与图3的局部表面工艺纹理、掉漆/旧化分布颗粒与材质质感并应用到图1模型上，严禁把参考图中的机体形状、其它配色块或背景杂物混入图1；若用户手动指定了漆面光泽、摄影背景或布光，以用户指定工序为准。`
-        : `【多图风格参考指令】图1为需要上色的素组/灰模本体，必须100%保持图1的机械轮廓、零件造型与视角；图2为${
-            labels[0] ? `「${labels[0]}」` : ""
-          }喷涂风格/局部材质参考样板图，请学习图2的表面涂装纹理、明暗过渡、阴影重度与漆面粒子质感并迁移到图1模型上，严禁把图2的机体造型、多余零件或背景杂物混入图1；若用户手动指定了漆面光泽、摄影背景或布光，以用户指定工序为准而非照搬图2环境。`;
+    const refText = isPrimerMode
+      ? `【多图水补土原型参考指令】图1为需要喷涂水补土的素组/分色本体，必须100%保持图1的机械轮廓、零件造型与视角；图2为「${
+          labels[0] || "喷灰原型"
+        }」水补土表面细腻质感参考图，请学习图2的颗粒细腻度、消光磨砂感与刻线锐利呈现方式并迁移到图1模型上；严禁保留图1原本杂色，若用户指定了补土色系（如红蜡/黑灰/浅灰等）、摄影背景或布光，必须100%严格以用户指定的补土颜色与环境为准。`
+      : labels.length > 1
+      ? `【多图局部材质参考指令】图1为需要上色的素组/灰模本体，必须100%保持图1的机械轮廓、零件造型与视角；图2为「${labels[0]}」局部涂装材质参考图，图3为「${labels[1]}」局部涂装材质参考图。请分别提取并自然融合图2与图3的局部表面工艺纹理、掉漆/旧化分布颗粒与材质质感并应用到图1模型上，严禁把参考图中的机体形状、其它配色块或背景杂物混入图1；若用户手动指定了漆面光泽、摄影背景或布光，以用户指定工序为准。`
+      : `【多图风格参考指令】图1为需要上色的素组/灰模本体，必须100%保持图1的机械轮廓、零件造型与视角；图2为${
+          labels[0] ? `「${labels[0]}」` : ""
+        }喷涂风格/局部材质参考样板图，请学习图2的表面涂装纹理、明暗过渡、阴影重度与漆面粒子质感并迁移到图1模型上，严禁把图2的机体造型、多余零件或背景杂物混入图1；若用户手动指定了漆面光泽、摄影背景或布光，以用户指定工序为准而非照搬图2环境。`;
     blocks.push({
       id: "style_ref",
       label: opts.isCustomStyleRef
@@ -799,13 +886,14 @@ export function buildPresetPromptBlocks(opts: {
     blocks.push({
       id: "override_precedence",
       label: "手动覆盖优先",
-      text: `【手动工序覆盖优先】用户已明确手动覆盖调整了以下工序参数：${overriddenLabels.join("、")}。无论预设风格或参考样板图原本是什么漆面反光、背景或布光，最终画面都必须100%严格以用户手动选择的积木参数为准。`,
+      text: `【手动工序覆盖优先】用户已明确手动覆盖调整了以下工序参数：${overriddenLabels.join("、")}。无论预设风格或参考样板图原本是什么颜色、漆面反光、背景或布光，最终画面都必须100%严格以用户手动选择的积木参数为准。`,
       kind: "rule",
       isOverride: true,
     });
   }
 
-  const paletteClause = opts.injectPalette ? buildProjectPaletteClause(opts.nodes) : "";
+  const paletteClause =
+    !isPrimerMode && opts.injectPalette ? buildProjectPaletteClause(opts.nodes) : "";
   if (paletteClause) {
     blocks.push({
       id: "palette",
@@ -848,6 +936,7 @@ export function buildPresetRenderPrompt(opts: {
   crafts: DetailCraftId[];
   bgId: StudioBgId;
   lightingId: LightingPosId;
+  primerToneId?: PrimerToneId;
   hasStyleRefImage: boolean;
   styleRefLabels?: string[];
   isCustomStyleRef?: boolean;

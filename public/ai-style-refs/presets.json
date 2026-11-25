@@ -177,12 +177,13 @@
     "id": "primer_grey",
     "name": "喷灰",
     "badge": "水补土灰模",
+    "modeType": "primer",
     "sampleImage": "primer_grey.jpg",
     "defaultFinish": "matte",
     "defaultCrafts": [],
     "defaultBg": "white_studio",
     "defaultLighting": "top_key",
-    "prompt": "专业模型原型制作与改件修件阶段产品摄影：全机均匀薄喷 #1000/#1200 号细腻中性灰色水补土底漆（Uniform Grey Surfacer Primer），将原本五颜六色的杂色塑料素组或分色零件完全覆盖统一为纯净均匀的中灰色水补土原型灰模状态，彻底消除塑料半透明与分模光泽差异，高清凸显每一条装甲C面折角、机械刻线锐利度与原型雕塑起伏感。严格保持原图模型的机械造型、比例与拍摄角度100%不变。",
+    "prompt": "专业模型原型制作与改件修件阶段产品摄影：全机均匀薄喷超细腻 #1000/#1200 号水补土底漆（Uniform Micro-Matte Surfacer Primer），将原本五颜六色的杂色塑料素组或分色零件完全覆盖统一为纯净无杂色的单色水补土原型灰模状态，彻底消除塑料半透明与分模光泽差异，高清凸显每一条装甲C面折角、机械刻线锐利度与原型雕塑起伏感。具体补土颜色与灰度深浅严格以【补土色系】积木为准。严格保持原图模型的机械造型、比例与拍摄角度100%不变。",
     "enabled": true
   }
 ]

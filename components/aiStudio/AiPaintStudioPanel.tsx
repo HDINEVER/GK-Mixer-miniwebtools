@@ -17,6 +17,8 @@ import {
   LightingPosId,
   OfficialModelKey,
   OfficialPricingMatrix,
+  PRIMER_TONE_OPTIONS,
+  PrimerToneId,
   REFINE_FINISH_OPTIONS,
   RefineFinishStyle,
   RefineUnpaintedPolicy,
@@ -278,6 +280,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   const [crafts, setCrafts] = useState<DetailCraftId[]>([...AI_PRESET_STYLES[0].defaultCrafts]);
   const [bgId, setBgId] = useState<StudioBgId>(AI_PRESET_STYLES[0].defaultBg);
   const [lightingId, setLightingId] = useState<LightingPosId>(AI_PRESET_STYLES[0].defaultLighting);
+  const [primerToneId, setPrimerToneId] = useState<PrimerToneId>("mid_grey");
 
   // Style Reference Sample image (backend preset/sub-style slot + user custom upload)
   const [customStyleRefSrc, setCustomStyleRefSrc] = useState<string | null>(null);
@@ -448,6 +451,9 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   );
 
   const isSubStyleMulti = activePresetObj.subStyleSelection === "multiple";
+  const isPrimerPreset =
+    mode === "preset" &&
+    (activePresetObj.modeType === "primer" || activePresetObj.id === "primer_grey");
 
   const activeSubStyles: AiPresetSubStyle[] = useMemo(() => {
     if (!activePresetObj.subStyles || activePresetObj.subStyles.length === 0) return [];
@@ -510,7 +516,8 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     setCrafts([...d.crafts]);
     setBgId(d.bg);
     setLightingId(d.lighting);
-    if (p.id === "primer_grey") {
+    setPrimerToneId("mid_grey");
+    if (p.modeType === "primer" || p.id === "primer_grey") {
       setInjectPalette(false);
     } else if (activePart?.nodes && activePart.nodes.length > 0) {
       setInjectPalette(true);
@@ -547,17 +554,19 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     }
   };
 
-  const isFinishOverridden = mode === "preset" && finishId !== activeDefaults.finish;
+  const isFinishOverridden = mode === "preset" && !isPrimerPreset && finishId !== activeDefaults.finish;
+  const isPrimerToneOverridden = isPrimerPreset && primerToneId !== "mid_grey";
   const isBgOverridden = mode === "preset" && bgId !== activeDefaults.bg;
   const isLightingOverridden = mode === "preset" && lightingId !== activeDefaults.lighting;
   const isCraftsOverridden = useMemo(() => {
-    if (mode !== "preset") return false;
+    if (mode !== "preset" || isPrimerPreset) return false;
     const def = [...activeDefaults.crafts].sort().join(",");
     const cur = [...crafts].sort().join(",");
     return def !== cur;
-  }, [mode, activeDefaults.crafts, crafts]);
-  const hasAnyOverride =
-    isFinishOverridden || isBgOverridden || isLightingOverridden || isCraftsOverridden;
+  }, [mode, isPrimerPreset, activeDefaults.crafts, crafts]);
+  const hasAnyOverride = isPrimerPreset
+    ? isPrimerToneOverridden || isBgOverridden || isLightingOverridden
+    : isFinishOverridden || isBgOverridden || isLightingOverridden || isCraftsOverridden;
 
   const toggleCraft = (craftId: DetailCraftId) => {
     setCrafts((prev) =>
@@ -594,6 +603,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         crafts,
         bgId,
         lightingId,
+        primerToneId,
         hasStyleRefImage,
         styleRefLabels: activeStyleRefLabels,
         isCustomStyleRef,
@@ -624,6 +634,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     crafts,
     bgId,
     lightingId,
+    primerToneId,
     effectiveStyleRefSrc,
     activeStyleRefLabels,
     useStyleRef,
@@ -1430,38 +1441,95 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                   </div>
                 )}
 
-                {/* Step 02: Surface Topcoat Finish */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
-                      02 漆面质感
-                    </span>
-                    {isFinishOverridden && (
-                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
-                        已手动覆盖
+                {/* Step 02: Primer Tone/Color (Primer Mode) OR Surface Topcoat Finish (Standard Mode) */}
+                {isPrimerPreset ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                        02 补土色系与灰度（灰阶 / 红蜡）
                       </span>
-                    )}
+                      {isPrimerToneOverridden && (
+                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
+                          已手动切换
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {PRIMER_TONE_OPTIONS.map((tone) => {
+                        const active = primerToneId === tone.id;
+                        return (
+                          <button
+                            key={tone.id}
+                            type="button"
+                            onClick={() => setPrimerToneId(tone.id)}
+                            className={`rounded-xl border px-2.5 py-1.5 text-left transition cursor-pointer flex items-center justify-between gap-1.5 ${
+                              active
+                                ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-1 ring-coral/40"
+                                : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 hover:border-slate-300"
+                            }`}
+                          >
+                            <span className="inline-flex items-center gap-1.5 min-w-0">
+                              <span
+                                className="h-3 w-3 rounded-full border border-black/20 shrink-0"
+                                style={{ backgroundColor: tone.swatchHex }}
+                              />
+                              <span
+                                className={`text-[11px] truncate ${
+                                  active
+                                    ? "text-coral font-black"
+                                    : "font-bold text-slate-800 dark:text-slate-200"
+                                }`}
+                              >
+                                {tone.name}
+                              </span>
+                            </span>
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[9px] font-extrabold shrink-0 ${
+                                active
+                                  ? "bg-coral text-white"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                              }`}
+                            >
+                              {tone.badge}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                    {SURFACE_FINISH_OPTIONS.map((opt) => {
-                      const active = finishId === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => setFinishId(opt.id)}
-                          className={`rounded-xl border px-2.5 py-1.5 text-center text-[11px] transition cursor-pointer ${
-                            active
-                              ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
-                              : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300 hover:border-slate-300"
-                          }`}
-                        >
-                          {opt.name}
-                        </button>
-                      );
-                    })}
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                        02 漆面质感
+                      </span>
+                      {isFinishOverridden && (
+                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
+                          已手动覆盖
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                      {SURFACE_FINISH_OPTIONS.map((opt) => {
+                        const active = finishId === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setFinishId(opt.id)}
+                            className={`rounded-xl border px-2.5 py-1.5 text-center text-[11px] transition cursor-pointer ${
+                              active
+                                ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
+                                : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                            }`}
+                          >
+                            {opt.name}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             ) : (
               <>
@@ -1524,50 +1592,52 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               </>
             )}
 
-            {/* Step 03: Detail Crafts (Multi-Select) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
-                  03 工艺细节（可多选）
-                </span>
-                <div className="flex items-center gap-1.5">
-                  {isCraftsOverridden && (
-                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
-                      已手动覆盖
-                    </span>
-                  )}
-                  <span className="text-[10px] text-slate-400">
-                    已选 {crafts.length} 项
+            {/* Step 03: Detail Crafts (Multi-Select, hidden in Primer Mode) */}
+            {!isPrimerPreset && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                    03 工艺细节（可多选）
                   </span>
+                  <div className="flex items-center gap-1.5">
+                    {isCraftsOverridden && (
+                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
+                        已手动覆盖
+                      </span>
+                    )}
+                    <span className="text-[10px] text-slate-400">
+                      已选 {crafts.length} 项
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {DETAIL_CRAFT_OPTIONS.map((craft) => {
+                    const active = crafts.includes(craft.id);
+                    return (
+                      <button
+                        key={craft.id}
+                        type="button"
+                        onClick={() => toggleCraft(craft.id)}
+                        className={`rounded-xl border px-2.5 py-1.5 text-center text-[11px] transition cursor-pointer inline-flex items-center justify-center gap-1 ${
+                          active
+                            ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
+                            : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                        }`}
+                      >
+                        {active && <CheckIcon className="h-3 w-3 shrink-0" weight="bold" />}
+                        <span>{craft.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                {DETAIL_CRAFT_OPTIONS.map((craft) => {
-                  const active = crafts.includes(craft.id);
-                  return (
-                    <button
-                      key={craft.id}
-                      type="button"
-                      onClick={() => toggleCraft(craft.id)}
-                      className={`rounded-xl border px-2.5 py-1.5 text-center text-[11px] transition cursor-pointer inline-flex items-center justify-center gap-1 ${
-                        active
-                          ? "bp-subcard-active border-coral bg-coral/10 text-coral font-black ring-1 ring-coral/40"
-                          : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 font-bold text-slate-700 dark:text-slate-300 hover:border-slate-300"
-                      }`}
-                    >
-                      {active && <CheckIcon className="h-3 w-3 shrink-0" weight="bold" />}
-                      <span>{craft.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
 
-            {/* Step 04: Studio Background */}
+            {/* Studio Background */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
-                  04 摄影背景
+                  {isPrimerPreset ? "03 摄影背景" : "04 摄影背景"}
                 </span>
                 {isBgOverridden && (
                   <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
@@ -1609,11 +1679,11 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               </div>
             </div>
 
-            {/* Step 05: Studio Lighting Position */}
+            {/* Studio Lighting Position */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
-                  05 打光位置
+                  {isPrimerPreset ? "04 打光位置" : "05 打光位置"}
                 </span>
                 {isLightingOverridden && (
                   <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
@@ -1860,9 +1930,13 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               <span className="font-black text-slate-800 dark:text-slate-200">当前工序：</span>
               <span>
                 {mode === "preset"
-                  ? `${activePresetObj.name}${
-                      subStyleSummaryText ? `(${subStyleSummaryText})` : ""
-                    } · ${SURFACE_FINISH_OPTIONS.find((f) => f.id === finishId)?.name}`
+                  ? isPrimerPreset
+                    ? `${activePresetObj.name}(${
+                        PRIMER_TONE_OPTIONS.find((t) => t.id === primerToneId)?.name || "标准中灰"
+                      })`
+                    : `${activePresetObj.name}${
+                        subStyleSummaryText ? `(${subStyleSummaryText})` : ""
+                      } · ${SURFACE_FINISH_OPTIONS.find((f) => f.id === finishId)?.name}`
                   : REFINE_FINISH_OPTIONS.find((f) => f.id === refineFinish)?.name.replace(
                       "（推荐）",
                       ""
@@ -1879,8 +1953,8 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
           </div>
         </div>
 
-        {/* Project Paint Swatch Palette Auto-Injection */}
-        {activePart && activePart.nodes.length > 0 && (
+        {/* Project Paint Swatch Palette Auto-Injection (hidden in Primer Mode) */}
+        {!isPrimerPreset && activePart && activePart.nodes.length > 0 && (
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 p-2.5 space-y-2">
             <label className="flex items-center justify-between gap-2 cursor-pointer">
               <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100">

@@ -90,10 +90,30 @@ function aiStudioProxy(env: Record<string, string>): Plugin {
       return;
     }
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    const loadStaticAsset = async (assetPath: string) => {
+      if (!/^\/ai-style-refs\/[a-zA-Z0-9._-]+\.(jpg|jpeg|png|webp)$/i.test(assetPath)) {
+        return null;
+      }
+      const cleanRel = assetPath.replace(/^\/+/, '');
+      const fullPath = path.resolve(__dirname, 'public', cleanRel);
+      const publicRoot = path.resolve(__dirname, 'public');
+      if (!fullPath.startsWith(publicRoot) || !fs.existsSync(fullPath)) {
+        return null;
+      }
+      const buf = fs.readFileSync(fullPath);
+      const lower = cleanRel.toLowerCase();
+      const mimeType = lower.endsWith('.png')
+        ? 'image/png'
+        : lower.endsWith('.webp')
+        ? 'image/webp'
+        : 'image/jpeg';
+      return { buffer: buf, mimeType };
+    };
+
     try {
       const body = await readJsonBody(req);
       const { processAiRenderRequest } = await import('./functions/_lib/aiStudio.js');
-      const result = await processAiRenderRequest(env, body, '127.0.0.1');
+      const result = await processAiRenderRequest(env, body, '127.0.0.1', { loadStaticAsset });
       res.statusCode = 200;
       res.end(JSON.stringify(result));
     } catch (err: any) {

@@ -6,16 +6,67 @@
 export const DEFAULT_ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 export const DEFAULT_ARK_MODEL = "doubao-seedream-5-5-261028";
 export const FREE_TRIAL_CREDITS = 20;
-export const COST_PER_RENDER_1K = 5;
-export const COST_PER_RENDER_2K = 10;
+
+export const OFFICIAL_ARK_MODELS = {
+  "seedream-5.5": {
+    key: "seedream-5.5",
+    defaultModelId: "doubao-seedream-5-5-261028",
+    label: "Seedream 5.5",
+    cost1k: 4,
+    cost2k: 6,
+    supportsTransparent: true,
+  },
+  "seedream-5.0-pro": {
+    key: "seedream-5.0-pro",
+    defaultModelId: "doubao-seedream-5-0-pro-260628",
+    label: "Seedream 5.0 Pro",
+    cost1k: 8,
+    cost2k: 12,
+    supportsTransparent: false,
+  },
+};
+
+export const COST_PER_RENDER_1K = OFFICIAL_ARK_MODELS["seedream-5.5"].cost1k;
+export const COST_PER_RENDER_2K = OFFICIAL_ARK_MODELS["seedream-5.5"].cost2k;
 export const COST_PER_RENDER = COST_PER_RENDER_2K;
+
+export function resolveOfficialRenderSpec(rawModelKey, rawSize, env) {
+  const normalizedModel = String(rawModelKey || "seedream-5.5").trim().toLowerCase();
+  const isPro50 = normalizedModel.includes("5-0") || normalizedModel.includes("5.0");
+  const modelMeta = isPro50
+    ? OFFICIAL_ARK_MODELS["seedream-5.0-pro"]
+    : OFFICIAL_ARK_MODELS["seedream-5.5"];
+
+  let modelId = modelMeta.defaultModelId;
+  if (modelMeta.key === "seedream-5.5") {
+    modelId =
+      (env && env.ARK_MODEL_55) ||
+      (env && env.ARK_SEEDREAM_MODEL && /5-5|5\.5/i.test(env.ARK_SEEDREAM_MODEL)
+        ? env.ARK_SEEDREAM_MODEL
+        : modelMeta.defaultModelId);
+  } else {
+    modelId = (env && env.ARK_MODEL_50_PRO) || modelMeta.defaultModelId;
+  }
+
+  const normalizedSize = String(rawSize || "2K").trim().toUpperCase();
+  const is1K = normalizedSize === "1K" || normalizedSize === "1080P";
+  return {
+    key: modelMeta.key,
+    modelId,
+    modelLabel: modelMeta.label,
+    size: is1K ? "1K" : "2K",
+    sizeLabel: is1K ? "1080p" : "2K",
+    cost: is1K ? modelMeta.cost1k : modelMeta.cost2k,
+    supportsTransparent: modelMeta.supportsTransparent,
+  };
+}
 
 export function resolveRenderQuality(rawSize) {
   const normalized = String(rawSize || "2K").trim().toUpperCase();
   if (normalized === "1K" || normalized === "1080P") {
     return { size: "1K", cost: COST_PER_RENDER_1K, label: "1080p" };
   }
-  return { size: "2K", cost: COST_PER_RENDER_2K, label: "2K Pro" };
+  return { size: "2K", cost: COST_PER_RENDER_2K, label: "2K" };
 }
 
 // Local / fallback in-memory store when Cloudflare KV (AI_CREDITS_KV) is not yet bound
@@ -601,11 +652,41 @@ export async function callOpenAiCompatibleImage({
 // ==========================================
 // Unified Request Handlers (used by Cloudflare Pages Functions & Vite Dev Server)
 // ==========================================
+const SAFE_PRESET_STYLE_REF_RE = /^\/ai-style-refs\/[a-zA-Z0-9._-]+\.(jpg|jpeg|png|webp)$/i;
+
+export function assemblePromptFromBlocks(promptBlocks, fallbackPrompt, styleRefAttached) {
+  if (Array.isArray(promptBlocks) && promptBlocks.length > 0) {
+    const parts = [];
+    for (const block of promptBlocks) {
+      if (!block || typeof block.text !== "string") continue;
+      if (block.requiresStyleRef && !styleRefAttached) continue;
+      const trimmed = block.text.trim();
+      if (trimmed) parts.push(trimmed);
+    }
+    if (parts.length > 0) {
+      return parts.join(" ");
+    }
+  }
+  return String(fallbackPrompt || "").trim();
+}
+
 export async function processWalletAction(env, body, clientIp = "unknown") {
   const action = body?.action || "status";
   const passkey = body?.passkey;
   const officialReady = Boolean(env && env.ARK_API_KEY);
   const kvReady = Boolean(env && env.AI_CREDITS_KV);
+  const pricingMatrix = {
+    "seedream-5.5": {
+      cost1k: OFFICIAL_ARK_MODELS["seedream-5.5"].cost1k,
+      cost2k: OFFICIAL_ARK_MODELS["seedream-5.5"].cost2k,
+      supportsTransparent: OFFICIAL_ARK_MODELS["seedream-5.5"].supportsTransparent,
+    },
+    "seedream-5.0-pro": {
+      cost1k: OFFICIAL_ARK_MODELS["seedream-5.0-pro"].cost1k,
+      cost2k: OFFICIAL_ARK_MODELS["seedream-5.0-pro"].cost2k,
+      supportsTransparent: OFFICIAL_ARK_MODELS["seedream-5.0-pro"].supportsTransparent,
+    },
+  };
 
   if (action === "status") {
     const wallet = await getOrInitWallet(env, passkey, clientIp);
@@ -616,6 +697,7 @@ export async function processWalletAction(env, body, clientIp = "unknown") {
       costPerRender: COST_PER_RENDER_2K,
       costPerRender1k: COST_PER_RENDER_1K,
       costPerRender2k: COST_PER_RENDER_2K,
+      pricingMatrix,
       wallet,
     };
   }
@@ -629,6 +711,7 @@ export async function processWalletAction(env, body, clientIp = "unknown") {
       costPerRender: COST_PER_RENDER_2K,
       costPerRender1k: COST_PER_RENDER_1K,
       costPerRender2k: COST_PER_RENDER_2K,
+      pricingMatrix,
       addedPoints: result.addedPoints,
       wallet: result.wallet,
     };
@@ -637,7 +720,7 @@ export async function processWalletAction(env, body, clientIp = "unknown") {
   throw new Error(`未知钱包操作: ${action}`);
 }
 
-export async function processAiRenderRequest(env, body, clientIp = "unknown") {
+export async function processAiRenderRequest(env, body, clientIp = "unknown", options = {}) {
   const channel = body?.channel === "byok" ? "byok" : "official";
   const quality = resolveRenderQuality(body?.size);
   const background = body?.background === "transparent" ? "transparent" : "auto";
@@ -647,14 +730,51 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
       : body?.outputFormat === "png" || body?.outputFormat === "jpeg"
       ? body.outputFormat
       : undefined;
-  const prompt = String(body?.prompt || "").trim();
+  const rawPrompt = String(body?.prompt || "").trim();
   const images = Array.isArray(body?.images) ? body.images.filter(Boolean) : [];
   const isConnectivityTest = Boolean(body?.testOnly);
 
-  if (!isConnectivityTest && !prompt) {
+  // Server-side automatic attachment for preset style reference or user custom reference image
+  const styleRefMode =
+    body?.styleRefMode === "custom"
+      ? "custom"
+      : body?.styleRefMode === "preset"
+      ? "preset"
+      : "none";
+  let styleRefAttached = false;
+  const finalImages = [...images];
+
+  if (styleRefMode === "custom") {
+    const customImg = body?.customStyleRefImage;
+    if (typeof customImg === "string" && customImg.startsWith("data:image")) {
+      finalImages.push(customImg);
+      styleRefAttached = true;
+    }
+  } else if (styleRefMode === "preset") {
+    const refPath = String(body?.presetStyleRefPath || "").trim();
+    if (SAFE_PRESET_STYLE_REF_RE.test(refPath) && typeof options?.loadStaticAsset === "function") {
+      try {
+        const asset = await options.loadStaticAsset(refPath);
+        if (asset && asset.buffer && asset.buffer.byteLength > 0 && String(asset.mimeType || "").startsWith("image/")) {
+          const cleanMime = asset.mimeType.split(";")[0].trim();
+          finalImages.push(`data:${cleanMime};base64,${arrayBufferToBase64(asset.buffer)}`);
+          styleRefAttached = true;
+        }
+      } catch {
+        // Missing or unreadable preset ref photo degrades cleanly to prompt-only generation
+      }
+    }
+  } else if (body?.hasStyleRefImage) {
+    // Backward compatibility if a client already included style ref in images[]
+    styleRefAttached = true;
+  }
+
+  const finalPrompt = assemblePromptFromBlocks(body?.promptBlocks, rawPrompt, styleRefAttached);
+
+  if (!isConnectivityTest && !finalPrompt) {
     throw new Error("提示词不能为空");
   }
-  if (!isConnectivityTest && images.length === 0) {
+  if (!isConnectivityTest && finalImages.length === 0) {
     throw new Error("请至少提供一张模型底图");
   }
 
@@ -700,8 +820,8 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
         apiKey,
         baseUrl,
         model,
-        prompt,
-        images,
+        prompt: finalPrompt,
+        images: finalImages,
         size: quality.size,
         background,
         outputFormat,
@@ -711,16 +831,16 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
         apiKey,
         baseUrl,
         model,
-        prompt,
-        images,
+        prompt: finalPrompt,
+        images: finalImages,
       });
     } else {
       result = await callOpenAiCompatibleImage({
         apiKey,
         baseUrl,
         model,
-        prompt,
-        images,
+        prompt: finalPrompt,
+        images: finalImages,
       });
     }
 
@@ -729,6 +849,7 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
       channel: "byok",
       imageDataUrl: result.imageDataUrl,
       modelUsed: result.modelUsed,
+      styleRefApplied: styleRefAttached,
     };
   }
 
@@ -744,27 +865,31 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
     throw err;
   }
 
+  const spec = resolveOfficialRenderSpec(body?.officialModel, body?.size, env);
   const passkey = body?.passkey;
-  const deduction = await deductWalletCredits(env, passkey, quality.cost, clientIp);
+  const deduction = await deductWalletCredits(env, passkey, spec.cost, clientIp);
   if (!deduction.ok) {
     const err = new Error(
-      `当前通行证剩余点数不足（${quality.label} 需要 ${quality.cost} 点，当前剩余 ${deduction.wallet.credits} 点）。请充值点数、切换为 1080p 省点模式（5 点），或使用「自带 API」。`
+      `当前通行证剩余点数不足（${spec.modelLabel} ${spec.sizeLabel} 需要 ${spec.cost} 点，当前剩余 ${deduction.wallet.credits} 点）。请充值点数、切换更省点模式，或使用「自带 API」。`
     );
     err.code = "INSUFFICIENT_CREDITS";
     err.wallet = deduction.wallet;
     throw err;
   }
 
+  const effectiveBg = spec.supportsTransparent ? background : "auto";
+  const effectiveFormat = spec.supportsTransparent ? outputFormat : undefined;
+
   try {
     const result = await callVolcengineSeedream({
       apiKey: officialApiKey,
       baseUrl: (env && env.ARK_BASE_URL) || DEFAULT_ARK_BASE_URL,
-      model: (env && env.ARK_SEEDREAM_MODEL) || DEFAULT_ARK_MODEL,
-      prompt,
-      images,
-      size: quality.size,
-      background,
-      outputFormat,
+      model: spec.modelId,
+      prompt: finalPrompt,
+      images: finalImages,
+      size: spec.size,
+      background: effectiveBg,
+      outputFormat: effectiveFormat,
     });
 
     return {
@@ -772,13 +897,15 @@ export async function processAiRenderRequest(env, body, clientIp = "unknown") {
       channel: "official",
       imageDataUrl: result.imageDataUrl,
       modelUsed: result.modelUsed,
-      sizeUsed: quality.size,
-      costCredits: quality.cost,
+      officialModelUsed: spec.key,
+      styleRefApplied: styleRefAttached,
+      sizeUsed: spec.size,
+      costCredits: spec.cost,
       wallet: deduction.wallet,
     };
   } catch (renderErr) {
     // Upstream failed -> refund deducted credits immediately so user never loses points!
-    const refundedWallet = await refundWalletCredits(env, passkey, quality.cost);
+    const refundedWallet = await refundWalletCredits(env, passkey, spec.cost);
     renderErr.wallet = refundedWallet || deduction.wallet;
     throw renderErr;
   }

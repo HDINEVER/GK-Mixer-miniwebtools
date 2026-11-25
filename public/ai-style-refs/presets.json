@@ -1,0 +1,74 @@
+[
+  {
+    "id": "clean_rg",
+    "name": "平喷直喷",
+    "badge": "官图清爽",
+    "sampleImage": "clean_rg.jpg",
+    "defaultFinish": "semi_gloss",
+    "defaultCrafts": ["panel_lining"],
+    "defaultBg": "white_studio",
+    "defaultLighting": "soft_dual",
+    "prompt": "官方封绘商业产品摄影，微缩高达机甲精涂成品模型，忠实还原并饱和呈现用户指定的油漆分色配方，大师级干净平喷直喷工艺，彻底消除素组塑料水口与半透明塑料感，装甲同色系深浅层次分色清晰锐利。严格保持原图模型的机械结构、装甲比例与拍摄视角100%不变。",
+    "enabled": true
+  },
+  {
+    "id": "max_shadow",
+    "name": "MAX 阴影喷涂",
+    "badge": "重涂立体",
+    "sampleImage": "max_shadow.jpg",
+    "defaultFinish": "matte",
+    "defaultCrafts": ["panel_lining", "decals", "metallic_frame"],
+    "defaultBg": "dark_studio",
+    "defaultLighting": "top_key",
+    "prompt": "日本模型杂志封面级产品摄影，微缩高达机甲大师级MAX阴影喷涂工艺（黑水补土打底预置阴影 Pre-shading），装甲棱线、转折角与刻线边缘带有克制深邃的重色阴影过渡，装甲板面中心柔和提亮，呈现厚重精涂立体质感。严格保持原图模型的零件轮廓、机械刻线、比例与姿态100%一致。",
+    "enabled": true
+  },
+  {
+    "id": "anime_cel",
+    "name": "漫画涂装",
+    "badge": "二次元",
+    "sampleImage": "anime_cel.jpg",
+    "defaultFinish": "matte",
+    "defaultCrafts": ["panel_lining"],
+    "defaultBg": "cutting_mat",
+    "defaultLighting": "soft_dual",
+    "prompt": "产品摄影，微缩高达机甲模型，大师级手涂漫画二次元涂装，清晰粗黑色轮廓勾线，赛璐璐平涂风格，硬边缘明暗色块，强烈明暗对比，每种颜色用高光、基本色、深阴影三层硬边色块划分明暗关系，没有柔和渐变，干净锐利黑色卡通轮廓，近距离微距实拍，机械刻线清晰。严格保持原图模型的机械结构、装甲造型、比例与拍摄角度完全不变。",
+    "enabled": true
+  },
+  {
+    "id": "heavy_weathering",
+    "name": "战损旧化",
+    "badge": "写实战损",
+    "sampleImage": "heavy_weathering.jpg",
+    "defaultFinish": "matte",
+    "defaultCrafts": ["panel_lining", "decals", "metallic_frame"],
+    "defaultBg": "dark_studio",
+    "defaultLighting": "rim_dramatic",
+    "prompt": "写实军事微缩模型摄影，高达机甲大师级战损旧化涂装，装甲棱角边缘逼真的海绵掉漆与银灰色金属磨损露底，表面带有细腻渍洗滤镜、自然重力流锈雨痕与喷口烟熏积碳痕迹，下肢轻微陆战沙尘旧化，极具钢铁重量感。严格保持原图模型的机械造型、比例与拍摄角度完全不变。",
+    "enabled": true
+  },
+  {
+    "id": "candy_metallic",
+    "name": "电镀糖果",
+    "badge": "镜面高光",
+    "sampleImage": "candy_metallic.jpg",
+    "defaultFinish": "gloss",
+    "defaultCrafts": ["metallic_frame", "led_glow"],
+    "defaultBg": "dark_studio",
+    "defaultLighting": "rim_dramatic",
+    "prompt": "高端合金成品模型商业摄影，微缩机甲电镀糖果色金属涂装工艺（黑底亮银打底配合多层透明色罩染），色彩发色通透深邃且极具金属层次。严格保持原图模型的每一个装甲零件轮廓、比例与姿态完全不变，禁止结构变形。",
+    "enabled": true
+  },
+  {
+    "id": "gk_resin_studio",
+    "name": "GK 灰模精涂",
+    "badge": "灰模上色",
+    "sampleImage": "gk_resin_studio.jpg",
+    "defaultFinish": "semi_gloss",
+    "defaultCrafts": ["panel_lining", "metallic_frame"],
+    "defaultBg": "white_studio",
+    "defaultLighting": "top_key",
+    "prompt": "殿堂级GK改件涂装成品微距摄影，将单色灰模/白模转化为完整大师级精涂成品，消除打磨痕迹与层纹，自动赋予协调考究的机甲主副色分色方案与精密涂装层次。严格保持原图灰模的每一处装甲造型、刻线走向、比例与视角100%不变。",
+    "enabled": true
+  }
+]

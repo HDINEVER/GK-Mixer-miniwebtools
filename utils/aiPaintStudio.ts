@@ -21,6 +21,24 @@ export interface WalletInfo {
   trialGranted?: boolean;
 }
 
+export type OfficialModelKey = "seedream-5.5" | "seedream-5.0-pro";
+
+export interface OfficialModelPricing {
+  cost1k: number;
+  cost2k: number;
+  supportsTransparent: boolean;
+}
+
+export interface OfficialPricingMatrix {
+  "seedream-5.5": OfficialModelPricing;
+  "seedream-5.0-pro": OfficialModelPricing;
+}
+
+export const DEFAULT_OFFICIAL_PRICING_MATRIX: OfficialPricingMatrix = {
+  "seedream-5.5": { cost1k: 4, cost2k: 6, supportsTransparent: true },
+  "seedream-5.0-pro": { cost1k: 8, cost2k: 12, supportsTransparent: false },
+};
+
 export interface WalletStatusResponse {
   ok: boolean;
   officialReady: boolean;
@@ -28,6 +46,7 @@ export interface WalletStatusResponse {
   costPerRender: number;
   costPerRender1k?: number;
   costPerRender2k?: number;
+  pricingMatrix?: OfficialPricingMatrix;
   wallet: WalletInfo;
   addedPoints?: number;
   error?: string;
@@ -39,9 +58,20 @@ export interface AiPresetStyle {
   badge: string;
   sampleImageUrl: string;
   defaultFinish: SurfaceFinishId;
+  defaultCrafts: DetailCraftId[];
   defaultBg: StudioBgId;
   defaultLighting: LightingPosId;
   prompt: string;
+  enabled?: boolean;
+}
+
+export interface PromptBlock {
+  id: string;
+  label: string;
+  text: string;
+  kind: "core" | "process" | "ref" | "palette" | "rule" | "extra";
+  isOverride?: boolean;
+  requiresStyleRef?: boolean;
 }
 
 export type SurfaceFinishId = "matte" | "semi_gloss" | "gloss" | "metallic_pearl";
@@ -174,54 +204,64 @@ export const AI_PRESET_STYLES: AiPresetStyle[] = [
     badge: "官图清爽",
     sampleImageUrl: "/ai-style-refs/clean_rg.jpg",
     defaultFinish: "semi_gloss",
+    defaultCrafts: ["panel_lining"],
     defaultBg: "white_studio",
     defaultLighting: "soft_dual",
     prompt:
-      "官方封绘商业产品摄影，微缩高达机甲精涂成品模型，大师级干净平喷直喷分色工艺，彻底消除素组塑料水口与半透明塑料感，装甲同色系深浅层次分色清晰，色彩发色精准饱满。严格保持原图模型的机械结构、装甲比例与拍摄视角100%不变。",
+      "官方封绘商业产品摄影，微缩高达机甲精涂成品模型，忠实还原并饱和呈现用户指定的油漆分色配方，大师级干净平喷直喷工艺，彻底消除素组塑料水口与半透明塑料感，装甲同色系深浅层次分色清晰锐利。严格保持原图模型的机械结构、装甲比例与拍摄视角100%不变。",
+    enabled: true,
   },
   {
     id: "max_shadow",
-    name: "阴影喷涂 (MAX)",
+    name: "MAX 阴影喷涂",
     badge: "重涂立体",
     sampleImageUrl: "/ai-style-refs/max_shadow.jpg",
     defaultFinish: "matte",
+    defaultCrafts: ["panel_lining", "decals", "metallic_frame"],
     defaultBg: "dark_studio",
     defaultLighting: "top_key",
     prompt:
       "日本模型杂志封面级产品摄影，微缩高达机甲大师级MAX阴影喷涂工艺（黑水补土打底预置阴影 Pre-shading），装甲棱线、转折角与刻线边缘带有克制深邃的重色阴影过渡，装甲板面中心柔和提亮，呈现厚重精涂立体质感。严格保持原图模型的零件轮廓、机械刻线、比例与姿态100%一致。",
+    enabled: true,
   },
   {
     id: "anime_cel",
-    name: "漫画风格涂装",
-    badge: "二次元破壁",
+    name: "漫画涂装",
+    badge: "二次元",
     sampleImageUrl: "/ai-style-refs/anime_cel.jpg",
     defaultFinish: "matte",
+    defaultCrafts: ["panel_lining"],
     defaultBg: "cutting_mat",
     defaultLighting: "soft_dual",
     prompt:
-      "产品摄影，微缩高达机甲模型，大师级手涂漫画二次元涂装，清晰粗黑色轮廓勾线，赛璐璐平涂风格，硬边缘明暗色块，强烈明暗对比，每种颜色用白色高光、基本色、深黑色阴影三层硬边色块划分明暗关系，没有柔和渐变，干净锐利黑色卡通轮廓，近距离微距实拍，机械刻线清晰，日系漫画画风。严格保持原图模型的机械结构、装甲造型、比例与拍摄角度完全不变。",
+      "产品摄影，微缩高达机甲模型，大师级手涂漫画二次元涂装，清晰粗黑色轮廓勾线，赛璐璐平涂风格，硬边缘明暗色块，强烈明暗对比，每种颜色用高光、基本色、深阴影三层硬边色块划分明暗关系，没有柔和渐变，干净锐利黑色卡通轮廓，近距离微距实拍，机械刻线清晰。严格保持原图模型的机械结构、装甲造型、比例与拍摄角度完全不变。",
+    enabled: true,
   },
   {
     id: "heavy_weathering",
-    name: "战损旧化涂装",
+    name: "战损旧化",
     badge: "写实战损",
     sampleImageUrl: "/ai-style-refs/heavy_weathering.jpg",
     defaultFinish: "matte",
+    defaultCrafts: ["panel_lining", "decals", "metallic_frame"],
     defaultBg: "dark_studio",
     defaultLighting: "rim_dramatic",
     prompt:
       "写实军事微缩模型摄影，高达机甲大师级战损旧化涂装，装甲棱角边缘逼真的海绵掉漆与银灰色金属磨损露底，表面带有细腻渍洗滤镜、自然重力流锈雨痕与喷口烟熏积碳痕迹，下肢轻微陆战沙尘旧化，极具钢铁重量感。严格保持原图模型的机械造型、比例与拍摄角度完全不变。",
+    enabled: true,
   },
   {
     id: "candy_metallic",
-    name: "电镀糖果金属",
+    name: "电镀糖果",
     badge: "镜面高光",
     sampleImageUrl: "/ai-style-refs/candy_metallic.jpg",
     defaultFinish: "gloss",
+    defaultCrafts: ["metallic_frame", "led_glow"],
     defaultBg: "dark_studio",
     defaultLighting: "rim_dramatic",
     prompt:
-      "高端合金成品模型商业摄影，微缩机甲电镀糖果色金属涂装工艺（亮光黑打底、电镀银与多层透明色罩染抛光），发色通透深邃且极具金属光泽。严格保持原图模型的每一个装甲零件轮廓、比例与姿态完全不变，禁止结构变形。",
+      "高端合金成品模型商业摄影，微缩机甲电镀糖果色金属涂装工艺（黑底亮银打底配合多层透明色罩染），色彩发色通透深邃且极具金属层次。严格保持原图模型的每一个装甲零件轮廓、比例与姿态完全不变，禁止结构变形。",
+    enabled: true,
   },
   {
     id: "gk_resin_studio",
@@ -229,12 +269,58 @@ export const AI_PRESET_STYLES: AiPresetStyle[] = [
     badge: "灰模上色",
     sampleImageUrl: "/ai-style-refs/gk_resin_studio.jpg",
     defaultFinish: "semi_gloss",
+    defaultCrafts: ["panel_lining", "metallic_frame"],
     defaultBg: "white_studio",
     defaultLighting: "top_key",
     prompt:
-      "殿堂级GK改件涂装成品微距摄影，将单色灰模/白模转化为完整大师级精涂成品，消除打磨痕迹与层纹，自动赋予协调考究的机甲主副色分色方案与金属点缀细节。严格保持原图灰模的每一处装甲造型、刻线走向、比例与视角100%不变。",
+      "殿堂级GK改件涂装成品微距摄影，将单色灰模/白模转化为完整大师级精涂成品，消除打磨痕迹与层纹，自动赋予协调考究的机甲主副色分色方案与精密涂装层次。严格保持原图灰模的每一处装甲造型、刻线走向、比例与视角100%不变。",
+    enabled: true,
   },
 ];
+
+export async function fetchPresetStyles(): Promise<AiPresetStyle[]> {
+  if (typeof window === "undefined") return AI_PRESET_STYLES;
+  try {
+    const resp = await fetch("/ai-style-refs/presets.json", { cache: "no-cache" });
+    if (!resp.ok) return AI_PRESET_STYLES;
+    const raw = await resp.json();
+    if (!Array.isArray(raw)) return AI_PRESET_STYLES;
+    const valid: AiPresetStyle[] = raw
+      .filter((item: any) => item && item.enabled !== false && item.id && item.name && item.prompt)
+      .map((item: any) => {
+        const rawSample = String(item.sampleImage || `${item.id}.jpg`).trim();
+        const sampleImageUrl =
+          rawSample.startsWith("/") || rawSample.startsWith("http")
+            ? rawSample
+            : `/ai-style-refs/${rawSample}`;
+        return {
+          id: String(item.id),
+          name: String(item.name),
+          badge: String(item.badge || ""),
+          sampleImageUrl,
+          defaultFinish: (SURFACE_FINISH_OPTIONS.some((f) => f.id === item.defaultFinish)
+            ? item.defaultFinish
+            : "semi_gloss") as SurfaceFinishId,
+          defaultCrafts: Array.isArray(item.defaultCrafts)
+            ? item.defaultCrafts.filter((c: any) =>
+                DETAIL_CRAFT_OPTIONS.some((opt) => opt.id === c)
+              )
+            : ["panel_lining"],
+          defaultBg: (STUDIO_BG_OPTIONS.some((b) => b.id === item.defaultBg)
+            ? item.defaultBg
+            : "white_studio") as StudioBgId,
+          defaultLighting: (LIGHTING_POS_OPTIONS.some((l) => l.id === item.defaultLighting)
+            ? item.defaultLighting
+            : "soft_dual") as LightingPosId,
+          prompt: String(item.prompt),
+          enabled: item.enabled !== false,
+        };
+      });
+    return valid.length > 0 ? valid : AI_PRESET_STYLES;
+  } catch {
+    return AI_PRESET_STYLES;
+  }
+}
 
 export const NO_SWATCH_UI_RULE =
   "【绝对禁止规则】画面中只能出现纯粹的模型实物与摄影棚环境，严禁在生成结果中保留或生成任何悬浮色卡方块、色号标签、编号圆点、引线框、价格文字、水印或UI界面元素。";
@@ -382,40 +468,163 @@ export function buildProcessClause(opts: {
     .join(" ");
 }
 
-export function buildPresetRenderPrompt(opts: {
+export function buildPresetPromptBlocks(opts: {
   presetId: string;
+  presetsList?: AiPresetStyle[];
   finishId: SurfaceFinishId;
   crafts: DetailCraftId[];
   bgId: StudioBgId;
   lightingId: LightingPosId;
   hasStyleRefImage: boolean;
+  isCustomStyleRef?: boolean;
+  nodes: FloatingSwatchNode[];
+  injectPalette: boolean;
+  extraUserPrompt?: string;
+}): { blocks: PromptBlock[]; prompt: string; overriddenLabels: string[] } {
+  const list = opts.presetsList && opts.presetsList.length > 0 ? opts.presetsList : AI_PRESET_STYLES;
+  const preset = list.find((p) => p.id === opts.presetId) || list[0];
+  const finish = SURFACE_FINISH_OPTIONS.find((f) => f.id === opts.finishId);
+  const bg = STUDIO_BG_OPTIONS.find((b) => b.id === opts.bgId);
+  const lighting = LIGHTING_POS_OPTIONS.find((l) => l.id === opts.lightingId);
+
+  const isFinishOverride = opts.finishId !== preset.defaultFinish;
+  const isBgOverride = opts.bgId !== preset.defaultBg;
+  const isLightingOverride = opts.lightingId !== preset.defaultLighting;
+
+  const overriddenLabels: string[] = [];
+  if (isFinishOverride && finish) overriddenLabels.push(`漆面质感(${finish.name})`);
+  if (isBgOverride && bg) overriddenLabels.push(`摄影背景(${bg.name})`);
+  if (isLightingOverride && lighting) overriddenLabels.push(`打光位置(${lighting.name})`);
+
+  const blocks: PromptBlock[] = [
+    {
+      id: "preset_core",
+      label: `01 技法 · ${preset.name}`,
+      text: preset.prompt,
+      kind: "core",
+    },
+  ];
+
+  const craftTexts = opts.crafts
+    .map((id) => DETAIL_CRAFT_OPTIONS.find((c) => c.id === id)?.promptFragment)
+    .filter(Boolean) as string[];
+  if (craftTexts.length > 0) {
+    const craftNames = opts.crafts
+      .map((id) => DETAIL_CRAFT_OPTIONS.find((c) => c.id === id)?.name)
+      .filter(Boolean)
+      .join("/");
+    blocks.push({
+      id: "crafts",
+      label: `03 工艺 (${craftNames})`,
+      text: craftTexts.join(" "),
+      kind: "process",
+    });
+  }
+
+  if (finish) {
+    blocks.push({
+      id: "finish",
+      label: `02 漆面 · ${finish.name}`,
+      text: finish.promptFragment,
+      kind: "process",
+      isOverride: isFinishOverride,
+    });
+  }
+
+  if (bg) {
+    blocks.push({
+      id: "studio_bg",
+      label: `04 背景 · ${bg.name}`,
+      text: bg.promptFragment,
+      kind: "process",
+      isOverride: isBgOverride,
+    });
+  }
+
+  if (lighting) {
+    blocks.push({
+      id: "lighting",
+      label: `05 布光 · ${lighting.name}`,
+      text: lighting.promptFragment,
+      kind: "process",
+      isOverride: isLightingOverride,
+    });
+  }
+
+  if (opts.hasStyleRefImage) {
+    blocks.push({
+      id: "style_ref",
+      label: opts.isCustomStyleRef ? "自定义样板参考" : "预设样板参考",
+      text: "【多图风格参考指令】图1为需要上色的素组/灰模本体，必须100%保持图1的机械轮廓、零件造型与视角；图2为喷涂风格参考样板图，请学习图2的涂装笔触、明暗过渡、阴影重度与漆面粒子质感并迁移到图1模型上，严禁把图2的机体造型或多余部件混入图1；若用户手动指定了漆面光泽、摄影背景或布光，以用户指定工序为准而非照搬图2环境。",
+      kind: "ref",
+      requiresStyleRef: true,
+    });
+  }
+
+  if (overriddenLabels.length > 0) {
+    blocks.push({
+      id: "override_precedence",
+      label: "手动覆盖优先",
+      text: `【手动工序覆盖优先】用户已明确手动覆盖调整了以下工序参数：${overriddenLabels.join("、")}。无论预设风格或参考样板图原本是什么漆面反光、背景或布光，最终画面都必须100%严格以用户手动选择的积木参数为准。`,
+      kind: "rule",
+      isOverride: true,
+    });
+  }
+
+  const paletteClause = opts.injectPalette ? buildProjectPaletteClause(opts.nodes) : "";
+  if (paletteClause) {
+    blocks.push({
+      id: "palette",
+      label: "项目色卡配方",
+      text: paletteClause,
+      kind: "palette",
+    });
+  }
+
+  blocks.push({
+    id: "no_swatch_rule",
+    label: "纯净出图约束",
+    text: NO_SWATCH_UI_RULE,
+    kind: "rule",
+  });
+
+  const extra = (opts.extraUserPrompt || "").trim();
+  if (extra) {
+    blocks.push({
+      id: "extra",
+      label: "追加指令",
+      text: extra,
+      kind: "extra",
+    });
+  }
+
+  return {
+    blocks,
+    prompt: blocks.map((b) => b.text).join(" "),
+    overriddenLabels,
+  };
+}
+
+export function buildPresetRenderPrompt(opts: {
+  presetId: string;
+  presetsList?: AiPresetStyle[];
+  finishId: SurfaceFinishId;
+  crafts: DetailCraftId[];
+  bgId: StudioBgId;
+  lightingId: LightingPosId;
+  hasStyleRefImage: boolean;
+  isCustomStyleRef?: boolean;
   nodes: FloatingSwatchNode[];
   injectPalette: boolean;
   extraUserPrompt?: string;
 }): string {
-  const preset =
-    AI_PRESET_STYLES.find((p) => p.id === opts.presetId) || AI_PRESET_STYLES[0];
-  const processClause = buildProcessClause(opts);
-  const styleRefClause = opts.hasStyleRefImage
-    ? "【多图风格参考指令】图1为需要上色的素组/灰模本体，必须100%保持图1的机械轮廓、零件造型与视角；图2为喷涂风格与质感样板图，请深度学习图2的涂装笔触、明暗过渡、阴影重度与漆面发色质感并应用到图1模型上，严禁把图2的机体造型或零件混入图1。"
-    : "";
-  const paletteClause = opts.injectPalette ? buildProjectPaletteClause(opts.nodes) : "";
-  const extra = (opts.extraUserPrompt || "").trim();
-  return [
-    preset.prompt,
-    processClause,
-    styleRefClause,
-    paletteClause,
-    NO_SWATCH_UI_RULE,
-    extra,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  return buildPresetPromptBlocks(opts).prompt;
 }
 
-export function buildRefineRenderPrompt(opts: {
+export function buildRefinePromptBlocks(opts: {
   hasDualRawImage: boolean;
   hasStyleRefImage: boolean;
+  isCustomStyleRef?: boolean;
   finishStyle: RefineFinishStyle;
   unpaintedPolicy: RefineUnpaintedPolicy;
   crafts: DetailCraftId[];
@@ -424,17 +633,13 @@ export function buildRefineRenderPrompt(opts: {
   nodes: FloatingSwatchNode[];
   injectPalette: boolean;
   extraUserPrompt?: string;
-}): string {
+}): { blocks: PromptBlock[]; prompt: string; overriddenLabels: string[] } {
   const finishObj =
     REFINE_FINISH_OPTIONS.find((f) => f.id === opts.finishStyle) ||
     REFINE_FINISH_OPTIONS[0];
   const bg = STUDIO_BG_OPTIONS.find((b) => b.id === opts.bgId);
   const lighting = LIGHTING_POS_OPTIONS.find((l) => l.id === opts.lightingId);
-  const craftClauses = opts.crafts
-    .map((id) => DETAIL_CRAFT_OPTIONS.find((c) => c.id === id)?.promptFragment)
-    .filter(Boolean)
-    .join(" ");
-  const paletteClause = opts.injectPalette ? buildProjectPaletteClause(opts.nodes) : "";
+
   const unpaintedClause =
     opts.unpaintedPolicy === "keep_clean"
       ? "对于草图中尚未涂上彩色的原始灰白装甲区域，请整理为干净整洁的白色/浅冷灰消光装甲漆面，不要胡乱涂成花哨杂色。"
@@ -444,27 +649,114 @@ export function buildRefineRenderPrompt(opts: {
     ? "基于多图联合精修微缩机甲模型：图1为未上色的原始模型实拍底图（提供100%准确的零件轮廓、装甲边界与机械刻线位置），图2为算法模拟局部上色草图（提供目标分色区域与配色位置）。请严格以图1的真实机械边缘与刻线为准，彻底修复图2中算法填色造成的边缘颜色溢出、锯齿毛边、渗色断层与死角漏涂问题，精准还原图2各部位的指定颜色。"
     : "微缩机甲模型模拟上色细节精修：原图为算法模拟上色的模型效果草图，存在局部边缘颜色溢出刻线、填色锯齿以及电子染色不自然的问题。请在严格保持原图模型零件造型、比例视角及已涂色部位颜色方案的前提下，彻底清除跨装甲缝隙的溢色毛边，锐化修复机械刻线边界。";
 
-  const styleRefIdx = opts.hasDualRawImage ? "图3" : "图2";
-  const styleRefClause = opts.hasStyleRefImage
-    ? `【风格参考样板】${styleRefIdx}为喷涂质感参考样板，请学习${styleRefIdx}的漆面质感与涂装笔触表现，同时保持图1的实体结构与上色分色不变。`
-    : "";
+  const blocks: PromptBlock[] = [
+    {
+      id: "refine_core",
+      label: opts.hasDualRawImage ? "01 双图锁定精修" : "01 溢色修复",
+      text: `${baseInstruction} ${unpaintedClause}`,
+      kind: "core",
+    },
+    {
+      id: "refine_finish",
+      label: `02 漆面 · ${finishObj.name.replace(/（.*）/, "")}`,
+      text: finishObj.promptFragment,
+      kind: "process",
+    },
+  ];
+
+  const craftTexts = opts.crafts
+    .map((id) => DETAIL_CRAFT_OPTIONS.find((c) => c.id === id)?.promptFragment)
+    .filter(Boolean) as string[];
+  if (craftTexts.length > 0) {
+    const craftNames = opts.crafts
+      .map((id) => DETAIL_CRAFT_OPTIONS.find((c) => c.id === id)?.name)
+      .filter(Boolean)
+      .join("/");
+    blocks.push({
+      id: "crafts",
+      label: `03 工艺 (${craftNames})`,
+      text: craftTexts.join(" "),
+      kind: "process",
+    });
+  }
+
+  if (bg) {
+    blocks.push({
+      id: "studio_bg",
+      label: `04 背景 · ${bg.name}`,
+      text: bg.promptFragment,
+      kind: "process",
+    });
+  }
+
+  if (lighting) {
+    blocks.push({
+      id: "lighting",
+      label: `05 布光 · ${lighting.name}`,
+      text: lighting.promptFragment,
+      kind: "process",
+    });
+  }
+
+  if (opts.hasStyleRefImage) {
+    const styleRefIdx = opts.hasDualRawImage ? "图3" : "图2";
+    blocks.push({
+      id: "style_ref",
+      label: opts.isCustomStyleRef ? "自定义样板参考" : "样板质感参考",
+      text: `【风格参考样板】${styleRefIdx}为喷涂质感参考样板，请学习${styleRefIdx}的漆面质感与涂装笔触表现，同时保持图1的实体结构、上色分色及用户指定背景/布光不变。`,
+      kind: "ref",
+      requiresStyleRef: true,
+    });
+  }
+
+  const paletteClause = opts.injectPalette ? buildProjectPaletteClause(opts.nodes) : "";
+  if (paletteClause) {
+    blocks.push({
+      id: "palette",
+      label: "项目色卡配方",
+      text: paletteClause,
+      kind: "palette",
+    });
+  }
+
+  blocks.push({
+    id: "refine_lock",
+    label: "构图与纯净约束",
+    text: `最终输出高清微距棚拍模型成品照片质感，严格保持模型原始姿态、结构比例与视角一致，禁止变形或增删零件。 ${NO_SWATCH_UI_RULE}`,
+    kind: "rule",
+  });
 
   const extra = (opts.extraUserPrompt || "").trim();
-  return [
-    baseInstruction,
-    unpaintedClause,
-    finishObj.promptFragment,
-    craftClauses,
-    bg?.promptFragment,
-    lighting?.promptFragment,
-    styleRefClause,
-    paletteClause,
-    "最终输出高清微距棚拍模型成品照片质感，严格保持模型原始姿态、结构比例与视角一致，禁止变形或增删零件。",
-    NO_SWATCH_UI_RULE,
-    extra,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  if (extra) {
+    blocks.push({
+      id: "extra",
+      label: "追加指令",
+      text: extra,
+      kind: "extra",
+    });
+  }
+
+  return {
+    blocks,
+    prompt: blocks.map((b) => b.text).join(" "),
+    overriddenLabels: [],
+  };
+}
+
+export function buildRefineRenderPrompt(opts: {
+  hasDualRawImage: boolean;
+  hasStyleRefImage: boolean;
+  isCustomStyleRef?: boolean;
+  finishStyle: RefineFinishStyle;
+  unpaintedPolicy: RefineUnpaintedPolicy;
+  crafts: DetailCraftId[];
+  bgId: StudioBgId;
+  lightingId: LightingPosId;
+  nodes: FloatingSwatchNode[];
+  injectPalette: boolean;
+  extraUserPrompt?: string;
+}): string {
+  return buildRefinePromptBlocks(opts).prompt;
 }
 
 // ==========================================
@@ -474,6 +766,7 @@ const PASSKEY_STORAGE_KEY = "gk_ai_wallet_passkey_v1";
 const BYOK_STORAGE_KEY = "gk_ai_byok_config_v1";
 const CHANNEL_STORAGE_KEY = "gk_ai_channel_pref_v1";
 const QUALITY_STORAGE_KEY = "gk_ai_quality_pref_v1";
+const OFFICIAL_MODEL_STORAGE_KEY = "gk_ai_official_model_v1";
 
 function randomBlock(len = 4): string {
   const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -563,6 +856,18 @@ export function loadPreferredQuality(): AiRenderQuality {
 export function savePreferredQuality(q: AiRenderQuality): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(QUALITY_STORAGE_KEY, q);
+}
+
+export function loadPreferredOfficialModel(): OfficialModelKey {
+  if (typeof window === "undefined") return "seedream-5.5";
+  const saved = localStorage.getItem(OFFICIAL_MODEL_STORAGE_KEY);
+  if (saved === "seedream-5.0-pro" || saved === "seedream-5.5") return saved;
+  return "seedream-5.5";
+}
+
+export function savePreferredOfficialModel(m: OfficialModelKey): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(OFFICIAL_MODEL_STORAGE_KEY, m);
 }
 
 // ==========================================
@@ -661,20 +966,32 @@ export async function runAiPaintRender(params: {
   channel: AiChannelMode;
   passkey: string;
   byok?: ByokConfig;
+  officialModel?: OfficialModelKey;
   prompt: string;
+  promptBlocks?: PromptBlock[];
   rawImageSources: string[];
+  styleRefMode?: "none" | "preset" | "custom";
+  presetStyleRefPath?: string | null;
+  customStyleRefSrc?: string | null;
   size?: "1K" | "2K";
   background?: "auto" | "transparent";
   outputFormat?: "png" | "jpeg";
 }): Promise<{
   imageDataUrl: string;
   modelUsed: string;
+  officialModelUsed?: OfficialModelKey;
+  styleRefApplied?: boolean;
   wallet?: WalletInfo;
   costCredits?: number;
 }> {
   const compressedImages = await Promise.all(
     params.rawImageSources.map((src) => prepareImageForAiApi(src, 1536))
   );
+
+  let compressedCustomRef: string | undefined;
+  if (params.styleRefMode === "custom" && params.customStyleRefSrc) {
+    compressedCustomRef = await prepareImageForAiApi(params.customStyleRefSrc, 1536);
+  }
 
   const resp = await fetch("/api/ai-render", {
     method: "POST",
@@ -683,8 +1000,14 @@ export async function runAiPaintRender(params: {
       channel: params.channel,
       passkey: params.passkey,
       byok: params.channel === "byok" ? params.byok : undefined,
+      officialModel: params.channel === "official" ? params.officialModel || "seedream-5.5" : undefined,
       prompt: params.prompt,
+      promptBlocks: params.promptBlocks,
       images: compressedImages,
+      styleRefMode: params.styleRefMode || "none",
+      presetStyleRefPath:
+        params.styleRefMode === "preset" ? params.presetStyleRefPath || undefined : undefined,
+      customStyleRefImage: compressedCustomRef,
       size: params.size || "2K",
       background: params.background,
       outputFormat: params.outputFormat,
@@ -702,6 +1025,8 @@ export async function runAiPaintRender(params: {
   return {
     imageDataUrl: data.imageDataUrl,
     modelUsed: data.modelUsed,
+    officialModelUsed: data.officialModelUsed,
+    styleRefApplied: data.styleRefApplied,
     wallet: data.wallet,
     costCredits: data.costCredits,
   };

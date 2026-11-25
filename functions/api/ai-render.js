@@ -30,9 +30,27 @@ export async function onRequest(context) {
     request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() ||
     "unknown";
 
+  const SAFE_STYLE_REF_RE = /^\/ai-style-refs\/[a-zA-Z0-9._-]+\.(jpg|jpeg|png|webp)$/i;
+
+  const loadStaticAsset = async (assetPath) => {
+    if (!SAFE_STYLE_REF_RE.test(assetPath)) return null;
+    const assetUrl = new URL(assetPath, request.url);
+    const resp =
+      env && env.ASSETS && typeof env.ASSETS.fetch === "function"
+        ? await env.ASSETS.fetch(assetUrl)
+        : await fetch(assetUrl.toString());
+    if (!resp || !resp.ok) return null;
+    const contentType = String(resp.headers.get("content-type") || "").toLowerCase();
+    // Guard against SPA index.html fallback when image asset does not exist yet
+    if (!contentType.startsWith("image/")) return null;
+    const buffer = await resp.arrayBuffer();
+    if (!buffer || buffer.byteLength === 0) return null;
+    return { buffer, mimeType: contentType };
+  };
+
   try {
     const body = await request.json();
-    const result = await processAiRenderRequest(env, body, clientIp);
+    const result = await processAiRenderRequest(env, body, clientIp, { loadStaticAsset });
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: {

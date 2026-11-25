@@ -3,15 +3,19 @@ import type { FloatingSwatchNode, PartCanvas } from "../../types";
 import {
   AI_PRESET_STYLES,
   AiChannelMode,
+  AiPresetStyle,
   AiRenderQuality,
   AiStudioMode,
   BYOK_PROVIDER_PRESETS,
   ByokConfig,
   ByokProviderId,
+  DEFAULT_OFFICIAL_PRICING_MATRIX,
   DETAIL_CRAFT_OPTIONS,
   DetailCraftId,
   LIGHTING_POS_OPTIONS,
   LightingPosId,
+  OfficialModelKey,
+  OfficialPricingMatrix,
   REFINE_FINISH_OPTIONS,
   RefineFinishStyle,
   RefineUnpaintedPolicy,
@@ -20,17 +24,20 @@ import {
   StudioBgId,
   SurfaceFinishId,
   WalletInfo,
-  buildPresetRenderPrompt,
-  buildRefineRenderPrompt,
+  buildPresetPromptBlocks,
+  buildRefinePromptBlocks,
+  fetchPresetStyles,
   fetchWalletStatus,
   getOrCreateWalletPasskey,
   loadByokConfig,
   loadPreferredChannel,
+  loadPreferredOfficialModel,
   loadPreferredQuality,
   redeemCreditCode,
   runAiPaintRender,
   saveByokConfig,
   savePreferredChannel,
+  savePreferredOfficialModel,
   savePreferredQuality,
   saveWalletPasskey,
   testByokConnection,
@@ -199,7 +206,7 @@ export const AiLiveComparisonStage: React.FC<{
           <CircleNotchIcon className="h-10 w-10 text-coral animate-spin" weight="bold" />
           <div className="space-y-1">
             <p className="text-sm font-black text-white">
-              正在调用 Seedream 5.5 绘制漆面与刻线细节... ({stage.elapsedSec}s)
+              正在调用官方 Seedream 绘制漆面与刻线细节... ({stage.elapsedSec}s)
             </p>
             <p className="text-xs text-slate-300">
               通常耗时 8 ~ 20 秒，若上游接口异常将自动原路退回点数
@@ -247,6 +254,9 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     hasStudioRawRef ? "refine" : "preset"
   );
   const [channel, setChannel] = useState<AiChannelMode>(() => loadPreferredChannel());
+  const [officialModel, setOfficialModel] = useState<OfficialModelKey>(() =>
+    loadPreferredOfficialModel()
+  );
   const [renderQuality, setRenderQuality] = useState<AiRenderQuality>(() => loadPreferredQuality());
   const [drawerTab, setDrawerTab] = useState<"none" | "wallet" | "byok">("none");
 
@@ -256,10 +266,11 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   const [useDualRefInRefine, setUseDualRefInRefine] = useState<boolean>(hasStudioRawRef);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Preset & Process Configurator options
+  // Dynamic Preset Manifest + Process Configurator options
+  const [presetStyles, setPresetStyles] = useState<AiPresetStyle[]>(AI_PRESET_STYLES);
   const [selectedPresetId, setSelectedPresetId] = useState<string>(AI_PRESET_STYLES[0].id);
   const [finishId, setFinishId] = useState<SurfaceFinishId>(AI_PRESET_STYLES[0].defaultFinish);
-  const [crafts, setCrafts] = useState<DetailCraftId[]>(["panel_lining", "metallic_frame"]);
+  const [crafts, setCrafts] = useState<DetailCraftId[]>([...AI_PRESET_STYLES[0].defaultCrafts]);
   const [bgId, setBgId] = useState<StudioBgId>(AI_PRESET_STYLES[0].defaultBg);
   const [lightingId, setLightingId] = useState<LightingPosId>(AI_PRESET_STYLES[0].defaultLighting);
 
@@ -286,12 +297,16 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   const [showRestorePasskey, setShowRestorePasskey] = useState<boolean>(false);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [officialReady, setOfficialReady] = useState<boolean>(true);
-  const [costPerRender1k, setCostPerRender1k] = useState<number>(5);
-  const [costPerRender2k, setCostPerRender2k] = useState<number>(10);
+  const [pricingMatrix, setPricingMatrix] = useState<OfficialPricingMatrix>(
+    DEFAULT_OFFICIAL_PRICING_MATRIX
+  );
   const [redeemInput, setRedeemInput] = useState<string>("");
   const [redeeming, setRedeeming] = useState<boolean>(false);
 
-  const activeRenderCost = renderQuality === "1K" ? costPerRender1k : costPerRender2k;
+  const activeModelPricing = pricingMatrix[officialModel] || DEFAULT_OFFICIAL_PRICING_MATRIX["seedream-5.5"];
+  const activeCost1k = activeModelPricing.cost1k;
+  const activeCost2k = activeModelPricing.cost2k;
+  const activeRenderCost = renderQuality === "1K" ? activeCost1k : activeCost2k;
 
   // BYOK state
   const [byok, setByok] = useState<ByokConfig>(() => loadByokConfig());
@@ -322,7 +337,19 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     setErrorMsg(null);
   }, [activePart?.id, hasStudioRawRef]);
 
-  // Fetch wallet credits
+  // Load dynamic preset manifest (/ai-style-refs/presets.json)
+  useEffect(() => {
+    let cancelled = false;
+    fetchPresetStyles().then((loaded) => {
+      if (cancelled || !loaded || loaded.length === 0) return;
+      setPresetStyles(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch wallet credits & model pricing matrix
   useEffect(() => {
     let cancelled = false;
     fetchWalletStatus(passkey)
@@ -330,9 +357,8 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         if (cancelled) return;
         setWallet(res.wallet);
         setOfficialReady(res.officialReady);
-        if (res.costPerRender1k) setCostPerRender1k(res.costPerRender1k);
-        if (res.costPerRender2k || res.costPerRender) {
-          setCostPerRender2k(res.costPerRender2k || res.costPerRender || 10);
+        if (res.pricingMatrix) {
+          setPricingMatrix(res.pricingMatrix);
         }
       })
       .catch(() => {});
@@ -412,8 +438,8 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   ]);
 
   const activePresetObj = useMemo(
-    () => AI_PRESET_STYLES.find((s) => s.id === selectedPresetId) || AI_PRESET_STYLES[0],
-    [selectedPresetId]
+    () => presetStyles.find((s) => s.id === selectedPresetId) || presetStyles[0] || AI_PRESET_STYLES[0],
+    [presetStyles, selectedPresetId]
   );
 
   const effectiveStyleRefSrc = useMemo(() => {
@@ -423,16 +449,33 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     return null;
   }, [useStyleRef, customStyleRefSrc, mode, builtinRefLoaded, activePresetObj.sampleImageUrl]);
 
+  const applyPresetDefaults = (p: AiPresetStyle) => {
+    setFinishId(p.defaultFinish);
+    setCrafts([...(p.defaultCrafts || ["panel_lining"])]);
+    setBgId(p.defaultBg);
+    setLightingId(p.defaultLighting);
+  };
+
   const handleSelectPreset = (presetId: string) => {
     setSelectedPresetId(presetId);
     setBuiltinRefLoaded(false);
-    const p = AI_PRESET_STYLES.find((s) => s.id === presetId);
+    const p = presetStyles.find((s) => s.id === presetId);
     if (p) {
-      setFinishId(p.defaultFinish);
-      setBgId(p.defaultBg);
-      setLightingId(p.defaultLighting);
+      applyPresetDefaults(p);
     }
   };
+
+  const isFinishOverridden = mode === "preset" && finishId !== activePresetObj.defaultFinish;
+  const isBgOverridden = mode === "preset" && bgId !== activePresetObj.defaultBg;
+  const isLightingOverridden = mode === "preset" && lightingId !== activePresetObj.defaultLighting;
+  const isCraftsOverridden = useMemo(() => {
+    if (mode !== "preset") return false;
+    const def = [...(activePresetObj.defaultCrafts || [])].sort().join(",");
+    const cur = [...crafts].sort().join(",");
+    return def !== cur;
+  }, [mode, activePresetObj.defaultCrafts, crafts]);
+  const hasAnyOverride =
+    isFinishOverridden || isBgOverridden || isLightingOverridden || isCraftsOverridden;
 
   const toggleCraft = (craftId: DetailCraftId) => {
     setCrafts((prev) =>
@@ -449,32 +492,36 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
         setCustomStyleRefSrc(reader.result);
         setUseStyleRef(true);
         setPreviewTab("ref");
-        flashNotice("✓ 已加载自定义风格参考样板图，生成时将学习其喷涂质感与光影");
+        flashNotice("✓ 已加载自定义参考样板图，生成时将自动学习其喷涂笔触并叠加工序积木");
       }
     };
     reader.readAsDataURL(file);
     e.target.value = "";
   };
 
-  const finalPrompt = useMemo(() => {
+  const promptAssembly = useMemo(() => {
     const nodes: FloatingSwatchNode[] = activePart?.nodes || [];
     const hasStyleRefImage = Boolean(effectiveStyleRefSrc);
+    const isCustomStyleRef = Boolean(useStyleRef && customStyleRefSrc);
     if (mode === "preset") {
-      return buildPresetRenderPrompt({
+      return buildPresetPromptBlocks({
         presetId: selectedPresetId,
+        presetsList: presetStyles,
         finishId,
         crafts,
         bgId,
         lightingId,
         hasStyleRefImage,
+        isCustomStyleRef,
         nodes,
         injectPalette,
         extraUserPrompt: extraPrompt,
       });
     }
-    return buildRefineRenderPrompt({
+    return buildRefinePromptBlocks({
       hasDualRawImage: Boolean(effectiveDualRawRef),
       hasStyleRefImage,
+      isCustomStyleRef,
       finishStyle: refineFinish,
       unpaintedPolicy,
       crafts,
@@ -487,11 +534,14 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
   }, [
     mode,
     selectedPresetId,
+    presetStyles,
     finishId,
     crafts,
     bgId,
     lightingId,
     effectiveStyleRefSrc,
+    useStyleRef,
+    customStyleRefSrc,
     activePart?.nodes,
     injectPalette,
     extraPrompt,
@@ -499,6 +549,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
     refineFinish,
     unpaintedPolicy,
   ]);
+  const finalPrompt = promptAssembly.prompt;
 
   const currentModeSummaryLabel = useMemo(() => {
     if (mode === "preset") {
@@ -618,17 +669,26 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
       const inputSources = effectiveDualRawRef
         ? [effectiveDualRawRef, primaryBeforeSrc]
         : [primaryBeforeSrc];
-      if (effectiveStyleRefSrc) {
-        inputSources.push(effectiveStyleRefSrc);
-      }
+      const styleRefMode: "none" | "preset" | "custom" = !useStyleRef
+        ? "none"
+        : customStyleRefSrc
+        ? "custom"
+        : mode === "preset" && builtinRefLoaded
+        ? "preset"
+        : "none";
 
       const isTransparentBg = bgId === "transparent";
       const res = await runAiPaintRender({
         channel,
         passkey,
         byok,
+        officialModel,
         prompt: finalPrompt,
+        promptBlocks: promptAssembly.blocks,
         rawImageSources: inputSources,
+        styleRefMode,
+        presetStyleRefPath: styleRefMode === "preset" ? activePresetObj.sampleImageUrl : null,
+        customStyleRefSrc: styleRefMode === "custom" ? customStyleRefSrc : null,
         size: renderQuality,
         background: isTransparentBg ? "transparent" : "auto",
         outputFormat: isTransparentBg ? "png" : undefined,
@@ -693,7 +753,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               }`}
             >
               <LightningIcon className="h-3.5 w-3.5 text-amber-400" weight="fill" />
-              <span>官方 Seedream 5.5</span>
+              <span>官方 {officialModel === "seedream-5.5" ? "5.5" : "5.0 Pro"}</span>
               <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] text-amber-600 dark:text-amber-300 tabular-nums">
                 {wallet ? `${wallet.credits}点` : "..."}
               </span>
@@ -798,7 +858,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/70 p-3 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="font-black text-slate-900 dark:text-white">
-                灵感点账户：{wallet ? wallet.credits : 0} 点（1080p 每次 {costPerRender1k} 点 / 2K 每次 {costPerRender2k} 点 · 新设备赠 20 点）
+                灵感点账户：{wallet ? wallet.credits : 0} 点（5.5 每次 {pricingMatrix["seedream-5.5"].cost1k}/{pricingMatrix["seedream-5.5"].cost2k} 点 · 5.0 Pro 每次 {pricingMatrix["seedream-5.0-pro"].cost1k}/{pricingMatrix["seedream-5.0-pro"].cost2k} 点 · 新设备赠 20 点）
               </span>
               <button
                 type="button"
@@ -1164,29 +1224,41 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               <>
                 {/* Step 01: Paint Technique */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
                       01 涂装技法
                     </span>
-                    <span className="text-[10px] font-bold text-coral">
-                      {activePresetObj.name}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {hasAnyOverride && (
+                        <button
+                          type="button"
+                          onClick={() => applyPresetDefaults(activePresetObj)}
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 cursor-pointer"
+                        >
+                          <ArrowCounterClockwiseIcon className="h-2.5 w-2.5" weight="bold" />
+                          <span>恢复默认工序</span>
+                        </button>
+                      )}
+                      <span className="text-[10px] font-bold text-coral">
+                        {activePresetObj.name}
+                      </span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                    {AI_PRESET_STYLES.map((preset) => {
+                    {presetStyles.map((preset) => {
                       const active = selectedPresetId === preset.id;
                       return (
                         <button
                           key={preset.id}
                           type="button"
                           onClick={() => handleSelectPreset(preset.id)}
-                          className={`rounded-xl border px-2.5 py-2 text-left transition cursor-pointer flex items-center justify-between gap-1 ${
+                          className={`rounded-xl border px-2 py-2 text-left transition cursor-pointer flex items-center justify-between gap-1 ${
                             active
                               ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30"
                               : "bp-subcard border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 hover:border-slate-300"
                           }`}
                         >
-                          <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                          <span className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white truncate">
                             {preset.name}
                           </span>
                           <span
@@ -1206,9 +1278,16 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
 
                 {/* Step 02: Surface Topcoat Finish */}
                 <div className="space-y-1.5">
-                  <span className="block text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
-                    02 漆面质感
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                      02 漆面质感
+                    </span>
+                    {isFinishOverridden && (
+                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
+                        已手动覆盖
+                      </span>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {SURFACE_FINISH_OPTIONS.map((opt) => {
                       const active = finishId === opt.id;
@@ -1297,9 +1376,16 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                 <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
                   03 工艺细节（可多选）
                 </span>
-                <span className="text-[10px] text-slate-400">
-                  已选 {crafts.length} 项
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {isCraftsOverridden && (
+                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
+                      已手动覆盖
+                    </span>
+                  )}
+                  <span className="text-[10px] text-slate-400">
+                    已选 {crafts.length} 项
+                  </span>
+                </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {DETAIL_CRAFT_OPTIONS.map((craft) => {
@@ -1325,9 +1411,16 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
 
             {/* Step 04: Studio Background */}
             <div className="space-y-1.5">
-              <span className="block text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
-                04 摄影背景
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                  04 摄影背景
+                </span>
+                {isBgOverridden && (
+                  <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
+                    已手动覆盖
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {STUDIO_BG_OPTIONS.map((bg) => {
                   const active = bgId === bg.id;
@@ -1364,9 +1457,16 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
 
             {/* Step 05: Studio Lighting Position */}
             <div className="space-y-1.5">
-              <span className="block text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
-                05 打光位置
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                  05 打光位置
+                </span>
+                {isLightingOverridden && (
+                  <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
+                    已手动覆盖
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-3 gap-1.5">
                 {LIGHTING_POS_OPTIONS.map((light) => {
                   const active = lightingId === light.id;
@@ -1522,10 +1622,13 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                   >
                     <ImageSquareIcon className="h-7 w-7 text-slate-400 mb-1.5" weight="duotone" />
                     <span className="text-xs font-black text-slate-700 dark:text-slate-200">
-                      上传涂装样板参考图（选填）
+                      上传他人作品 / 涂装参考图（选填）
                     </span>
-                    <span className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
-                      支持你自己的大神喷涂作品做多图风格迁移，不传则按下方工序纯提示词生成
+                    <span className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      可直接上传别人的精涂成品照作为参考，或由后端自动读取{" "}
+                      <code className="font-mono text-coral">
+                        {activePresetObj.sampleImageUrl}
+                      </code>
                     </span>
                   </button>
                 )}
@@ -1632,7 +1735,9 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
               onClick={() => setShowFullPromptPreview((v) => !v)}
               className="text-[11px] font-bold text-coral hover:underline cursor-pointer"
             >
-              {showFullPromptPreview ? "收起完整提示词" : "查看合成提示词"}
+              {showFullPromptPreview
+                ? "收起积木提示词"
+                : `查看积木提示词 (${promptAssembly.blocks.length} 块)`}
             </button>
           </div>
           <input
@@ -1643,8 +1748,34 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
             className="bp-input w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white"
           />
           {showFullPromptPreview && (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2.5 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed max-h-24 overflow-y-auto">
-              {finalPrompt}
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2.5 space-y-1.5 max-h-52 overflow-y-auto">
+              {promptAssembly.blocks.map((block) => (
+                <div
+                  key={block.id}
+                  className={`rounded-lg border px-2 py-1.5 text-[11px] leading-relaxed ${
+                    block.isOverride
+                      ? "border-amber-500/40 bg-amber-500/10 text-slate-800 dark:text-slate-200"
+                      : "border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="rounded bg-slate-900/10 dark:bg-white/10 px-1.5 py-0.5 text-[9px] font-black text-slate-800 dark:text-slate-100">
+                      {block.label}
+                    </span>
+                    {block.isOverride && (
+                      <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-300">
+                        手动覆盖优先
+                      </span>
+                    )}
+                    {block.requiresStyleRef && (
+                      <span className="rounded bg-emerald-500/15 px-1 py-0.5 text-[9px] font-extrabold text-emerald-700 dark:text-emerald-300">
+                        随参考图自动联动
+                      </span>
+                    )}
+                  </div>
+                  <div>{block.text}</div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1668,6 +1799,76 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
           </div>
         )}
 
+        {/* Official Engine Model Selector (5.5 vs 5.0 Pro) */}
+        {channel === "official" && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black tracking-wide text-slate-800 dark:text-slate-200">
+                生图引擎版本
+              </span>
+              <span className="text-[10px] text-slate-400">
+                5.5 极速省点含透明 PNG · 5.0 Pro 重涂经典大模型
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setOfficialModel("seedream-5.5");
+                  savePreferredOfficialModel("seedream-5.5");
+                }}
+                className={`rounded-xl border px-3 py-2 text-left transition cursor-pointer ${
+                  officialModel === "seedream-5.5"
+                    ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30"
+                    : "bp-subcard border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-black text-slate-900 dark:text-white">
+                    Seedream 5.5
+                  </span>
+                  <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                    {pricingMatrix["seedream-5.5"].cost1k}/{pricingMatrix["seedream-5.5"].cost2k} 点
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  极速省点首选 · 支持透明免抠 PNG
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOfficialModel("seedream-5.0-pro");
+                  savePreferredOfficialModel("seedream-5.0-pro");
+                }}
+                className={`rounded-xl border px-3 py-2 text-left transition cursor-pointer ${
+                  officialModel === "seedream-5.0-pro"
+                    ? "bp-subcard-active border-coral bg-white dark:bg-slate-900 ring-2 ring-coral/30"
+                    : "bp-subcard border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-black text-slate-900 dark:text-white">
+                    Seedream 5.0 Pro
+                  </span>
+                  <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[10px] font-black text-amber-700 dark:text-amber-300">
+                    {pricingMatrix["seedream-5.0-pro"].cost1k}/{pricingMatrix["seedream-5.0-pro"].cost2k} 点
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  旗舰经典重涂模型 · 算力消耗翻倍
+                </p>
+              </button>
+            </div>
+            {officialModel === "seedream-5.0-pro" && bgId === "transparent" && (
+              <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                提示：透明免抠 PNG 仅 Seedream 5.5 原生支持，当前 5.0 Pro 将自动按标准棚拍背景出图
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Output Resolution & Credit Tier Switcher */}
         <div className="grid grid-cols-2 gap-2">
           <button
@@ -1687,11 +1888,11 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                 1080p 标准试色
               </span>
               <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[10px] font-black text-emerald-600 dark:text-emerald-400">
-                {channel === "official" ? `${costPerRender1k} 点/次` : "省流快出"}
+                {channel === "official" ? `${activeCost1k} 点/次` : "省流快出"}
               </span>
             </div>
             <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-              省半价点数 · 适合快速试配色与多次迭代
+              适合快速试配色与多次迭代
             </p>
           </button>
 
@@ -1712,7 +1913,7 @@ export const AiPaintStudioPanel: React.FC<AiPaintStudioPanelProps> = ({
                 2K Pro 高清精修
               </span>
               <span className="rounded bg-coral/15 px-1.5 py-0.5 font-mono text-[10px] font-black text-coral">
-                {channel === "official" ? `${costPerRender2k} 点/次` : "高清推荐"}
+                {channel === "official" ? `${activeCost2k} 点/次` : "高清推荐"}
               </span>
             </div>
             <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
